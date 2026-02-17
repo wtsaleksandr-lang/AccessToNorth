@@ -7,6 +7,7 @@ declare global {
 }
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import businessTeamImg from "@/assets/images/business-team.jpg";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { FeaturesSection } from "@/components/FeaturesSection";
@@ -276,7 +277,7 @@ export default function Home() {
           <div className="flex flex-col lg:flex-row items-center gap-12">
             <div className="lg:w-1/2">
               <img 
-                src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=1632&h=1224" 
+                src={businessTeamImg}
                 alt="International Business Team" 
                 className="rounded-2xl shadow-2xl"
               />
