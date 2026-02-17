@@ -5,6 +5,7 @@ import { createServer } from "http";
 import { runMigrations } from 'stripe-replit-sync';
 import { getStripeSync } from './stripeClient';
 import { WebhookHandlers } from './webhookHandlers';
+import { seedProducts } from './seedProducts';
 
 const app = express();
 const httpServer = createServer(app);
@@ -45,6 +46,9 @@ async function initStripe() {
       `${webhookBaseUrl}/api/stripe/webhook`
     );
     log(`Webhook configured: ${result?.webhook?.url || 'ready'}`, 'stripe');
+
+    log('Seeding Stripe products...', 'stripe');
+    await seedProducts();
 
     log('Syncing Stripe data...', 'stripe');
     stripeSync.syncBackfill()
