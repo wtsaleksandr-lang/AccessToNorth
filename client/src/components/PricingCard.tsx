@@ -81,12 +81,12 @@ export function PricingCard({
         <CardFooter>
           <Button 
             onClick={onSelect}
-            className={`w-full group ${
+            className={`w-full group cursor-pointer transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl active:scale-100 ${
               isFeatured 
-                ? 'bg-amber-500 hover:bg-amber-600 text-white' 
+                ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/25' 
                 : isPopular 
-                  ? 'bg-primary hover:bg-primary/90' 
-                  : 'bg-slate-900 hover:bg-slate-800'
+                  ? 'bg-primary hover:bg-[#0056b3] shadow-lg shadow-primary/25' 
+                  : 'bg-slate-900 hover:bg-slate-800 shadow-lg shadow-slate-900/25'
             }`}
             data-testid={`button-get-started-${type}`}
           >

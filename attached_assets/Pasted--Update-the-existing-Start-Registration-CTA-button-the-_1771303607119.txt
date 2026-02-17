@@ -1,0 +1,27 @@
+
+Update the existing "Start Registration" CTA button (the large blue button with arrow). Add a smooth hover effect: on hover, change background to a darker blue (#0056b3 or similar), add a slight scale-up (1.05), add box-shadow for depth, and change cursor to pointer. Make the transition smooth (0.3s ease). Keep the original colors otherwise. Apply only to this button and any similar "Get Started" buttons.
+
+In the trust/social proof section (the one with 5 stars and "Trusted by 10k+ businesses"), replace the current placeholder icons/circles with 3–4 realistic, professional, AI-generated avatar photos of diverse people (business professionals, smiling, neutral background). Use circular avatars, human looking like, 80–100px size, with subtle border or shadow. Keep the 5 yellow stars and text "Trusted by 10k+ businesses" unchanged. Make sure they look natural and high-quality (no cartoons or low-res).
+
+Update the font styles on the existing homepage:
+- For the business name "AccessToNorth.com" (header/logo area): change to a modern, premium sans-serif font like "Inter" (bold weight, slightly condensed) or "Manrope" (extra-bold for emphasis). Increase size slightly if needed for prominence, keep color navy or black.
+- For the main headline "Expert GST/HST & Business Registration": change to a clean, high-end SaaS-style font like "Satoshi" (bold), "Cabinet Grotesk", or "Neue Haas Grotesk" if available; otherwise use "Inter" extra-bold or "Poppins" bold. Make it larger, better line-height, and more premium-looking (wider tracking/letter-spacing for elegance). Keep the blue color for "Business Registration".
+Apply these fonts site-wide where appropriate for headings, but prioritize the hero section. Import the fonts from Google Fonts if not already loaded (add <link> tags for Inter, Manrope, Poppins, etc.).
+
+
+Update the existing testimonials/reviews section on the homepage to make it closely resemble a modern Trustpilot-style review carousel or grid:
+
+- Change layout to a horizontal carousel/slider (or responsive 3-column grid on desktop, stacking to 1-2 columns on mobile) with smooth sliding/arrows if carousel.
+- Reduce vertical and horizontal gaps significantly: make cards closer together (padding ~16–24px), tighter spacing between reviews.
+- Style each review card to look like Trustpilot:
+  - Dark background (keep current dark navy/near-black).
+  - White or light gray text.
+  - 5 yellow/gold stars (★★★★★) at the top of each card.
+  - Review text in quotation marks or italic, 14–16px font.
+  - Reviewer name in bold below the quote.
+  - Reviewer title/company/role in smaller gray text below name.
+  - Add subtle Trustpilot-like elements: small verified checkmark icon next to name (or text "Verified"), rounded corners on cards (border-radius 12px), light border or shadow.
+- Keep exactly 6 reviews total (use the existing 5 + one more placeholder if needed, or duplicate/rearrange).
+- Ensure mobile-friendly: cards stack vertically, carousel swipeable.
+- Maintain current content/quotes/names unless they overlap; just refine layout, spacing, and Trustpilot visual style.
+

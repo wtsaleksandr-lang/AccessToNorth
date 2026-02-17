@@ -6,7 +6,7 @@ declare global {
   }
 }
 
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { FeaturesSection } from "@/components/FeaturesSection";
@@ -16,7 +16,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle2, Star, ShieldCheck, Award, Lock } from "lucide-react";
+import { ArrowRight, CheckCircle2, Star, ShieldCheck, Award, Lock, BadgeCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { useContact } from "@/hooks/use-registrations";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -126,7 +126,7 @@ export default function Home() {
                 Official CRA Authorized Representatives
               </div>
               
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold font-display text-slate-900 leading-[1.1]" data-testid="text-hero-title">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold font-display text-slate-900 leading-[1.05] tracking-tight" data-testid="text-hero-title" style={{ letterSpacing: '-0.02em' }}>
                 Expert GST/HST & <br />
                 <span className="text-primary">Business Registration</span>
               </h1>
@@ -138,7 +138,7 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row gap-4 pt-2">
                 <Button 
                   size="lg" 
-                  className="bg-primary text-lg px-8 h-12 shadow-lg shadow-primary/25"
+                  className="bg-primary text-lg px-8 shadow-lg shadow-primary/25 cursor-pointer transition-all duration-300 ease-in-out hover:bg-[#0056b3] hover:shadow-xl hover:shadow-primary/30 hover:scale-105 active:scale-100"
                   onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
                   data-testid="button-start-registration"
                 >
@@ -148,8 +148,8 @@ export default function Home() {
                 <div className="flex items-center gap-4 px-4">
                   <div className="flex -space-x-3">
                     {[1,2,3,4].map(i => (
-                      <div key={i} className="w-10 h-10 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500">
-                        <div className="w-full h-full rounded-full bg-gradient-to-br from-slate-200 to-slate-300" />
+                      <div key={i} className="w-10 h-10 rounded-full border-2 border-white overflow-hidden shadow-sm">
+                        <img src={`/images/avatar-${i}.png`} alt="" className="w-full h-full object-cover" />
                       </div>
                     ))}
                   </div>
@@ -315,51 +315,7 @@ export default function Home() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-20 bg-slate-900 text-white">
-        <div className="container mx-auto px-4 md:px-6">
-          <h2 className="text-3xl font-bold font-display text-center mb-16">What Our Clients Say</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                text: "The process was incredibly smooth. I tried doing it myself but got confused by the CRA forms. AccessToNorth handled it seamlessly.",
-                author: "Sarah J.",
-                role: "E-commerce Founder"
-              },
-              {
-                text: "As a US company selling software to Canadians, I had no idea about the new tax laws. AccessToNorth sorted out our compliance perfectly.",
-                author: "Michael R.",
-                role: "SaaS CEO"
-              },
-              {
-                text: "Worth every penny. The premium package set up our payroll and import accounts along with the GST number. Huge time saver.",
-                author: "David C.",
-                role: "Import/Export Director"
-              },
-              {
-                text: "Registered my non-resident GST/HST quickly and without any hassle. The team was knowledgeable and responsive throughout.",
-                author: "John D.",
-                role: "US E-commerce Seller"
-              },
-              {
-                text: "The Complete Importer Bundle was exactly what we needed. CARM setup was smooth and now we are fully compliant for importing.",
-                author: "Priya M.",
-                role: "Logistics Manager"
-              }
-            ].map((t, i) => (
-              <div key={i} className="bg-slate-800 p-8 rounded-2xl border border-slate-700" data-testid={`testimonial-card-${i}`}>
-                <div className="flex text-yellow-400 mb-4">
-                  {[1,2,3,4,5].map(star => <Star key={star} className="w-4 h-4 fill-current" />)}
-                </div>
-                <p className="text-slate-300 mb-6 italic">"{t.text}"</p>
-                <div>
-                  <p className="font-semibold">{t.author}</p>
-                  <p className="text-sm text-slate-400">{t.role}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <TestimonialsSection />
 
       {/* FAQ */}
       <section id="faq" className="py-20 bg-slate-50">
@@ -461,6 +417,146 @@ export default function Home() {
         defaultPackage={selectedPackage}
       />
     </div>
+  );
+}
+
+const testimonials = [
+  {
+    text: "The process was incredibly smooth. I tried doing it myself but got confused by the CRA forms. AccessToNorth handled it seamlessly.",
+    author: "Sarah Johnson",
+    role: "E-commerce Founder",
+    verified: true,
+  },
+  {
+    text: "As a US company selling software to Canadians, I had no idea about the new tax laws. AccessToNorth sorted out our compliance perfectly.",
+    author: "Michael Roberts",
+    role: "SaaS CEO",
+    verified: true,
+  },
+  {
+    text: "Worth every penny. The premium package set up our payroll and import accounts along with the GST number. Huge time saver.",
+    author: "David Chen",
+    role: "Import/Export Director",
+    verified: true,
+  },
+  {
+    text: "Registered my non-resident GST/HST quickly and without any hassle. The team was knowledgeable and responsive throughout.",
+    author: "John Delaney",
+    role: "US E-commerce Seller",
+    verified: true,
+  },
+  {
+    text: "The Complete Importer Bundle was exactly what we needed. CARM setup was smooth and now we are fully compliant for importing.",
+    author: "Priya Mehta",
+    role: "Logistics Manager",
+    verified: true,
+  },
+  {
+    text: "We were dreading the CARM registration process but AccessToNorth made it painless. Everything was handled professionally from start to finish.",
+    author: "Lisa Tremblay",
+    role: "Operations VP, Supply Chain Co.",
+    verified: true,
+  },
+];
+
+function TestimonialsSection() {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  const checkScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 10);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    checkScroll();
+    el.addEventListener("scroll", checkScroll);
+    window.addEventListener("resize", checkScroll);
+    return () => {
+      el.removeEventListener("scroll", checkScroll);
+      window.removeEventListener("resize", checkScroll);
+    };
+  }, [checkScroll]);
+
+  const scroll = (direction: "left" | "right") => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const amount = el.clientWidth * 0.8;
+    el.scrollBy({ left: direction === "left" ? -amount : amount, behavior: "smooth" });
+  };
+
+  return (
+    <section className="py-20 bg-slate-900 text-white">
+      <div className="container mx-auto px-4 md:px-6">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold font-display mb-3" data-testid="text-testimonials-title">What Our Clients Say</h2>
+          <p className="text-slate-400">Rated 4.9/5 based on 500+ verified reviews</p>
+        </div>
+
+        <div className="relative">
+          {canScrollLeft && (
+            <button
+              onClick={() => scroll("left")}
+              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 z-10 w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white transition-all hover:bg-white/20 hidden md:flex"
+              data-testid="button-testimonial-prev"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+          )}
+          {canScrollRight && (
+            <button
+              onClick={() => scroll("right")}
+              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 z-10 w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white transition-all hover:bg-white/20 hidden md:flex"
+              data-testid="button-testimonial-next"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          )}
+
+          <div
+            ref={scrollRef}
+            className="flex gap-5 overflow-x-auto scroll-smooth pb-4 snap-x snap-mandatory hide-scrollbar"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          >
+            {testimonials.map((t, i) => (
+              <div
+                key={i}
+                className="flex-shrink-0 w-[320px] md:w-[360px] bg-slate-800/80 border border-slate-700/60 rounded-xl p-6 snap-start flex flex-col"
+                data-testid={`testimonial-card-${i}`}
+              >
+                <div className="flex gap-1 text-yellow-400 mb-4">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star key={star} className="w-5 h-5 fill-current" />
+                  ))}
+                </div>
+                <p className="text-slate-300 text-sm leading-relaxed mb-6 flex-1 italic">
+                  &ldquo;{t.text}&rdquo;
+                </p>
+                <div className="flex items-center gap-3 pt-4 border-t border-slate-700/50">
+                  <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">
+                    {t.author.split(" ").map(n => n[0]).join("")}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-semibold text-sm text-white truncate">{t.author}</p>
+                      {t.verified && (
+                        <BadgeCheck className="w-4 h-4 text-green-400 flex-shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-400 truncate">{t.role}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 

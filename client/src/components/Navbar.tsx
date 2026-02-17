@@ -55,7 +55,7 @@ export function Navbar() {
             <div className="bg-primary p-1.5 rounded-lg group-hover:scale-105 transition-transform">
               <ShieldCheck className="h-6 w-6 text-white" />
             </div>
-            <span className={`text-xl font-bold font-display tracking-tight ${scrolled ? 'text-slate-900' : 'text-slate-900'}`}>
+            <span className={`text-xl font-extrabold tracking-tight ${scrolled ? 'text-slate-900' : 'text-slate-900'}`} style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.03em' }}>
               AccessToNorth<span className="text-primary">.com</span>
             </span>
           </Link>
