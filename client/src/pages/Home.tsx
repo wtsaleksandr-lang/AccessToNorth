@@ -514,15 +514,16 @@ function ContactSection() {
                     window.Tawk_API.maximize();
                   }
                 }}
-                className="flex items-center gap-4 hover-elevate rounded-lg p-2 -m-2 cursor-pointer text-left"
+                className="flex items-center gap-4 w-full rounded-md border border-primary/20 bg-primary/5 p-4 cursor-pointer text-left transition-all duration-200 hover:bg-primary/10 hover:border-primary/40 hover:shadow-md"
               >
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-primary">
-                  <span className="font-bold">AI</span>
+                <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center text-primary flex-shrink-0">
+                  <span className="font-bold text-sm">AI</span>
                 </div>
-                <div>
-                  <p className="font-medium text-slate-900">Live AI Support</p>
-                  <p className="text-slate-500">Click to chat with us instantly</p>
+                <div className="flex-1">
+                  <p className="font-semibold text-primary">Live AI Support</p>
+                  <p className="text-slate-500 text-sm">Click to chat with us instantly</p>
                 </div>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary/50 flex-shrink-0"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
               </button>
             </div>
           </div>
