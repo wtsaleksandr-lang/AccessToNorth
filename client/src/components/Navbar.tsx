@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -37,9 +37,20 @@ export function Navbar() {
           element.scrollIntoView({ behavior: "smooth" });
         }
       } else {
-        window.location.href = href;
+        setLocation("/");
+        setTimeout(() => {
+          const element = document.getElementById(id);
+          if (element) {
+            element.scrollIntoView({ behavior: "smooth" });
+          }
+        }, 100);
       }
     }
+  };
+
+  const handlePortalClick = () => {
+    setIsOpen(false);
+    setLocation("/portal");
   };
 
   return (
@@ -69,19 +80,22 @@ export function Navbar() {
                   e.preventDefault();
                   handleNavClick(link.href);
                 }}
-                className="text-sm font-medium text-slate-600 hover:text-primary transition-colors"
+                className="text-sm font-medium text-slate-600 hover:text-primary transition-colors cursor-pointer"
                 data-testid={`nav-link-${link.name.toLowerCase().replace(/\s+/g, '-')}`}
               >
                 {link.name}
               </a>
             ))}
-            <Link href="/portal">
-              <Button variant="outline" className="border-primary/20 hover:bg-primary/5 text-primary" data-testid="button-check-status">
-                Check Status
-              </Button>
-            </Link>
+            <Button
+              variant="outline"
+              className="border-primary/20 hover:bg-primary/5 text-primary cursor-pointer"
+              onClick={handlePortalClick}
+              data-testid="button-check-status"
+            >
+              Check Status
+            </Button>
             <Button 
-              className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
+              className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 cursor-pointer"
               onClick={() => handleNavClick("/#pricing")}
               data-testid="button-register-now"
             >
@@ -90,7 +104,7 @@ export function Navbar() {
           </div>
 
           <button
-            className="md:hidden text-slate-700"
+            className="md:hidden text-slate-700 cursor-pointer"
             onClick={() => setIsOpen(!isOpen)}
             data-testid="button-mobile-menu"
           >
@@ -116,18 +130,26 @@ export function Navbar() {
                     e.preventDefault();
                     handleNavClick(link.href);
                   }}
-                  className="text-base font-medium text-slate-600 hover:text-primary"
+                  className="text-base font-medium text-slate-600 hover:text-primary cursor-pointer"
+                  data-testid={`mobile-nav-link-${link.name.toLowerCase().replace(/\s+/g, '-')}`}
                 >
                   {link.name}
                 </a>
               ))}
               <hr className="border-slate-100" />
-              <Link href="/portal">
-                <Button variant="outline" className="w-full justify-start">
-                  Client Portal
-                </Button>
-              </Link>
-              <Button className="w-full" onClick={() => handleNavClick("/#pricing")}>
+              <Button
+                variant="outline"
+                className="w-full justify-start cursor-pointer"
+                onClick={handlePortalClick}
+                data-testid="button-mobile-check-status"
+              >
+                Client Portal
+              </Button>
+              <Button
+                className="w-full cursor-pointer"
+                onClick={() => handleNavClick("/#pricing")}
+                data-testid="button-mobile-register"
+              >
                 Start Registration
               </Button>
             </div>
