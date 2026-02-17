@@ -26,7 +26,10 @@ export interface IStorage {
   getOrderByIdAndEmail(id: string, email: string): Promise<Order | undefined>;
   getOrderByStripeSessionId(sessionId: string): Promise<Order | undefined>;
   updateOrderStatus(id: string, status: string): Promise<void>;
+  updateOrderSteps(id: string, steps: any[]): Promise<void>;
+  getAllOrders(): Promise<Order[]>;
   getUploadsByOrderId(orderId: string): Promise<Upload[]>;
+  getUploadById(id: string): Promise<Upload | undefined>;
   createUpload(upload: InsertUpload): Promise<Upload>;
   getMessagesByOrderId(orderId: string): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
@@ -89,6 +92,28 @@ export class DatabaseStorage implements IStorage {
       .update(orders)
       .set({ status, updatedAt: new Date() })
       .where(eq(orders.id, id));
+  }
+
+  async updateOrderSteps(id: string, steps: any[]): Promise<void> {
+    await db
+      .update(orders)
+      .set({ steps, updatedAt: new Date() } as any)
+      .where(eq(orders.id, id));
+  }
+
+  async getAllOrders(): Promise<Order[]> {
+    return await db
+      .select()
+      .from(orders)
+      .orderBy(desc(orders.createdAt));
+  }
+
+  async getUploadById(id: string): Promise<Upload | undefined> {
+    const [upload] = await db
+      .select()
+      .from(uploads)
+      .where(eq(uploads.id, id));
+    return upload;
   }
 
   async getUploadsByOrderId(orderId: string): Promise<Upload[]> {

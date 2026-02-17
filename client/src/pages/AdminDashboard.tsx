@@ -1,0 +1,686 @@
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  CheckCircle2,
+  Clock,
+  FileText,
+  MessageSquare,
+  LogOut,
+  Send,
+  Download,
+  ArrowLeft,
+  Loader2,
+  AlertCircle,
+  Lock,
+  Package,
+  Users,
+  ChevronUp,
+  ChevronDown,
+  Trash2,
+  Plus,
+} from "lucide-react";
+import type { OrderStep } from "@shared/schema";
+
+interface OrderSummary {
+  id: string;
+  customerEmail: string;
+  customerName: string | null;
+  serviceType: string;
+  status: string;
+  steps: OrderStep[];
+  createdAt: string;
+  updatedAt: string;
+  messageCount: number;
+  uploadCount: number;
+  latestMessage: { sender: string; message: string; createdAt: string } | null;
+}
+
+interface UploadData {
+  id: string;
+  orderId: string;
+  fileName: string;
+  fileSize: string | null;
+  mimeType: string | null;
+  createdAt: string;
+}
+
+interface MessageData {
+  id: string;
+  orderId: string;
+  sender: string;
+  message: string;
+  createdAt: string;
+}
+
+interface OrderDetail {
+  order: OrderSummary;
+  uploads: UploadData[];
+  messages: MessageData[];
+}
+
+async function adminApi(url: string, options?: RequestInit) {
+  const res = await fetch(url, {
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    ...options,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ message: "Request failed" }));
+    throw new Error(body.message || `Error ${res.status}`);
+  }
+  return res.json();
+}
+
+export default function AdminDashboard() {
+  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.title = "Admin Dashboard - AccessToNorth.com";
+    adminApi("/api/admin/check")
+      .then(() => setAuthenticated(true))
+      .catch(() => setAuthenticated(false));
+  }, []);
+
+  async function handleLogout() {
+    try {
+      await fetch("/api/admin/logout", { method: "POST", credentials: "include" });
+    } catch {}
+    setAuthenticated(false);
+    setSelectedOrderId(null);
+  }
+
+  if (authenticated === null) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return <AdminLogin onSuccess={() => setAuthenticated(true)} />;
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b bg-card sticky top-0 z-50">
+        <div className="container mx-auto px-4 h-14 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Lock className="w-4 h-4 text-primary" />
+            <h1 className="font-bold text-sm md:text-base">Admin Dashboard</h1>
+          </div>
+          <Button variant="ghost" size="sm" onClick={handleLogout} data-testid="button-admin-logout">
+            <LogOut className="w-4 h-4 mr-2" />
+            Sign Out
+          </Button>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-6 max-w-5xl">
+        {selectedOrderId ? (
+          <OrderDetailView
+            orderId={selectedOrderId}
+            onBack={() => setSelectedOrderId(null)}
+          />
+        ) : (
+          <OrdersList onSelectOrder={(id) => setSelectedOrderId(id)} />
+        )}
+      </main>
+    </div>
+  );
+}
+
+function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      await adminApi("/api/admin/login", {
+        method: "POST",
+        body: JSON.stringify({ password }),
+      });
+      onSuccess();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <Card className="w-full max-w-sm" data-testid="card-admin-login">
+        <CardHeader className="text-center">
+          <Lock className="w-8 h-8 text-primary mx-auto mb-2" />
+          <CardTitle>Admin Login</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="admin-password">Password</Label>
+              <Input
+                id="admin-password"
+                type="password"
+                placeholder="Enter admin password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                data-testid="input-admin-password"
+              />
+            </div>
+            {error && (
+              <div className="flex items-center gap-2 text-sm text-destructive" data-testid="text-admin-login-error">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {error}
+              </div>
+            )}
+            <Button type="submit" className="w-full" disabled={loading} data-testid="button-admin-login">
+              {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              {loading ? "Signing In..." : "Sign In"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function OrdersList({ onSelectOrder }: { onSelectOrder: (id: string) => void }) {
+  const [orders, setOrders] = useState<OrderSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    loadOrders();
+  }, []);
+
+  async function loadOrders() {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await adminApi("/api/admin/orders");
+      setOrders(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-muted-foreground">Loading orders...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-20 space-y-4">
+        <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
+        <p className="text-destructive">{error}</p>
+        <Button variant="outline" onClick={loadOrders}>Try Again</Button>
+      </div>
+    );
+  }
+
+  const doneCount = orders.filter(o => o.status === "Complete").length;
+  const activeCount = orders.filter(o => o.status === "In Progress").length;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h2 className="text-xl font-bold" data-testid="text-orders-heading">All Orders</h2>
+        <Button variant="outline" size="sm" onClick={loadOrders} data-testid="button-refresh-orders">
+          Refresh
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="pt-4 flex items-center gap-3">
+            <Package className="w-5 h-5 text-primary flex-shrink-0" />
+            <div>
+              <p className="text-2xl font-bold" data-testid="text-total-orders">{orders.length}</p>
+              <p className="text-xs text-muted-foreground">Total Orders</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 flex items-center gap-3">
+            <Clock className="w-5 h-5 text-blue-500 flex-shrink-0" />
+            <div>
+              <p className="text-2xl font-bold">{activeCount}</p>
+              <p className="text-xs text-muted-foreground">In Progress</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+            <div>
+              <p className="text-2xl font-bold">{doneCount}</p>
+              <p className="text-xs text-muted-foreground">Complete</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {orders.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Users className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground">No orders yet. Orders are created automatically when customers complete payment.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {orders.map((order) => {
+            const done = order.steps.filter(s => s.state === "done").length;
+            const pct = Math.round((done / order.steps.length) * 100);
+            return (
+              <Card
+                key={order.id}
+                className="hover-elevate cursor-pointer"
+                onClick={() => onSelectOrder(order.id)}
+                data-testid={`card-order-${order.id}`}
+              >
+                <CardContent className="py-4 flex items-center gap-4 flex-wrap">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono font-bold text-sm" data-testid={`text-order-id-${order.id}`}>{order.id}</span>
+                      <Badge variant="secondary" className="text-[10px]">{order.status}</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground truncate mt-0.5">
+                      {order.customerEmail}
+                      {order.customerName ? ` — ${order.customerName}` : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{order.serviceType}</p>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground flex-shrink-0">
+                    <span className="flex items-center gap-1">
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      {order.messageCount}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <FileText className="w-3.5 h-3.5" />
+                      {order.uploadCount}
+                    </span>
+                    <span className="font-medium text-primary">{pct}%</span>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OrderDetailView({ orderId, onBack }: { orderId: string; onBack: () => void }) {
+  const [data, setData] = useState<OrderDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [editSteps, setEditSteps] = useState<OrderStep[]>([]);
+  const [editStatus, setEditStatus] = useState("");
+
+  async function loadOrder() {
+    setLoading(true);
+    setError("");
+    try {
+      const detail = await adminApi(`/api/admin/orders/${orderId}`);
+      setData(detail);
+      setEditSteps(detail.order.steps);
+      setEditStatus(detail.order.status);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadOrder();
+  }, [orderId]);
+
+  async function handleSaveSteps() {
+    setSaving(true);
+    try {
+      await adminApi(`/api/admin/orders/${orderId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ steps: editSteps, status: editStatus }),
+      });
+      await loadOrder();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function updateStepState(index: number, state: OrderStep["state"]) {
+    setEditSteps(prev => prev.map((s, i) => i === index ? { ...s, state } : s));
+  }
+
+  function updateStepLabel(index: number, label: string) {
+    setEditSteps(prev => prev.map((s, i) => i === index ? { ...s, label } : s));
+  }
+
+  function moveStep(index: number, direction: "up" | "down") {
+    setEditSteps(prev => {
+      const arr = [...prev];
+      const target = direction === "up" ? index - 1 : index + 1;
+      if (target < 0 || target >= arr.length) return arr;
+      [arr[index], arr[target]] = [arr[target], arr[index]];
+      return arr;
+    });
+  }
+
+  function removeStep(index: number) {
+    setEditSteps(prev => prev.filter((_, i) => i !== index));
+  }
+
+  function addStep() {
+    setEditSteps(prev => [...prev, { label: "New Step", state: "upcoming" }]);
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="text-center py-20 space-y-4">
+        <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
+        <p className="text-destructive">{error || "Failed to load"}</p>
+        <Button variant="outline" onClick={onBack}>Go Back</Button>
+      </div>
+    );
+  }
+
+  const { order, uploads, messages } = data;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={onBack} data-testid="button-back-to-orders">
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+        <div>
+          <h2 className="text-lg font-bold font-mono" data-testid="text-detail-order-id">{order.id}</h2>
+          <p className="text-sm text-muted-foreground">{order.customerEmail}</p>
+        </div>
+      </div>
+
+      <Card data-testid="card-order-detail-info">
+        <CardContent className="pt-6 space-y-2">
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-muted-foreground text-xs">Customer</p>
+              <p className="font-medium">{order.customerName || "—"}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs">Email</p>
+              <p className="font-medium">{order.customerEmail}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs">Service</p>
+              <p className="font-medium">{order.serviceType}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs">Created</p>
+              <p className="font-medium">
+                {new Date(order.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card data-testid="card-step-editor">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center justify-between flex-wrap gap-2">
+            <span className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-primary" />
+              Progress Steps
+            </span>
+            <div className="flex items-center gap-2">
+              <Select value={editStatus} onValueChange={setEditStatus}>
+                <SelectTrigger className="w-36" data-testid="select-order-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="In Progress">In Progress</SelectItem>
+                  <SelectItem value="On Hold">On Hold</SelectItem>
+                  <SelectItem value="Complete">Complete</SelectItem>
+                  <SelectItem value="Cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {editSteps.map((step, i) => (
+            <div key={i} className="flex items-center gap-2 p-2 rounded-md border border-border" data-testid={`admin-step-${i}`}>
+              <div className="flex flex-col gap-0.5">
+                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => moveStep(i, "up")} disabled={i === 0}>
+                  <ChevronUp className="w-3 h-3" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => moveStep(i, "down")} disabled={i === editSteps.length - 1}>
+                  <ChevronDown className="w-3 h-3" />
+                </Button>
+              </div>
+              <Input
+                value={step.label}
+                onChange={(e) => updateStepLabel(i, e.target.value)}
+                className="flex-1 text-sm"
+                data-testid={`input-step-label-${i}`}
+              />
+              <Select value={step.state} onValueChange={(v) => updateStepState(i, v as OrderStep["state"])}>
+                <SelectTrigger className="w-28" data-testid={`select-step-state-${i}`}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="done">Done</SelectItem>
+                  <SelectItem value="working">Working</SelectItem>
+                  <SelectItem value="upcoming">Upcoming</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="ghost" size="icon" onClick={() => removeStep(i)} data-testid={`button-remove-step-${i}`}>
+                <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+              </Button>
+            </div>
+          ))}
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" size="sm" onClick={addStep} data-testid="button-add-step">
+              <Plus className="w-3.5 h-3.5 mr-1" />
+              Add Step
+            </Button>
+            <Button size="sm" onClick={handleSaveSteps} disabled={saving} data-testid="button-save-steps">
+              {saving ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-1" />}
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <AdminFilesSection uploads={uploads} />
+        <AdminMessagesSection orderId={orderId} messages={messages} onRefresh={loadOrder} />
+      </div>
+    </div>
+  );
+}
+
+function AdminFilesSection({ uploads }: { uploads: UploadData[] }) {
+  function formatSize(bytes: string | null) {
+    if (!bytes) return "";
+    const n = parseInt(bytes, 10);
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function handleDownload(uploadId: string, fileName: string) {
+    const link = document.createElement("a");
+    link.href = `/api/admin/uploads/${uploadId}/download`;
+    link.download = fileName;
+    link.click();
+  }
+
+  return (
+    <Card data-testid="card-admin-files">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <FileText className="w-4 h-4 text-primary" />
+          Client Documents ({uploads.length})
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {uploads.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">No documents uploaded by the client yet.</p>
+        ) : (
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {uploads.map((u) => (
+              <div
+                key={u.id}
+                className="flex items-center gap-2 p-2 rounded-md border border-border text-sm"
+                data-testid={`admin-upload-${u.id}`}
+              >
+                <FileText className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                <span className="flex-1 truncate">{u.fileName}</span>
+                <span className="text-xs text-muted-foreground flex-shrink-0">{formatSize(u.fileSize)}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDownload(u.id, u.fileName)}
+                  data-testid={`button-download-${u.id}`}
+                >
+                  <Download className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AdminMessagesSection({
+  orderId,
+  messages,
+  onRefresh,
+}: {
+  orderId: string;
+  messages: MessageData[];
+  onRefresh: () => void;
+}) {
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+
+  async function handleSend(e: React.FormEvent) {
+    e.preventDefault();
+    if (!text.trim()) return;
+    setSending(true);
+    try {
+      await adminApi(`/api/admin/orders/${orderId}/message`, {
+        method: "POST",
+        body: JSON.stringify({ message: text.trim() }),
+      });
+      setText("");
+      onRefresh();
+    } catch (err: any) {
+      console.error("Failed to send message:", err);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  const sortedMessages = [...messages].reverse();
+
+  return (
+    <Card data-testid="card-admin-messages">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <MessageSquare className="w-4 h-4 text-primary" />
+          Messages ({messages.length})
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="max-h-64 overflow-y-auto space-y-2">
+          {sortedMessages.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No messages yet.</p>
+          ) : (
+            sortedMessages.map((m) => (
+              <div
+                key={m.id}
+                className={`p-2.5 rounded-md text-sm ${
+                  m.sender === "admin"
+                    ? "bg-primary/10 dark:bg-primary/20 ml-4"
+                    : "bg-muted mr-4"
+                }`}
+                data-testid={`admin-message-${m.id}`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge variant="secondary" className="text-[10px]">
+                    {m.sender === "admin" ? "You (Admin)" : "Client"}
+                  </Badge>
+                  <span className="text-[10px] text-muted-foreground">
+                    {new Date(m.createdAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+                <p>{m.message}</p>
+              </div>
+            ))
+          )}
+        </div>
+
+        <form onSubmit={handleSend} className="flex gap-2">
+          <Textarea
+            placeholder="Reply to client..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className="resize-none text-sm min-h-[2.5rem] max-h-24"
+            rows={1}
+            data-testid="input-admin-message"
+          />
+          <Button type="submit" size="icon" disabled={sending || !text.trim()} data-testid="button-admin-send">
+            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
