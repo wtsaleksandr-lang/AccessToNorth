@@ -27,23 +27,24 @@ export function Navbar() {
 
   const isHome = location === "/";
 
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      const navHeight = 80;
+      const elementPosition = element.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({ top: elementPosition - navHeight, behavior: "smooth" });
+    }
+  };
+
   const handleNavClick = (href: string) => {
     setIsOpen(false);
     if (href.startsWith("/#")) {
       const id = href.split("#")[1];
       if (isHome) {
-        const element = document.getElementById(id);
-        if (element) {
-          element.scrollIntoView({ behavior: "smooth" });
-        }
+        setTimeout(() => scrollToSection(id), 350);
       } else {
         setLocation("/");
-        setTimeout(() => {
-          const element = document.getElementById(id);
-          if (element) {
-            element.scrollIntoView({ behavior: "smooth" });
-          }
-        }, 100);
+        setTimeout(() => scrollToSection(id), 500);
       }
     }
   };
