@@ -23,13 +23,13 @@ export function Footer() {
 
         {/* A) TRUST STRIP */}
         <div className="mb-8 pb-8 border-b border-slate-800">
-          <div className="flex flex-wrap justify-center gap-2.5 md:gap-3 mb-6">
+          <div className="grid grid-cols-2 md:flex md:flex-wrap md:justify-center gap-2.5 md:gap-3 mb-6">
             {trustChips.map((chip) => (
               <div
                 key={chip.label}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-700/60 bg-slate-800/50 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-600 hover:shadow-lg hover:shadow-black/20"
+                className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-slate-700/60 bg-slate-800/50 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-600 hover:shadow-lg hover:shadow-black/20"
               >
-                <chip.icon className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <chip.icon className={`w-3.5 h-3.5 shrink-0 ${chip.label.includes("4.9") ? "text-amber-400" : "text-blue-400"}`} />
                 <span className="text-xs font-medium text-slate-300 whitespace-nowrap">{chip.label}</span>
               </div>
             ))}
