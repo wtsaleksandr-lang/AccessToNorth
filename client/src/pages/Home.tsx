@@ -279,13 +279,15 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Featured Importer Bundle */}
+          {/* Featured Importer Bundle — centered below grid */}
           {packages.filter(p => p.isFeatured).map((pkg) => (
-            <div key={pkg.type} className="max-w-lg mx-auto mt-4">
-              <PricingCard 
-                {...pkg}
-                onSelect={() => handleOpenModal(pkg.type)}
-              />
+            <div key={pkg.type} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 mt-4">
+              <div className="md:col-start-1 xl:col-start-2">
+                <PricingCard 
+                  {...pkg}
+                  onSelect={() => handleOpenModal(pkg.type)}
+                />
+              </div>
             </div>
           ))}
         </div>
