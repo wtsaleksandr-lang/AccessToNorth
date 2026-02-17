@@ -36,7 +36,7 @@ export function Footer() {
           </div>
           <div className="flex justify-center items-center gap-4 sm:gap-5 flex-wrap">
             {agencies.map((a) => (
-              <div key={a.label} className="flex items-center gap-1 opacity-30">
+              <div key={a.label} className="flex items-center gap-1 opacity-20">
                 <a.icon className="w-3.5 h-3.5 text-white" />
                 <span className="text-[11px] font-semibold text-white tracking-wide">{a.label}</span>
               </div>
