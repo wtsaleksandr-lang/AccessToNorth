@@ -18,7 +18,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle2, Star, ShieldCheck, Award, Lock, BadgeCheck, ChevronLeft, ChevronRight, Mail, MessageCircle } from "lucide-react";
+import { ArrowRight, CheckCircle2, Star, ShieldCheck, Award, Lock, BadgeCheck, ChevronLeft, ChevronRight, Mail, MessageCircle, Building2, Landmark, Shield } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useContact } from "@/hooks/use-registrations";
 import { useForm } from "react-hook-form";
@@ -175,7 +175,8 @@ export default function Home() {
               <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-blob animation-delay-2000"></div>
               
               <div className="relative">
-                <div className="glass-card rounded-2xl p-6 md:p-8 transform md:rotate-2 hover:rotate-0 transition-transform duration-500">
+                {/* Document Mockup Card — unchanged */}
+                <div className="relative z-10 glass-card rounded-2xl p-6 md:p-8 transform md:rotate-2 hover:rotate-0 transition-transform duration-500">
                   <div className="flex items-center justify-between mb-8">
                     <div>
                       <div className="h-2 w-20 bg-slate-200 rounded mb-2"></div>
@@ -204,41 +205,49 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Trust Badges - absolute overlay on mockup */}
-                {/* Mobile: stacked vertically, bottom-right of mockup */}
-                <div className="absolute z-20 pointer-events-auto bottom-[-12px] right-3 flex flex-col gap-2.5 md:hidden">
-                  {[
-                    { icon: ShieldCheck, label: "CRA Authorized Rep", testId: "trust-badge-cra" },
-                    { icon: Award, label: "Satisfaction Guarantee", testId: "trust-badge-guarantee" },
-                    { icon: Lock, label: "Secure & Confidential", testId: "trust-badge-secure" },
-                  ].map((badge) => (
-                    <div
-                      key={badge.testId}
-                      data-testid={badge.testId}
-                      className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl shadow-sm transition-all duration-200 active:translate-y-0 active:shadow-sm pointer-events-auto"
-                    >
-                      <badge.icon className="w-4 h-4 text-primary shrink-0" />
-                      <span className="text-xs font-medium text-slate-700 whitespace-nowrap">{badge.label}</span>
-                    </div>
-                  ))}
-                </div>
+                {/* Floating Badge Overlay — pointer-events:none container, badges themselves are clickable */}
+                <div className="absolute inset-0 z-20 pointer-events-none">
 
-                {/* Desktop: horizontal row, centered, overlapping bottom */}
-                <div className="absolute z-20 pointer-events-auto bottom-[-16px] left-1/2 -translate-x-1/2 hidden md:flex gap-3">
-                  {[
-                    { icon: ShieldCheck, label: "CRA Authorized Rep", testId: "trust-badge-cra-desktop" },
-                    { icon: Award, label: "Satisfaction Guarantee", testId: "trust-badge-guarantee-desktop" },
-                    { icon: Lock, label: "Secure & Confidential", testId: "trust-badge-secure-desktop" },
-                  ].map((badge) => (
-                    <div
-                      key={badge.testId}
-                      data-testid={badge.testId}
-                      className="flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 rounded-xl shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-slate-300"
-                    >
-                      <badge.icon className="w-4 h-4 text-primary shrink-0" />
-                      <span className="text-sm font-medium text-slate-700 whitespace-nowrap">{badge.label}</span>
-                    </div>
-                  ))}
+                  {/* LEFT SIDE — Institutional Badges */}
+                  <div className="absolute left-[-10px] lg:left-[-14px] top-[12%] flex flex-col gap-2.5 lg:gap-3">
+                    {[
+                      { icon: Landmark, label: "CRA", testId: "inst-badge-cra" },
+                      { icon: Building2, label: "CBSA", testId: "inst-badge-cbsa" },
+                      { icon: Shield, label: "IRS", testId: "inst-badge-irs" },
+                      { icon: BadgeCheck, label: "USPTO", testId: "inst-badge-uspto", hideOnSmall: true },
+                      { icon: Building2, label: "SBA", testId: "inst-badge-sba", hideOnSmall: true },
+                    ].map((badge, i) => (
+                      <div
+                        key={badge.testId}
+                        data-testid={badge.testId}
+                        className={`pointer-events-auto flex items-center gap-1.5 px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-[14px] border border-white/60 bg-white/80 backdrop-blur-md shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-slate-300 ${badge.hideOnSmall ? 'hidden sm:flex' : 'flex'}`}
+                        style={{ marginLeft: `${(i % 2) * 6}px` }}
+                      >
+                        <badge.icon className="w-4 h-4 text-primary shrink-0" />
+                        <span className="text-xs font-medium text-slate-700">{badge.label}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* RIGHT SIDE — Trust Badges */}
+                  <div className="absolute right-[-10px] lg:right-[-14px] top-[28%] flex flex-col gap-2.5 lg:gap-3 items-end">
+                    {[
+                      { icon: ShieldCheck, label: "CRA Authorized Rep", testId: "trust-badge-cra" },
+                      { icon: Award, label: "Satisfaction Guarantee", testId: "trust-badge-guarantee" },
+                      { icon: Lock, label: "Secure & Confidential", testId: "trust-badge-secure" },
+                    ].map((badge, i) => (
+                      <div
+                        key={badge.testId}
+                        data-testid={badge.testId}
+                        className="pointer-events-auto flex items-center gap-1.5 px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-[14px] border border-white/60 bg-white/80 backdrop-blur-md shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-slate-300"
+                        style={{ marginRight: `${(i % 2) * 6}px` }}
+                      >
+                        <badge.icon className="w-4 h-4 text-primary shrink-0" />
+                        <span className="text-xs lg:text-sm font-medium text-slate-700 whitespace-nowrap">{badge.label}</span>
+                      </div>
+                    ))}
+                  </div>
+
                 </div>
               </div>
             </motion.div>
