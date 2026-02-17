@@ -34,14 +34,16 @@ export function FeaturesSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
           {features.map((feature, i) => (
-            <div key={i} className="group p-6 rounded-2xl bg-slate-50 border border-slate-100 hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300" data-testid={`feature-card-${i}`}>
-              <div className="mb-4 bg-white w-14 h-14 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300">
+            <div key={i} className="group flex items-start gap-3 p-4 md:block md:p-6 rounded-2xl bg-slate-50 border border-slate-100 hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300" data-testid={`feature-card-${i}`}>
+              <div className="shrink-0 bg-white w-10 h-10 md:w-14 md:h-14 md:mb-4 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300">
                 {feature.icon}
               </div>
-              <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-              <p className="text-slate-600 text-sm leading-relaxed">{feature.description}</p>
+              <div>
+                <h3 className="text-base md:text-xl font-semibold mb-1 md:mb-2">{feature.title}</h3>
+                <p className="text-slate-600 text-xs md:text-sm leading-relaxed">{feature.description}</p>
+              </div>
             </div>
           ))}
         </div>
