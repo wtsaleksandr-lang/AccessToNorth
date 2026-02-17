@@ -30,6 +30,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 export default function Home() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState("business-number");
+  const [nriModalOpen, setNriModalOpen] = useState(false);
   
   const handleOpenModal = (pkg: string) => {
     setSelectedPackage(pkg);
@@ -333,8 +334,8 @@ export default function Home() {
               <Button 
                 variant="outline" 
                 size="lg" 
-                className="mt-4"
-                onClick={() => handleOpenModal('non-resident')}
+                className="mt-4 cursor-pointer"
+                onClick={() => setNriModalOpen(true)}
                 data-testid="button-nonresident-learn-more"
               >
                 Learn More About Non-Resident Rules
@@ -342,6 +343,97 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* NRI Info Modal */}
+        <Dialog open={nriModalOpen} onOpenChange={setNriModalOpen}>
+          <DialogContent className="sm:max-w-[640px] w-[calc(100%-2rem)] max-h-[90vh] flex flex-col p-0" data-testid="modal-nri-info">
+            <div className="overflow-y-auto flex-1 px-6 pt-6 pb-4 sm:px-8 sm:pt-8">
+              <DialogHeader className="mb-6">
+                <DialogTitle className="text-xl sm:text-2xl font-display leading-tight">
+                  Non-Resident Business Rules — Canada (2026 Overview)
+                </DialogTitle>
+                <p className="text-sm text-slate-500 mt-2">
+                  High-level guidance for international businesses entering the Canadian market.
+                </p>
+              </DialogHeader>
+
+              <div className="space-y-5">
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-900 uppercase tracking-wide mb-2.5">When Registration May Be Required</h4>
+                  <ul className="space-y-2 text-sm text-slate-600">
+                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span>If you are carrying on business in Canada, GST/HST registration may be required.</span></li>
+                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span>Commercial importers must obtain a Business Number (BN).</span></li>
+                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span>Import/export program accounts (RM) are managed through CBSA systems and CARM onboarding.</span></li>
+                  </ul>
+                </div>
+
+                <hr className="border-slate-100" />
+
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-900 uppercase tracking-wide mb-2.5">CARM & Import Compliance</h4>
+                  <ul className="space-y-2 text-sm text-slate-600">
+                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span>Non-resident importers must request a CRA Business Number before completing CARM registration.</span></li>
+                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span>Importers are responsible for maintaining proper customs records in Canada or through an authorized representative.</span></li>
+                  </ul>
+                </div>
+
+                <hr className="border-slate-100" />
+
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-900 uppercase tracking-wide mb-2.5">Security Requirements (May Apply)</h4>
+                  <ul className="space-y-2 text-sm text-slate-600">
+                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span>CRA may require security from certain non-resident registrants.</span></li>
+                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span>Security amounts are typically based on projected tax exposure.</span></li>
+                  </ul>
+                </div>
+
+                <hr className="border-slate-100" />
+
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-900 uppercase tracking-wide mb-2.5">Important Clarifications</h4>
+                  <ul className="space-y-2 text-sm text-slate-600">
+                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span>Government approvals are not guaranteed.</span></li>
+                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span>Processing times vary by agency.</span></li>
+                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span>We provide administrative setup and coordination only.</span></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 px-6 py-4 sm:px-8 sm:py-5 bg-slate-50/80">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  className="flex-1 cursor-pointer"
+                  onClick={() => {
+                    setNriModalOpen(false);
+                    setTimeout(() => {
+                      document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+                    }, 300);
+                  }}
+                  data-testid="button-nri-view-package"
+                >
+                  View Canada Import Package
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 cursor-pointer"
+                  onClick={() => {
+                    setNriModalOpen(false);
+                    if (window.Tawk_API && window.Tawk_API.maximize) {
+                      window.Tawk_API.maximize();
+                    }
+                  }}
+                  data-testid="button-nri-ask-question"
+                >
+                  Ask a Question
+                </Button>
+              </div>
+              <p className="text-xs text-slate-400 text-center mt-3">
+                General information only. Not legal or tax advice.
+              </p>
+            </div>
+          </DialogContent>
+        </Dialog>
       </section>
 
       {/* Testimonials */}
