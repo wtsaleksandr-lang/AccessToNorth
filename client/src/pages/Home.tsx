@@ -269,27 +269,16 @@ export default function Home() {
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
-            {packages.filter(p => !p.isFeatured).map((pkg) => (
-              <PricingCard 
-                key={pkg.type}
-                {...pkg}
-                onSelect={() => handleOpenModal(pkg.type)}
-              />
-            ))}
-          </div>
-
-          {/* Featured Importer Bundle — centered below grid */}
-          {packages.filter(p => p.isFeatured).map((pkg) => (
-            <div key={pkg.type} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 mt-4">
-              <div className="md:col-start-1 xl:col-start-2">
+          <div className="flex flex-wrap justify-center gap-4 md:gap-6">
+            {packages.map((pkg) => (
+              <div key={pkg.type} className="w-full md:w-[calc(50%-12px)] xl:w-[calc(33.333%-16px)]">
                 <PricingCard 
                   {...pkg}
                   onSelect={() => handleOpenModal(pkg.type)}
                 />
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
