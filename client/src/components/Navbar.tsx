@@ -63,7 +63,7 @@ export function Navbar() {
     >
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2 group">
+          <Link href="/" className="flex items-center space-x-2 group" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
             <div className="bg-primary p-1.5 rounded-lg group-hover:scale-105 transition-transform">
               <ShieldCheck className="h-6 w-6 text-white" />
             </div>
