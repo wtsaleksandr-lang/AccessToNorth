@@ -1,4 +1,4 @@
-import { Check, ArrowRight } from "lucide-react";
+import { Check, ArrowRight, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,8 +14,9 @@ interface PricingCardProps {
   description: string;
   features: PricingFeature[];
   isPopular?: boolean;
+  isFeatured?: boolean;
   onSelect: () => void;
-  type: 'basic' | 'standard' | 'premium' | 'non-resident';
+  type: string;
 }
 
 export function PricingCard({ 
@@ -23,12 +24,13 @@ export function PricingCard({
   price, 
   description, 
   features, 
-  isPopular, 
+  isPopular,
+  isFeatured,
   onSelect,
   type
 }: PricingCardProps) {
   return (
-    <div className={`relative h-full ${isPopular ? 'transform md:-translate-y-4' : ''}`}>
+    <div className={`relative h-full ${isPopular ? 'transform md:-translate-y-4' : ''} ${isFeatured ? 'transform md:-translate-y-6' : ''}`} data-testid={`pricing-card-${type}`}>
       {isPopular && (
         <div className="absolute -top-4 left-0 right-0 flex justify-center z-10">
           <Badge className="bg-primary hover:bg-primary px-4 py-1 text-sm shadow-lg shadow-primary/30">
@@ -36,11 +38,20 @@ export function PricingCard({
           </Badge>
         </div>
       )}
+      {isFeatured && (
+        <div className="absolute -top-4 left-0 right-0 flex justify-center z-10">
+          <Badge className="bg-amber-500 hover:bg-amber-500 px-4 py-1 text-sm shadow-lg shadow-amber-500/30">
+            <Star className="w-3 h-3 mr-1 fill-current" /> Best Value
+          </Badge>
+        </div>
+      )}
       
       <Card className={`h-full flex flex-col border transition-all duration-300 hover:shadow-xl ${
-        isPopular 
-          ? 'border-primary shadow-lg shadow-primary/10 bg-white' 
-          : 'border-border/50 bg-white/50 hover:border-primary/50'
+        isFeatured
+          ? 'border-amber-400 shadow-lg shadow-amber-500/10 bg-gradient-to-b from-amber-50/50 to-white ring-1 ring-amber-200'
+          : isPopular 
+            ? 'border-primary shadow-lg shadow-primary/10 bg-white' 
+            : 'border-border/50 bg-white/50 hover:border-primary/50'
       }`}>
         <CardHeader>
           <CardTitle className="text-xl font-bold">{title}</CardTitle>
@@ -70,7 +81,14 @@ export function PricingCard({
         <CardFooter>
           <Button 
             onClick={onSelect}
-            className={`w-full group ${isPopular ? 'bg-primary hover:bg-primary/90' : 'bg-slate-900 hover:bg-slate-800'}`}
+            className={`w-full group ${
+              isFeatured 
+                ? 'bg-amber-500 hover:bg-amber-600 text-white' 
+                : isPopular 
+                  ? 'bg-primary hover:bg-primary/90' 
+                  : 'bg-slate-900 hover:bg-slate-800'
+            }`}
+            data-testid={`button-get-started-${type}`}
           >
             Get Started
             <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />

@@ -8,7 +8,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle2, Star } from "lucide-react";
+import { ArrowRight, CheckCircle2, Star, ShieldCheck, Award, Lock } from "lucide-react";
 import { useContact } from "@/hooks/use-registrations";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -27,7 +27,7 @@ export default function Home() {
 
   const packages = [
     {
-      type: 'basic' as const,
+      type: 'basic',
       title: "Basic Registration",
       price: "99",
       description: "Essential Business Number (BN) registration for small businesses.",
@@ -40,9 +40,9 @@ export default function Home() {
       ]
     },
     {
-      type: 'standard' as const,
+      type: 'standard',
       title: "Standard GST/HST",
-      price: "199",
+      price: "249",
       description: "Complete GST/HST registration including provincial requirements.",
       features: [
         { text: "Business Number (BN) Setup", included: true },
@@ -54,9 +54,9 @@ export default function Home() {
       isPopular: true
     },
     {
-      type: 'premium' as const,
+      type: 'premium',
       title: "Premium Bundle",
-      price: "299",
+      price: "399",
       description: "All-in-one compliance package for growing businesses.",
       features: [
         { text: "Business Number (BN) Setup", included: true },
@@ -67,9 +67,9 @@ export default function Home() {
       ]
     },
     {
-      type: 'non-resident' as const,
+      type: 'non-resident',
       title: "Non-Resident",
-      price: "349",
+      price: "499",
       description: "Specialized service for foreign entities selling in Canada.",
       features: [
         { text: "Simplified Regime Setup", included: true },
@@ -78,6 +78,21 @@ export default function Home() {
         { text: "CRA Audit Support", included: true },
         { text: "Digital Services Compliance", included: true },
       ]
+    },
+    {
+      type: 'importer-bundle',
+      title: "Complete Importer Bundle",
+      price: "1,500",
+      description: "End-to-end BN + GST/HST + CARM registration and management for importers.",
+      features: [
+        { text: "Business Number (BN) Setup", included: true },
+        { text: "GST/HST Registration", included: true },
+        { text: "Full CARM Portal Registration", included: true },
+        { text: "CARM Delegation & Management", included: true },
+        { text: "Import/Export Account", included: true },
+        { text: "Ongoing Compliance Support", included: true },
+      ],
+      isFeatured: true
     }
   ];
 
@@ -103,20 +118,21 @@ export default function Home() {
                 Official CRA Authorized Representatives
               </div>
               
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold font-display text-slate-900 leading-[1.1]">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold font-display text-slate-900 leading-[1.1]" data-testid="text-hero-title">
                 Expert GST/HST & <br />
                 <span className="text-primary">Business Registration</span>
               </h1>
               
               <p className="text-lg text-slate-600 max-w-lg leading-relaxed">
-                Register your business with the CRA correctly and quickly. From Business Numbers to Non-Resident GST/HST, we handle the paperwork so you can focus on business.
+                Register your business with the CRA correctly and efficiently. From Business Numbers to Non-Resident GST/HST, we handle the paperwork so you can focus on business.
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 pt-2">
                 <Button 
                   size="lg" 
-                  className="bg-primary hover:bg-primary/90 text-lg px-8 h-12 shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                  className="bg-primary text-lg px-8 h-12 shadow-lg shadow-primary/25"
                   onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
+                  data-testid="button-start-registration"
                 >
                   Start Registration
                   <ArrowRight className="ml-2 w-5 h-5" />
@@ -125,7 +141,6 @@ export default function Home() {
                   <div className="flex -space-x-3">
                     {[1,2,3,4].map(i => (
                       <div key={i} className="w-10 h-10 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500">
-                        {/* Placeholder avatars */}
                         <div className="w-full h-full rounded-full bg-gradient-to-br from-slate-200 to-slate-300" />
                       </div>
                     ))}
@@ -146,11 +161,9 @@ export default function Home() {
               transition={{ duration: 0.8, delay: 0.2 }}
               className="lg:w-1/2 relative"
             >
-              {/* Abstract decorative elements */}
               <div className="absolute -top-10 -right-10 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-blob"></div>
               <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-blob animation-delay-2000"></div>
               
-              {/* Hero Image / Card */}
               <div className="relative glass-card rounded-2xl p-6 md:p-8 transform md:rotate-2 hover:rotate-0 transition-transform duration-500">
                 <div className="flex items-center justify-between mb-8">
                   <div>
@@ -184,6 +197,26 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Trust Badges */}
+      <section className="py-8 bg-white border-b border-slate-100">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">
+            <div className="flex items-center gap-2 text-slate-600" data-testid="trust-badge-cra">
+              <ShieldCheck className="w-5 h-5 text-primary" />
+              <span className="text-sm font-medium">CRA Authorized Rep</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-600" data-testid="trust-badge-guarantee">
+              <Award className="w-5 h-5 text-primary" />
+              <span className="text-sm font-medium">Satisfaction Guarantee</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-600" data-testid="trust-badge-secure">
+              <Lock className="w-5 h-5 text-primary" />
+              <span className="text-sm font-medium">Secure & Confidential</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Services/Features */}
       <FeaturesSection />
 
@@ -191,14 +224,14 @@ export default function Home() {
       <section id="pricing" className="py-20 bg-slate-50">
         <div className="container mx-auto px-4 md:px-6">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl font-bold font-display mb-4">Transparent Pricing</h2>
+            <h2 className="text-3xl font-bold font-display mb-4" data-testid="text-pricing-title">Transparent Pricing</h2>
             <p className="text-lg text-slate-600">
               Choose the package that fits your business needs. One-time fees, no hidden costs.
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-            {packages.map((pkg) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+            {packages.filter(p => !p.isFeatured).map((pkg) => (
               <PricingCard 
                 key={pkg.type}
                 {...pkg}
@@ -206,6 +239,27 @@ export default function Home() {
               />
             ))}
           </div>
+
+          {/* Featured Importer Bundle */}
+          {packages.filter(p => p.isFeatured).map((pkg) => (
+            <div key={pkg.type} className="max-w-lg mx-auto mt-4">
+              <PricingCard 
+                {...pkg}
+                onSelect={() => handleOpenModal(pkg.type)}
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Guarantee Section */}
+      <section className="py-12 bg-blue-50/50 border-y border-blue-100/50">
+        <div className="container mx-auto px-4 md:px-6 text-center max-w-2xl">
+          <Award className="w-10 h-10 text-primary mx-auto mb-4" />
+          <h3 className="text-xl font-bold font-display mb-2">Satisfaction Guarantee</h3>
+          <p className="text-slate-600">
+            If we fall short on our registration process due to our error, you receive a full refund. We stand behind every filing.
+          </p>
         </div>
       </section>
 
@@ -214,8 +268,6 @@ export default function Home() {
         <div className="container mx-auto px-4 md:px-6">
           <div className="flex flex-col lg:flex-row items-center gap-12">
             <div className="lg:w-1/2">
-               {/* Use Unsplash image with descriptive comment */}
-               {/* business team meeting diverse international */}
               <img 
                 src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=1632&h=1224" 
                 alt="International Business Team" 
@@ -223,7 +275,7 @@ export default function Home() {
               />
             </div>
             <div className="lg:w-1/2 space-y-6">
-              <h2 className="text-3xl font-bold font-display">Are You a Non-Resident Selling in Canada?</h2>
+              <h2 className="text-3xl font-bold font-display" data-testid="text-nonresident-title">Are You a Non-Resident Selling in Canada?</h2>
               <p className="text-lg text-slate-600">
                 New rules require many non-resident businesses to register for GST/HST under the simplified regime. If you sell digital products, services, or goods through fulfillment warehouses, you likely need to register.
               </p>
@@ -245,6 +297,7 @@ export default function Home() {
                 size="lg" 
                 className="mt-4"
                 onClick={() => handleOpenModal('non-resident')}
+                data-testid="button-nonresident-learn-more"
               >
                 Learn More About Non-Resident Rules
               </Button>
@@ -260,22 +313,32 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
-                text: "The process was incredibly smooth. I tried doing it myself but got confused by the CRA forms. These guys handled it in 2 days.",
-                author: "Sarah Jenkins",
+                text: "The process was incredibly smooth. I tried doing it myself but got confused by the CRA forms. AccessToNorth handled it seamlessly.",
+                author: "Sarah J.",
                 role: "E-commerce Founder"
               },
               {
-                text: "As a US company selling software to Canadians, I had no idea about the new tax laws. GST-HST.com sorted out our compliance perfectly.",
-                author: "Michael Ross",
+                text: "As a US company selling software to Canadians, I had no idea about the new tax laws. AccessToNorth sorted out our compliance perfectly.",
+                author: "Michael R.",
                 role: "SaaS CEO"
               },
               {
                 text: "Worth every penny. The premium package set up our payroll and import accounts along with the GST number. Huge time saver.",
-                author: "David Chen",
+                author: "David C.",
                 role: "Import/Export Director"
+              },
+              {
+                text: "Registered my non-resident GST/HST quickly and without any hassle. The team was knowledgeable and responsive throughout.",
+                author: "John D.",
+                role: "US E-commerce Seller"
+              },
+              {
+                text: "The Complete Importer Bundle was exactly what we needed. CARM setup was smooth and now we are fully compliant for importing.",
+                author: "Priya M.",
+                role: "Logistics Manager"
               }
             ].map((t, i) => (
-              <div key={i} className="bg-slate-800 p-8 rounded-2xl border border-slate-700">
+              <div key={i} className="bg-slate-800 p-8 rounded-2xl border border-slate-700" data-testid={`testimonial-card-${i}`}>
                 <div className="flex text-yellow-400 mb-4">
                   {[1,2,3,4,5].map(star => <Star key={star} className="w-4 h-4 fill-current" />)}
                 </div>
@@ -293,7 +356,7 @@ export default function Home() {
       {/* FAQ */}
       <section id="faq" className="py-20 bg-slate-50">
         <div className="container mx-auto px-4 md:px-6 max-w-3xl">
-          <h2 className="text-3xl font-bold font-display text-center mb-12">Frequently Asked Questions</h2>
+          <h2 className="text-3xl font-bold font-display text-center mb-12" data-testid="text-faq-title">Frequently Asked Questions</h2>
           <Accordion type="single" collapsible className="w-full space-y-4">
             {[
               {
@@ -306,14 +369,30 @@ export default function Home() {
               },
               {
                 q: "How long does registration take?",
-                a: "With our service, we typically process applications within 24-48 hours. However, receiving the physical confirmation from CRA can take 5-10 business days."
+                a: "Processing times vary depending on your application type and CRA workload. We submit your documents promptly and keep you updated throughout the process."
               },
               {
                 q: "Can non-residents register?",
                 a: "Yes. Non-resident businesses that make taxable supplies in Canada may be required to register. We specialize in non-resident simplified regime registrations."
+              },
+              {
+                q: "Do non-residents need GST/HST?",
+                a: "If you are a non-resident selling digital products or services to Canadian consumers, you are likely required to register under the simplified GST/HST regime. This applies to digital sellers, SaaS providers, and marketplace facilitators."
+              },
+              {
+                q: "How do I register for CARM as an importer?",
+                a: "CARM (CBSA Assessment and Revenue Management) is the new customs portal. Our Complete Importer Bundle handles end-to-end CARM registration, delegation, and ongoing management so your imports are never delayed."
+              },
+              {
+                q: "What is the simplified registration regime?",
+                a: "The simplified registration regime allows non-resident businesses to register for GST/HST without needing a full Canadian business presence. It streamlines the process for foreign digital sellers."
+              },
+              {
+                q: "Why register voluntarily if I'm under the $30k threshold?",
+                a: "Voluntary registration lets you claim Input Tax Credits (ITCs) on business expenses in Canada, which can offset your tax liability. It also adds credibility when dealing with Canadian business clients."
               }
             ].map((faq, i) => (
-              <AccordionItem key={i} value={`item-${i}`} className="bg-white px-6 rounded-xl border border-slate-200 shadow-sm">
+              <AccordionItem key={i} value={`item-${i}`} className="bg-white px-6 rounded-xl border border-slate-200 shadow-sm" data-testid={`faq-item-${i}`}>
                 <AccordionTrigger className="text-left font-medium text-slate-900 py-6">{faq.q}</AccordionTrigger>
                 <AccordionContent className="text-slate-600 pb-6">
                   {faq.a}
@@ -328,40 +407,42 @@ export default function Home() {
       <ContactSection />
 
       {/* Footer */}
-      <footer className="bg-slate-900 text-slate-400 py-12 border-t border-slate-800">
+      <footer className="bg-slate-900 text-slate-400 py-12 border-t border-slate-800" data-testid="footer">
         <div className="container mx-auto px-4 md:px-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             <div>
-              <span className="text-xl font-bold font-display text-white mb-4 block">GST-HST.com</span>
+              <span className="text-xl font-bold font-display text-white mb-4 block">AccessToNorth.com</span>
               <p className="text-sm">Simplifying Canadian tax registration for businesses worldwide.</p>
+              <p className="text-xs mt-3 text-slate-500">AccessToNorth.com is a division of MR Holdings & Trade LLC</p>
             </div>
             <div>
               <h4 className="font-bold text-white mb-4">Services</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-primary">GST/HST Registration</a></li>
-                <li><a href="#" className="hover:text-primary">Business Numbers</a></li>
-                <li><a href="#" className="hover:text-primary">Non-Resident Compliance</a></li>
-                <li><a href="#" className="hover:text-primary">Payroll Accounts</a></li>
+                <li><a href="#pricing" className="hover:text-primary">GST/HST Registration</a></li>
+                <li><a href="#pricing" className="hover:text-primary">Business Numbers</a></li>
+                <li><a href="#non-resident" className="hover:text-primary">Non-Resident Compliance</a></li>
+                <li><a href="#pricing" className="hover:text-primary">CARM Importer Bundle</a></li>
               </ul>
             </div>
             <div>
               <h4 className="font-bold text-white mb-4">Company</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-primary">About Us</a></li>
-                <li><a href="#" className="hover:text-primary">Contact</a></li>
+                <li><a href="#services" className="hover:text-primary">About Us</a></li>
+                <li><a href="#contact" className="hover:text-primary">Contact</a></li>
                 <li><a href="#" className="hover:text-primary">Privacy Policy</a></li>
                 <li><a href="#" className="hover:text-primary">Terms of Service</a></li>
               </ul>
+              <p className="text-xs mt-4 text-slate-500">Email: operations@accesstonorth.com</p>
             </div>
             <div>
               <h4 className="font-bold text-white mb-4">Client Portal</h4>
-              <Button variant="outline" className="w-full text-white border-slate-700 bg-transparent hover:bg-slate-800" onClick={() => window.location.href = '/portal'}>
+              <Button variant="outline" className="w-full text-white border-slate-700 bg-transparent hover:bg-slate-800" onClick={() => window.location.href = '/portal'} data-testid="button-footer-portal">
                 Check Status
               </Button>
             </div>
           </div>
           <div className="text-center text-xs pt-8 border-t border-slate-800">
-            © {new Date().getFullYear()} GST-HST.com. All rights reserved. Not affiliated with the Government of Canada or CRA.
+            &copy; {new Date().getFullYear()} AccessToNorth.com &mdash; Authorized CRA Filing Assistance for Canada & International Businesses. Division of MR Holdings & Trade LLC.
           </div>
         </div>
       </footer>
@@ -375,7 +456,6 @@ export default function Home() {
   );
 }
 
-// Extracted Contact Form Component
 function ContactSection() {
   const { submitContact } = useContact();
   const contactFormSchema = api.contact.submit.input;
@@ -403,7 +483,7 @@ function ContactSection() {
       <div className="container mx-auto px-4 md:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           <div>
-            <h2 className="text-3xl font-bold font-display mb-6">Get In Touch</h2>
+            <h2 className="text-3xl font-bold font-display mb-6" data-testid="text-contact-title">Get In Touch</h2>
             <p className="text-slate-600 mb-8">
               Have questions about your eligibility or the registration process? 
               Our team of specialists is ready to help.
@@ -415,16 +495,16 @@ function ContactSection() {
                 </div>
                 <div>
                   <p className="font-medium text-slate-900">Email Us</p>
-                  <p className="text-slate-500">support@gst-hst.com</p>
+                  <p className="text-slate-500">operations@accesstonorth.com</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-primary">
-                  <span className="font-bold">P</span>
+                  <span className="font-bold">AI</span>
                 </div>
                 <div>
-                  <p className="font-medium text-slate-900">Call Us</p>
-                  <p className="text-slate-500">1-800-555-0199</p>
+                  <p className="font-medium text-slate-900">Live AI Support</p>
+                  <p className="text-slate-500">Click the chat bubble for instant answers</p>
                 </div>
               </div>
             </div>
@@ -440,7 +520,7 @@ function ContactSection() {
                     <FormItem>
                       <FormLabel>Your Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="John Doe" {...field} />
+                        <Input placeholder="John Doe" {...field} data-testid="input-contact-name" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -454,7 +534,7 @@ function ContactSection() {
                     <FormItem>
                       <FormLabel>Email Address</FormLabel>
                       <FormControl>
-                        <Input placeholder="john@example.com" {...field} />
+                        <Input placeholder="john@example.com" {...field} data-testid="input-contact-email" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -468,7 +548,7 @@ function ContactSection() {
                     <FormItem>
                       <FormLabel>Message</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="How can we help you?" rows={4} {...field} />
+                        <Textarea placeholder="How can we help you?" rows={4} {...field} data-testid="input-contact-message" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -479,6 +559,7 @@ function ContactSection() {
                   type="submit" 
                   className="w-full" 
                   disabled={submitContact.isPending}
+                  data-testid="button-send-message"
                 >
                   {submitContact.isPending ? "Sending..." : "Send Message"}
                 </Button>

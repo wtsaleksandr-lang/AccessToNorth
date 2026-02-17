@@ -22,11 +22,11 @@ export function Navbar() {
     { name: "Pricing", href: "/#pricing" },
     { name: "Non-Residents", href: "/#non-resident" },
     { name: "FAQ", href: "/#faq" },
+    { name: "Contact", href: "/#contact" },
   ];
 
   const isHome = location === "/";
 
-  // Handle hash scrolling
   const handleNavClick = (href: string) => {
     setIsOpen(false);
     if (href.startsWith("/#")) {
@@ -37,7 +37,6 @@ export function Navbar() {
           element.scrollIntoView({ behavior: "smooth" });
         }
       } else {
-        // Navigate to home then scroll (handled by page load in real app, simplified here)
         window.location.href = href;
       }
     }
@@ -45,6 +44,7 @@ export function Navbar() {
 
   return (
     <nav
+      data-testid="navbar"
       className={`fixed top-0 w-full z-50 transition-all duration-300 ${
         scrolled ? "bg-white/90 backdrop-blur-md shadow-sm py-4" : "bg-transparent py-6"
       }`}
@@ -56,11 +56,10 @@ export function Navbar() {
               <ShieldCheck className="h-6 w-6 text-white" />
             </div>
             <span className={`text-xl font-bold font-display tracking-tight ${scrolled ? 'text-slate-900' : 'text-slate-900'}`}>
-              GST-HST<span className="text-primary">.com</span>
+              AccessToNorth<span className="text-primary">.com</span>
             </span>
           </Link>
 
-          {/* Desktop Nav */}
           <div className="hidden md:flex items-center space-x-8">
             {navLinks.map((link) => (
               <a
@@ -71,34 +70,35 @@ export function Navbar() {
                   handleNavClick(link.href);
                 }}
                 className="text-sm font-medium text-slate-600 hover:text-primary transition-colors"
+                data-testid={`nav-link-${link.name.toLowerCase().replace(/\s+/g, '-')}`}
               >
                 {link.name}
               </a>
             ))}
             <Link href="/portal">
-              <Button variant="outline" className="border-primary/20 hover:bg-primary/5 text-primary">
+              <Button variant="outline" className="border-primary/20 hover:bg-primary/5 text-primary" data-testid="button-check-status">
                 Check Status
               </Button>
             </Link>
             <Button 
               className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
               onClick={() => handleNavClick("/#pricing")}
+              data-testid="button-register-now"
             >
               Register Now
             </Button>
           </div>
 
-          {/* Mobile Menu Button */}
           <button
             className="md:hidden text-slate-700"
             onClick={() => setIsOpen(!isOpen)}
+            data-testid="button-mobile-menu"
           >
             {isOpen ? <X /> : <Menu />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Nav */}
       <AnimatePresence>
         {isOpen && (
           <motion.div

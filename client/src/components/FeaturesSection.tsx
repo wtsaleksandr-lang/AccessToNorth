@@ -1,4 +1,4 @@
-import { Globe, Clock, Shield, CheckCircle } from "lucide-react";
+import { Globe, FileCheck, Shield, CheckCircle } from "lucide-react";
 
 export function FeaturesSection() {
   const features = [
@@ -8,9 +8,9 @@ export function FeaturesSection() {
       description: "Expert guidance for US and international companies selling into Canada. We handle the simplified regime complexities."
     },
     {
-      icon: <Clock className="w-8 h-8 text-primary" />,
-      title: "48-Hour Turnaround",
-      description: "Fast-tracked registration process. We submit your documents directly to CRA priority channels."
+      icon: <FileCheck className="w-8 h-8 text-primary" />,
+      title: "Professional Filing",
+      description: "Accurate, thorough registration submissions directly to the CRA. We handle the complexity so you don't have to."
     },
     {
       icon: <Shield className="w-8 h-8 text-primary" />,
@@ -36,7 +36,7 @@ export function FeaturesSection() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {features.map((feature, i) => (
-            <div key={i} className="group p-6 rounded-2xl bg-slate-50 border border-slate-100 hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300">
+            <div key={i} className="group p-6 rounded-2xl bg-slate-50 border border-slate-100 hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300" data-testid={`feature-card-${i}`}>
               <div className="mb-4 bg-white w-14 h-14 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300">
                 {feature.icon}
               </div>

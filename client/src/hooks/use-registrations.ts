@@ -86,7 +86,7 @@ export function useContact() {
     onSuccess: () => {
       toast({
         title: "Message Sent",
-        description: "We'll get back to you within 24 hours.",
+        description: "Thank you for reaching out. We will review your message and respond shortly.",
       });
     },
     onError: (error: Error) => {
