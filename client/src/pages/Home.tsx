@@ -1,3 +1,11 @@
+declare global {
+  interface Window {
+    Tawk_API?: {
+      maximize?: () => void;
+    };
+  }
+}
+
 import { useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -498,15 +506,24 @@ function ContactSection() {
                   <p className="text-slate-500">operations@accesstonorth.com</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
+              <button
+                type="button"
+                data-testid="button-open-tawk-chat"
+                onClick={() => {
+                  if (window.Tawk_API && window.Tawk_API.maximize) {
+                    window.Tawk_API.maximize();
+                  }
+                }}
+                className="flex items-center gap-4 hover-elevate rounded-lg p-2 -m-2 cursor-pointer text-left"
+              >
                 <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-primary">
                   <span className="font-bold">AI</span>
                 </div>
                 <div>
                   <p className="font-medium text-slate-900">Live AI Support</p>
-                  <p className="text-slate-500">Click the chat bubble for instant answers</p>
+                  <p className="text-slate-500">Click to chat with us instantly</p>
                 </div>
-              </div>
+              </button>
             </div>
           </div>
           
