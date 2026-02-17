@@ -110,7 +110,7 @@ export default function Home() {
       <Navbar />
       
       {/* Hero Section */}
-      <section className="relative pt-32 pb-12 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 maple-bg">
+      <section className="relative pt-32 pb-24 md:pb-20 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 maple-bg">
         <div className="container mx-auto px-4 md:px-6 relative z-10">
           <div className="flex flex-col lg:flex-row items-center gap-12">
             <motion.div 
@@ -168,43 +168,44 @@ export default function Home() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="lg:w-1/2 relative pb-10 md:pb-8"
+              className="lg:w-1/2 relative"
             >
               <div className="absolute -top-10 -right-10 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-blob"></div>
               <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-blob animation-delay-2000"></div>
               
-              <div className="relative z-10 glass-card rounded-2xl p-6 md:p-8 transform md:rotate-2 hover:rotate-0 transition-transform duration-500">
-                <div className="flex items-center justify-between mb-8">
-                  <div>
-                    <div className="h-2 w-20 bg-slate-200 rounded mb-2"></div>
-                    <div className="h-2 w-32 bg-slate-200 rounded"></div>
-                  </div>
-                  <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <CheckCircle2 className="text-primary w-6 h-6" />
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  {[1,2,3].map(i => (
-                    <div key={i} className="flex items-center gap-4 p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
-                      <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                        <CheckCircle2 className="w-4 h-4 text-green-600" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="h-2 w-full bg-slate-200 rounded mb-1.5"></div>
-                        <div className="h-2 w-2/3 bg-slate-100 rounded"></div>
-                      </div>
+              <div className="relative">
+                <div className="glass-card rounded-2xl p-6 md:p-8 transform md:rotate-2 hover:rotate-0 transition-transform duration-500">
+                  <div className="flex items-center justify-between mb-8">
+                    <div>
+                      <div className="h-2 w-20 bg-slate-200 rounded mb-2"></div>
+                      <div className="h-2 w-32 bg-slate-200 rounded"></div>
                     </div>
-                  ))}
+                    <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <CheckCircle2 className="text-primary w-6 h-6" />
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    {[1,2,3].map(i => (
+                      <div key={i} className="flex items-center gap-4 p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
+                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                          <CheckCircle2 className="w-4 h-4 text-green-600" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="h-2 w-full bg-slate-200 rounded mb-1.5"></div>
+                          <div className="h-2 w-2/3 bg-slate-100 rounded"></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-8 pt-6 border-t border-slate-100 flex justify-between items-center">
+                    <span className="text-sm text-slate-500">Registration Status</span>
+                    <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm font-medium">Completed</span>
+                  </div>
                 </div>
-                <div className="mt-8 pt-6 border-t border-slate-100 flex justify-between items-center">
-                  <span className="text-sm text-slate-500">Registration Status</span>
-                  <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm font-medium">Completed</span>
-                </div>
-              </div>
 
-              {/* Trust Badges - overlapping the bottom of the mockup card */}
-              <div className="relative z-20 -mt-5 md:-mt-6 flex justify-center">
-                <div className="flex flex-wrap justify-center gap-2.5 md:gap-3 px-2">
+                {/* Trust Badges - absolute overlay on mockup */}
+                {/* Mobile: stacked vertically, bottom-right of mockup */}
+                <div className="absolute z-20 pointer-events-auto bottom-[-12px] right-3 flex flex-col gap-2.5 md:hidden">
                   {[
                     { icon: ShieldCheck, label: "CRA Authorized Rep", testId: "trust-badge-cra" },
                     { icon: Award, label: "Satisfaction Guarantee", testId: "trust-badge-guarantee" },
@@ -213,10 +214,28 @@ export default function Home() {
                     <div
                       key={badge.testId}
                       data-testid={badge.testId}
-                      className="flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 rounded-xl shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-slate-300 active:translate-y-0 active:shadow-sm"
+                      className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl shadow-sm transition-all duration-200 active:translate-y-0 active:shadow-sm pointer-events-auto"
                     >
                       <badge.icon className="w-4 h-4 text-primary shrink-0" />
-                      <span className="text-xs md:text-sm font-medium text-slate-700 whitespace-nowrap">{badge.label}</span>
+                      <span className="text-xs font-medium text-slate-700 whitespace-nowrap">{badge.label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop: horizontal row, centered, overlapping bottom */}
+                <div className="absolute z-20 pointer-events-auto bottom-[-16px] left-1/2 -translate-x-1/2 hidden md:flex gap-3">
+                  {[
+                    { icon: ShieldCheck, label: "CRA Authorized Rep", testId: "trust-badge-cra-desktop" },
+                    { icon: Award, label: "Satisfaction Guarantee", testId: "trust-badge-guarantee-desktop" },
+                    { icon: Lock, label: "Secure & Confidential", testId: "trust-badge-secure-desktop" },
+                  ].map((badge) => (
+                    <div
+                      key={badge.testId}
+                      data-testid={badge.testId}
+                      className="flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 rounded-xl shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-slate-300"
+                    >
+                      <badge.icon className="w-4 h-4 text-primary shrink-0" />
+                      <span className="text-sm font-medium text-slate-700 whitespace-nowrap">{badge.label}</span>
                     </div>
                   ))}
                 </div>
