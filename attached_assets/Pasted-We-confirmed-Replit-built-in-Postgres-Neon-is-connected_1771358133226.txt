@@ -1,0 +1,63 @@
+We confirmed:
+- Replit built-in Postgres (Neon) is connected via DATABASE_URL
+- Drizzle is configured, schema lives in shared/schema.ts
+- We use drizzle-kit push (no migrations folder)
+
+Goal: Turn the existing “Client Portal” preview page into a REAL order tracker.
+Do NOT add new pages. Use the existing Client Portal route/component and existing Express server.
+
+1) DB schema (shared/schema.ts)
+Add tables (keep existing registrations/contacts untouched):
+A) orders
+- id: text PK (format ATN-XXXXXX)
+- customerEmail: text not null
+- customerName: text nullable
+- serviceType: text not null
+- status: text not null (e.g. "In Progress", "Completed")
+- steps: jsonb not null (array of {label, state: 'done'|'working'|'upcoming'})
+- createdAt/updatedAt timestamps
+
+B) uploads
+- id uuid PK
+- orderId text FK -> orders.id
+- fileUrl text not null
+- fileName text not null
+- createdAt timestamp
+
+C) messages
+- id uuid PK
+- orderId text FK -> orders.id
+- sender text ('client'|'admin')
+- message text not null
+- createdAt timestamp
+
+After edits run drizzle-kit push (db:push) so tables exist.
+
+2) Portal login (Email + Order ID, no passwords)
+Create endpoint POST /api/portal/login {email, orderId}
+- Verify the order exists and email matches
+- Return a signed short-lived token (JWT) in httpOnly cookie
+
+3) Portal API
+- GET /api/portal/order/:orderId (auth required) -> returns order, steps, uploads, messages
+- POST /api/portal/order/:orderId/message (auth required) -> saves message + emails operations@accesstonorth.com
+- POST /api/portal/order/:orderId/upload (auth required) -> upload file and store in uploads table
+
+4) Make portal buttons functional (no dead UI)
+On Client Portal page:
+- “Document Management” opens a real modal/section: list uploads + upload button
+- “Secure Access” opens modal explaining encrypted handling (static text)
+- “Account Settings” can be removed OR replaced with “Order Details” modal (orderId, email, service, status)
+
+5) Stripe webhook automation
+Implement POST /api/stripe/webhook using STRIPE_WEBHOOK_SECRET
+On checkout.session.completed:
+- Create an order row with new ATN-XXXXXX orderId
+- Set default steps
+- Email customer (from Stripe session email) with orderId + portal link
+
+6) Requirements
+- Must be responsive
+- Must not break existing site pages
+- Use env secrets for Stripe + email provider
+- Provide a short test checklist at the end

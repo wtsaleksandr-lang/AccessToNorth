@@ -1,5 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
+import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
+import { registerPortalRoutes } from "./portalRoutes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { runMigrations } from 'stripe-replit-sync';
@@ -77,6 +79,33 @@ app.post(
       }
 
       await WebhookHandlers.processWebhook(req.body as Buffer, sig);
+
+      try {
+        const { getUncachableStripeClient } = await import('./stripeClient');
+        const stripe = await getUncachableStripeClient();
+        const event = JSON.parse(req.body.toString());
+
+        if (event.type === 'checkout.session.completed') {
+          const session = event.data.object;
+          const customerEmail = session.customer_email || session.customer_details?.email;
+          const packageType = session.metadata?.packageType;
+          const customerName = session.metadata?.customerName || session.customer_details?.name || null;
+
+          if (customerEmail && packageType) {
+            const { createOrderFromCheckout } = await import('./orderService');
+            const orderId = await createOrderFromCheckout(
+              customerEmail,
+              customerName,
+              packageType,
+              session.id
+            );
+            log(`Order ${orderId} created from Stripe checkout for ${customerEmail}`, 'stripe');
+          }
+        }
+      } catch (orderError: any) {
+        console.error('Error creating order from webhook:', orderError.message);
+      }
+
       res.status(200).json({ received: true });
     } catch (error: any) {
       console.error('Webhook error:', error.message);
@@ -94,6 +123,7 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -123,6 +153,7 @@ app.use((req, res, next) => {
 
 (async () => {
   await initStripe();
+  registerPortalRoutes(app);
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {

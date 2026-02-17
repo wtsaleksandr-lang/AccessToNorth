@@ -34,6 +34,12 @@ Preferred communication style: Simple, everyday language.
   - `GET /api/checkout/session/:sessionId` — Retrieve checkout session details
   - `GET /api/stripe/publishable-key` — Get Stripe publishable key
   - `POST /api/stripe/webhook` — Stripe webhook endpoint (registered before body parser)
+  - `POST /api/portal/login` — Client portal login (email + order ID), sets httpOnly JWT cookie
+  - `POST /api/portal/logout` — Clears portal auth cookie
+  - `GET /api/portal/order/:orderId` — Get order details, uploads, messages (auth required)
+  - `POST /api/portal/order/:orderId/message` — Send a message on an order (auth required)
+  - `POST /api/portal/order/:orderId/upload` — Upload a document to an order (auth required, multipart)
+  - `GET /api/portal/order/:orderId/upload/:uploadId/download` — Download uploaded file (auth required)
 - **Build**: esbuild bundles server to `dist/index.cjs` for production; Vite builds client to `dist/public/`
 
 ### Data Storage
@@ -42,6 +48,9 @@ Preferred communication style: Simple, everyday language.
 - **Schema** (in `shared/schema.ts`):
   - `registrations` table: id, fullName, email, phone, businessName, residentStatus, packageType, businessType, estimatedRevenue, notes, authorizationConsent, status, isNonResident, createdAt
   - `contacts` table: id, name, email, message, createdAt
+  - `orders` table: id (text PK, format ATN-XXXXXX), customerEmail, customerName, serviceType, status, steps (jsonb array of OrderStep), stripeSessionId, createdAt, updatedAt
+  - `uploads` table: id (uuid), orderId (FK→orders), fileName, fileData (base64), fileSize, mimeType, createdAt
+  - `messages` table: id (uuid), orderId (FK→orders), sender, message, createdAt
 - **Migrations**: Drizzle Kit with `drizzle-kit push` command (schema push, no migration files required)
 - **Validation**: drizzle-zod generates insert schemas from table definitions, shared between client and server
 
@@ -68,7 +77,7 @@ This ensures type safety and validation consistency across the full stack.
 
 ### Key NPM Dependencies
 - **Frontend**: React, wouter, @tanstack/react-query, framer-motion, react-hook-form, zod, shadcn/ui (Radix UI primitives), tailwindcss, class-variance-authority, lucide-react, embla-carousel-react
-- **Backend**: Express 5, drizzle-orm, drizzle-zod, pg (node-postgres), connect-pg-simple, zod, stripe, stripe-replit-sync
+- **Backend**: Express 5, drizzle-orm, drizzle-zod, pg (node-postgres), connect-pg-simple, zod, stripe, stripe-replit-sync, jsonwebtoken, cookie-parser, multer
 - **Build**: Vite, esbuild, tsx, drizzle-kit
 - **Replit Plugins**: @replit/vite-plugin-runtime-error-modal, @replit/vite-plugin-cartographer, @replit/vite-plugin-dev-banner (dev only)
 
