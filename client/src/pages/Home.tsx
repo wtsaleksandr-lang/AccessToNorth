@@ -110,7 +110,7 @@ export default function Home() {
       <Navbar />
       
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 maple-bg">
+      <section className="relative pt-32 pb-12 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 maple-bg">
         <div className="container mx-auto px-4 md:px-6 relative z-10">
           <div className="flex flex-col lg:flex-row items-center gap-12">
             <motion.div 
@@ -168,12 +168,12 @@ export default function Home() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="lg:w-1/2 relative"
+              className="lg:w-1/2 relative pb-10 md:pb-8"
             >
               <div className="absolute -top-10 -right-10 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-blob"></div>
               <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-blob animation-delay-2000"></div>
               
-              <div className="relative glass-card rounded-2xl p-6 md:p-8 transform md:rotate-2 hover:rotate-0 transition-transform duration-500">
+              <div className="relative z-10 glass-card rounded-2xl p-6 md:p-8 transform md:rotate-2 hover:rotate-0 transition-transform duration-500">
                 <div className="flex items-center justify-between mb-8">
                   <div>
                     <div className="h-2 w-20 bg-slate-200 rounded mb-2"></div>
@@ -201,27 +201,27 @@ export default function Home() {
                   <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm font-medium">Completed</span>
                 </div>
               </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
 
-      {/* Trust Badges */}
-      <section className="py-8 bg-white border-b border-slate-100">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">
-            <div className="flex items-center gap-2 text-slate-600" data-testid="trust-badge-cra">
-              <ShieldCheck className="w-5 h-5 text-primary" />
-              <span className="text-sm font-medium">CRA Authorized Rep</span>
-            </div>
-            <div className="flex items-center gap-2 text-slate-600" data-testid="trust-badge-guarantee">
-              <Award className="w-5 h-5 text-primary" />
-              <span className="text-sm font-medium">Satisfaction Guarantee</span>
-            </div>
-            <div className="flex items-center gap-2 text-slate-600" data-testid="trust-badge-secure">
-              <Lock className="w-5 h-5 text-primary" />
-              <span className="text-sm font-medium">Secure & Confidential</span>
-            </div>
+              {/* Trust Badges - overlapping the bottom of the mockup card */}
+              <div className="relative z-20 -mt-5 md:-mt-6 flex justify-center">
+                <div className="flex flex-wrap justify-center gap-2.5 md:gap-3 px-2">
+                  {[
+                    { icon: ShieldCheck, label: "CRA Authorized Rep", testId: "trust-badge-cra" },
+                    { icon: Award, label: "Satisfaction Guarantee", testId: "trust-badge-guarantee" },
+                    { icon: Lock, label: "Secure & Confidential", testId: "trust-badge-secure" },
+                  ].map((badge) => (
+                    <div
+                      key={badge.testId}
+                      data-testid={badge.testId}
+                      className="flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 rounded-xl shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-slate-300 active:translate-y-0 active:shadow-sm"
+                    >
+                      <badge.icon className="w-4 h-4 text-primary shrink-0" />
+                      <span className="text-xs md:text-sm font-medium text-slate-700 whitespace-nowrap">{badge.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
           </div>
         </div>
       </section>
