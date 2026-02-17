@@ -12,7 +12,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend Architecture
 - **Framework**: React 18 with TypeScript
-- **Routing**: Wouter (lightweight client-side router) with two pages: Home (`/`) and Client Portal (`/portal`)
+- **Routing**: Wouter (lightweight client-side router) with pages: Home (`/`), Client Portal (`/portal`), Payment Success (`/payment-success`), Payment Cancel (`/payment-cancel`)
 - **Styling**: Tailwind CSS with CSS variables for theming, using a professional blue (#007BFF) primary color with Canadian red accents
 - **UI Components**: shadcn/ui (new-york style) built on Radix UI primitives, located in `client/src/components/ui/`
 - **Animations**: Framer Motion for scroll reveals and interactions
@@ -29,6 +29,11 @@ Preferred communication style: Simple, everyday language.
   - `POST /api/registrations` — Create a new registration application
   - `GET /api/registrations/status?email=` — Look up registration status by email
   - `POST /api/contact` — Submit a contact form message
+  - `GET /api/products` — List all Stripe products with prices
+  - `POST /api/checkout` — Create Stripe Checkout session (server-side price resolution)
+  - `GET /api/checkout/session/:sessionId` — Retrieve checkout session details
+  - `GET /api/stripe/publishable-key` — Get Stripe publishable key
+  - `POST /api/stripe/webhook` — Stripe webhook endpoint (registered before body parser)
 - **Build**: esbuild bundles server to `dist/index.cjs` for production; Vite builds client to `dist/public/`
 
 ### Data Storage
@@ -57,12 +62,13 @@ This ensures type safety and validation consistency across the full stack.
 - **PostgreSQL**: Required. Connection string must be provided via `DATABASE_URL` environment variable. Used with `connect-pg-simple` for potential session storage and Drizzle ORM for data access.
 
 ### Third-Party Integrations
+- **Stripe**: Payment processing via Stripe Checkout (USD). Products are seeded on server startup via `server/seedProducts.ts`. Uses `stripe-replit-sync` for webhook handling and data sync. 5 pricing packages: Business Number ($99), GST/HST ($249), Non-Resident ($399), CARM ($499), Complete Importer Bundle ($1,500). Package types: `business-number`, `gst-hst`, `non-resident`, `carm`, `complete-bundle`.
 - **Tawk.to Chat Widget**: Embedded in `client/index.html` with Property ID `69914fcdf45fd51c3bd1411a`. Provides live chat / AI support bubble in bottom-right corner. No server-side integration needed.
 - **Google Fonts**: Inter and Playfair Display loaded from Google Fonts CDN.
 
 ### Key NPM Dependencies
 - **Frontend**: React, wouter, @tanstack/react-query, framer-motion, react-hook-form, zod, shadcn/ui (Radix UI primitives), tailwindcss, class-variance-authority, lucide-react, embla-carousel-react
-- **Backend**: Express 5, drizzle-orm, drizzle-zod, pg (node-postgres), connect-pg-simple, zod
+- **Backend**: Express 5, drizzle-orm, drizzle-zod, pg (node-postgres), connect-pg-simple, zod, stripe, stripe-replit-sync
 - **Build**: Vite, esbuild, tsx, drizzle-kit
 - **Replit Plugins**: @replit/vite-plugin-runtime-error-modal, @replit/vite-plugin-cartographer, @replit/vite-plugin-dev-banner (dev only)
 

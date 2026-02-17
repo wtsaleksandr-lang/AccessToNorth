@@ -26,7 +26,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 
 export default function Home() {
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState("basic");
+  const [selectedPackage, setSelectedPackage] = useState("business-number");
   
   const handleOpenModal = (pkg: string) => {
     setSelectedPackage(pkg);
@@ -35,70 +35,69 @@ export default function Home() {
 
   const packages = [
     {
-      type: 'basic',
-      title: "Basic Registration",
+      type: 'business-number',
+      title: "Business Number",
       price: "99",
       description: "Essential Business Number (BN) registration for small businesses.",
       features: [
         { text: "Business Number (BN) Setup", included: true },
         { text: "Official CRA Documentation", included: true },
+        { text: "Digital Filing", included: true },
         { text: "GST/HST Registration", included: false },
-        { text: "Payroll Account", included: false },
         { text: "Import/Export Account", included: false },
       ]
     },
     {
-      type: 'standard',
-      title: "Standard GST/HST",
+      type: 'gst-hst',
+      title: "GST/HST Registration",
       price: "249",
       description: "Complete GST/HST registration including provincial requirements.",
       features: [
-        { text: "Business Number (BN) Setup", included: true },
-        { text: "Official CRA Documentation", included: true },
+        { text: "Business Number Included", included: true },
         { text: "GST/HST Registration", included: true },
-        { text: "Payroll Account", included: false },
+        { text: "Filing Guidance", included: true },
+        { text: "Compliance Review", included: true },
         { text: "Import/Export Account", included: false },
       ],
       isPopular: true
     },
     {
-      type: 'premium',
-      title: "Premium Bundle",
-      price: "399",
-      description: "All-in-one compliance package for growing businesses.",
-      features: [
-        { text: "Business Number (BN) Setup", included: true },
-        { text: "Official CRA Documentation", included: true },
-        { text: "GST/HST Registration", included: true },
-        { text: "Payroll Account", included: true },
-        { text: "Import/Export Account", included: true },
-      ]
-    },
-    {
       type: 'non-resident',
-      title: "Non-Resident",
-      price: "499",
-      description: "Specialized service for foreign entities selling in Canada.",
+      title: "Non-Resident Tax",
+      price: "399",
+      description: "Specialized registration for non-residents doing business in Canada.",
       features: [
-        { text: "Simplified Regime Setup", included: true },
-        { text: "Non-Resident NR Accounts", included: true },
+        { text: "Non-Resident BN", included: true },
         { text: "GST/HST Registration", included: true },
-        { text: "CRA Audit Support", included: true },
+        { text: "Tax Treaty Guidance", included: true },
+        { text: "Compliance Support", included: true },
         { text: "Digital Services Compliance", included: true },
       ]
     },
     {
-      type: 'importer-bundle',
+      type: 'carm',
+      title: "CARM Portal",
+      price: "499",
+      description: "Register for the CBSA Assessment and Revenue Management portal.",
+      features: [
+        { text: "CARM Registration", included: true },
+        { text: "Portal Access Setup", included: true },
+        { text: "Import Account", included: true },
+        { text: "CBSA Compliance", included: true },
+        { text: "Ongoing Support", included: true },
+      ]
+    },
+    {
+      type: 'complete-bundle',
       title: "Complete Importer Bundle",
       price: "1,500",
-      description: "End-to-end BN + GST/HST + CARM registration and management for importers.",
+      description: "All-inclusive: BN, GST/HST, Import/Export, and CARM portal registration.",
       features: [
-        { text: "Business Number (BN) Setup", included: true },
+        { text: "Everything in CARM Package", included: true },
+        { text: "Business Number Registration", included: true },
         { text: "GST/HST Registration", included: true },
-        { text: "Full CARM Portal Registration", included: true },
-        { text: "CARM Delegation & Management", included: true },
         { text: "Import/Export Account", included: true },
-        { text: "Ongoing Compliance Support", included: true },
+        { text: "Priority Support", included: true },
       ],
       isFeatured: true
     }

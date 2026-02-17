@@ -12,6 +12,7 @@ import { useRegistrations } from "@/hooks/use-registrations";
 import { Loader2, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
 
 interface RegistrationModalProps {
   isOpen: boolean;
@@ -38,17 +39,20 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 const packageLabels: Record<string, string> = {
-  basic: "Basic ($99)",
-  standard: "Standard ($249)",
-  premium: "Premium ($399)",
-  "non-resident": "Non-Resident ($499)",
-  "importer-bundle": "Complete Importer Bundle ($1,500)",
+  "business-number": "Business Number ($99)",
+  "gst-hst": "GST/HST Registration ($249)",
+  "non-resident": "Non-Resident ($399)",
+  "carm": "CARM Portal ($499)",
+  "complete-bundle": "Complete Importer Bundle ($1,500)",
 };
+
 
 export function RegistrationModal({ isOpen, onClose, defaultPackage }: RegistrationModalProps) {
   const { createRegistration } = useRegistrations();
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -77,7 +81,7 @@ export function RegistrationModal({ isOpen, onClose, defaultPackage }: Registrat
 
   const onSubmit = async (data: FormValues) => {
     try {
-      await createRegistration.mutateAsync({
+      const registration = await createRegistration.mutateAsync({
         fullName: data.fullName,
         email: data.email,
         phone: data.phone || null,
@@ -90,11 +94,28 @@ export function RegistrationModal({ isOpen, onClose, defaultPackage }: Registrat
         authorizationConsent: data.authorizationConsent,
         isNonResident: data.isNonResident || false,
       });
-      form.reset();
-      setUploadedFiles([]);
-      onClose();
+
+      setIsRedirecting(true);
+
+      const checkoutRes = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          packageType: data.packageType,
+          registrationId: registration.id,
+          customerEmail: data.email,
+          customerName: data.fullName,
+        }),
+      });
+
+      if (!checkoutRes.ok) throw new Error('Failed to create checkout session');
+      const { url } = await checkoutRes.json();
+
+      if (url) {
+        window.location.href = url;
+      }
     } catch (error) {
-      // Error handled by mutation hook
+      setIsRedirecting(false);
     }
   };
 
@@ -107,6 +128,8 @@ export function RegistrationModal({ isOpen, onClose, defaultPackage }: Registrat
   const removeFile = (index: number) => {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
+
+  const isPending = createRegistration.isPending || isRedirecting;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -215,11 +238,11 @@ export function RegistrationModal({ isOpen, onClose, defaultPackage }: Registrat
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="basic">Basic ($99)</SelectItem>
-                          <SelectItem value="standard">Standard ($249)</SelectItem>
-                          <SelectItem value="premium">Premium ($399)</SelectItem>
-                          <SelectItem value="non-resident">Non-Resident ($499)</SelectItem>
-                          <SelectItem value="importer-bundle">Importer Bundle ($1,500)</SelectItem>
+                          <SelectItem value="business-number">Business Number ($99)</SelectItem>
+                          <SelectItem value="gst-hst">GST/HST Registration ($249)</SelectItem>
+                          <SelectItem value="non-resident">Non-Resident ($399)</SelectItem>
+                          <SelectItem value="carm">CARM Portal ($499)</SelectItem>
+                          <SelectItem value="complete-bundle">Importer Bundle ($1,500)</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -304,7 +327,7 @@ export function RegistrationModal({ isOpen, onClose, defaultPackage }: Registrat
                 <FormLabel>Upload Supporting Documents (optional)</FormLabel>
                 <p className="text-xs text-muted-foreground mb-2">PDF, DOCX, JPG accepted</p>
                 <div 
-                  className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center cursor-pointer hover:border-primary/40 transition-colors"
+                  className="border-2 border-dashed border-slate-200 rounded-md p-4 text-center cursor-pointer hover:border-primary/40 transition-colors"
                   onClick={() => fileInputRef.current?.click()}
                   data-testid="button-upload-documents"
                 >
@@ -358,21 +381,21 @@ export function RegistrationModal({ isOpen, onClose, defaultPackage }: Registrat
               <Button 
                 type="submit" 
                 className="w-full mt-4 bg-primary hover:bg-primary/90"
-                disabled={createRegistration.isPending}
+                disabled={isPending}
                 data-testid="button-submit-application"
               >
-                {createRegistration.isPending ? (
+                {isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing...
+                    {isRedirecting ? "Redirecting to Payment..." : "Processing..."}
                   </>
                 ) : (
-                  "Submit Application"
+                  "Submit & Pay Securely"
                 )}
               </Button>
               
               <p className="text-xs text-muted-foreground text-center mt-4">
-                We will email you a secure authorization form (RC59/AUT-01) to sign digitally after submission. All information is confidential.
+                You'll be redirected to our secure payment page powered by Stripe. All information is confidential.
               </p>
             </form>
           </Form>
