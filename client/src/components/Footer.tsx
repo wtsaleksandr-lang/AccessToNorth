@@ -49,7 +49,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-10 mb-8">
           <div className="md:col-span-2">
             <span className="text-lg font-bold font-display text-white block mb-3">AccessToNorth</span>
-            <ul className="space-y-1 text-xs leading-relaxed mb-4">
+            <ul className="space-y-0.5 text-xs text-slate-500 mb-3">
               <li>Administrative services only (documentation coordination).</li>
               <li>Not a law firm. Not a customs broker.</li>
               <li>No legal or tax advice. No approval guarantees.</li>
