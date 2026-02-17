@@ -18,7 +18,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle2, Star, ShieldCheck, Award, Lock, BadgeCheck, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRight, CheckCircle2, Star, ShieldCheck, Award, Lock, BadgeCheck, ChevronLeft, ChevronRight, Mail, MessageCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useContact } from "@/hooks/use-registrations";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -542,127 +543,164 @@ function TestimonialsSection() {
 }
 
 function ContactSection() {
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
   const { submitContact } = useContact();
-  const contactFormSchema = api.contact.submit.input;
-  
+
+  const contactFormSchema = z.object({
+    name: z.string().min(1, "Full name is required"),
+    email: z.string().min(1, "Email is required").email("Please enter a valid email"),
+    phone: z.string().optional(),
+    message: z.string().min(1, "Message is required"),
+  });
+
   const form = useForm<z.infer<typeof contactFormSchema>>({
     resolver: zodResolver(contactFormSchema),
     defaultValues: {
       name: "",
       email: "",
+      phone: "",
       message: ""
     }
   });
 
   const onSubmit = async (data: z.infer<typeof contactFormSchema>) => {
     try {
-      await submitContact.mutateAsync(data);
+      await submitContact.mutateAsync({
+        name: data.name,
+        email: data.email,
+        message: data.phone ? `[Phone: ${data.phone}]\n\n${data.message}` : data.message,
+      });
       form.reset();
-    } catch (error) {
-      // Handled by hook
+      setEmailModalOpen(false);
+    } catch {
+      const subject = encodeURIComponent("Inquiry from AccessToNorth.com");
+      const body = encodeURIComponent(`Name: ${data.name}\nEmail: ${data.email}\nPhone: ${data.phone || "N/A"}\n\n${data.message}`);
+      window.open(`mailto:operations@accesstonorth.com?subject=${subject}&body=${body}`, "_self");
+    }
+  };
+
+  const handleOpenChat = () => {
+    if (window.Tawk_API && window.Tawk_API.maximize) {
+      window.Tawk_API.maximize();
     }
   };
 
   return (
     <section id="contact" className="py-20 bg-white">
       <div className="container mx-auto px-4 md:px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          <div>
-            <h2 className="text-3xl font-bold font-display mb-6" data-testid="text-contact-title">Get In Touch</h2>
-            <p className="text-slate-600 mb-8">
-              Have questions about your eligibility or the registration process? 
-              Our team of specialists is ready to help.
-            </p>
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-primary">
-                  <span className="font-bold">E</span>
-                </div>
-                <div>
-                  <p className="font-medium text-slate-900">Email Us</p>
-                  <p className="text-slate-500">operations@accesstonorth.com</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                data-testid="button-open-tawk-chat"
-                onClick={() => {
-                  if (window.Tawk_API && window.Tawk_API.maximize) {
-                    window.Tawk_API.maximize();
-                  }
-                }}
-                className="flex items-center gap-4 w-full rounded-md border border-primary/20 bg-primary/5 p-4 cursor-pointer text-left transition-all duration-200 hover:bg-primary/10 hover:border-primary/40 hover:shadow-md"
-              >
-                <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center text-primary flex-shrink-0">
-                  <span className="font-bold text-sm">AI</span>
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-primary">Live AI Support</p>
-                  <p className="text-slate-500 text-sm">Click to chat with us instantly</p>
-                </div>
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary/50 flex-shrink-0"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-              </button>
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold font-display mb-4" data-testid="text-contact-title">Get In Touch</h2>
+          <p className="text-slate-600 max-w-lg mx-auto">
+            Have questions about your eligibility or the registration process? Our team of specialists is ready to help.
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-6 max-w-2xl mx-auto">
+          <button
+            type="button"
+            onClick={() => setEmailModalOpen(true)}
+            data-testid="button-email-us"
+            className="flex-1 flex items-center gap-4 p-5 rounded-xl border border-slate-200 bg-white shadow-sm cursor-pointer text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-slate-300 active:translate-y-0 active:shadow-sm"
+          >
+            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+              <Mail className="w-5 h-5 text-primary" />
             </div>
-          </div>
-          
-          <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Your Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="John Doe" {...field} data-testid="input-contact-name" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email Address</FormLabel>
-                      <FormControl>
-                        <Input placeholder="john@example.com" {...field} data-testid="input-contact-email" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="message"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Message</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="How can we help you?" rows={4} {...field} data-testid="input-contact-message" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={submitContact.isPending}
-                  data-testid="button-send-message"
-                >
-                  {submitContact.isPending ? "Sending..." : "Send Message"}
-                </Button>
-              </form>
-            </Form>
-          </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-slate-900">Email Us</p>
+              <p className="text-sm text-slate-500 truncate">operations@accesstonorth.com</p>
+            </div>
+            <ArrowRight className="w-5 h-5 text-slate-400 shrink-0" />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleOpenChat}
+            data-testid="button-open-tawk-chat"
+            className="flex-1 flex items-center gap-4 p-5 rounded-xl border border-slate-200 bg-white shadow-sm cursor-pointer text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-slate-300 active:translate-y-0 active:shadow-sm"
+          >
+            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+              <MessageCircle className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-slate-900">Live AI Support</p>
+              <p className="text-sm text-slate-500">Chat with us instantly</p>
+            </div>
+            <ArrowRight className="w-5 h-5 text-slate-400 shrink-0" />
+          </button>
         </div>
       </div>
+
+      <Dialog open={emailModalOpen} onOpenChange={setEmailModalOpen}>
+        <DialogContent className="sm:max-w-[520px] w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto" data-testid="modal-email">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-display">Send Us a Message</DialogTitle>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
+                    <FormControl>
+                      <Input placeholder="John Doe" {...field} data-testid="input-contact-name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email <span className="text-red-500">*</span></FormLabel>
+                    <FormControl>
+                      <Input placeholder="john@example.com" type="email" {...field} data-testid="input-contact-email" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone <span className="text-slate-400 text-xs font-normal">(optional)</span></FormLabel>
+                    <FormControl>
+                      <Input placeholder="+1 (555) 000-0000" {...field} data-testid="input-contact-phone" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="message"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Message <span className="text-red-500">*</span></FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="How can we help you?" rows={4} {...field} data-testid="input-contact-message" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={submitContact.isPending}
+                data-testid="button-send-message"
+              >
+                {submitContact.isPending ? "Sending..." : "Send Message"}
+              </Button>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
