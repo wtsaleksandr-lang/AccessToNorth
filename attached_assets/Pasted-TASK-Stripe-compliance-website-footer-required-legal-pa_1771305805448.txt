@@ -1,0 +1,67 @@
+TASK: Stripe-compliance website footer + required legal pages for AccessToNorth.
+
+Context:
+This website sells fixed-scope administrative filing/registration services delivered digitally (business services). We are NOT a law firm, NOT a customs broker, NOT a government agency. We do NOT provide legal or tax advice. We do NOT guarantee approvals or outcomes. Payments are processed via Stripe. I need the site updated so it passes Stripe’s website review.
+
+DO THIS:
+
+1) FOOTER UPDATE (site-wide)
+Add a clean footer section with:
+- Company line: “AccessToNorth”
+- Disclaimer (must be visible, not hidden):
+  “Administrative services only. Not a law firm. Not a customs broker. No legal or tax advice. No outcome or approval guarantees.”
+- Delivery note: “Digital delivery. Typical completion: 2–7 business days depending on service.”
+- Secure payments line + payment icons text (no need for actual SVGs if not available):
+  “Secure checkout” + Visa / Mastercard / Amex / Apple Pay / Google Pay
+- Links to required pages:
+  Terms of Service | Privacy Policy | Refund Policy | Contact
+- Copyright line.
+
+2) CREATE REQUIRED PAGES (routes + menu/footer links)
+Create these pages with professional copy:
+A) /terms  (Terms of Service)
+B) /privacy (Privacy Policy)
+C) /refunds (Refund Policy)
+D) /contact (Contact page with form + email)
+
+3) TERMS OF SERVICE CONTENT REQUIREMENTS
+Include sections:
+- Scope of services: fixed-scope administrative preparation/submission; digital-only.
+- What we are not: not legal/tax advice; not customs broker; not government agency.
+- Client responsibilities: provide accurate info/docs; approvals depend on government agencies.
+- No guarantees: no guarantee of approval, processing times, banking approvals, tax outcomes.
+- Fees: all-in pricing where stated; if any third-party/government fees are included, state it; if not included, clearly state.
+- Limitation of liability: cap at amount paid; exclude indirect damages.
+- Chargebacks: encourage contacting support first.
+- Governing law and disputes: choose Ontario, Canada (temporary while Stripe Canada is used).
+- Contact info.
+
+4) REFUND POLICY REQUIREMENTS (make it clear and Stripe-friendly)
+- Full refund if request is made BEFORE submission to any government portal/agency.
+- After submission, service fee becomes non-refundable because work is performed and fees may be irreversible.
+- If a submission is rejected due to our error, we will re-file once at no extra service charge.
+- If rejected due to client-provided info or eligibility, no refund after submission.
+- Timeline: refunds processed within 5–10 business days to original payment method.
+
+5) PRIVACY POLICY REQUIREMENTS
+- What data collected: name, email, business info, uploaded documents.
+- Purpose: deliver services, support, compliance.
+- Storage/security: encrypted transfer/limited access; retention period (e.g., 12 months) then deletion upon request where possible.
+- Sharing: only with service providers required to deliver services (e.g., Stripe, email).
+- No selling data.
+- Contact for privacy requests.
+
+6) CONTACT PAGE
+- Simple form: name, email, service selected, message.
+- Add response time: 1–2 business days.
+
+IMPORTANT STYLE:
+- Match premium minimalist Apple-SaaS style.
+- Keep language calm and professional.
+- Avoid words: “legal services”, “tax consulting”, “anonymous guaranteed”, “government partner”, “guaranteed approval”, “duty reduction”.
+- Use “administrative services” and “fixed-scope deliverables”.
+
+DELIVERABLE:
+- Commit changes to repo
+- Provide file paths edited/created
+- Confirm footer links work on all pages

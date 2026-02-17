@@ -7,6 +7,10 @@ import Home from "@/pages/Home";
 import ClientPortal from "@/pages/ClientPortal";
 import PaymentSuccess from "@/pages/PaymentSuccess";
 import PaymentCancel from "@/pages/PaymentCancel";
+import Terms from "@/pages/Terms";
+import Privacy from "@/pages/Privacy";
+import Refunds from "@/pages/Refunds";
+import Contact from "@/pages/Contact";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -16,6 +20,10 @@ function Router() {
       <Route path="/portal" component={ClientPortal} />
       <Route path="/payment-success" component={PaymentSuccess} />
       <Route path="/payment-cancel" component={PaymentCancel} />
+      <Route path="/terms" component={Terms} />
+      <Route path="/privacy" component={Privacy} />
+      <Route path="/refunds" component={Refunds} />
+      <Route path="/contact" component={Contact} />
       <Route component={NotFound} />
     </Switch>
   );

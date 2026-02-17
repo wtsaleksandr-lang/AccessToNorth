@@ -9,6 +9,7 @@ declare global {
 import { useState, useRef, useCallback, useEffect } from "react";
 import businessTeamImg from "@/assets/images/business-team.jpg";
 import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { FeaturesSection } from "@/components/FeaturesSection";
 import { PricingCard } from "@/components/PricingCard";
@@ -370,46 +371,7 @@ export default function Home() {
       {/* Contact Form */}
       <ContactSection />
 
-      {/* Footer */}
-      <footer className="bg-slate-900 text-slate-400 py-12 border-t border-slate-800" data-testid="footer">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <span className="text-xl font-bold font-display text-white mb-4 block">AccessToNorth.com</span>
-              <p className="text-sm">Simplifying Canadian tax registration for businesses worldwide.</p>
-              <p className="text-xs mt-3 text-slate-500">AccessToNorth.com is a division of MR Holdings & Trade LLC</p>
-            </div>
-            <div>
-              <h4 className="font-bold text-white mb-4">Services</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="#pricing" className="hover:text-primary">GST/HST Registration</a></li>
-                <li><a href="#pricing" className="hover:text-primary">Business Numbers</a></li>
-                <li><a href="#non-resident" className="hover:text-primary">Non-Resident Compliance</a></li>
-                <li><a href="#pricing" className="hover:text-primary">CARM Importer Bundle</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold text-white mb-4">Company</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="#services" className="hover:text-primary">About Us</a></li>
-                <li><a href="#contact" className="hover:text-primary">Contact</a></li>
-                <li><a href="#" className="hover:text-primary">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-primary">Terms of Service</a></li>
-              </ul>
-              <p className="text-xs mt-4 text-slate-500">Email: operations@accesstonorth.com</p>
-            </div>
-            <div>
-              <h4 className="font-bold text-white mb-4">Client Portal</h4>
-              <Button variant="outline" className="w-full text-white border-slate-700 bg-transparent hover:bg-slate-800" onClick={() => window.location.href = '/portal'} data-testid="button-footer-portal">
-                Check Status
-              </Button>
-            </div>
-          </div>
-          <div className="text-center text-xs pt-8 border-t border-slate-800">
-            &copy; {new Date().getFullYear()} AccessToNorth.com &mdash; Authorized CRA Filing Assistance for Canada & International Businesses. Division of MR Holdings & Trade LLC.
-          </div>
-        </div>
-      </footer>
+      <Footer />
 
       <RegistrationModal 
         isOpen={modalOpen} 
