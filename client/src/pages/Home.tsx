@@ -112,14 +112,14 @@ export default function Home() {
       <Navbar />
       
       {/* Hero Section */}
-      <section className="relative pt-32 pb-24 md:pb-20 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 maple-bg">
+      <section className="relative pt-24 pb-12 md:pt-32 md:pb-20 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 maple-bg">
         <div className="container mx-auto px-4 md:px-6 relative z-10">
-          <div className="flex flex-col lg:flex-row items-center gap-12">
+          <div className="flex flex-col lg:flex-row items-center gap-8 md:gap-12">
             <motion.div 
               initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
-              className="lg:w-1/2 space-y-6"
+              className="lg:w-1/2 space-y-4 md:space-y-6"
             >
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-medium">
                 <span className="relative flex h-2 w-2">
@@ -129,12 +129,12 @@ export default function Home() {
                 Official CRA Authorized Representatives
               </div>
               
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold font-display text-slate-900 leading-[1.05] tracking-tight" data-testid="text-hero-title" style={{ letterSpacing: '-0.02em' }}>
+              <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold font-display text-slate-900 leading-[1.05] tracking-tight" data-testid="text-hero-title" style={{ letterSpacing: '-0.02em' }}>
                 Expert GST/HST & <br />
                 <span className="text-primary">Business Registration</span>
               </h1>
               
-              <p className="text-lg text-slate-600 max-w-lg leading-relaxed">
+              <p className="text-base md:text-lg text-slate-600 max-w-lg leading-relaxed">
                 Register your business with the CRA correctly and efficiently. From Business Numbers to Non-Resident GST/HST, we handle the paperwork so you can focus on business.
               </p>
               
@@ -260,16 +260,16 @@ export default function Home() {
       <FeaturesSection />
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-20 bg-slate-50">
+      <section id="pricing" className="py-12 md:py-20 bg-slate-50">
         <div className="container mx-auto px-4 md:px-6">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl font-bold font-display mb-4" data-testid="text-pricing-title">Transparent Pricing</h2>
-            <p className="text-lg text-slate-600">
+          <div className="text-center max-w-3xl mx-auto mb-8 md:mb-16">
+            <h2 className="text-2xl md:text-3xl font-bold font-display mb-3 md:mb-4" data-testid="text-pricing-title">Transparent Pricing</h2>
+            <p className="text-base md:text-lg text-slate-600">
               Choose the package that fits your business needs. One-time fees, no hidden costs.
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
             {packages.filter(p => !p.isFeatured).map((pkg) => (
               <PricingCard 
                 key={pkg.type}
@@ -292,9 +292,9 @@ export default function Home() {
       </section>
 
       {/* Guarantee Section */}
-      <section className="py-12 bg-blue-50/50 border-y border-blue-100/50">
+      <section className="py-8 md:py-12 bg-blue-50/50 border-y border-blue-100/50">
         <div className="container mx-auto px-4 md:px-6 text-center max-w-2xl">
-          <Award className="w-10 h-10 text-primary mx-auto mb-4" />
+          <Award className="w-8 h-8 md:w-10 md:h-10 text-primary mx-auto mb-3 md:mb-4" />
           <h3 className="text-xl font-bold font-display mb-2">Satisfaction Guarantee</h3>
           <p className="text-slate-600">
             If we fall short on our registration process due to our error, you receive a full refund. We stand behind every filing.
@@ -303,9 +303,9 @@ export default function Home() {
       </section>
 
       {/* Non-Resident Section */}
-      <section id="non-resident" className="py-20 bg-white">
+      <section id="non-resident" className="py-12 md:py-20 bg-white">
         <div className="container mx-auto px-4 md:px-6">
-          <div className="flex flex-col lg:flex-row items-center gap-12">
+          <div className="flex flex-col lg:flex-row items-center gap-8 md:gap-12">
             <div className="lg:w-1/2">
               <img 
                 src={businessTeamImg}
@@ -313,9 +313,9 @@ export default function Home() {
                 className="rounded-2xl shadow-2xl"
               />
             </div>
-            <div className="lg:w-1/2 space-y-6">
-              <h2 className="text-3xl font-bold font-display" data-testid="text-nonresident-title">Are You a Non-Resident Selling in Canada?</h2>
-              <p className="text-lg text-slate-600">
+            <div className="lg:w-1/2 space-y-4 md:space-y-6">
+              <h2 className="text-2xl md:text-3xl font-bold font-display" data-testid="text-nonresident-title">Are You a Non-Resident Selling in Canada?</h2>
+              <p className="text-base md:text-lg text-slate-600">
                 New rules require many non-resident businesses to register for GST/HST under the simplified regime. If you sell digital products, services, or goods through fulfillment warehouses, you likely need to register.
               </p>
               <ul className="space-y-4">
@@ -440,10 +440,10 @@ export default function Home() {
       <TestimonialsSection />
 
       {/* FAQ */}
-      <section id="faq" className="py-20 bg-slate-50">
+      <section id="faq" className="py-12 md:py-20 bg-slate-50">
         <div className="container mx-auto px-4 md:px-6 max-w-3xl">
-          <h2 className="text-3xl font-bold font-display text-center mb-12" data-testid="text-faq-title">Frequently Asked Questions</h2>
-          <Accordion type="single" collapsible className="w-full space-y-4">
+          <h2 className="text-2xl md:text-3xl font-bold font-display text-center mb-8 md:mb-12" data-testid="text-faq-title">Frequently Asked Questions</h2>
+          <Accordion type="single" collapsible className="w-full space-y-2.5 md:space-y-4">
             {[
               {
                 q: "Do I need to register for GST/HST?",
@@ -479,8 +479,8 @@ export default function Home() {
               }
             ].map((faq, i) => (
               <AccordionItem key={i} value={`item-${i}`} className="bg-white px-6 rounded-xl border border-slate-200 shadow-sm" data-testid={`faq-item-${i}`}>
-                <AccordionTrigger className="text-left font-medium text-slate-900 py-6">{faq.q}</AccordionTrigger>
-                <AccordionContent className="text-slate-600 pb-6">
+                <AccordionTrigger className="text-left font-medium text-slate-900 py-4 md:py-6">{faq.q}</AccordionTrigger>
+                <AccordionContent className="text-slate-600 pb-4 md:pb-6">
                   {faq.a}
                 </AccordionContent>
               </AccordionItem>
@@ -574,10 +574,10 @@ function TestimonialsSection() {
   };
 
   return (
-    <section className="py-20 bg-slate-900 text-white">
+    <section className="py-12 md:py-20 bg-slate-900 text-white">
       <div className="container mx-auto px-4 md:px-6">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold font-display mb-3" data-testid="text-testimonials-title">What Our Clients Say</h2>
+        <div className="text-center mb-8 md:mb-12">
+          <h2 className="text-2xl md:text-3xl font-bold font-display mb-3" data-testid="text-testimonials-title">What Our Clients Say</h2>
           <p className="text-slate-400">Rated 4.9/5 based on 500+ verified reviews</p>
         </div>
 
@@ -687,23 +687,23 @@ function ContactSection() {
   };
 
   return (
-    <section id="contact" className="py-20 bg-white">
+    <section id="contact" className="py-12 md:py-20 bg-white">
       <div className="container mx-auto px-4 md:px-6">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold font-display mb-4" data-testid="text-contact-title">Get In Touch</h2>
-          <p className="text-slate-600 max-w-lg mx-auto">
+        <div className="text-center mb-8 md:mb-12">
+          <h2 className="text-2xl md:text-3xl font-bold font-display mb-3 md:mb-4" data-testid="text-contact-title">Get In Touch</h2>
+          <p className="text-sm md:text-base text-slate-600 max-w-lg mx-auto">
             Have questions about your eligibility or the registration process? Our team of specialists is ready to help.
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-6 max-w-2xl mx-auto">
+        <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-6 max-w-2xl mx-auto">
           <button
             type="button"
             onClick={() => setEmailModalOpen(true)}
             data-testid="button-email-us"
-            className="flex-1 flex items-center gap-4 p-5 rounded-xl border border-slate-200 bg-white shadow-sm cursor-pointer text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-slate-300 active:translate-y-0 active:shadow-sm"
+            className="flex-1 flex items-center gap-3 md:gap-4 p-4 md:p-5 rounded-xl border border-slate-200 bg-white shadow-sm cursor-pointer text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-slate-300 active:translate-y-0 active:shadow-sm"
           >
-            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
               <Mail className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
@@ -717,9 +717,9 @@ function ContactSection() {
             type="button"
             onClick={handleOpenChat}
             data-testid="button-open-tawk-chat"
-            className="flex-1 flex items-center gap-4 p-5 rounded-xl border border-slate-200 bg-white shadow-sm cursor-pointer text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-slate-300 active:translate-y-0 active:shadow-sm"
+            className="flex-1 flex items-center gap-3 md:gap-4 p-4 md:p-5 rounded-xl border border-slate-200 bg-white shadow-sm cursor-pointer text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-slate-300 active:translate-y-0 active:shadow-sm"
           >
-            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
               <MessageCircle className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">

@@ -25,16 +25,16 @@ export function FeaturesSection() {
   ];
 
   return (
-    <section id="services" className="py-20 bg-white">
+    <section id="services" className="py-12 md:py-20 bg-white">
       <div className="container mx-auto px-4 md:px-6">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <h2 className="text-3xl font-bold font-display mb-4">Why Businesses Trust Us</h2>
-          <p className="text-lg text-slate-600">
+        <div className="text-center max-w-2xl mx-auto mb-8 md:mb-16">
+          <h2 className="text-2xl md:text-3xl font-bold font-display mb-3 md:mb-4">Why Businesses Trust Us</h2>
+          <p className="text-base md:text-lg text-slate-600">
             Navigating Canadian tax laws shouldn't be a burden. We simplify compliance so you can focus on growth.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
           {features.map((feature, i) => (
             <div key={i} className="group p-6 rounded-2xl bg-slate-50 border border-slate-100 hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300" data-testid={`feature-card-${i}`}>
               <div className="mb-4 bg-white w-14 h-14 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300">
