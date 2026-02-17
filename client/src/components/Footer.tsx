@@ -1,31 +1,70 @@
 import { Link } from "wouter";
-import { CreditCard, Shield } from "lucide-react";
+import { CreditCard, Shield, Clock, Star, Lock, Upload, Landmark, Building2, BadgeCheck } from "lucide-react";
+
+const trustChips = [
+  { icon: Clock, label: "20+ Years Experience" },
+  { icon: Star, label: "4.9/5 Client Satisfaction" },
+  { icon: Upload, label: "Secure Document Upload" },
+  { icon: Lock, label: "Digital Delivery (2–7 days)" },
+];
+
+const agencies = [
+  { label: "CRA", icon: Landmark },
+  { label: "IRS", icon: Shield },
+  { label: "CBSA", icon: Building2 },
+  { label: "USPTO", icon: BadgeCheck },
+  { label: "SBA", icon: Building2 },
+];
 
 export function Footer() {
   return (
-    <footer className="bg-slate-900 text-slate-400 py-16 border-t border-slate-800" data-testid="footer">
+    <footer className="bg-slate-900 text-slate-400 py-10 md:py-12" data-testid="footer">
       <div className="container mx-auto px-4 md:px-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-10">
-          <div className="md:col-span-2 space-y-4">
-            <span className="text-xl font-bold font-display text-white block">AccessToNorth</span>
-            <p className="text-sm leading-relaxed">
-              Administrative services only. Not a law firm. Not a customs broker. No legal or tax advice. We are not affiliated with any government agency.
-            </p>
-            <p className="text-sm text-slate-500">
-              Digital delivery. Typical completion: 2–7 business days.
-            </p>
-            <div className="pt-2 space-y-1">
-              <p className="text-xs text-slate-500">
-                AccessToNorth operates through affiliated business entities in the United States and Canada.
-              </p>
-              <p className="text-xs text-slate-500">US Entity: MR Commerce LLC</p>
-              <p className="text-xs text-slate-500">Registered Business Location: Ontario, Canada</p>
+
+        {/* A) TRUST STRIP */}
+        <div className="mb-8 pb-8 border-b border-slate-800">
+          <div className="flex flex-wrap justify-center gap-2.5 md:gap-3 mb-6">
+            {trustChips.map((chip) => (
+              <div
+                key={chip.label}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-700/60 bg-slate-800/50 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-600 hover:shadow-lg hover:shadow-black/20"
+              >
+                <chip.icon className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <span className="text-xs font-medium text-slate-300 whitespace-nowrap">{chip.label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-center items-center gap-4 sm:gap-5 flex-wrap">
+            {agencies.map((a) => (
+              <div key={a.label} className="flex items-center gap-1 opacity-30">
+                <a.icon className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-[11px] font-semibold text-slate-400 tracking-wide">{a.label}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-slate-600 text-center mt-2">Reference agencies only — not affiliated or endorsed.</p>
+        </div>
+
+        {/* B) MIDDLE ROW — 3 COLUMNS */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-10 mb-8">
+          <div className="md:col-span-2">
+            <span className="text-lg font-bold font-display text-white block mb-3">AccessToNorth</span>
+            <ul className="space-y-1.5 text-sm leading-relaxed mb-4">
+              <li>Administrative services only (documentation coordination).</li>
+              <li>Not a law firm. Not a customs broker.</li>
+              <li>No legal or tax advice. No approval guarantees.</li>
+              <li>Not affiliated with any government agency.</li>
+            </ul>
+            <div className="space-y-0.5 text-xs text-slate-500">
+              <p>Operates via affiliated entities in the US & Canada.</p>
+              <p>US Entity: MR Commerce LLC</p>
+              <p>Registered business location: Ontario, Canada</p>
             </div>
           </div>
 
           <div>
-            <h4 className="font-semibold text-white mb-4 text-sm tracking-wide uppercase">Services</h4>
-            <ul className="space-y-2.5 text-sm">
+            <h4 className="font-semibold text-white mb-3 text-xs tracking-widest uppercase">Services</h4>
+            <ul className="space-y-2 text-sm">
               <li><a href="/#pricing" className="hover:text-white transition-colors">GST/HST Registration</a></li>
               <li><a href="/#pricing" className="hover:text-white transition-colors">Business Numbers</a></li>
               <li><a href="/#non-resident" className="hover:text-white transition-colors">Non-Resident Compliance</a></li>
@@ -34,24 +73,25 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="font-semibold text-white mb-4 text-sm tracking-wide uppercase">Legal</h4>
-            <ul className="space-y-2.5 text-sm">
+            <h4 className="font-semibold text-white mb-3 text-xs tracking-widest uppercase">Legal</h4>
+            <ul className="space-y-2 text-sm">
               <li><Link href="/terms" className="hover:text-white transition-colors" data-testid="link-terms">Terms of Service</Link></li>
               <li><Link href="/privacy" className="hover:text-white transition-colors" data-testid="link-privacy">Privacy Policy</Link></li>
               <li><Link href="/refunds" className="hover:text-white transition-colors" data-testid="link-refunds">Refund Policy</Link></li>
               <li><Link href="/contact" className="hover:text-white transition-colors" data-testid="link-contact">Contact</Link></li>
             </ul>
-            <p className="text-xs mt-4 text-slate-500">operations@accesstonorth.com</p>
+            <p className="text-xs mt-3 text-slate-500">operations@accesstonorth.com</p>
           </div>
         </div>
 
-        <div className="border-t border-slate-800 pt-8 space-y-5">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        {/* C) BOTTOM ROW */}
+        <div className="border-t border-slate-800 pt-6 space-y-3">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-sm">
               <Shield className="w-4 h-4 text-green-500" />
               <span>Secure checkout powered by Stripe</span>
             </div>
-            <div className="flex items-center gap-3 text-xs text-slate-500">
+            <div className="flex items-center gap-2.5 text-xs text-slate-500">
               <CreditCard className="w-4 h-4" />
               <span>Visa</span>
               <span className="text-slate-700">/</span>
@@ -70,7 +110,7 @@ export function Footer() {
             {" "}and{" "}
             <Link href="/refunds" className="underline hover:text-white transition-colors" data-testid="link-footer-refunds">Refund Policy</Link>.
           </p>
-          <p className="text-center text-xs text-slate-600">
+          <p className="text-center text-xs text-slate-600 pb-4">
             &copy; {new Date().getFullYear()} AccessToNorth.com
           </p>
         </div>

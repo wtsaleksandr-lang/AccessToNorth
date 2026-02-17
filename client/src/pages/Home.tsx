@@ -10,7 +10,6 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import businessTeamImg from "@/assets/images/business-team.jpg";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { TrustStrip } from "@/components/TrustStrip";
 import { Button } from "@/components/ui/button";
 import { FeaturesSection } from "@/components/FeaturesSection";
 import { PricingCard } from "@/components/PricingCard";
@@ -493,7 +492,6 @@ export default function Home() {
       {/* Contact Form */}
       <ContactSection />
 
-      <TrustStrip />
       <Footer />
 
       <RegistrationModal 
