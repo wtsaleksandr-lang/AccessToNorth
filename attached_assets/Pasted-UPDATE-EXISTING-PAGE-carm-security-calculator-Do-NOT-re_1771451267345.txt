@@ -1,0 +1,179 @@
+UPDATE EXISTING PAGE: /carm-security-calculator
+
+Do NOT rebuild the page.
+Do NOT change layout structure.
+Modify logic + result display only as described below.
+
+====================================================
+CRITICAL REGULATORY UPDATE
+====================================================
+
+CBSA SECURITY RULE:
+
+Required Financial Security =
+50% of highest monthly duties + GST payable
+Minimum $5,000
+
+This minimum must be automatically applied.
+User cannot disable it.
+
+Remove any toggle that allows disabling minimum.
+
+====================================================
+UPDATED CALCULATION LOGIC
+====================================================
+
+Let:
+X = HighestMonthlyPayable
+
+BaseSecurity = 0.50 * X
+
+If BaseSecurity < 5000:
+    RequiredSecurity = 5000
+    MinimumApplied = true
+Else:
+    RequiredSecurity = BaseSecurity
+    MinimumApplied = false
+
+CashDepositRequired = max(X, 5000)
+
+Round all values to nearest $100 for display.
+
+====================================================
+NEW: BOND PREMIUM COST CALCULATION
+====================================================
+
+Security amount ≠ cost.
+
+Add estimated annual premium calculation.
+
+Default bond premium rate:
+1.5%
+
+If Non-Resident toggle ON:
+Use 2.25% premium
+AND display underwriting notice.
+
+Formula:
+
+If NRI OFF:
+    PremiumRate = 0.015
+If NRI ON:
+    PremiumRate = 0.0225
+
+AnnualPremium = RequiredSecurity * PremiumRate
+
+Display premium rounded to nearest dollar.
+
+====================================================
+UPDATED OUTPUT CARDS (IMPORTANT LABEL FIX)
+====================================================
+
+Replace:
+
+“Surety Bond (estimated) $37,500”
+
+With:
+
+CARD 1:
+Title:
+"Required Security Amount (Bond)"
+
+Large Number:
+$XX,XXX
+
+Below that (separate line, highlighted subtly):
+
+"Estimated Annual Premium: $XXX/year"
+
+Small explanation:
+"You do NOT pay the full security amount. 
+You typically pay only the annual bond premium."
+
+CARD 2:
+Title:
+"Required Cash Deposit"
+
+Large Number:
+$XX,XXX
+
+Explanation:
+"This amount must be deposited with CBSA.
+Funds are tied up while active."
+
+====================================================
+MINIMUM FLOOR VISIBILITY (MANDATORY)
+====================================================
+
+If MinimumApplied = true:
+
+Display visible alert above results:
+
+Yellow or amber notification box:
+
+“Minimum security floor of $5,000 applied.
+Your calculated 50% amount was below the CBSA minimum.”
+
+This must be visually noticeable.
+
+If minimum NOT applied:
+Do not show this alert.
+
+====================================================
+NRI OUTPUT IMPROVEMENT
+====================================================
+
+If Non-Resident toggle ON:
+
+Below premium display show:
+
+“Non-Resident Importers may face higher underwriting review.
+Actual bond premium may vary.”
+
+Also visually tag the premium rate used:
+
+“Assumed premium rate: 2.25% (NRI estimate)”
+
+If OFF:
+Show:
+“Assumed premium rate: 1.5% standard estimate”
+
+====================================================
+COPY CLARIFICATION
+====================================================
+
+Add small educational text below bond result:
+
+"Security amount is the financial guarantee required by CBSA.
+Bond premium is the actual yearly cost you pay to the surety provider."
+
+This avoids legal confusion.
+
+====================================================
+UI IMPROVEMENTS
+====================================================
+
+- Animate results fade-in
+- Animate premium number counting up slightly (0 → final)
+- Keep premium visually distinct from security amount
+- Ensure mobile layout stacks cards vertically
+
+====================================================
+DO NOT:
+====================================================
+
+- Do not allow disabling minimum
+- Do not call security amount “cost”
+- Do not remove disclaimers
+- Do not change existing styling system
+
+====================================================
+END RESULT MUST:
+
+1) Automatically enforce $5,000 minimum
+2) Clearly show when minimum overrides
+3) Clearly separate security amount from actual bond premium cost
+4) Reflect NRI impact in output logic
+5) Avoid legal ambiguity
+
+Implement now.

@@ -79,7 +79,6 @@ export default function CarmSecurityCalculator() {
   const [securityType, setSecurityType] = useState<SecurityType>("both");
   const [frequency, setFrequency] = useState<Frequency | "">("");
   const [isNonResident, setIsNonResident] = useState(false);
-  const [applyMinimum, setApplyMinimum] = useState(true);
   const [inputError, setInputError] = useState("");
 
   const [isCalculating, setIsCalculating] = useState(false);
@@ -87,6 +86,8 @@ export default function CarmSecurityCalculator() {
   const [showResults, setShowResults] = useState(false);
   const [bondEstimate, setBondEstimate] = useState(0);
   const [cashEstimate, setCashEstimate] = useState(0);
+  const [annualPremium, setAnnualPremium] = useState(0);
+  const [minimumApplied, setMinimumApplied] = useState(false);
 
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [leadEmail, setLeadEmail] = useState("");
@@ -154,19 +155,18 @@ export default function CarmSecurityCalculator() {
       setTimeout(() => setCalcStep(1), 500),
       setTimeout(() => setCalcStep(2), 1000),
       setTimeout(() => {
-        let bond = 0.5 * amount;
-        let cash = 1.0 * amount;
+        const baseSecurity = 0.5 * amount;
+        const wasMinApplied = baseSecurity < 5000;
+        const requiredSecurity = wasMinApplied ? 5000 : Math.round(baseSecurity / 100) * 100;
+        const cashDeposit = Math.round(Math.max(amount, 5000) / 100) * 100;
 
-        if (applyMinimum) {
-          bond = Math.max(bond, 5000);
-          cash = Math.max(cash, 5000);
-        }
+        const premiumRate = isNonResident ? 0.0225 : 0.015;
+        const premium = Math.round(requiredSecurity * premiumRate);
 
-        bond = Math.round(bond / 100) * 100;
-        cash = Math.round(cash / 100) * 100;
-
-        setBondEstimate(bond);
-        setCashEstimate(cash);
+        setBondEstimate(requiredSecurity);
+        setCashEstimate(cashDeposit);
+        setAnnualPremium(premium);
+        setMinimumApplied(wasMinApplied);
         setIsCalculating(false);
         setShowResults(true);
 
@@ -202,7 +202,7 @@ export default function CarmSecurityCalculator() {
         highestMonthlyPayable: monthlyPayable,
         bondEstimate: bondEstimate.toString(),
         cashEstimate: cashEstimate.toString(),
-        applyMinimum,
+        applyMinimum: true,
         frequency: frequency || undefined,
         isNonResident,
       });
@@ -445,21 +445,14 @@ export default function CarmSecurityCalculator() {
                 </motion.div>
               )}
 
-              <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-100">
-                <div>
-                  <Label htmlFor="apply-minimum" className="text-sm font-medium cursor-pointer block">
-                    Apply minimum estimate?
-                  </Label>
-                  <p className="text-xs text-slate-500">Applies a conservative $5,000 floor to both estimates</p>
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
+                <div className="flex items-start gap-2">
+                  <Info className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+                  <p className="text-xs text-slate-500">
+                    CBSA requires a minimum $5,000 financial security. This minimum is automatically applied to all estimates.
+                  </p>
                 </div>
-                <Switch
-                  id="apply-minimum"
-                  data-testid="switch-apply-minimum"
-                  checked={applyMinimum}
-                  onCheckedChange={setApplyMinimum}
-                />
               </div>
-              <p className="text-xs text-slate-400 -mt-3">Minimums and rules may vary; confirm with CBSA / your broker.</p>
 
               <Button
                 size="lg"
@@ -531,49 +524,66 @@ export default function CarmSecurityCalculator() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="mt-8 space-y-8"
+                className="mt-8 space-y-6"
                 data-testid="section-results"
               >
+                {minimumApplied && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-4 rounded-lg bg-amber-50 border border-amber-200"
+                    data-testid="alert-minimum-applied"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-amber-800">Minimum security floor of $5,000 applied</p>
+                        <p className="text-xs text-amber-700 mt-0.5">
+                          Your calculated 50% amount was below the CBSA minimum. The required $5,000 floor has been automatically applied.
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
                 <div className={`grid gap-6 ${securityType === "both" ? "md:grid-cols-2" : "md:grid-cols-1 max-w-md mx-auto"}`}>
                   {(securityType === "both" || securityType === "bond") && (
                     <Card className="p-6 border-2 border-emerald-200 bg-emerald-50/50" data-testid="card-bond-result">
                       <div className="flex items-center gap-2 mb-3">
                         <Shield className="w-5 h-5 text-emerald-700" />
-                        <h3 className="font-semibold text-emerald-900">Surety Bond (estimated)</h3>
+                        <h3 className="font-semibold text-emerald-900">Required Security Amount (Bond)</h3>
                       </div>
-                      <p className="text-4xl font-bold mb-3" style={{ color: DEEP_GREEN }} data-testid="text-bond-estimate">
+                      <p className="text-4xl font-bold mb-2" style={{ color: DEEP_GREEN }} data-testid="text-bond-estimate">
                         {formatCurrency(bondEstimate)}
                       </p>
-                      <p className="text-sm text-slate-600 mb-4">
-                        50% of your highest monthly payable. A surety bond lets you keep your cash working for your business.
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.3 }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 border border-emerald-200 mb-3"
+                      >
+                        <DollarSign className="w-3.5 h-3.5 text-emerald-700" />
+                        <span className="text-sm font-semibold text-emerald-800" data-testid="text-annual-premium">
+                          Estimated Annual Premium: {formatCurrency(annualPremium)}/year
+                        </span>
+                      </motion.div>
+                      <p className="text-sm text-slate-600 mb-3">
+                        You do NOT pay the full security amount. You typically pay only the annual bond premium.
                       </p>
                       <div className="space-y-2">
-                        <p className="text-xs font-semibold text-emerald-800 uppercase tracking-wide">Pros</p>
-                        <ul className="text-sm text-slate-600 space-y-1">
-                          <li className="flex items-start gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
-                            Preserves your cash flow
-                          </li>
-                          <li className="flex items-start gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
-                            Lower upfront amount required
-                          </li>
-                          <li className="flex items-start gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
-                            Renewable annually
-                          </li>
-                        </ul>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mt-3">Cons</p>
-                        <ul className="text-sm text-slate-500 space-y-1">
-                          <li className="flex items-start gap-1.5">
-                            <AlertTriangle className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
-                            Annual premium cost (typically 1-3% of bond)
-                          </li>
-                          <li className="flex items-start gap-1.5">
-                            <AlertTriangle className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
-                            May require credit check
-                          </li>
-                        </ul>
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                          <Info className="w-3 h-3 shrink-0" />
+                          <span data-testid="text-premium-rate">
+                            Assumed premium rate: {isNonResident ? "2.25% (NRI estimate)" : "1.5% standard estimate"}
+                          </span>
+                        </div>
+                        {isNonResident && (
+                          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-2.5 rounded-lg bg-amber-50 border border-amber-200">
+                            <p className="text-xs text-amber-700">
+                              Non-Resident Importers may face higher underwriting review. Actual bond premium may vary.
+                            </p>
+                          </motion.div>
+                        )}
                       </div>
                     </Card>
                   )}
@@ -582,16 +592,16 @@ export default function CarmSecurityCalculator() {
                     <Card className="p-6 border-2 border-blue-200 bg-blue-50/50" data-testid="card-cash-result">
                       <div className="flex items-center gap-2 mb-3">
                         <Banknote className="w-5 h-5 text-blue-700" />
-                        <h3 className="font-semibold text-blue-900">Cash Deposit (estimated)</h3>
+                        <h3 className="font-semibold text-blue-900">Required Cash Deposit</h3>
                       </div>
                       <p className="text-4xl font-bold text-blue-800 mb-3" data-testid="text-cash-estimate">
                         {formatCurrency(cashEstimate)}
                       </p>
-                      <p className="text-sm text-slate-600 mb-4">
-                        100% of your highest monthly payable. A cash deposit is straightforward but ties up your capital.
+                      <p className="text-sm text-slate-600 mb-3">
+                        This amount must be deposited with CBSA. Funds are tied up while active.
                       </p>
                       <div className="space-y-2">
-                        <p className="text-xs font-semibold text-blue-800 uppercase tracking-wide">Pros</p>
+                        <p className="text-xs font-semibold text-blue-800 uppercase tracking-wide">Key details</p>
                         <ul className="text-sm text-slate-600 space-y-1">
                           <li className="flex items-start gap-1.5">
                             <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 mt-0.5 shrink-0" />
@@ -599,27 +609,29 @@ export default function CarmSecurityCalculator() {
                           </li>
                           <li className="flex items-start gap-1.5">
                             <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 mt-0.5 shrink-0" />
-                            No annual premium
-                          </li>
-                          <li className="flex items-start gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 mt-0.5 shrink-0" />
-                            Simple and immediate
-                          </li>
-                        </ul>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mt-3">Cons</p>
-                        <ul className="text-sm text-slate-500 space-y-1">
-                          <li className="flex items-start gap-1.5">
-                            <AlertTriangle className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
-                            Ties up significant cash
+                            No annual premium to pay
                           </li>
                           <li className="flex items-start gap-1.5">
                             <AlertTriangle className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
-                            Higher amount required vs bond
+                            Full amount tied up with CBSA
+                          </li>
+                          <li className="flex items-start gap-1.5">
+                            <AlertTriangle className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
+                            Higher upfront capital required vs bond
                           </li>
                         </ul>
                       </div>
                     </Card>
                   )}
+                </div>
+
+                <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
+                  <div className="flex items-start gap-2">
+                    <Info className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+                    <p className="text-xs text-slate-500">
+                      Security amount is the financial guarantee required by CBSA. Bond premium is the actual yearly cost you pay to the surety provider.
+                    </p>
+                  </div>
                 </div>
 
                 <Card className="p-6 md:p-8" data-testid="card-next-steps">
