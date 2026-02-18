@@ -463,7 +463,7 @@ export default function CarmSecurityCalculator() {
 
               <Button
                 size="lg"
-                className="w-full text-white font-semibold py-6 text-[23px] bg-[#0f3b35]"
+                className="w-full text-white font-semibold py-6 text-[23px] bg-[#0f3b35] rounded-xl"
                 onClick={handleCalculate}
                 disabled={isCalculating}
                 data-testid="button-calculate"
