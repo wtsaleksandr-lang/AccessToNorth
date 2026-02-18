@@ -12,7 +12,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend Architecture
 - **Framework**: React 18 with TypeScript
-- **Routing**: Wouter (lightweight client-side router) with pages: Home (`/`), Client Portal (`/portal`), Payment Success (`/payment-success`), Payment Cancel (`/payment-cancel`), CARM Security Calculator (`/carm-security-calculator`), Admin Dashboard (`/admin`)
+- **Routing**: Wouter (lightweight client-side router) with pages: Home (`/`), Client Portal (`/portal`), Payment Success (`/payment-success`), Payment Cancel (`/payment-cancel`), CARM Security Calculator (`/carm-security-calculator`), Customs Calculator (`/customs-calculator`), Admin Dashboard (`/admin`)
 - **Styling**: Tailwind CSS with CSS variables for theming, using a professional blue (#007BFF) primary color with Canadian red accents
 - **UI Components**: shadcn/ui (new-york style) built on Radix UI primitives, located in `client/src/components/ui/`
 - **Animations**: Framer Motion for scroll reveals and interactions
@@ -47,6 +47,12 @@ Preferred communication style: Simple, everyday language.
   - `PATCH /api/admin/orders/:orderId` — Update order steps and status (admin auth required)
   - `POST /api/admin/orders/:orderId/message` — Admin reply to client message (admin auth required)
   - `GET /api/admin/uploads/:uploadId/download` — Download uploaded file (admin auth required)
+  - `GET /api/customs/hs-search?q=&limit=` — Autocomplete HS code search (by code or description)
+  - `GET /api/customs/countries` — List all countries with tariff treatment mappings
+  - `GET /api/customs/provinces` — List all provinces with tax rates
+  - `POST /api/customs/calculate` — Calculate duty/tax for single item (hsCode, countryOfOrigin, valueCAD, quantity, province, shipmentType)
+  - `POST /api/customs/calculate-bulk` — Calculate duty/tax for multiple items from CSV
+  - `POST /api/leads/customs-calculator` — Submit customs calculator lead (rate-limited, 5/min per IP)
 - **Build**: esbuild bundles server to `dist/index.cjs` for production; Vite builds client to `dist/public/`
 
 ### Data Storage
@@ -59,6 +65,10 @@ Preferred communication style: Simple, everyday language.
   - `uploads` table: id (uuid), orderId (FK→orders), fileName, fileData (base64), fileSize, mimeType, createdAt
   - `messages` table: id (uuid), orderId (FK→orders), sender, message, createdAt
   - `carm_leads` table: id, email, companyName, importValueRange, currentlyImporting, phone, highestMonthlyPayable, bondEstimate, cashEstimate, applyMinimum, frequency, isNonResident, priority, source, createdAt
+  - `hs_codes` table: id, code (10-char), description, chapter, unitOfMeasure, plus 25 tariff treatment columns (MFN, UST, MXT, CPTPT, etc.)
+  - `tariff_countries` table: id, name, code, treatments (text array)
+  - `hs_code_categories` table: id, chapter, description
+  - `customs_leads` table: id, email, companyName, phone, hsCode, countryOfOrigin, goodsValue, calculatedDuty, source, createdAt
 - **Migrations**: Drizzle Kit with `drizzle-kit push` command (schema push, no migration files required)
 - **Validation**: drizzle-zod generates insert schemas from table definitions, shared between client and server
 

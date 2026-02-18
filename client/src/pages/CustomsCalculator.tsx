@@ -18,6 +18,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calculator,
@@ -39,6 +46,8 @@ import {
   ArrowRight,
   X,
   AlertTriangle,
+  Mail,
+  Building2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -163,6 +172,14 @@ export default function CustomsCalculator() {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [bulkResult, setBulkResult] = useState<BulkResult | null>(null);
   const [bulkCalculating, setBulkCalculating] = useState(false);
+
+  const [showLeadModal, setShowLeadModal] = useState(false);
+  const [leadEmail, setLeadEmail] = useState("");
+  const [leadCompany, setLeadCompany] = useState("");
+  const [leadPhone, setLeadPhone] = useState("");
+  const [leadSubmitting, setLeadSubmitting] = useState(false);
+  const [leadSubmitted, setLeadSubmitted] = useState(false);
+  const [leadErrors, setLeadErrors] = useState<Record<string, string>>({});
 
   const formRef = useRef<HTMLDivElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -427,6 +444,38 @@ export default function CustomsCalculator() {
       printWindow.document.write(html);
       printWindow.document.close();
       printWindow.print();
+    }
+  };
+
+  const handleLeadSubmit = async () => {
+    const errors: Record<string, string> = {};
+    if (!leadEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(leadEmail)) {
+      errors.email = "Valid email is required";
+    }
+    if (Object.keys(errors).length > 0) {
+      setLeadErrors(errors);
+      return;
+    }
+
+    setLeadSubmitting(true);
+    setLeadErrors({});
+    try {
+      await apiRequest("POST", "/api/leads/customs-calculator", {
+        email: leadEmail,
+        companyName: leadCompany || undefined,
+        phone: leadPhone || undefined,
+        hsCode: result?.hsCode || selectedHsCode?.code,
+        countryOfOrigin: selectedCountry,
+        goodsValue: String(result?.valueCAD || parseFloat(goodsValue.replace(/[^0-9.]/g, "")) || ""),
+        calculatedDuty: result ? String(result.totalDutiesAndTaxes) : undefined,
+        source: "customs-calculator",
+      });
+      setLeadSubmitted(true);
+      toast({ title: "Thank you!", description: "We'll send you a detailed breakdown by email." });
+    } catch {
+      toast({ title: "Something went wrong", description: "Please try again later.", variant: "destructive" });
+    } finally {
+      setLeadSubmitting(false);
     }
   };
 
@@ -1031,6 +1080,20 @@ export default function CustomsCalculator() {
                     </p>
                   </div>
                 </div>
+
+                <Card className="p-5 text-center" style={{ backgroundColor: `${DEEP_BLUE}05` }} data-testid="card-lead-cta">
+                  <p className="text-sm font-semibold text-slate-700 mb-2">Want a detailed breakdown emailed to you?</p>
+                  <p className="text-xs text-slate-500 mb-3">Get your full customs estimate as a PDF report.</p>
+                  <Button
+                    style={{ backgroundColor: DEEP_BLUE }}
+                    className="text-white font-semibold"
+                    onClick={() => { setLeadSubmitted(false); setShowLeadModal(true); }}
+                    data-testid="button-email-estimate"
+                  >
+                    <Mail className="w-4 h-4 mr-2" />
+                    Email me this estimate
+                  </Button>
+                </Card>
               </motion.div>
             )}
           </AnimatePresence>
@@ -1226,6 +1289,102 @@ export default function CustomsCalculator() {
       </section>
 
       <Footer />
+
+      <Dialog open={showLeadModal} onOpenChange={setShowLeadModal}>
+        <DialogContent className="sm:max-w-md" data-testid="dialog-lead-capture">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">
+              {leadSubmitted ? "Thank you!" : "Get a detailed breakdown"}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-slate-500">
+              {leadSubmitted
+                ? "We've saved your estimate. Our team will reach out if you need help with your import."
+                : "Enter your email and we'll send you a detailed PDF breakdown of your calculation."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {leadSubmitted ? (
+            <div className="flex flex-col items-center py-4">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-100 mb-3">
+                <Check className="w-6 h-6 text-green-600" />
+              </div>
+              <p className="text-sm text-slate-600 text-center">Check your email for your detailed estimate.</p>
+              <Button className="mt-4" onClick={() => setShowLeadModal(false)} data-testid="button-close-lead">
+                Close
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4 pt-2">
+              <div>
+                <Label htmlFor="lead-email" className="text-sm font-medium mb-1.5 block">
+                  Email address <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Input
+                    id="lead-email"
+                    data-testid="input-lead-email"
+                    placeholder="you@company.com"
+                    value={leadEmail}
+                    onChange={(e) => { setLeadEmail(e.target.value); setLeadErrors({}); }}
+                    className="pl-9"
+                  />
+                </div>
+                {leadErrors.email && <p className="text-xs text-red-500 mt-1">{leadErrors.email}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="lead-company" className="text-sm font-medium mb-1.5 block">
+                  Company name (optional)
+                </Label>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Input
+                    id="lead-company"
+                    data-testid="input-lead-company"
+                    placeholder="Your company"
+                    value={leadCompany}
+                    onChange={(e) => setLeadCompany(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="lead-phone" className="text-sm font-medium mb-1.5 block">
+                  Phone (optional)
+                </Label>
+                <Input
+                  id="lead-phone"
+                  data-testid="input-lead-phone"
+                  placeholder="+1 (555) 123-4567"
+                  value={leadPhone}
+                  onChange={(e) => setLeadPhone(e.target.value)}
+                />
+              </div>
+
+              <Button
+                className="w-full font-semibold"
+                style={{ backgroundColor: DEEP_BLUE }}
+                onClick={handleLeadSubmit}
+                disabled={leadSubmitting}
+                data-testid="button-submit-lead"
+              >
+                {leadSubmitting ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Mail className="w-4 h-4 mr-2" />
+                )}
+                {leadSubmitting ? "Sending..." : "Send me the breakdown"}
+              </Button>
+
+              <p className="text-xs text-slate-400 text-center">
+                We respect your privacy. No spam, ever.
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
