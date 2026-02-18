@@ -463,7 +463,7 @@ export default function CarmSecurityCalculator() {
 
               <Button
                 size="lg"
-                className="w-full text-white font-semibold text-base"
+                className="w-full text-white font-semibold text-base py-6"
                 style={{ backgroundColor: DEEP_GREEN }}
                 onClick={handleCalculate}
                 disabled={isCalculating}
