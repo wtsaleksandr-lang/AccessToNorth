@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, boolean, jsonb, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, boolean, jsonb, uuid, real, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -126,3 +126,50 @@ export type CarmLead = typeof carmLeads.$inferSelect;
 export type InsertCarmLead = z.infer<typeof insertCarmLeadSchema>;
 
 export type RegistrationResponse = Registration;
+
+export const hsCodeCategories = pgTable("hs_code_categories", {
+  id: serial("id").primaryKey(),
+  chapter: text("chapter").notNull(),
+  heading: text("heading"),
+  description: text("description").notNull(),
+});
+
+export const hsCodes = pgTable("hs_codes", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  description: text("description").notNull(),
+  descriptionFull: text("description_full"),
+  chapter: text("chapter").notNull(),
+  unitOfMeasure: text("unit_of_measure"),
+  dutyRates: jsonb("duty_rates").notNull().$type<Record<string, string>>(),
+});
+
+export const tariffCountries = pgTable("tariff_countries", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  code: text("code"),
+  treatments: text("treatments").array().notNull(),
+});
+
+export const customsLeads = pgTable("customs_leads", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull(),
+  companyName: text("company_name"),
+  phone: text("phone"),
+  hsCode: text("hs_code"),
+  countryOfOrigin: text("country_of_origin"),
+  goodsValue: text("goods_value"),
+  calculatedDuty: text("calculated_duty"),
+  source: text("source").notNull().default("customs-calculator"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCustomsLeadSchema = createInsertSchema(customsLeads).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type HsCode = typeof hsCodes.$inferSelect;
+export type TariffCountry = typeof tariffCountries.$inferSelect;
+export type CustomsLead = typeof customsLeads.$inferSelect;
+export type InsertCustomsLead = z.infer<typeof insertCustomsLeadSchema>;

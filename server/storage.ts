@@ -6,6 +6,9 @@ import {
   uploads,
   messages,
   carmLeads,
+  hsCodes,
+  tariffCountries,
+  customsLeads,
   type InsertRegistration, 
   type Registration, 
   type InsertContact,
@@ -16,9 +19,13 @@ import {
   type Message,
   type InsertMessage,
   type CarmLead,
-  type InsertCarmLead
+  type InsertCarmLead,
+  type HsCode,
+  type TariffCountry,
+  type CustomsLead,
+  type InsertCustomsLead,
 } from "@shared/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, ilike, or, sql } from "drizzle-orm";
 
 export interface IStorage {
   createRegistration(registration: InsertRegistration): Promise<Registration>;
@@ -37,6 +44,10 @@ export interface IStorage {
   getMessagesByOrderId(orderId: string): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
   createCarmLead(lead: InsertCarmLead): Promise<CarmLead>;
+  searchHsCodes(query: string, limit?: number): Promise<HsCode[]>;
+  getHsCodeByCode(code: string): Promise<HsCode | undefined>;
+  getAllCountries(): Promise<TariffCountry[]>;
+  createCustomsLead(lead: InsertCustomsLead): Promise<CustomsLead>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -154,6 +165,50 @@ export class DatabaseStorage implements IStorage {
   async createCarmLead(insertLead: InsertCarmLead): Promise<CarmLead> {
     const [lead] = await db
       .insert(carmLeads)
+      .values(insertLead)
+      .returning();
+    return lead;
+  }
+
+  async searchHsCodes(query: string, limit: number = 20): Promise<HsCode[]> {
+    const trimmed = query.trim();
+    if (!trimmed) return [];
+
+    const isCodeSearch = /^[\d.]+$/.test(trimmed);
+
+    if (isCodeSearch) {
+      return await db
+        .select()
+        .from(hsCodes)
+        .where(ilike(hsCodes.code, `${trimmed}%`))
+        .limit(limit);
+    }
+
+    return await db
+      .select()
+      .from(hsCodes)
+      .where(ilike(hsCodes.description, `%${trimmed}%`))
+      .limit(limit);
+  }
+
+  async getHsCodeByCode(code: string): Promise<HsCode | undefined> {
+    const [result] = await db
+      .select()
+      .from(hsCodes)
+      .where(eq(hsCodes.code, code));
+    return result;
+  }
+
+  async getAllCountries(): Promise<TariffCountry[]> {
+    return await db
+      .select()
+      .from(tariffCountries)
+      .orderBy(tariffCountries.name);
+  }
+
+  async createCustomsLead(insertLead: InsertCustomsLead): Promise<CustomsLead> {
+    const [lead] = await db
+      .insert(customsLeads)
       .values(insertLead)
       .returning();
     return lead;

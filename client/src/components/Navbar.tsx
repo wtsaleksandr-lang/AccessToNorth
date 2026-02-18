@@ -27,6 +27,7 @@ export function Navbar({ darkHero = false }: NavbarProps) {
     { name: "Services", href: "/#services" },
     { name: "Pricing", href: "/#pricing" },
     { name: "CARM Calculator", href: "/carm-security-calculator" },
+    { name: "Customs Calculator", href: "/customs-calculator" },
     { name: "Non-Residents", href: "/#non-resident" },
     { name: "FAQ", href: "/#faq" },
     { name: "Contact", href: "/#contact" },
