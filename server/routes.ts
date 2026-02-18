@@ -3,6 +3,7 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
+import { insertCarmLeadSchema } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 
 export async function registerRoutes(
@@ -160,6 +161,53 @@ export async function registerRoutes(
     } catch (err: any) {
       console.error('Error creating checkout session:', err);
       res.status(500).json({ message: "Failed to create checkout session" });
+    }
+  });
+
+  const carmLeadRateLimit = new Map<string, number[]>();
+  
+  app.post('/api/leads/carm-security', async (req, res) => {
+    try {
+      const ip = req.ip || 'unknown';
+      const now = Date.now();
+      const windowMs = 60_000;
+      const maxRequests = 5;
+      const timestamps = carmLeadRateLimit.get(ip)?.filter(t => now - t < windowMs) || [];
+      if (timestamps.length >= maxRequests) {
+        return res.status(429).json({ message: "Too many requests. Please try again later." });
+      }
+      timestamps.push(now);
+      carmLeadRateLimit.set(ip, timestamps);
+
+      const carmLeadInputSchema = insertCarmLeadSchema.extend({
+        email: z.string().email("Valid email is required"),
+        companyName: z.string().min(1, "Company name is required"),
+        importValueRange: z.enum(["< $10k", "$10k–$50k", "$50k–$250k", "$250k+"]),
+      });
+
+      const input = carmLeadInputSchema.parse({
+        ...req.body,
+        phone: req.body.phone || null,
+        highestMonthlyPayable: req.body.highestMonthlyPayable || null,
+        bondEstimate: req.body.bondEstimate || null,
+        cashEstimate: req.body.cashEstimate || null,
+        applyMinimum: req.body.applyMinimum ?? null,
+        frequency: req.body.frequency || null,
+        isNonResident: req.body.isNonResident ?? null,
+        priority: (!req.body.currentlyImporting || req.body.importValueRange === "< $10k") ? "low" : "normal",
+        source: "carm-security-calculator",
+      });
+      
+      const lead = await storage.createCarmLead(input);
+
+      res.status(201).json({ success: true, id: lead.id, priority: lead.priority });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join('.') });
+      } else {
+        console.error('Error creating CARM lead:', err);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
     }
   });
 

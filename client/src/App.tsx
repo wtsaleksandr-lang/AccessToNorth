@@ -12,6 +12,7 @@ import Privacy from "@/pages/Privacy";
 import Refunds from "@/pages/Refunds";
 import Contact from "@/pages/Contact";
 import AdminDashboard from "@/pages/AdminDashboard";
+import CarmSecurityCalculator from "@/pages/CarmSecurityCalculator";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -26,6 +27,7 @@ function Router() {
       <Route path="/refunds" component={Refunds} />
       <Route path="/contact" component={Contact} />
       <Route path="/admin" component={AdminDashboard} />
+      <Route path="/carm-security-calculator" component={CarmSecurityCalculator} />
       <Route component={NotFound} />
     </Switch>
   );

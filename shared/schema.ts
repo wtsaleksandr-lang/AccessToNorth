@@ -99,4 +99,30 @@ export type InsertUpload = z.infer<typeof insertUploadSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 
+export const carmLeads = pgTable("carm_leads", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull(),
+  companyName: text("company_name").notNull(),
+  importValueRange: text("import_value_range").notNull(),
+  currentlyImporting: boolean("currently_importing").notNull(),
+  phone: text("phone"),
+  highestMonthlyPayable: text("highest_monthly_payable"),
+  bondEstimate: text("bond_estimate"),
+  cashEstimate: text("cash_estimate"),
+  applyMinimum: boolean("apply_minimum"),
+  frequency: text("frequency"),
+  isNonResident: boolean("is_non_resident"),
+  priority: text("priority").notNull().default("normal"),
+  source: text("source").notNull().default("carm-security-calculator"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCarmLeadSchema = createInsertSchema(carmLeads).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type CarmLead = typeof carmLeads.$inferSelect;
+export type InsertCarmLead = z.infer<typeof insertCarmLeadSchema>;
+
 export type RegistrationResponse = Registration;

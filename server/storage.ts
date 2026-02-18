@@ -5,6 +5,7 @@ import {
   orders,
   uploads,
   messages,
+  carmLeads,
   type InsertRegistration, 
   type Registration, 
   type InsertContact,
@@ -13,7 +14,9 @@ import {
   type Upload,
   type InsertUpload,
   type Message,
-  type InsertMessage
+  type InsertMessage,
+  type CarmLead,
+  type InsertCarmLead
 } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 
@@ -33,6 +36,7 @@ export interface IStorage {
   createUpload(upload: InsertUpload): Promise<Upload>;
   getMessagesByOrderId(orderId: string): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
+  createCarmLead(lead: InsertCarmLead): Promise<CarmLead>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -146,6 +150,13 @@ export class DatabaseStorage implements IStorage {
       .values(insertMessage)
       .returning();
     return message;
+  }
+  async createCarmLead(insertLead: InsertCarmLead): Promise<CarmLead> {
+    const [lead] = await db
+      .insert(carmLeads)
+      .values(insertLead)
+      .returning();
+    return lead;
   }
 }
 

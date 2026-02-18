@@ -12,7 +12,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend Architecture
 - **Framework**: React 18 with TypeScript
-- **Routing**: Wouter (lightweight client-side router) with pages: Home (`/`), Client Portal (`/portal`), Payment Success (`/payment-success`), Payment Cancel (`/payment-cancel`)
+- **Routing**: Wouter (lightweight client-side router) with pages: Home (`/`), Client Portal (`/portal`), Payment Success (`/payment-success`), Payment Cancel (`/payment-cancel`), CARM Security Calculator (`/carm-security-calculator`), Admin Dashboard (`/admin`)
 - **Styling**: Tailwind CSS with CSS variables for theming, using a professional blue (#007BFF) primary color with Canadian red accents
 - **UI Components**: shadcn/ui (new-york style) built on Radix UI primitives, located in `client/src/components/ui/`
 - **Animations**: Framer Motion for scroll reveals and interactions
@@ -40,6 +40,13 @@ Preferred communication style: Simple, everyday language.
   - `POST /api/portal/order/:orderId/message` — Send a message on an order (auth required)
   - `POST /api/portal/order/:orderId/upload` — Upload a document to an order (auth required, multipart)
   - `GET /api/portal/order/:orderId/upload/:uploadId/download` — Download uploaded file (auth required)
+  - `POST /api/leads/carm-security` — Submit CARM calculator lead (rate-limited, 5/min per IP)
+  - `POST /api/admin/login` — Admin login (password-only), sets httpOnly JWT cookie
+  - `GET /api/admin/orders` — List all orders with message/upload counts (admin auth required)
+  - `GET /api/admin/orders/:orderId` — Order detail with uploads and messages (admin auth required)
+  - `PATCH /api/admin/orders/:orderId` — Update order steps and status (admin auth required)
+  - `POST /api/admin/orders/:orderId/message` — Admin reply to client message (admin auth required)
+  - `GET /api/admin/uploads/:uploadId/download` — Download uploaded file (admin auth required)
 - **Build**: esbuild bundles server to `dist/index.cjs` for production; Vite builds client to `dist/public/`
 
 ### Data Storage
@@ -51,6 +58,7 @@ Preferred communication style: Simple, everyday language.
   - `orders` table: id (text PK, format ATN-XXXXXX), customerEmail, customerName, serviceType, status, steps (jsonb array of OrderStep), stripeSessionId, createdAt, updatedAt
   - `uploads` table: id (uuid), orderId (FK→orders), fileName, fileData (base64), fileSize, mimeType, createdAt
   - `messages` table: id (uuid), orderId (FK→orders), sender, message, createdAt
+  - `carm_leads` table: id, email, companyName, importValueRange, currentlyImporting, phone, highestMonthlyPayable, bondEstimate, cashEstimate, applyMinimum, frequency, isNonResident, priority, source, createdAt
 - **Migrations**: Drizzle Kit with `drizzle-kit push` command (schema push, no migration files required)
 - **Validation**: drizzle-zod generates insert schemas from table definitions, shared between client and server
 

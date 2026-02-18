@@ -20,6 +20,7 @@ export function Navbar() {
   const navLinks = [
     { name: "Services", href: "/#services" },
     { name: "Pricing", href: "/#pricing" },
+    { name: "CARM Calculator", href: "/carm-security-calculator" },
     { name: "Non-Residents", href: "/#non-resident" },
     { name: "FAQ", href: "/#faq" },
     { name: "Contact", href: "/#contact" },
@@ -46,6 +47,9 @@ export function Navbar() {
         setLocation("/");
         setTimeout(() => scrollToSection(id), 500);
       }
+    } else if (href.startsWith("/")) {
+      setLocation(href);
+      window.scrollTo({ top: 0 });
     }
   };
 
