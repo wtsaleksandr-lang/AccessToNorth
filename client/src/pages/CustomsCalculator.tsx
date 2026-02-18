@@ -91,6 +91,10 @@ interface CalculationResult {
   totalDutiesAndTaxes: number;
   totalLandedCost: number;
   availableTreatments: Record<string, { rate: string; duty: number }>;
+  warnings: string[];
+  requiresManualReview: boolean;
+  preferentialAvailable: boolean;
+  originConfirmed: boolean;
 }
 
 interface BulkResult {
@@ -163,6 +167,7 @@ export default function CustomsCalculator() {
   const [goodsValue, setGoodsValue] = useState("");
   const [quantity, setQuantity] = useState("");
   const [shipmentType, setShipmentType] = useState<"commercial" | "personal">("commercial");
+  const [confirmedOrigin, setConfirmedOrigin] = useState(false);
 
   const [isCalculating, setIsCalculating] = useState(false);
   const [calcStep, setCalcStep] = useState(0);
@@ -278,6 +283,7 @@ export default function CustomsCalculator() {
             quantity: qty,
             province: selectedProvince,
             shipmentType,
+            confirmedOrigin,
           });
           const data = await res.json();
           setResult(data);
@@ -431,9 +437,11 @@ export default function CustomsCalculator() {
 
     html += `
       <div class="disclaimer">
-        <strong>Disclaimer:</strong> This estimate is for informational purposes only and does not constitute professional customs brokerage advice.
+        <strong>Important Disclaimer:</strong> This estimate is for informational purposes only and does not constitute professional customs brokerage advice.
         Actual duties and taxes are determined by the Canada Border Services Agency (CBSA) at the time of importation.
-        Rates are based on the 2026 Canadian Customs Tariff (T2026). Special duties (anti-dumping, countervailing, excise) are not included.
+        Rates are based on the 2026 Canadian Customs Tariff (T2026). <strong>Not included:</strong> SIMA duties (anti-dumping &amp; countervailing),
+        excise duties/taxes, surtaxes, temporary safeguard measures, or any other special levies. Some goods may be subject to import permits, quotas, or prohibitions.
+        Preferential tariff rates require valid proof of origin documentation. Consult a licensed customs broker or CBSA for binding rulings.
       </div>
       <div class="footer">AccessToNorth.com &mdash; Canadian Tax & Business Registration Services</div>
       </body></html>
@@ -819,6 +827,20 @@ export default function CustomsCalculator() {
                 </div>
               </div>
 
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                <input
+                  type="checkbox"
+                  id="confirmedOrigin"
+                  checked={confirmedOrigin}
+                  onChange={(e) => setConfirmedOrigin(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  data-testid="checkbox-origin-confirmation"
+                />
+                <label htmlFor="confirmedOrigin" className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed cursor-pointer">
+                  I confirm the goods qualify under the applicable rules of origin for preferential tariff treatment (e.g., CUSMA, CPTPP, CETA). If unchecked, the Most Favoured Nation (MFN) rate will be applied.
+                </label>
+              </div>
+
               <AnimatePresence>
                 {inputError && (
                   <motion.div
@@ -986,6 +1008,19 @@ export default function CustomsCalculator() {
                   </div>
                 </Card>
 
+                {result.warnings && result.warnings.length > 0 && (
+                  <Card className="p-4 border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800" data-testid="card-warnings">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        {result.warnings.map((warning, i) => (
+                          <p key={i} className="text-sm text-amber-800 dark:text-amber-200">{warning}</p>
+                        ))}
+                      </div>
+                    </div>
+                  </Card>
+                )}
+
                 <Card className="overflow-hidden" data-testid="card-duty-breakdown">
                   <table className="w-full text-sm">
                     <thead>
@@ -1071,13 +1106,15 @@ export default function CustomsCalculator() {
                   </Card>
                 )}
 
-                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
+                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800">
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                    <p className="text-xs text-amber-700">
-                      This is an estimate only. Actual duties and taxes are determined by CBSA at the time of importation.
-                      Special duties (anti-dumping, countervailing, excise) are not included. Consult a licensed customs broker for accurate assessments.
-                    </p>
+                    <div className="text-xs text-amber-700 dark:text-amber-300 space-y-1">
+                      <p className="font-semibold">Important Disclaimer:</p>
+                      <p>This is an estimate only. Actual duties and taxes are determined by CBSA at the time of importation.</p>
+                      <p>Not included in this estimate: SIMA duties (anti-dumping & countervailing), excise duties and taxes, surtaxes, temporary safeguard measures, or any other special levies. Some goods may also be subject to import permits, quotas, or prohibitions.</p>
+                      <p>Preferential tariff rates require valid proof of origin documentation. Consult a licensed customs broker or CBSA for binding rulings and accurate assessments.</p>
+                    </div>
                   </div>
                 </div>
 
