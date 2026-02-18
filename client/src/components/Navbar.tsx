@@ -4,10 +4,16 @@ import { Menu, X, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 
-export function Navbar() {
+interface NavbarProps {
+  darkHero?: boolean;
+}
+
+export function Navbar({ darkHero = false }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [location, setLocation] = useLocation();
+
+  const useLight = darkHero && !scrolled;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -71,8 +77,8 @@ export function Navbar() {
             <div className="bg-primary p-1.5 rounded-lg group-hover:scale-105 transition-transform">
               <ShieldCheck className="h-6 w-6 text-white" />
             </div>
-            <span className={`text-xl font-extrabold tracking-tight ${scrolled ? 'text-slate-900' : 'text-slate-900'}`} style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.03em' }}>
-              AccessToNorth<span className="text-primary">.com</span>
+            <span className={`text-xl font-extrabold tracking-tight transition-colors duration-300 ${useLight ? 'text-white' : 'text-slate-900'}`} style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.03em' }}>
+              AccessToNorth<span className={useLight ? "text-white/80" : "text-primary"}>.com</span>
             </span>
           </Link>
 
@@ -85,7 +91,7 @@ export function Navbar() {
                   e.preventDefault();
                   handleNavClick(link.href);
                 }}
-                className="text-sm font-medium text-slate-600 hover:text-primary transition-colors cursor-pointer"
+                className={`text-sm font-medium transition-colors cursor-pointer ${useLight ? 'text-white/80 hover:text-white' : 'text-slate-600 hover:text-primary'}`}
                 data-testid={`nav-link-${link.name.toLowerCase().replace(/\s+/g, '-')}`}
               >
                 {link.name}
@@ -93,14 +99,14 @@ export function Navbar() {
             ))}
             <Button
               variant="outline"
-              className="border-primary/20 hover:bg-primary/5 text-primary cursor-pointer"
+              className={`cursor-pointer ${useLight ? 'border-white/30 text-white' : 'border-primary/20 text-primary'}`}
               onClick={handlePortalClick}
               data-testid="button-check-status"
             >
               Check Status
             </Button>
             <Button 
-              className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 cursor-pointer"
+              className={`shadow-lg cursor-pointer ${useLight ? 'bg-white text-slate-900 shadow-black/10' : 'bg-primary shadow-primary/20'}`}
               onClick={() => handleNavClick("/#pricing")}
               data-testid="button-register-now"
             >
@@ -109,7 +115,7 @@ export function Navbar() {
           </div>
 
           <button
-            className="md:hidden text-slate-700 cursor-pointer"
+            className={`md:hidden cursor-pointer ${useLight ? 'text-white' : 'text-slate-700'}`}
             onClick={() => setIsOpen(!isOpen)}
             data-testid="button-mobile-menu"
           >

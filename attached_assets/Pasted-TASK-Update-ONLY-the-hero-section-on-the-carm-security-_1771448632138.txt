@@ -1,0 +1,101 @@
+TASK: Update ONLY the hero section on the /carm-security-calculator page. Do not change the calculator form, logic, lead gate, or other sections.
+
+GOAL:
+1) Fix header/menu readability on the hero background.
+2) Redesign the hero layout to match the sketch: left text, right “calculator mockup” card labeled “CARM TOOL”, with a floating overlay badge that has a green checkmark.
+
+========================
+A) FIX HEADER / MENU VISIBILITY
+========================
+Problem: Current hero background is too dark and the site name + menu items are hard to read.
+
+Implement ONE of these (choose best based on current code):
+Option 1 (preferred): Add a frosted-glass header wrapper that sits above the hero:
+- Sticky top header container
+- Background: white with transparency (e.g., bg-white/10 to bg-white/20)
+- Backdrop blur: backdrop-blur-md
+- Border: border-white/20
+- Subtle shadow: shadow-sm
+- Ensure all header text and links are readable:
+  - Make logo + nav text white OR very light if still on dark background
+  - On hover: slightly brighter
+- Add a subtle dark-to-transparent gradient behind the hero only if needed.
+
+Option 2: Lighten the hero background gradient so header naturally becomes readable:
+- Replace hero background with a lighter, brand-consistent gradient:
+  from #0F3B35 (deep green) to a lighter green/neutral (e.g. #155048 -> #F6FBFA)
+- Ensure header/nav uses dark text on light background OR white text on darker top band.
+Pick whichever gives maximum contrast and looks premium.
+
+========================
+B) HERO LAYOUT REDESIGN (MATCH SKETCH)
+========================
+Structure:
+- Two-column layout on desktop, stacked on mobile
+- Left side:
+  - Small pill badge: “Free Estimate Tool”
+  - H1: “CARM Financial Security Estimate”
+  - Subtext: “Estimate your bond vs cash security based on your highest monthly duties + GST payable.”
+  - Primary CTA button: “Calculate my estimate” (scrolls smoothly to the calculator form section)
+  - Secondary text link: “What is CARM security?” (scrolls to FAQ/disclaimer section)
+
+- Right side (visual mockup):
+  Create a “calculator mockup” card illustration (not a real input form; just visual).
+  Card specs:
+  - Size: approx 360–420px wide desktop; full width on mobile with max-w
+  - Background: white/10 or white/15 on dark hero, OR white on light hero (choose consistent)
+  - Rounded: rounded-2xl
+  - Border: border-white/20 (if on dark) or border-gray-200 (if on light)
+  - Shadow: soft shadow-lg
+  Inside the mockup card:
+  - Top mini header row:
+    - Left: tiny icon (calculator or grid) + text “CARM TOOL”
+    - Right: 3 tiny dots like a window control (pure decoration)
+  - A few gray/white skeleton lines to imitate calculator fields
+  - Two small “result” blocks at bottom labeled “Bond (50%)” and “Cash (100%)” (visual only)
+
+Floating overlay badge (must look premium + “verified”):
+- Position: top-left corner of mockup card, slightly outside the card (absolute)
+- Badge content:
+  - Green circle with check icon (lucide Check)
+  - Text: “Estimate ready”
+  - Smaller subtext: “Based on your inputs”
+- Badge styling:
+  - bg-white/90 (or bg-white if on light)
+  - border border-green-200
+  - rounded-full or rounded-xl
+  - shadow-md
+  - subtle animation: float up/down 6–8px using framer-motion (or CSS keyframes)
+
+Hero background:
+- Replace current background with a cleaner “institutional” look:
+  - Use a gradient that matches brand (#0F3B35) but doesn’t kill readability:
+    Example:
+    background: radial-gradient(circle at 20% 10%, rgba(255,255,255,0.12), transparent 35%),
+                linear-gradient(180deg, #0F3B35 0%, #0B2F2A 45%, #F7FAF9 100%);
+- Add subtle grain/noise overlay if easy (optional). Keep it minimal.
+
+Responsiveness:
+- Mobile:
+  - Text centered or left-aligned (choose whichever matches current site style)
+  - Mockup card below text
+  - Ensure header remains readable and not overlapping
+- Desktop:
+  - Use max width container (max-w-6xl)
+  - Vertically center content
+  - Add adequate spacing (gap-10 to gap-14)
+
+Animation:
+- On load:
+  - Left text fades in + rises slightly
+  - Mockup card fades in + rises slightly delayed
+  - Floating badge gently bobbing
+
+IMPORTANT:
+- Do not modify calculator logic, form fields, or lead capture modal.
+- Only touch hero + header readability styles related to this page.
+- Keep brand color: #0F3B35.
+- Ensure contrast meets accessibility (nav links readable).
+
+DELIVERABLE:
+Commit changes so the hero matches the sketch and header/menu is clearly readable on the hero background.

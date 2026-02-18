@@ -33,9 +33,11 @@ import {
   DollarSign,
   Banknote,
   CheckCircle2,
+  Check,
   Info,
   Mail,
   ChevronRight,
+  ChevronDown,
   AlertTriangle,
   ExternalLink,
   Loader2,
@@ -43,6 +45,7 @@ import {
   Globe,
   TrendingUp,
   HelpCircle,
+  LayoutGrid,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -96,6 +99,8 @@ export default function CarmSecurityCalculator() {
   const [leadErrors, setLeadErrors] = useState<Record<string, string>>({});
 
   const resultsRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+  const faqRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -226,26 +231,108 @@ export default function CarmSecurityCalculator() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Navbar />
+      <Navbar darkHero />
 
-      <section className="pt-28 pb-16 md:pt-36 md:pb-20" style={{ background: `linear-gradient(135deg, ${DEEP_GREEN} 0%, #1a5c52 100%)` }}>
-        <div className="container mx-auto px-4 md:px-6 max-w-4xl text-center">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white/90 text-sm mb-6">
-              <Calculator className="w-4 h-4" />
-              Free Estimate Tool
-            </div>
-            <h1 className="text-3xl md:text-5xl font-bold text-white mb-4 font-display" data-testid="text-calc-heading">
-              CARM Financial Security Estimate
-            </h1>
-            <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto" data-testid="text-calc-subheading">
-              Estimate your bond vs cash security based on your highest monthly duties + GST payable.
-            </p>
-          </motion.div>
+      <section
+        className="relative pt-28 pb-16 md:pt-36 md:pb-24 overflow-hidden"
+        style={{
+          background: `radial-gradient(circle at 20% 10%, rgba(255,255,255,0.08), transparent 40%), linear-gradient(180deg, ${DEEP_GREEN} 0%, #0B2F2A 60%, #122f2b 100%)`,
+        }}
+      >
+        <div className="container mx-auto px-4 md:px-6 max-w-6xl">
+          <div className="grid md:grid-cols-2 gap-10 md:gap-14 items-center">
+            <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white/90 text-sm mb-6 border border-white/10">
+                <Calculator className="w-4 h-4" />
+                Free Estimate Tool
+              </div>
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 font-display leading-tight" data-testid="text-calc-heading">
+                CARM Financial Security Estimate
+              </h1>
+              <p className="text-base md:text-lg text-white/70 mb-8 max-w-lg" data-testid="text-calc-subheading">
+                Estimate your bond vs cash security based on your highest monthly duties + GST payable.
+              </p>
+              <div className="flex flex-col sm:flex-row items-start gap-3">
+                <Button
+                  size="lg"
+                  className="bg-white text-slate-900 font-semibold shadow-lg shadow-black/10 cursor-pointer"
+                  onClick={() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  data-testid="button-hero-calculate"
+                >
+                  <Calculator className="w-4 h-4 mr-2" />
+                  Calculate my estimate
+                  <ChevronDown className="w-4 h-4 ml-1" />
+                </Button>
+                <button
+                  type="button"
+                  className="text-sm text-white/60 hover:text-white/90 transition-colors cursor-pointer underline underline-offset-4"
+                  onClick={() => faqRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  data-testid="link-what-is-carm"
+                >
+                  What is CARM security?
+                </button>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="relative flex justify-center md:justify-end"
+            >
+              <motion.div
+                className="absolute -top-3 -left-2 md:-left-4 z-10 flex items-center gap-2 px-3 py-2 bg-white/95 rounded-xl border border-emerald-200 shadow-md"
+                animate={{ y: [0, -6, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                data-testid="badge-estimate-ready"
+              >
+                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500">
+                  <Check className="w-3.5 h-3.5 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-800 leading-tight">Estimate ready</p>
+                  <p className="text-[10px] text-slate-500 leading-tight">Based on your inputs</p>
+                </div>
+              </motion.div>
+
+              <div className="w-full max-w-[400px] rounded-2xl border border-white/15 bg-white/10 backdrop-blur-sm shadow-2xl shadow-black/20 p-5" data-testid="card-hero-mockup">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <LayoutGrid className="w-3.5 h-3.5 text-white/60" />
+                    <span className="text-xs font-semibold text-white/70 tracking-wider uppercase">CARM Tool</span>
+                  </div>
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 rounded-full bg-white/20" />
+                    <div className="w-2 h-2 rounded-full bg-white/20" />
+                    <div className="w-2 h-2 rounded-full bg-white/20" />
+                  </div>
+                </div>
+
+                <div className="space-y-3 mb-5">
+                  <div className="h-3 bg-white/10 rounded-full w-3/4" />
+                  <div className="h-9 bg-white/8 rounded-lg border border-white/10" />
+                  <div className="h-3 bg-white/10 rounded-full w-1/2" />
+                  <div className="h-9 bg-white/8 rounded-lg border border-white/10" />
+                  <div className="h-3 bg-white/10 rounded-full w-2/3" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-emerald-500/20 border border-emerald-400/20 p-3">
+                    <p className="text-[10px] font-medium text-emerald-300 uppercase tracking-wide mb-1">Bond (50%)</p>
+                    <div className="h-5 bg-emerald-400/20 rounded w-3/4" />
+                  </div>
+                  <div className="rounded-xl bg-blue-500/20 border border-blue-400/20 p-3">
+                    <p className="text-[10px] font-medium text-blue-300 uppercase tracking-wide mb-1">Cash (100%)</p>
+                    <div className="h-5 bg-blue-400/20 rounded w-3/4" />
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
         </div>
       </section>
 
-      <section className="py-12 md:py-16">
+      <section className="py-12 md:py-16" ref={formRef}>
         <div className="container mx-auto px-4 md:px-6 max-w-3xl">
           <Card className="p-6 md:p-8" data-testid="card-calculator-form">
             <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
@@ -592,7 +679,7 @@ export default function CarmSecurityCalculator() {
           </AnimatePresence>
 
           <div className="mt-12 space-y-8">
-            <div data-testid="section-faq">
+            <div data-testid="section-faq" ref={faqRef}>
               <h2 className="text-2xl font-bold mb-6 font-display">Frequently Asked Questions</h2>
               <Accordion type="multiple" className="space-y-2">
                 {[
