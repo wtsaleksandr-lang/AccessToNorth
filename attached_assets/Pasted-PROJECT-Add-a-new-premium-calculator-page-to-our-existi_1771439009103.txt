@@ -1,0 +1,173 @@
+PROJECT: Add a new premium calculator page to our existing website app (same repo) and link it in the main menu.
+
+PAGE NAME (user-facing): “CARM Security Estimate (Bond vs Cash)”
+SEO Title: “CARM Financial Security Calculator (Bond vs Cash) – Canada Importers”
+Slug/Route: /carm-security-calculator
+
+GOAL:
+Create a mobile + desktop responsive interactive calculator that estimates the importer’s required CARM financial security for Release Prior to Payment:
+- Surety bond estimate (50% of highest monthly payable)
+- Cash deposit estimate (100% of highest monthly payable)
+Include a premium UI, a short “processing” animation when user clicks Calculate, disclaimers, and a lead gate.
+
+STACK / ASSUMPTIONS:
+- React + Next.js (or the framework already used in the site)
+- Tailwind CSS is available
+- Use framer-motion for animations if available; if not, use CSS transitions
+- Use existing layout components (Header/Nav/Footer) if the project has them
+- Must not break existing pages
+
+MENU:
+Add a nav menu item: “CARM Calculator” pointing to /carm-security-calculator
+
+CALCULATOR INPUTS (Form):
+1) Highest Monthly CBSA Payable (CAD) — required
+   - label: “Highest monthly duties + GST you owed (last 12 months)”
+   - help tooltip: “Use your highest monthly amount payable to CBSA (duties + GST). If unsure, use your broker statement or CARM statement.”
+   - numeric input, allow commas, auto-format to currency
+   - min 0, max 999999999
+
+2) Choose security type to compare — required (radio buttons):
+   - “Show both (recommended)” (default)
+   - “Bond only (50%)”
+   - “Cash only (100%)”
+
+3) Optional: Import frequency dropdown:
+   - “Occasional (1–3 shipments/month)”
+   - “Regular (1–3 shipments/week)”
+   - “High volume (daily/near-daily)”
+   This only affects the helper text + routing, NOT the math.
+
+4) Optional: Non-resident importer toggle:
+   - “I’m a non-resident / foreign company selling into Canada”
+   Used only to show contextual guidance + upsell.
+
+CALCULATION LOGIC:
+Let X = HighestMonthlyPayableCAD (number)
+
+BondEstimate = 0.50 * X
+CashEstimate = 1.00 * X
+
+Minimum handling (IMPORTANT):
+- Implement a configurable minimum for display, but do NOT claim a legal minimum if uncertain.
+- Add a UI control “Apply minimum estimate?” with default ON
+   - If ON: apply a minimum of $5,000 to both bond/cash estimates as a conservative floor
+   - If OFF: show pure math only
+- Show a note: “Minimums and rules may vary; confirm with CBSA / your broker.”
+
+If ApplyMinimum ON:
+BondEstimate = max(BondEstimate, 5000)
+CashEstimate = max(CashEstimate, 5000)
+
+Round to nearest $100 for clean display:
+BondEstimateRounded = round(BondEstimate / 100) * 100
+CashEstimateRounded = round(CashEstimate / 100) * 100
+
+OUTPUT UI:
+After Calculate:
+- Display 2 cards side-by-side on desktop, stacked on mobile:
+  Card A: “Surety Bond (estimated)”
+  Card B: “Cash Deposit (estimated)”
+- Each card shows:
+  - big number (CAD)
+  - short explanation (1–2 lines)
+  - “Pros/Cons” bullets (simple)
+- Add a “What this means” section with 3 steps:
+  1) “Confirm your highest monthly payable”
+  2) “Check your CARM portal security status”
+  3) “Post bond/cash via your provider”
+
+PROCESSING ANIMATION (premium/fun):
+- When user clicks Calculate:
+  - disable button
+  - show animated progress bar or “Calculating…” with 3-step animated checklist:
+    “Reading your numbers…”
+    “Applying CBSA estimate rules…”
+    “Generating security estimate…”
+  - total duration ~1.2–1.8 seconds
+  - then reveal results with a smooth slide/fade-in
+
+LEAD GATE (must filter tire kickers):
+We want to capture leads but not block the instant value.
+Flow:
+1) Show results immediately.
+2) Below results, show a CTA card: “Email me the full summary + checklist (PDF)”
+3) When clicked, open a modal lead form:
+   - Email (required)
+   - Company name (required)
+   - Monthly import value range (required dropdown):
+       “< $10k”
+       “$10k–$50k”
+       “$50k–$250k”
+       “$250k+”
+   - Are you currently importing? (required Yes/No)
+   - Phone (optional)
+4) If “Not currently importing” OR “< $10k” then:
+   - allow submission but tag as low priority
+   - show message: “We’ll send the checklist. For low-volume importers, self-serve guidance is usually enough.”
+5) On successful submission:
+   - show success state “Sent! Check your inbox.”
+   - (If email sending isn’t implemented, store lead in DB or existing CRM endpoint; if none, store in local storage + show instruction to connect backend.)
+
+DATA HANDLING:
+- If the app has an existing API route for leads, use it (e.g., POST /api/leads)
+- Otherwise create:
+  POST /api/leads/carm-security
+  Payload:
+   {
+     email, companyName, importValueRange, currentlyImporting, phone,
+     highestMonthlyPayable, bondEstimate, cashEstimate,
+     applyMinimum, frequency, isNonResident,
+     createdAt, source: "carm-security-calculator"
+   }
+- Basic validation + rate limit (simple in-memory or existing middleware)
+- No external calls required for the calculator itself.
+
+DISCLAIMERS (must be visible, not hidden):
+Add a “Disclaimer” accordion at the bottom, default collapsed but visible heading:
+Text (paraphrase, keep simple):
+- “This calculator provides an estimate only and is not legal, tax, or customs advice.”
+- “Actual requirements depend on CBSA/CARM rules, your account structure, and your import activity.”
+- “Confirm with CBSA guidance and/or your customs broker.”
+Include a small “Sources” line with links (as plain anchors):
+- CBSA CARM / Financial security info (link to CBSA page)
+- CRA import GST info (optional link)
+Do not claim any exact legal minimum beyond “may vary”.
+
+DESIGN REQUIREMENTS (premium):
+- White background with deep green accents (#0F3B35)
+- Rounded 2xl cards, subtle shadows, clean typography
+- Desktop max width ~1100px
+- Mobile: single column, sticky Calculate button at bottom when form is in view (optional)
+- Form should be super clear, no jargon: avoid “RPP” in primary labels; only mention “Release Prior to Payment” in small helper text.
+
+COPY (keep plain English):
+H1: “CARM Financial Security Estimate”
+Subheading: “Estimate your bond vs cash security based on your highest monthly duties + GST payable.”
+
+Button: “Calculate my estimate”
+
+ERROR STATES:
+- If input empty or invalid: show inline error under field
+- If negative: block
+- If extremely large (>999,999,999): block
+
+DELIVERABLE:
+- Add the page at /carm-security-calculator
+- Add nav item “CARM Calculator”
+- Ensure it is responsive and looks premium on mobile + desktop
+- Provide clean code with components:
+  /pages/carm-security-calculator.tsx (or app router equivalent)
+  components/CarmSecurityCalculator.tsx
+  /pages/api/leads/carm-security.ts (if needed)
+- Use framer-motion for animations if available.
+
+BONUS (if quick):
+Add FAQ section (accordion) with 5 questions:
+1) What is CARM?
+2) What is financial security?
+3) Bond vs cash deposit?
+4) What number should I enter?
+5) Can you help set this up?
+
+Build it now.
