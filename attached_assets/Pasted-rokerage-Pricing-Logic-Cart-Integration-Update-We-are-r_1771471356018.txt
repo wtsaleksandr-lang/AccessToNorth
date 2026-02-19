@@ -1,0 +1,205 @@
+rokerage Pricing Logic + Cart Integration Update
+
+We are restructuring the brokerage pricing architecture for clarity, automation, and platform-style positioning.
+
+Implement the following changes:
+
+1️⃣ Remove “Custom Quote” Tier
+
+Delete the $50,000+ → Custom Quote logic entirely.
+
+Replace High-Value structure with standardized flat pricing.
+
+New structure:
+
+A. Low Value Shipment (LVS)
+
+For goods valued under $2,500 CAD
+Price: $145 CAD
+
+Includes:
+
+Electronic customs entry (EDI)
+
+Duty & GST calculation
+
+Document review
+
+Release coordination
+
+Standard tariff treatment (MFN)
+
+B. Commercial Import Clearance (Any Value Over $2,500 CAD)
+
+Flat: $295 CAD
+
+Includes:
+
+Full electronic customs entry
+
+Duty & tax calculation
+
+Value validation review
+
+Release coordination
+
+Standard tariff treatment
+
+Basic compliance screening
+
+No value-based tiers.
+No percentage model.
+No manual quotes.
+
+C. Clearance + Compliance Review (Premium Option)
+
+Price: $395 CAD
+
+Includes everything in Commercial Import Clearance PLUS:
+
+HS code verification (1 line)
+
+Tariff treatment eligibility review (CUSMA / CPTPP / CETA)
+
+SIMA screening flag check
+
+Import control screening (CFIA / EICC / etc.)
+
+Risk summary report
+
+2️⃣ Remove Value Range Toggle Pricing
+
+Delete the current:
+
+$2,500–$10,000
+
+$10,000–$50,000
+
+$50,000+ tiers
+
+Replace with simple:
+Under $2,500 → LVS
+Over $2,500 → Commercial Clearance
+
+UX must be cleaner and frictionless.
+
+3️⃣ Convert “Select Package” Buttons into Add-to-Cart Actions
+
+Implement cart functionality:
+
+When user clicks:
+
+“Select Package”
+
+“Get a Quote”
+
+Any add-on service
+
+It must:
+
+Add item to cart
+
+Show mini cart summary (slide-in panel)
+
+Allow quantity adjustment for add-ons
+
+Display subtotal
+
+Proceed to checkout
+
+4️⃣ Add-On Services Must Be Clickable & Addable to Cart
+
+Each add-on should have:
+
+“Add to Cart” button
+
+Optional quantity selector where relevant
+
+Add-ons:
+
+HS Code Classification (1 line) – $95
+
+Additional HS Line – $25
+
+Import Permit Submission – $125
+
+CFIA Coordination – $150
+
+B2 Correction – from $250
+
+After-Hours Clearance – $175
+
+Importer Account Setup – $95
+
+CBSA ID Assistance – $95
+
+5️⃣ Checkout Logic
+
+At checkout:
+
+Dynamic intake form should generate required documentation list based on cart contents.
+
+Examples:
+
+If cart includes:
+
+Commercial Clearance → Request commercial invoice, packing list, BOL/AWB
+
+HS Classification → Request product description, composition, technical specs
+
+Permit submission → Request product details + regulatory category
+
+B2 Correction → Request B3 copy + correction explanation
+
+Make intake modular and conditional.
+
+6️⃣ Positioning Language Update
+
+Replace any “High Value Shipment Clearance” language with:
+
+“Commercial Import Clearance (Over $2,500 CAD)”
+
+Remove any wording implying:
+
+Negotiated pricing
+
+Manual broker quotes
+
+Uncertainty
+
+Tone should be:
+Structured.
+Transparent.
+Platform-based.
+
+7️⃣ UX Improvements
+
+Cart must work on mobile.
+
+Prices clearly labeled CAD.
+
+Prepare structure to support future USD/CAD toggle.
+
+Ensure no page redirects to homepage when clicking Select Package.
+
+8️⃣ Keep Clean Design
+
+Do not clutter UI.
+No extra popups.
+Modern SaaS style.
+Simple pricing hierarchy.
+
+After implementation:
+Run full QA test:
+
+Add multiple items
+
+Test mobile
+
+Test checkout flow
+
+Confirm subtotal math
+
+Confirm conditional document logic
+
+Report any edge cases before deploying.
