@@ -17,6 +17,7 @@ Preferred communication style: Simple, everyday language.
   - Service detail pages: `/services/business-number-bn`, `/services/gst-hst-registration`, `/services/non-resident-importer-canada`, `/services/carm-registration-canada`, `/services/rpp-bond-coordination`, `/services/customs-clearance-canada`, `/services/b13-export-declaration`, `/services/hs-code-classification-canada`, `/services/import-compliance-review`
   - Resource articles: `/resources/how-to-import-into-canada`, `/resources/customs-clearance-under-2500`, `/resources/what-is-sima-duty`, `/resources/what-is-carm`, `/resources/hs-code-vs-tariff-treatment`, `/resources/incoterms-for-canadian-importers`, `/resources/fcl-vs-lcl-cost-comparison`, `/resources/b13-export-declaration-explained`, `/resources/when-do-you-need-cfia-approval`
   - Existing tool pages (unchanged): `/customs-calculator`, `/carm-security-calculator`, `/canadian-customs-clearance`, `/canadian-customs-clearance/checkout`
+  - Order pages: `/order/hs-classification` (HS Classification tiered pricing: Basic $29, Business $99, Pro $249)
   - Coming-soon tool placeholders: `/tools/freight-quote`, `/tools/shipment-tracking`
   - Portal/auth: Client Portal (`/portal`), Admin Dashboard (`/admin`), Payment Success/Cancel
   - Legal: `/terms`, `/privacy`, `/refunds`

@@ -18,10 +18,11 @@ import {
   ChevronDown,
   ChevronUp,
   Info,
-  HelpCircle,
   FileSearch,
   ShieldAlert,
   AlertTriangle,
+  Calculator,
+  Ship,
 } from "lucide-react";
 
 interface HsCodeResult {
@@ -33,6 +34,22 @@ interface HsCodeResult {
 }
 
 const DEEP_BLUE = "#0A2540";
+
+const RISK_CHAPTERS = new Set([
+  "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12",
+  "16", "17", "18", "19", "20", "21", "22", "23", "24",
+  "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38",
+  "44", "47", "48",
+  "72", "73",
+  "84", "85",
+  "87", "88", "89",
+  "93",
+]);
+
+const FREQUENTLY_REVIEWED_CHAPTERS = new Set([
+  "39", "42", "61", "62", "63", "64", "65",
+  "71", "83", "85", "90", "94", "95", "96",
+]);
 
 const faqItems = [
   {
@@ -69,12 +86,56 @@ const faqItems = [
   },
 ];
 
+const classificationTiers = [
+  {
+    name: "Basic",
+    price: "$29",
+    param: "basic",
+    popular: false,
+    features: [
+      "1 HS code classification",
+      "Supporting rationale summary",
+      "Special measure awareness flag",
+      "Delivered within 1 business day",
+      "Email support",
+    ],
+    cta: "Order Classification",
+  },
+  {
+    name: "Business",
+    price: "$99",
+    param: "business",
+    popular: true,
+    features: [
+      "Up to 10 HS codes",
+      "Cross-consistency review",
+      "Special measure awareness screening",
+      "Structured summary report",
+      "Delivered within 1 business day",
+    ],
+    cta: "Order Bundle",
+  },
+  {
+    name: "Pro",
+    price: "$249",
+    param: "pro",
+    popular: false,
+    features: [
+      "Up to 50 HS codes",
+      "Invoice-level consistency check",
+      "Special measures screening",
+      "Risk summary overview",
+      "Delivered within 48 business hours",
+    ],
+    cta: "Request Bulk Review",
+  },
+];
+
 export default function HsCodeFinder() {
   const [, navigate] = useLocation();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<HsCodeResult[]>([]);
   const [searching, setSearching] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
   const [expandedCode, setExpandedCode] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -120,7 +181,6 @@ export default function HsCodeFinder() {
   const searchHsCodes = useCallback((q: string) => {
     if (q.length < 2) {
       setResults([]);
-      setShowDropdown(false);
       setHasSearched(false);
       return;
     }
@@ -133,7 +193,6 @@ export default function HsCodeFinder() {
         const res = await fetch(`/api/customs/hs-search?q=${encodeURIComponent(q)}&limit=20`);
         const data = await res.json();
         setResults(data);
-        setShowDropdown(false);
         setHasSearched(true);
       } catch {
         setResults([]);
@@ -157,10 +216,24 @@ export default function HsCodeFinder() {
     navigate(`/customs-calculator?hs=${encodeURIComponent(code)}&src=hsfinder&q=${encodeURIComponent(q)}`);
   };
 
-  const getConfidenceTag = (index: number): { label: string; variant: "default" | "secondary" | "outline" } => {
-    if (index < 3) return { label: "High", variant: "default" };
-    if (index < 10) return { label: "Medium", variant: "secondary" };
-    return { label: "Low", variant: "outline" };
+  const getConfidenceTag = (index: number): { label: string; color: string; variant: "default" | "secondary" | "outline" } => {
+    if (index < 3) return { label: "High", color: "text-emerald-600", variant: "default" };
+    if (index < 10) return { label: "Medium", color: "text-amber-600", variant: "secondary" };
+    return { label: "Low", color: "text-red-500", variant: "outline" };
+  };
+
+  const getConfidenceDot = (index: number) => {
+    if (index < 3) return "bg-emerald-500";
+    if (index < 10) return "bg-amber-500";
+    return "bg-red-500";
+  };
+
+  const getRiskFlags = (item: HsCodeResult): string[] => {
+    const flags: string[] = [];
+    const ch = item.chapter?.padStart(2, "0") || item.code.substring(0, 2);
+    if (RISK_CHAPTERS.has(ch)) flags.push("May be subject to special measures");
+    if (FREQUENTLY_REVIEWED_CHAPTERS.has(ch)) flags.push("Frequently reviewed category");
+    return flags;
   };
 
   const handleClear = () => {
@@ -170,6 +243,8 @@ export default function HsCodeFinder() {
     setExpandedCode(null);
     inputRef.current?.focus();
   };
+
+  const hasMediumOrLowConfidence = hasSearched && results.length > 3;
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
@@ -208,7 +283,7 @@ export default function HsCodeFinder() {
             </p>
           </div>
 
-          {/* Search Card */}
+          {/* ===== SECTION 1: HS FINDER TOOL ===== */}
           <Card className="p-6 md:p-8 shadow-lg mb-8" data-testid="card-hs-search">
             <div className="flex items-center gap-3 mb-5">
               <div
@@ -260,7 +335,7 @@ export default function HsCodeFinder() {
             </p>
           </Card>
 
-          {/* Results */}
+          {/* ===== RESULTS WITH CONFIDENCE + RISK ===== */}
           {hasSearched && (
             <div ref={resultsRef} className="mb-8">
               {results.length > 0 ? (
@@ -274,10 +349,12 @@ export default function HsCodeFinder() {
                   <div className="space-y-3" data-testid="list-hs-results">
                     {results.map((item, index) => {
                       const conf = getConfidenceTag(index);
+                      const dotColor = getConfidenceDot(index);
                       const isExpanded = expandedCode === item.code;
                       const fullDesc = item.descriptionFull || item.description;
                       const shortDesc =
                         fullDesc.length > 120 ? fullDesc.substring(0, 120) + "..." : fullDesc;
+                      const riskFlags = getRiskFlags(item);
 
                       return (
                         <motion.div
@@ -300,9 +377,12 @@ export default function HsCodeFinder() {
                                     >
                                       {item.code}
                                     </span>
-                                    <Badge variant={conf.variant} data-testid={`badge-confidence-${item.code}`}>
-                                      {conf.label}
-                                    </Badge>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className={`w-2 h-2 rounded-full ${dotColor}`} />
+                                      <Badge variant={conf.variant} data-testid={`badge-confidence-${item.code}`}>
+                                        {conf.label}
+                                      </Badge>
+                                    </div>
                                     {item.unitOfMeasure && (
                                       <span className="text-xs text-slate-400">({item.unitOfMeasure})</span>
                                     )}
@@ -327,6 +407,16 @@ export default function HsCodeFinder() {
                                         </>
                                       )}
                                     </button>
+                                  )}
+                                  {riskFlags.length > 0 && (
+                                    <div className="mt-2 space-y-1">
+                                      {riskFlags.map((flag) => (
+                                        <p key={flag} className="text-xs text-amber-700 flex items-center gap-1.5">
+                                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                                          {flag}
+                                        </p>
+                                      ))}
+                                    </div>
                                   )}
                                 </div>
 
@@ -365,6 +455,39 @@ export default function HsCodeFinder() {
                       );
                     })}
                   </div>
+
+                  {/* Advisory box for Medium/Low confidence */}
+                  {hasMediumOrLowConfidence && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-6"
+                    >
+                      <Card className="border-amber-200 bg-amber-50/60" data-testid="card-confidence-advisory">
+                        <CardContent className="p-5">
+                          <div className="flex items-start gap-3">
+                            <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+                              <ShieldAlert className="w-5 h-5 text-amber-700" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-slate-800 mb-1">
+                                Not 100% sure about your classification?
+                              </p>
+                              <p className="text-sm text-slate-600 mb-3">
+                                Misclassification can lead to reassessments or shipment delays. Consider a professional review before importing.
+                              </p>
+                              <a href="#classification-pricing">
+                                <Button size="sm" data-testid="button-get-review-advisory">
+                                  Get Professional Classification Review
+                                  <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                                </Button>
+                              </a>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  )}
                 </>
               ) : (
                 <Card className="p-6 text-center">
@@ -377,57 +500,107 @@ export default function HsCodeFinder() {
             </div>
           )}
 
-          {/* Cross-link to duty calculator */}
-          <Card className="p-5 mb-8 border-blue-100 bg-blue-50/50" data-testid="card-link-duty-calc">
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-800">Already know your HS code?</p>
-                <p className="text-xs text-slate-500">
-                  Go directly to the Duty & Tax Calculator to estimate import costs.
-                </p>
-              </div>
-              <Link href="/customs-calculator">
-                <Button variant="outline" size="sm" data-testid="button-goto-duty-calc">
-                  Open Duty Calculator
-                  <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                </Button>
-              </Link>
+          {/* ===== SECTION 2: PROFESSIONAL HS CLASSIFICATION PRICING ===== */}
+          <div id="classification-pricing" className="mb-12 scroll-mt-24">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl md:text-3xl font-bold font-display text-slate-900 mb-3">
+                Professional HS Code Classification Review
+              </h2>
+              <p className="text-sm text-slate-600 max-w-2xl mx-auto leading-relaxed">
+                Incorrect tariff classification can result in reassessments, penalties, or unexpected duty exposure. Our team provides structured tariff classification guidance reviewed for compliance accuracy.
+              </p>
             </div>
-          </Card>
 
-          {/* Not sure? Lead capture */}
-          <Card className="p-6 mb-12 border-amber-100 bg-amber-50/30" data-testid="card-classification-help">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-                <HelpCircle className="w-5 h-5 text-amber-700" />
-              </div>
-              <div>
-                <h3 className="text-base font-semibold text-slate-800 mb-2">Not sure which code is correct?</h3>
-                <ul className="text-sm text-slate-600 space-y-1 mb-4">
-                  <li className="flex items-start gap-2">
-                    <Check className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                    We confirm HS classification for your specific shipment
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                    Licensed customs broker review with tariff treatment analysis
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                    Written classification report you can use with CBSA
-                  </li>
-                </ul>
-                <Link href="/services/hs-code-classification-canada">
-                  <Button variant="outline" data-testid="button-request-classification">
-                    Request HS Classification Help
-                    <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                  </Button>
-                </Link>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5" data-testid="grid-classification-pricing">
+              {classificationTiers.map((tier) => (
+                <Card
+                  key={tier.name}
+                  className={`relative border ${
+                    tier.popular
+                      ? "border-blue-300 ring-2 ring-blue-100"
+                      : "border-slate-200"
+                  }`}
+                  data-testid={`card-tier-${tier.param}`}
+                >
+                  {tier.popular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <Badge className="bg-blue-600 text-white border-0">Most Popular</Badge>
+                    </div>
+                  )}
+                  <CardContent className="p-6 pt-7">
+                    <div className="text-center mb-5">
+                      <h3 className="text-lg font-bold text-slate-900 mb-1">{tier.name}</h3>
+                      <p className="text-3xl font-extrabold text-slate-900">{tier.price}</p>
+                    </div>
+                    <ul className="space-y-2.5 mb-6">
+                      {tier.features.map((f) => (
+                        <li key={f} className="flex items-start gap-2 text-sm text-slate-600">
+                          <Check className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+                    <Link href={`/order/hs-classification?package=${tier.param}`}>
+                      <Button
+                        className="w-full"
+                        variant={tier.popular ? "default" : "outline"}
+                        data-testid={`button-order-${tier.param}`}
+                      >
+                        {tier.cta}
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-          </Card>
+          </div>
 
-          {/* FAQ */}
+          {/* ===== SECTION 3: NEXT STEPS ===== */}
+          <div className="mb-12">
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold font-display text-slate-900 mb-2">
+                Planning Your Import?
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="grid-next-steps">
+              <Card className="border border-slate-200" data-testid="card-next-duty-calc">
+                <CardContent className="p-6 flex flex-col items-center text-center">
+                  <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-4">
+                    <Calculator className="w-6 h-6 text-blue-700" />
+                  </div>
+                  <h3 className="text-base font-semibold text-slate-900 mb-2">Calculate Duty & Import Tax</h3>
+                  <p className="text-sm text-slate-500 mb-4">
+                    Estimate duties, GST, and provincial taxes for your goods before importing.
+                  </p>
+                  <Link href={results.length > 0 ? `/customs-calculator?hs=${encodeURIComponent(results[0].code)}&src=hsfinder&q=${encodeURIComponent(query)}` : "/customs-calculator"}>
+                    <Button variant="outline" data-testid="button-next-duty-calc">
+                      Open Duty Calculator
+                      <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+              <Card className="border border-slate-200" data-testid="card-next-customs">
+                <CardContent className="p-6 flex flex-col items-center text-center">
+                  <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-4">
+                    <Ship className="w-6 h-6 text-blue-700" />
+                  </div>
+                  <h3 className="text-base font-semibold text-slate-900 mb-2">Need Full Customs Clearance?</h3>
+                  <p className="text-sm text-slate-500 mb-4">
+                    Let us handle customs brokerage, documentation, and border clearance for your shipment.
+                  </p>
+                  <Link href="/canadian-customs-clearance">
+                    <Button variant="outline" data-testid="button-next-customs">
+                      View Customs Clearance
+                      <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* ===== FAQ ===== */}
           <div className="mb-12">
             <h2 className="text-2xl font-bold font-display text-slate-900 mb-6 text-center">
               Frequently Asked Questions
@@ -466,6 +639,13 @@ export default function HsCodeFinder() {
                 </Card>
               ))}
             </div>
+          </div>
+
+          {/* ===== SECTION 4: COMPLIANCE DISCLAIMER ===== */}
+          <div className="text-center mb-4">
+            <p className="text-xs text-slate-400 max-w-2xl mx-auto leading-relaxed" data-testid="text-disclaimer">
+              AccessToNorth provides independent tariff classification guidance. Final determination of tariff treatment is made by the Canada Border Services Agency (CBSA).
+            </p>
           </div>
         </div>
       </main>
