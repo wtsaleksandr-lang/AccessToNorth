@@ -7,115 +7,42 @@ declare global {
 }
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { Link, useLocation } from "wouter";
 import businessTeamImg from "@/assets/images/business-team.jpg";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { FeaturesSection } from "@/components/FeaturesSection";
-import { PricingCard } from "@/components/PricingCard";
+import { Card, CardContent } from "@/components/ui/card";
 import { RegistrationModal } from "@/components/RegistrationModal";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle2, Star, ShieldCheck, Award, Lock, BadgeCheck, ChevronLeft, ChevronRight, Mail, MessageCircle, Building2, Landmark, Shield } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useContact } from "@/hooks/use-registrations";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { api } from "@shared/routes";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { ArrowRight, CheckCircle2, Star, ShieldCheck, Award, Lock, BadgeCheck, ChevronLeft, ChevronRight, Building2, Landmark, Shield, Calculator, Package, Globe, FileCheck, Search } from "lucide-react";
 
 export default function Home() {
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState("business-number");
-  const [nriModalOpen, setNriModalOpen] = useState(false);
-  
+  const [selectedPackage, setSelectedPackage] = useState("gst-hst");
+  const [, setLocation] = useLocation();
+
+  usePageMeta({
+    title: "AccessToNorth.com | Canadian GST/HST & Business Registration Services",
+    description: "Expert Canadian business registration services. GST/HST, Business Numbers, CARM, customs clearance, and non-resident compliance. Trusted by 10,000+ businesses.",
+    canonical: "https://www.accesstonorth.com",
+  });
+
   const handleOpenModal = (pkg: string) => {
     setSelectedPackage(pkg);
     setModalOpen(true);
   };
 
-  const packages = [
-    {
-      type: 'business-number',
-      title: "Business Number",
-      price: "99",
-      description: "Essential Business Number (BN) registration for small businesses.",
-      features: [
-        { text: "Business Number (BN) Setup", included: true },
-        { text: "Official CRA Documentation", included: true },
-        { text: "Digital Filing", included: true },
-        { text: "GST/HST Registration", included: false },
-        { text: "Import/Export Account", included: false },
-      ]
-    },
-    {
-      type: 'gst-hst',
-      title: "GST/HST Registration",
-      price: "249",
-      description: "Complete GST/HST registration including provincial requirements.",
-      features: [
-        { text: "Business Number Included", included: true },
-        { text: "GST/HST Registration", included: true },
-        { text: "Filing Guidance", included: true },
-        { text: "Compliance Review", included: true },
-        { text: "Import/Export Account", included: false },
-      ],
-      isPopular: true
-    },
-    {
-      type: 'non-resident',
-      title: "Non-Resident Tax",
-      price: "399",
-      description: "Specialized registration for non-residents doing business in Canada.",
-      features: [
-        { text: "Non-Resident BN", included: true },
-        { text: "GST/HST Registration", included: true },
-        { text: "Tax Treaty Guidance", included: true },
-        { text: "Compliance Support", included: true },
-        { text: "Digital Services Compliance", included: true },
-      ]
-    },
-    {
-      type: 'carm',
-      title: "CARM Portal",
-      price: "499",
-      description: "Register for the CBSA Assessment and Revenue Management portal.",
-      features: [
-        { text: "CARM Registration", included: true },
-        { text: "Portal Access Setup", included: true },
-        { text: "Import Account", included: true },
-        { text: "CBSA Compliance", included: true },
-        { text: "Ongoing Support", included: true },
-      ]
-    },
-    {
-      type: 'complete-bundle',
-      title: "Complete Importer Bundle",
-      price: "1,500",
-      description: "All-inclusive: BN, GST/HST, Import/Export, and CARM portal registration.",
-      features: [
-        { text: "Everything in CARM Package", included: true },
-        { text: "Business Number Registration", included: true },
-        { text: "GST/HST Registration", included: true },
-        { text: "Import/Export Account", included: true },
-        { text: "Priority Support", included: true },
-      ],
-      isFeatured: true
-    }
-  ];
-
   return (
     <div className="min-h-screen font-sans bg-slate-50 selection:bg-primary/20 selection:text-primary">
       <Navbar />
-      
+
       {/* Hero Section */}
       <section className="relative pt-24 pb-12 md:pt-32 md:pb-20 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 maple-bg">
         <div className="container mx-auto px-4 md:px-6 relative z-10">
           <div className="flex flex-col lg:flex-row items-center gap-8 md:gap-12">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
@@ -128,26 +55,27 @@ export default function Home() {
                 </span>
                 Official CRA Authorized Representatives
               </div>
-              
+
               <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold font-display text-slate-900 leading-[1.05] tracking-tight" data-testid="text-hero-title" style={{ letterSpacing: '-0.02em' }}>
                 Expert GST/HST & <br />
                 <span className="text-primary">Business Registration</span>
               </h1>
-              
+
               <p className="text-base md:text-lg text-slate-600 max-w-lg leading-relaxed">
                 Register your business with the CRA correctly and efficiently. From Business Numbers to Non-Resident GST/HST, we handle the paperwork so you can focus on business.
               </p>
-              
+
               <div className="flex flex-col sm:flex-row gap-4 pt-2">
-                <Button 
-                  size="lg" 
-                  className="bg-primary text-lg px-8 shadow-lg shadow-primary/25 cursor-pointer transition-all duration-300 ease-in-out hover:bg-[#0056b3] hover:shadow-xl hover:shadow-primary/30 hover:scale-105 active:scale-100"
-                  onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
-                  data-testid="button-start-registration"
-                >
-                  Start Registration
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
+                <Link href="/request">
+                  <Button
+                    size="lg"
+                    className="bg-primary text-lg px-8 shadow-lg shadow-primary/25 cursor-pointer transition-all duration-300 ease-in-out hover:bg-[#0056b3] hover:shadow-xl hover:shadow-primary/30 hover:scale-105 active:scale-100"
+                    data-testid="button-start-registration"
+                  >
+                    Start Registration
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
                 <div className="flex items-center gap-4 px-4">
                   <div className="flex -space-x-3">
                     {[1,2,3,4].map(i => (
@@ -165,8 +93,8 @@ export default function Home() {
                 </div>
               </div>
             </motion.div>
-            
-            <motion.div 
+
+            <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.2 }}
@@ -174,9 +102,8 @@ export default function Home() {
             >
               <div className="absolute -top-10 -right-10 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-blob"></div>
               <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-blob animation-delay-2000"></div>
-              
+
               <div className="relative">
-                {/* Document Mockup Card — unchanged */}
                 <div className="relative z-10 glass-card rounded-2xl p-6 md:p-8 transform md:rotate-2 hover:rotate-0 transition-transform duration-500">
                   <div className="flex items-center justify-between mb-8">
                     <div>
@@ -206,10 +133,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Floating Badge Overlay — pointer-events:none container, badges themselves are clickable */}
                 <div className="absolute inset-0 z-20 pointer-events-none">
-
-                  {/* LEFT SIDE — Institutional Badges */}
                   <div className="absolute left-[-10px] lg:left-[-14px] top-[12%] flex flex-col gap-2.5 lg:gap-3">
                     {[
                       { icon: Landmark, label: "CRA", testId: "inst-badge-cra" },
@@ -230,7 +154,6 @@ export default function Home() {
                     ))}
                   </div>
 
-                  {/* RIGHT SIDE — Trust Badges */}
                   <div className="absolute right-[-10px] lg:right-[-14px] top-[28%] flex flex-col gap-2.5 lg:gap-3 items-end">
                     {[
                       { icon: ShieldCheck, label: "CRA Authorized Rep", testId: "trust-badge-cra" },
@@ -248,7 +171,6 @@ export default function Home() {
                       </div>
                     ))}
                   </div>
-
                 </div>
               </div>
             </motion.div>
@@ -256,51 +178,66 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Services/Features */}
-      <FeaturesSection />
-
-      {/* Pricing Section */}
-      <section id="pricing" className="py-12 md:py-20 bg-slate-50">
+      {/* What We Do — Service Highlights */}
+      <section className="py-12 md:py-20 bg-white">
         <div className="container mx-auto px-4 md:px-6">
-          <div className="text-center max-w-3xl mx-auto mb-8 md:mb-16">
-            <h2 className="text-2xl md:text-3xl font-bold font-display mb-3 md:mb-4" data-testid="text-pricing-title">Transparent Pricing</h2>
+          <div className="text-center max-w-2xl mx-auto mb-10 md:mb-14">
+            <h2 className="text-2xl md:text-3xl font-bold font-display mb-3">What We Do</h2>
             <p className="text-base md:text-lg text-slate-600">
-              Choose the package that fits your business needs. One-time fees, no hidden costs.
+              Navigating Canadian tax and trade compliance shouldn't be a burden. We simplify it.
             </p>
           </div>
-          
-          <div className="flex flex-wrap justify-center gap-4 md:gap-6">
-            {packages.map((pkg) => (
-              <div key={pkg.type} className="w-full md:w-[calc(50%-12px)] xl:w-[calc(33.333%-16px)]">
-                <PricingCard 
-                  {...pkg}
-                  onSelect={() => handleOpenModal(pkg.type)}
-                />
-              </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-5xl mx-auto mb-10">
+            {[
+              { icon: Package, title: "Customs Clearance", desc: "Flat-rate commercial import clearance into Canada.", href: "/services/customs-clearance-canada" },
+              { icon: Landmark, title: "CARM Registration", desc: "End-to-end CARM portal onboarding for importers.", href: "/services/carm-registration-canada" },
+              { icon: Globe, title: "Non-Resident Importer", desc: "Full NRI setup for foreign businesses selling in Canada.", href: "/services/non-resident-importer-canada" },
+              { icon: FileCheck, title: "HS Code Classification", desc: "Accurate tariff classification to avoid penalties.", href: "/services/hs-code-classification-canada" },
+              { icon: Shield, title: "Import Compliance", desc: "Comprehensive audit of your import operations.", href: "/services/import-compliance-review" },
+              { icon: Calculator, title: "Trade Tools", desc: "Free calculators for duties, CARM, and HS codes.", href: "/tools" },
+            ].map((item) => (
+              <Link key={item.title} href={item.href}>
+                <Card className="h-full cursor-pointer border border-slate-200 hover:border-primary/20 hover:shadow-lg transition-all duration-300" data-testid={`card-home-${item.title.toLowerCase().replace(/\s+/g, "-")}`}>
+                  <CardContent className="p-5 flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <item.icon className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-slate-900 mb-1">{item.title}</h3>
+                      <p className="text-sm text-slate-600">{item.desc}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
-        </div>
-      </section>
 
-      {/* Guarantee Section */}
-      <section className="py-8 md:py-12 bg-blue-50/50 border-y border-blue-100/50">
-        <div className="container mx-auto px-4 md:px-6 text-center max-w-2xl">
-          <Award className="w-8 h-8 md:w-10 md:h-10 text-primary mx-auto mb-3 md:mb-4" />
-          <h3 className="text-xl font-bold font-display mb-2">Satisfaction Guarantee</h3>
-          <p className="text-slate-600">
-            If we fall short on our registration process due to our error, you receive a full refund. We stand behind every filing.
-          </p>
+          <div className="text-center flex flex-col sm:flex-row justify-center gap-3">
+            <Link href="/services">
+              <Button variant="outline" size="lg" className="cursor-pointer" data-testid="button-all-services">
+                All Services
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
+            <Link href="/pricing">
+              <Button size="lg" className="cursor-pointer" data-testid="button-view-pricing">
+                View Pricing
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* Non-Resident Section */}
-      <section id="non-resident" className="py-12 md:py-20 bg-white">
+      <section className="py-12 md:py-20 bg-slate-50">
         <div className="container mx-auto px-4 md:px-6">
           <div className="flex flex-col lg:flex-row items-center gap-8 md:gap-12">
             <div className="lg:w-1/2">
-              <img 
+              <img
                 src={businessTeamImg}
-                alt="International Business Team" 
+                alt="International Business Team"
                 className="rounded-2xl shadow-2xl"
               />
             </div>
@@ -322,172 +259,65 @@ export default function Home() {
                   </li>
                 ))}
               </ul>
-              <Button 
-                variant="outline" 
-                size="lg" 
-                className="mt-4 cursor-pointer"
-                onClick={() => setNriModalOpen(true)}
-                data-testid="button-nonresident-learn-more"
-              >
-                Learn More About Non-Resident Rules
-              </Button>
+              <Link href="/services/non-resident-importer-canada">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="mt-4 cursor-pointer"
+                  data-testid="button-nonresident-learn-more"
+                >
+                  Learn More About Non-Resident Rules
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
+      </section>
 
-        {/* NRI Info Modal */}
-        <Dialog open={nriModalOpen} onOpenChange={setNriModalOpen}>
-          <DialogContent className="sm:max-w-[640px] w-[calc(100%-2rem)] max-h-[90vh] flex flex-col p-0" data-testid="modal-nri-info">
-            <div className="overflow-y-auto flex-1 px-6 pt-6 pb-4 sm:px-8 sm:pt-8">
-              <DialogHeader className="mb-6">
-                <DialogTitle className="text-xl sm:text-2xl font-display leading-tight">
-                  Non-Resident Business Rules — Canada (2026 Overview)
-                </DialogTitle>
-                <p className="text-sm text-slate-500 mt-2">
-                  High-level guidance for international businesses entering the Canadian market.
-                </p>
-              </DialogHeader>
-
-              <div className="space-y-5">
-                <div>
-                  <h4 className="text-sm font-semibold text-slate-900 uppercase tracking-wide mb-2.5">When Registration May Be Required</h4>
-                  <ul className="space-y-2 text-sm text-slate-600">
-                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span>If you are carrying on business in Canada, GST/HST registration may be required.</span></li>
-                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span>Commercial importers must obtain a Business Number (BN).</span></li>
-                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span>Import/export program accounts (RM) are managed through CBSA systems and CARM onboarding.</span></li>
-                  </ul>
-                </div>
-
-                <hr className="border-slate-100" />
-
-                <div>
-                  <h4 className="text-sm font-semibold text-slate-900 uppercase tracking-wide mb-2.5">CARM & Import Compliance</h4>
-                  <ul className="space-y-2 text-sm text-slate-600">
-                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span>Non-resident importers must request a CRA Business Number before completing CARM registration.</span></li>
-                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span>Importers are responsible for maintaining proper customs records in Canada or through an authorized representative.</span></li>
-                  </ul>
-                </div>
-
-                <hr className="border-slate-100" />
-
-                <div>
-                  <h4 className="text-sm font-semibold text-slate-900 uppercase tracking-wide mb-2.5">Security Requirements (May Apply)</h4>
-                  <ul className="space-y-2 text-sm text-slate-600">
-                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span>CRA may require security from certain non-resident registrants.</span></li>
-                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span>Security amounts are typically based on projected tax exposure.</span></li>
-                  </ul>
-                </div>
-
-                <hr className="border-slate-100" />
-
-                <div>
-                  <h4 className="text-sm font-semibold text-slate-900 uppercase tracking-wide mb-2.5">Important Clarifications</h4>
-                  <ul className="space-y-2 text-sm text-slate-600">
-                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span>Government approvals are not guaranteed.</span></li>
-                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span>Processing times vary by agency.</span></li>
-                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span>We provide administrative setup and coordination only.</span></li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-slate-100 px-6 py-4 sm:px-8 sm:py-5 bg-slate-50/80">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button
-                  className="flex-1 cursor-pointer"
-                  onClick={() => {
-                    setNriModalOpen(false);
-                    setTimeout(() => {
-                      document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
-                    }, 300);
-                  }}
-                  data-testid="button-nri-view-package"
-                >
-                  View Canada Import Package
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1 cursor-pointer"
-                  onClick={() => {
-                    setNriModalOpen(false);
-                    if (window.Tawk_API && window.Tawk_API.maximize) {
-                      window.Tawk_API.maximize();
-                    }
-                  }}
-                  data-testid="button-nri-ask-question"
-                >
-                  Ask a Question
-                </Button>
-              </div>
-              <p className="text-xs text-slate-400 text-center mt-3">
-                General information only. Not legal or tax advice.
-              </p>
-            </div>
-          </DialogContent>
-        </Dialog>
+      {/* Guarantee */}
+      <section className="py-8 md:py-12 bg-blue-50/50 border-y border-blue-100/50">
+        <div className="container mx-auto px-4 md:px-6 text-center max-w-2xl">
+          <Award className="w-8 h-8 md:w-10 md:h-10 text-primary mx-auto mb-3 md:mb-4" />
+          <h3 className="text-xl font-bold font-display mb-2">Satisfaction Guarantee</h3>
+          <p className="text-slate-600">
+            If we fall short on our registration process due to our error, you receive a full refund. We stand behind every filing.
+          </p>
+        </div>
       </section>
 
       {/* Testimonials */}
       <TestimonialsSection />
 
-      {/* FAQ */}
-      <section id="faq" className="py-12 md:py-20 bg-slate-50">
-        <div className="container mx-auto px-4 md:px-6 max-w-3xl">
-          <h2 className="text-2xl md:text-3xl font-bold font-display text-center mb-8 md:mb-12" data-testid="text-faq-title">Frequently Asked Questions</h2>
-          <Accordion type="single" collapsible className="w-full space-y-2.5 md:space-y-4">
-            {[
-              {
-                q: "Do I need to register for GST/HST?",
-                a: "You generally must register if your worldwide taxable revenues exceed $30,000 in a single calendar quarter or over four consecutive calendar quarters. Taxi and ride-sharing operators must register regardless of revenue."
-              },
-              {
-                q: "What is a Business Number (BN)?",
-                a: "A Business Number (BN) is a 9-digit number the CRA assigns to businesses for tax matters. It stays the same for your business's lifetime."
-              },
-              {
-                q: "How long does registration take?",
-                a: "Processing times vary depending on your application type and CRA workload. We submit your documents promptly and keep you updated throughout the process."
-              },
-              {
-                q: "Can non-residents register?",
-                a: "Yes. Non-resident businesses that make taxable supplies in Canada may be required to register. We specialize in non-resident simplified regime registrations."
-              },
-              {
-                q: "Do non-residents need GST/HST?",
-                a: "If you are a non-resident selling digital products or services to Canadian consumers, you are likely required to register under the simplified GST/HST regime. This applies to digital sellers, SaaS providers, and marketplace facilitators."
-              },
-              {
-                q: "How do I register for CARM as an importer?",
-                a: "CARM (CBSA Assessment and Revenue Management) is the new customs portal. Our Complete Importer Bundle handles end-to-end CARM registration, delegation, and ongoing management so your imports are never delayed."
-              },
-              {
-                q: "What is the simplified registration regime?",
-                a: "The simplified registration regime allows non-resident businesses to register for GST/HST without needing a full Canadian business presence. It streamlines the process for foreign digital sellers."
-              },
-              {
-                q: "Why register voluntarily if I'm under the $30k threshold?",
-                a: "Voluntary registration lets you claim Input Tax Credits (ITCs) on business expenses in Canada, which can offset your tax liability. It also adds credibility when dealing with Canadian business clients."
-              }
-            ].map((faq, i) => (
-              <AccordionItem key={i} value={`item-${i}`} className="bg-white px-6 rounded-xl border border-slate-200 shadow-sm" data-testid={`faq-item-${i}`}>
-                <AccordionTrigger className="text-left font-medium text-slate-900 py-4 md:py-6">{faq.q}</AccordionTrigger>
-                <AccordionContent className="text-slate-600 pb-4 md:pb-6">
-                  {faq.a}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
+      {/* Tracking Teaser */}
+      <section className="py-10 md:py-14 bg-white">
+        <div className="container mx-auto px-4 md:px-6 max-w-2xl text-center">
+          <Search className="w-8 h-8 text-primary mx-auto mb-3" />
+          <h2 className="text-xl md:text-2xl font-bold font-display mb-2">Track Your Application</h2>
+          <p className="text-slate-600 mb-5 text-sm">
+            Already a client? Check the status of your registration or clearance order.
+          </p>
+          <div className="flex flex-col sm:flex-row justify-center gap-3">
+            <Link href="/portal">
+              <Button variant="outline" className="cursor-pointer" data-testid="button-home-portal">
+                Client Portal
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
+            <Link href="/tools/shipment-tracking">
+              <Button variant="outline" className="cursor-pointer" data-testid="button-home-tracking">
+                Shipment Tracking
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* Contact Form */}
-      <ContactSection />
-
       <Footer />
 
-      <RegistrationModal 
-        isOpen={modalOpen} 
-        onClose={() => setModalOpen(false)} 
+      <RegistrationModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
         defaultPackage={selectedPackage}
       />
     </div>
@@ -630,169 +460,6 @@ function TestimonialsSection() {
           </div>
         </div>
       </div>
-    </section>
-  );
-}
-
-function ContactSection() {
-  const [emailModalOpen, setEmailModalOpen] = useState(false);
-  const { submitContact } = useContact();
-
-  const contactFormSchema = z.object({
-    name: z.string().min(1, "Full name is required"),
-    email: z.string().min(1, "Email is required").email("Please enter a valid email"),
-    phone: z.string().optional(),
-    message: z.string().min(1, "Message is required"),
-  });
-
-  const form = useForm<z.infer<typeof contactFormSchema>>({
-    resolver: zodResolver(contactFormSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      phone: "",
-      message: ""
-    }
-  });
-
-  const onSubmit = async (data: z.infer<typeof contactFormSchema>) => {
-    try {
-      await submitContact.mutateAsync({
-        name: data.name,
-        email: data.email,
-        message: data.phone ? `[Phone: ${data.phone}]\n\n${data.message}` : data.message,
-      });
-      form.reset();
-      setEmailModalOpen(false);
-    } catch {
-      const subject = encodeURIComponent("Inquiry from AccessToNorth.com");
-      const body = encodeURIComponent(`Name: ${data.name}\nEmail: ${data.email}\nPhone: ${data.phone || "N/A"}\n\n${data.message}`);
-      window.open(`mailto:operations@accesstonorth.com?subject=${subject}&body=${body}`, "_self");
-    }
-  };
-
-  const handleOpenChat = () => {
-    if (window.Tawk_API && window.Tawk_API.maximize) {
-      window.Tawk_API.maximize();
-    }
-  };
-
-  return (
-    <section id="contact" className="py-12 md:py-20 bg-white">
-      <div className="container mx-auto px-4 md:px-6">
-        <div className="text-center mb-8 md:mb-12">
-          <h2 className="text-2xl md:text-3xl font-bold font-display mb-3 md:mb-4" data-testid="text-contact-title">Get In Touch</h2>
-          <p className="text-sm md:text-base text-slate-600 max-w-lg mx-auto">
-            Have questions about your eligibility or the registration process? Our team of specialists is ready to help.
-          </p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-6 max-w-2xl mx-auto">
-          <button
-            type="button"
-            onClick={() => setEmailModalOpen(true)}
-            data-testid="button-email-us"
-            className="flex-1 flex items-center gap-3 md:gap-4 p-4 md:p-5 rounded-xl border border-slate-200 bg-white shadow-sm cursor-pointer text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-slate-300 active:translate-y-0 active:shadow-sm"
-          >
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-              <Mail className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-slate-900">Email Us</p>
-              <p className="text-sm text-slate-500 truncate">operations@accesstonorth.com</p>
-            </div>
-            <ArrowRight className="w-5 h-5 text-slate-400 shrink-0" />
-          </button>
-
-          <button
-            type="button"
-            onClick={handleOpenChat}
-            data-testid="button-open-tawk-chat"
-            className="flex-1 flex items-center gap-3 md:gap-4 p-4 md:p-5 rounded-xl border border-slate-200 bg-white shadow-sm cursor-pointer text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-slate-300 active:translate-y-0 active:shadow-sm"
-          >
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-              <MessageCircle className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-slate-900">Live AI Support</p>
-              <p className="text-sm text-slate-500">Chat with us instantly</p>
-            </div>
-            <ArrowRight className="w-5 h-5 text-slate-400 shrink-0" />
-          </button>
-        </div>
-      </div>
-
-      <Dialog open={emailModalOpen} onOpenChange={setEmailModalOpen}>
-        <DialogContent className="sm:max-w-[520px] w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto" data-testid="modal-email">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-display">Send Us a Message</DialogTitle>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
-                    <FormControl>
-                      <Input placeholder="John Doe" {...field} data-testid="input-contact-name" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email <span className="text-red-500">*</span></FormLabel>
-                    <FormControl>
-                      <Input placeholder="john@example.com" type="email" {...field} data-testid="input-contact-email" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phone <span className="text-slate-400 text-xs font-normal">(optional)</span></FormLabel>
-                    <FormControl>
-                      <Input placeholder="+1 (555) 000-0000" {...field} data-testid="input-contact-phone" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="message"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Message <span className="text-red-500">*</span></FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="How can we help you?" rows={4} {...field} data-testid="input-contact-message" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={submitContact.isPending}
-                data-testid="button-send-message"
-              >
-                {submitContact.isPending ? "Sending..." : "Send Message"}
-              </Button>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
     </section>
   );
 }

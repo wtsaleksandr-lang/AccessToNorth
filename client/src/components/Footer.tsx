@@ -65,10 +65,11 @@ export function Footer() {
           <div>
             <h4 className="font-semibold text-white mb-3 text-xs tracking-widest uppercase">Services</h4>
             <ul className="space-y-2 text-sm">
-              <li><a href="/#pricing" className="hover:text-white transition-colors">GST/HST Registration</a></li>
-              <li><a href="/#pricing" className="hover:text-white transition-colors">Business Numbers</a></li>
-              <li><a href="/#non-resident" className="hover:text-white transition-colors">Non-Resident Compliance</a></li>
-              <li><a href="/#pricing" className="hover:text-white transition-colors">CARM Importer Bundle</a></li>
+              <li><Link href="/services" className="hover:text-white transition-colors" data-testid="link-footer-services">All Services</Link></li>
+              <li><Link href="/pricing" className="hover:text-white transition-colors" data-testid="link-footer-pricing">Pricing</Link></li>
+              <li><Link href="/services/non-resident-importer-canada" className="hover:text-white transition-colors">Non-Resident Importer</Link></li>
+              <li><Link href="/services/carm-registration-canada" className="hover:text-white transition-colors">CARM Registration</Link></li>
+              <li><Link href="/tools" className="hover:text-white transition-colors" data-testid="link-footer-tools">Trade Tools</Link></li>
             </ul>
           </div>
 

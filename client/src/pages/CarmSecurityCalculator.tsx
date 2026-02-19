@@ -438,7 +438,7 @@ export default function CarmSecurityCalculator() {
                       <p className="text-sm font-medium text-amber-800">Non-Resident Importer</p>
                       <p className="text-xs text-amber-700 mt-0.5">
                         Non-residents may need additional documentation and a resident agent. Our Non-Resident package can help.{" "}
-                        <a href="/#non-resident" className="underline font-medium">Learn more</a>
+                        <a href="/services/non-resident-importer-canada" className="underline font-medium">Learn more</a>
                       </p>
                     </div>
                   </div>

@@ -911,7 +911,7 @@ export default function CustomsCalculator() {
                         <p className="text-xs text-slate-600 dark:text-slate-400">
                           Need confirmation?{" "}
                           <a
-                            href="/#pricing"
+                            href="/services/hs-code-classification-canada"
                             className="text-blue-600 dark:text-blue-400 font-semibold underline underline-offset-2"
                             data-testid="link-hs-review-cta"
                           >
@@ -1430,7 +1430,7 @@ export default function CustomsCalculator() {
                         </div>
                         <div className="pt-2">
                           <a
-                            href="/#pricing"
+                            href="/services/import-compliance-review"
                             className="text-xs text-blue-600 dark:text-blue-400 font-semibold underline underline-offset-2"
                             data-testid="link-measures-review"
                           >
@@ -1633,7 +1633,7 @@ export default function CustomsCalculator() {
               size="lg"
               style={{ backgroundColor: DEEP_BLUE }}
               className="text-white font-semibold min-w-[220px] w-full sm:w-auto justify-center"
-              onClick={() => window.location.href = "/#pricing"}
+              onClick={() => window.location.href = "/services"}
               data-testid="button-view-services"
             >
               View Our Services
