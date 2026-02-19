@@ -12,6 +12,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { motion } from "framer-motion";
+import { useCart } from "@/contexts/CartContext";
 import {
   Shield,
   FileCheck,
@@ -25,26 +26,84 @@ import {
   FileText,
   Send,
   CheckCircle2,
-  Truck,
   Scale,
   Globe,
   DollarSign,
-  ExternalLink,
   Anchor,
+  ShoppingCart,
+  Plus,
 } from "lucide-react";
 
 const DEEP_NAVY = "#0A1E3D";
 
+const PACKAGES = [
+  {
+    id: "lvs-clearance",
+    name: "Low Value Shipment (LVS)",
+    price: 145,
+    priceLabel: "$145",
+    subtitle: "For goods valued under $2,500 CAD",
+    features: [
+      "Electronic customs entry (EDI)",
+      "Duty & GST calculation",
+      "Document review",
+      "Release coordination",
+      "Standard tariff treatment (MFN)",
+    ],
+    bestFor: "Regular importers, low-risk goods under $2,500",
+    highlighted: false,
+  },
+  {
+    id: "commercial-clearance",
+    name: "Commercial Import Clearance",
+    price: 295,
+    priceLabel: "$295",
+    subtitle: "For any goods valued over $2,500 CAD",
+    features: [
+      "Full electronic customs entry",
+      "Duty & tax calculation",
+      "Value validation review",
+      "Release coordination",
+      "Standard tariff treatment",
+      "Basic compliance screening",
+    ],
+    bestFor: "All commercial shipments over $2,500",
+    highlighted: false,
+  },
+  {
+    id: "compliance-clearance",
+    name: "Clearance + Compliance Review",
+    price: 395,
+    priceLabel: "$395",
+    subtitle: "Full clearance plus regulatory compliance analysis",
+    features: [
+      "Everything in Commercial Import Clearance",
+      "HS code verification (1 line)",
+      "Tariff treatment eligibility review (CUSMA / CPTPP / CETA)",
+      "SIMA screening flag check",
+      "Import control screening (CFIA / EICC / others)",
+      "Risk summary report",
+    ],
+    bestFor: "New importers, first-time products, regulated goods",
+    highlighted: true,
+  },
+];
+
+const ADDONS = [
+  { id: "addon-hs-classification", name: "HS Code Classification (1 line)", price: 95, priceLabel: "$95" },
+  { id: "addon-hs-additional", name: "Additional HS Line", price: 25, priceLabel: "$25" },
+  { id: "addon-import-permit", name: "Import Permit Submission", price: 125, priceLabel: "$125" },
+  { id: "addon-cfia", name: "CFIA Coordination", price: 150, priceLabel: "$150" },
+  { id: "addon-b2-correction", name: "B2 Correction", price: 250, priceLabel: "from $250" },
+  { id: "addon-after-hours", name: "After-Hours Clearance", price: 175, priceLabel: "$175" },
+  { id: "addon-importer-setup", name: "Importer Account Setup", price: 95, priceLabel: "$95" },
+  { id: "addon-cbsa-id", name: "CBSA ID Assistance", price: 95, priceLabel: "$95" },
+];
+
 export default function CustomsClearance() {
   const [, setLocation] = useLocation();
   const packagesRef = useRef<HTMLDivElement>(null);
-
-  const navigateToContact = () => {
-    setLocation("/");
-    setTimeout(() => {
-      document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
-    }, 300);
-  };
+  const { addItem, setIsOpen, itemCount } = useCart();
 
   const navigateToCalculator = () => {
     setLocation("/customs-calculator");
@@ -56,9 +115,9 @@ export default function CustomsClearance() {
     const metaDesc = document.querySelector('meta[name="description"]');
     const ogTitle = document.querySelector('meta[property="og:title"]');
     const ogDesc = document.querySelector('meta[property="og:description"]');
-    if (metaDesc) metaDesc.setAttribute("content", "Professional customs clearance coordination for Canadian imports. HS verification, tariff treatment eligibility, SIMA screening, and CARM alignment. Transparent pricing from $125 CAD.");
+    if (metaDesc) metaDesc.setAttribute("content", "Professional customs clearance coordination for Canadian imports. Transparent flat pricing: LVS from $145, Commercial Clearance $295, Compliance Review $395 CAD.");
     if (ogTitle) ogTitle.setAttribute("content", "Canadian Customs Clearance & Import Compliance | AccessToNorth");
-    if (ogDesc) ogDesc.setAttribute("content", "Risk-controlled clearance coordination: customs declarations, HS classification review, compliance screening, and release coordination. Digital-first and structured.");
+    if (ogDesc) ogDesc.setAttribute("content", "Structured, transparent customs clearance. No negotiated pricing, no manual quotes. Flat-rate packages for every shipment.");
     return () => {
       document.title = "AccessToNorth.com - Expert GST/HST & Business Number Registration in Canada";
       if (metaDesc) metaDesc.setAttribute("content", "Expert GST/HST & Business Number Registration in Canada. Fast registration for residents and non-residents. CRA Authorized Representatives. Satisfaction Guarantee.");
@@ -69,6 +128,26 @@ export default function CustomsClearance() {
 
   const scrollToPackages = () => {
     packagesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleAddPackage = (pkg: typeof PACKAGES[0]) => {
+    addItem({
+      id: pkg.id,
+      name: pkg.name,
+      price: pkg.price,
+      priceLabel: pkg.priceLabel,
+      category: "package",
+    });
+  };
+
+  const handleAddAddon = (addon: typeof ADDONS[0]) => {
+    addItem({
+      id: addon.id,
+      name: addon.name,
+      price: addon.price,
+      priceLabel: addon.priceLabel,
+      category: "addon",
+    });
   };
 
   const whyDifferentItems = [
@@ -88,27 +167,29 @@ export default function CustomsClearance() {
   ];
 
   const processSteps = [
-    { step: 1, title: "Submit documents", description: "Send us your commercial invoice, packing list, and bill of lading.", icon: Send },
-    { step: 2, title: "We review & confirm scope", description: "We assess documentation, verify completeness, and confirm the service scope.", icon: Search },
-    { step: 3, title: "Electronic filing", description: "Your customs entry is filed electronically with CBSA via EDI.", icon: FileText },
-    { step: 4, title: "Release confirmation", description: "You receive confirmation once goods are cleared for release.", icon: CheckCircle2 },
-    { step: 5, title: "Compliance summary", description: "If applicable, you receive a compliance summary with any flags or recommendations.", icon: ClipboardCheck },
-  ];
-
-  const addOnServices = [
-    { name: "HS Code Classification (1 line)", price: "$95" },
-    { name: "Additional HS Line", price: "$25" },
-    { name: "Import Permit Submission", price: "$125" },
-    { name: "CFIA Coordination", price: "$150" },
-    { name: "B2 Correction", price: "from $250" },
-    { name: "After-Hours Clearance", price: "$175" },
-    { name: "Importer Account Setup", price: "$95" },
-    { name: "CBSA ID Assistance", price: "$95" },
+    { step: 1, title: "Select your services", description: "Choose a clearance package and any add-ons, then proceed to checkout.", icon: ShoppingCart },
+    { step: 2, title: "Submit required documents", description: "Upload your commercial invoice, packing list, and other documents based on your selected services.", icon: Send },
+    { step: 3, title: "We review & confirm scope", description: "We assess documentation, verify completeness, and confirm the service scope.", icon: Search },
+    { step: 4, title: "Electronic filing", description: "Your customs entry is filed electronically with CBSA via EDI.", icon: FileText },
+    { step: 5, title: "Release confirmation", description: "You receive confirmation once goods are cleared, plus a compliance summary if applicable.", icon: CheckCircle2 },
   ];
 
   return (
     <div className="min-h-screen bg-white">
       <Navbar darkHero />
+
+      {itemCount > 0 && (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-6 right-6 z-40 bg-blue-600 text-white rounded-full p-4 shadow-lg shadow-blue-600/30 cursor-pointer"
+          data-testid="button-floating-cart"
+        >
+          <ShoppingCart className="w-5 h-5" />
+          <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+            {itemCount}
+          </span>
+        </button>
+      )}
 
       {/* HERO SECTION */}
       <section
@@ -129,7 +210,7 @@ export default function CustomsClearance() {
                 Canadian Customs Clearance & Import Compliance
               </h1>
               <p className="text-base md:text-lg text-white/70 mb-8 max-w-lg" data-testid="text-clearance-subheading">
-                Professional coordination of import declarations, HS verification, and regulatory screening — structured, transparent, and digital-first.
+                Flat-rate, transparent pricing. No negotiations, no manual quotes. Select your services, submit documents, and clear your shipment.
               </p>
               <div className="flex flex-col sm:flex-row items-start gap-3">
                 <Button
@@ -139,17 +220,18 @@ export default function CustomsClearance() {
                   data-testid="button-start-clearance"
                 >
                   <Package className="w-4 h-4 mr-2" />
-                  Start Clearance
+                  View Packages
                   <ChevronDown className="w-4 h-4 ml-1" />
                 </Button>
                 <Button
                   size="lg"
                   variant="outline"
                   className="border-white/30 text-white cursor-pointer backdrop-blur-sm"
-                  onClick={scrollToPackages}
-                  data-testid="button-compliance-review"
+                  onClick={navigateToCalculator}
+                  data-testid="button-estimate-duties"
                 >
-                  Get Compliance Review
+                  <DollarSign className="w-4 h-4 mr-1" />
+                  Estimate Duties First
                 </Button>
               </div>
             </motion.div>
@@ -255,215 +337,82 @@ export default function CustomsClearance() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
-            className="text-center mb-10"
+            className="text-center mb-4"
           >
             <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-3 font-display" data-testid="text-packages-heading">
               Clearance Packages
             </h2>
             <p className="text-slate-500 max-w-2xl mx-auto">
-              Transparent pricing for every shipment scenario. All prices in CAD.
+              Transparent, flat-rate pricing. No value-based tiers. All prices in CAD.
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {/* Package 1: Standard */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4 }}
-            >
-              <Card className="p-6 h-full flex flex-col" data-testid="card-package-standard">
-                <div className="mb-4">
-                  <h3 className="text-lg font-bold text-slate-900 mb-1">Standard Commercial Clearance</h3>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-3xl font-bold text-slate-900">$145</span>
-                    <span className="text-sm text-slate-500">CAD</span>
-                  </div>
-                  <p className="text-sm text-slate-500 mt-2">For routine shipments with confirmed HS codes.</p>
-                </div>
-                <div className="space-y-2.5 flex-1">
-                  {["Electronic customs entry (EDI)", "Duty & GST calculation", "Document review", "Release coordination", "Standard tariff treatment (MFN)"].map((f, i) => (
-                    <div key={i} className="flex items-start gap-2.5">
-                      <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm text-slate-600">{f}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-5 pt-4 border-t border-slate-100">
-                  <p className="text-xs text-slate-400 mb-3">Best for: Regular importers, low-risk products</p>
-                  <Button className="w-full cursor-pointer" onClick={navigateToContact} data-testid="button-select-standard">
-                    Select Package
-                    <ArrowRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </div>
-              </Card>
-            </motion.div>
-
-            {/* Package 2: Compliance Review (Recommended) */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.1 }}
-            >
-              <Card className="p-6 h-full flex flex-col border-blue-200 ring-2 ring-blue-100" data-testid="card-package-compliance">
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-lg font-bold text-slate-900">Clearance + Compliance Review</h3>
-                    <Badge className="no-default-hover-elevate no-default-active-elevate bg-blue-100 text-blue-700 border-blue-200">Recommended</Badge>
-                  </div>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-3xl font-bold text-slate-900">$245</span>
-                    <span className="text-sm text-slate-500">CAD</span>
-                  </div>
-                  <p className="text-sm text-slate-500 mt-2">Everything in Standard plus compliance review.</p>
-                </div>
-                <div className="space-y-2.5 flex-1">
-                  {[
-                    "Everything in Standard Clearance",
-                    "HS code verification (1 line)",
-                    "Tariff treatment eligibility review (CUSMA / CPTPP / CETA)",
-                    "SIMA screening flag check",
-                    "Import control screening (CFIA / EICC / others)",
-                    "Risk summary report",
-                  ].map((f, i) => (
-                    <div key={i} className="flex items-start gap-2.5">
-                      <Check className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm text-slate-600">{f}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-5 pt-4 border-t border-blue-100">
-                  <p className="text-xs text-slate-400 mb-3">Best for: New importers, first-time products, medium-risk goods</p>
-                  <Button className="w-full cursor-pointer bg-blue-600" onClick={navigateToContact} data-testid="button-select-compliance">
-                    Select Package
-                    <ArrowRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </div>
-              </Card>
-            </motion.div>
-
-            {/* Package 3: High-Value */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.2 }}
-            >
-              <Card className="p-6 h-full flex flex-col" data-testid="card-package-high-value">
-                <div className="mb-4">
-                  <h3 className="text-lg font-bold text-slate-900 mb-1">High-Value Shipment Clearance</h3>
-                  <p className="text-sm text-slate-500 mt-1">For goods valued above $2,500 CAD.</p>
-                </div>
-                <div className="space-y-3 mb-4">
-                  <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50">
-                    <span className="text-sm text-slate-600">$2,500 – $10,000</span>
-                    <span className="text-sm font-bold text-slate-900">$195</span>
-                  </div>
-                  <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50">
-                    <span className="text-sm text-slate-600">$10,000 – $50,000</span>
-                    <span className="text-sm font-bold text-slate-900">$295</span>
-                  </div>
-                  <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50">
-                    <span className="text-sm text-slate-600">$50,000+</span>
-                    <span className="text-sm font-bold text-slate-900">Custom quote</span>
-                  </div>
-                </div>
-                <div className="space-y-2.5 flex-1">
-                  {["Full electronic entry", "Duty calculation", "Value validation review", "Compliance screening"].map((f, i) => (
-                    <div key={i} className="flex items-start gap-2.5">
-                      <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm text-slate-600">{f}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-5 pt-4 border-t border-slate-100">
-                  <Button className="w-full cursor-pointer" onClick={navigateToContact} data-testid="button-select-high-value">
-                    Get a Quote
-                    <ArrowRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </div>
-              </Card>
-            </motion.div>
+          <div className="flex items-center justify-center gap-6 text-sm text-slate-500 mb-10">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+              <span>Under $2,500 CAD</span>
+              <ArrowRight className="w-3 h-3" />
+              <span className="font-medium text-slate-700">LVS</span>
+            </div>
+            <div className="w-px h-4 bg-slate-200"></div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+              <span>Over $2,500 CAD</span>
+              <ArrowRight className="w-3 h-3" />
+              <span className="font-medium text-slate-700">Commercial</span>
+            </div>
           </div>
 
-          {/* Row 2: B13 + RPP */}
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Package 4: B13 Export */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.1 }}
-            >
-              <Card className="p-6 h-full flex flex-col" data-testid="card-package-b13">
-                <div className="flex items-start justify-between gap-3 mb-4">
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900 mb-1">B13 Export Declaration</h3>
+          <div className="grid md:grid-cols-3 gap-6">
+            {PACKAGES.map((pkg, i) => (
+              <motion.div
+                key={pkg.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.1 }}
+              >
+                <Card
+                  className={`p-6 h-full flex flex-col ${pkg.highlighted ? "border-blue-200 ring-2 ring-blue-100" : ""}`}
+                  data-testid={`card-package-${pkg.id}`}
+                >
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                      <h3 className="text-lg font-bold text-slate-900">{pkg.name}</h3>
+                      {pkg.highlighted && (
+                        <Badge className="no-default-hover-elevate no-default-active-elevate bg-blue-100 text-blue-700 border-blue-200">
+                          Premium
+                        </Badge>
+                      )}
+                    </div>
                     <div className="flex items-baseline gap-1.5">
-                      <span className="text-3xl font-bold text-slate-900">$125</span>
+                      <span className="text-3xl font-bold text-slate-900">{pkg.priceLabel}</span>
                       <span className="text-sm text-slate-500">CAD</span>
                     </div>
+                    <p className="text-sm text-slate-500 mt-2">{pkg.subtitle}</p>
                   </div>
-                  <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0">
-                    <Globe className="w-5 h-5 text-indigo-600" />
+                  <div className="space-y-2.5 flex-1">
+                    {pkg.features.map((f, fi) => (
+                      <div key={fi} className="flex items-start gap-2.5">
+                        <Check className={`w-4 h-4 mt-0.5 flex-shrink-0 ${pkg.highlighted ? "text-blue-600" : "text-green-600"}`} />
+                        <span className="text-sm text-slate-600">{f}</span>
+                      </div>
+                    ))}
                   </div>
-                </div>
-                <div className="space-y-2.5 flex-1">
-                  {["CERS filing", "Confirmation receipt", "Data validation review"].map((f, i) => (
-                    <div key={i} className="flex items-start gap-2.5">
-                      <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm text-slate-600">{f}</span>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-slate-400 mt-3">Urgent processing available.</p>
-                <div className="mt-4 pt-4 border-t border-slate-100">
-                  <Button className="w-full cursor-pointer" variant="outline" onClick={navigateToContact} data-testid="button-select-b13">
-                    Select Package
-                    <ArrowRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </div>
-              </Card>
-            </motion.div>
-
-            {/* Package 5: RPP Bond */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.2 }}
-            >
-              <Card className="p-6 h-full flex flex-col" data-testid="card-package-rpp">
-                <div className="flex items-start justify-between gap-3 mb-4">
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900 mb-1">RPP Bond Coordination</h3>
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="text-3xl font-bold text-slate-900">$395</span>
-                      <span className="text-sm text-slate-500">CAD</span>
-                    </div>
+                  <div className="mt-5 pt-4 border-t border-slate-100">
+                    <p className="text-xs text-slate-400 mb-3">Best for: {pkg.bestFor}</p>
+                    <Button
+                      className={`w-full cursor-pointer ${pkg.highlighted ? "bg-blue-600" : ""}`}
+                      onClick={() => handleAddPackage(pkg)}
+                      data-testid={`button-add-${pkg.id}`}
+                    >
+                      <ShoppingCart className="w-4 h-4 mr-1" />
+                      Add to Cart
+                    </Button>
                   </div>
-                  <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
-                    <Shield className="w-5 h-5 text-emerald-600" />
-                  </div>
-                </div>
-                <div className="space-y-2.5 flex-1">
-                  {["Bond coordination", "CARM validation", "Security calculation review", "Release setup assistance"].map((f, i) => (
-                    <div key={i} className="flex items-start gap-2.5">
-                      <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm text-slate-600">{f}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-5 pt-4 border-t border-slate-100">
-                  <Button className="w-full cursor-pointer" variant="outline" onClick={navigateToContact} data-testid="button-select-rpp">
-                    Select Package
-                    <ArrowRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </div>
-              </Card>
-            </motion.div>
+                </Card>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
@@ -481,22 +430,36 @@ export default function CustomsClearance() {
             <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-3 font-display" data-testid="text-addons-heading">
               Add-On Services
             </h2>
-            <p className="text-slate-500">Available alongside any clearance package.</p>
+            <p className="text-slate-500">Available alongside any clearance package. All prices in CAD.</p>
           </motion.div>
 
           <Card className="divide-y divide-slate-100" data-testid="card-addons">
-            {addOnServices.map((service, i) => (
+            {ADDONS.map((addon, i) => (
               <motion.div
-                key={i}
+                key={addon.id}
                 initial={{ opacity: 0 }}
                 whileInView={{ opacity: 1 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.3, delay: i * 0.05 }}
-                className="flex items-center justify-between px-5 py-3.5"
-                data-testid={`addon-${i}`}
+                className="flex items-center justify-between px-5 py-3.5 gap-3"
+                data-testid={`addon-${addon.id}`}
               >
-                <span className="text-sm text-slate-700">{service.name}</span>
-                <span className="text-sm font-bold text-slate-900 whitespace-nowrap ml-4">{service.price}</span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm text-slate-700">{addon.name}</span>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <span className="text-sm font-bold text-slate-900 whitespace-nowrap">{addon.priceLabel} CAD</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="cursor-pointer"
+                    onClick={() => handleAddAddon(addon)}
+                    data-testid={`button-add-${addon.id}`}
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" />
+                    Add
+                  </Button>
+                </div>
               </motion.div>
             ))}
           </Card>
@@ -516,7 +479,7 @@ export default function CustomsClearance() {
             <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-3 font-display" data-testid="text-process-heading">
               How It Works
             </h2>
-            <p className="text-slate-500">A clear, structured process from documents to release.</p>
+            <p className="text-slate-500">A clear, structured process from selection to release.</p>
           </motion.div>
 
           <div className="relative">
@@ -556,6 +519,15 @@ export default function CustomsClearance() {
           </div>
 
           <Accordion type="single" collapsible className="space-y-3">
+            <AccordionItem value="pricing" className="bg-white rounded-lg border px-4" data-testid="faq-pricing">
+              <AccordionTrigger className="text-sm font-medium text-slate-800 py-4 text-left">
+                Why flat-rate pricing instead of percentage-based?
+              </AccordionTrigger>
+              <AccordionContent className="text-sm text-slate-600 pb-4 text-left">
+                Flat-rate pricing provides full transparency. You know the exact cost before you begin. No surprises, no negotiations, no hidden fees based on shipment value. This is how modern platforms operate.
+              </AccordionContent>
+            </AccordionItem>
+
             <AccordionItem value="duty-rates" className="bg-white rounded-lg border px-4" data-testid="faq-duty-rates">
               <AccordionTrigger className="text-sm font-medium text-slate-800 py-4 text-left">
                 Do you guarantee duty rates?
@@ -591,15 +563,6 @@ export default function CustomsClearance() {
                 Standard commercial clearance is typically processed within 1-2 business days after we receive complete documentation. Compliance review packages may take an additional business day. Urgent processing is available for time-sensitive shipments.
               </AccordionContent>
             </AccordionItem>
-
-            <AccordionItem value="documents" className="bg-white rounded-lg border px-4" data-testid="faq-documents">
-              <AccordionTrigger className="text-sm font-medium text-slate-800 py-4 text-left">
-                What documents do I need to provide?
-              </AccordionTrigger>
-              <AccordionContent className="text-sm text-slate-600 pb-4 text-left">
-                At minimum: commercial invoice, packing list, and bill of lading or airway bill. Depending on the goods, you may also need certificates of origin, import permits, or product-specific documentation. We will advise you on any additional requirements during the scope confirmation step.
-              </AccordionContent>
-            </AccordionItem>
           </Accordion>
         </div>
       </section>
@@ -617,17 +580,17 @@ export default function CustomsClearance() {
               Ready to clear your shipment?
             </h2>
             <p className="text-slate-500 mb-6 max-w-lg mx-auto">
-              Submit your documents and we will confirm scope, pricing, and timeline within one business day.
+              Select your clearance package, add any services you need, and proceed to checkout. Structured. Transparent. Platform-based.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Button
                 size="lg"
                 className="min-w-[220px] w-full sm:w-auto justify-center cursor-pointer"
-                onClick={navigateToContact}
-                data-testid="button-cta-contact"
+                onClick={scrollToPackages}
+                data-testid="button-cta-packages"
               >
-                Contact Us to Start
-                <ArrowRight className="w-4 h-4 ml-1" />
+                <Package className="w-4 h-4 mr-1" />
+                View Packages
               </Button>
               <Button
                 size="lg"

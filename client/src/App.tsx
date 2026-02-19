@@ -3,6 +3,8 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { CartProvider } from "@/contexts/CartContext";
+import { CartPanel } from "@/components/CartPanel";
 import Home from "@/pages/Home";
 import ClientPortal from "@/pages/ClientPortal";
 import PaymentSuccess from "@/pages/PaymentSuccess";
@@ -15,6 +17,7 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import CarmSecurityCalculator from "@/pages/CarmSecurityCalculator";
 import CustomsCalculator from "@/pages/CustomsCalculator";
 import CustomsClearance from "@/pages/CustomsClearance";
+import ClearanceCheckout from "@/pages/ClearanceCheckout";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -32,6 +35,7 @@ function Router() {
       <Route path="/carm-security-calculator" component={CarmSecurityCalculator} />
       <Route path="/customs-calculator" component={CustomsCalculator} />
       <Route path="/canadian-customs-clearance" component={CustomsClearance} />
+      <Route path="/canadian-customs-clearance/checkout" component={ClearanceCheckout} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -41,8 +45,11 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Router />
+        <CartProvider>
+          <Toaster />
+          <CartPanel />
+          <Router />
+        </CartProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
