@@ -337,6 +337,7 @@ export function registerCustomsRoutes(app: Express) {
         results.map((r) => ({
           code: r.code,
           description: r.description,
+          descriptionFull: r.descriptionFull || r.description,
           chapter: r.chapter,
           unitOfMeasure: r.unitOfMeasure,
         }))

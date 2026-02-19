@@ -346,8 +346,9 @@ export default function CustomsCalculator() {
   }, []);
 
   const handleProductSelect = (item: HsCodeResult & { score: number }) => {
-    setSelectedHsCode({ code: item.code, description: item.description, chapter: item.chapter, unitOfMeasure: item.unitOfMeasure });
-    setProductQuery(`${item.code} - ${item.description}`);
+    const displayDesc = item.descriptionFull || item.description;
+    setSelectedHsCode({ code: item.code, description: item.description, descriptionFull: displayDesc, chapter: item.chapter, unitOfMeasure: item.unitOfMeasure });
+    setProductQuery(`${item.code} - ${displayDesc.length > 80 ? displayDesc.substring(0, 80) + "..." : displayDesc}`);
     setShowProductDropdown(false);
     setInputError("");
   };
@@ -365,8 +366,9 @@ export default function CustomsCalculator() {
   };
 
   const handleHsSelect = (item: HsCodeResult) => {
-    setSelectedHsCode(item);
-    setHsQuery(`${item.code} - ${item.description}`);
+    const displayDesc = item.descriptionFull || item.description;
+    setSelectedHsCode({ ...item, descriptionFull: displayDesc });
+    setHsQuery(`${item.code} - ${displayDesc.length > 80 ? displayDesc.substring(0, 80) + "..." : displayDesc}`);
     setShowHsDropdown(false);
     setInputError("");
   };
@@ -939,7 +941,11 @@ export default function CustomsCalculator() {
                         <p className="text-xs font-semibold text-blue-800 dark:text-blue-300">
                           Selected: {selectedHsCode.code}
                         </p>
-                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">{selectedHsCode.description}</p>
+                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+                          {((selectedHsCode.descriptionFull || selectedHsCode.description).length > 120 
+                            ? (selectedHsCode.descriptionFull || selectedHsCode.description).substring(0, 120) + "..." 
+                            : (selectedHsCode.descriptionFull || selectedHsCode.description))}
+                        </p>
                       </div>
                       <button
                         type="button"
