@@ -48,6 +48,7 @@ import {
   ArrowRight,
   X,
   AlertTriangle,
+  ExternalLink,
   Mail,
   Building2,
 } from "lucide-react";
@@ -159,11 +160,41 @@ function formatPercent(value: number): string {
 const TARIFF_TOOLTIPS: Record<string, { title: string; description: string }> = {
   MFN: { title: "Most Favoured Nation (MFN)", description: "The default tariff rate applied to imports from countries that do not have a preferential trade agreement with Canada." },
   GPT: { title: "General Preferential Tariff (GPT)", description: "A Canadian tariff program providing reduced or zero duty rates for imports from eligible developing countries." },
+  LDCT: { title: "Least Developed Country Tariff (LDCT)", description: "Duty-free or reduced-rate access for imports from the world's least developed countries, as designated by the United Nations." },
+  CCCT: { title: "Commonwealth Caribbean Countries Tariff (CCCT)", description: "Preferential tariff rates for imports from Commonwealth Caribbean nations under the CARIBCAN program." },
+  UST: { title: "United States Tariff (UST)", description: "Preferential tariff rate for qualifying goods originating in the United States under CUSMA (formerly NAFTA)." },
+  MXT: { title: "Mexico Tariff (MXT)", description: "Preferential tariff rate for qualifying goods originating in Mexico under CUSMA (formerly NAFTA)." },
+  CPTPT: { title: "Comprehensive and Progressive Agreement for Trans-Pacific Partnership (CPTPP)", description: "A trade agreement between Canada and multiple Indo-Pacific partner countries that can reduce duties on qualifying goods. Eligibility depends on rules of origin and valid proof." },
+  CT: { title: "Chile Tariff (CT)", description: "Preferential tariff rate for qualifying goods originating in Chile under the Canada–Chile Free Trade Agreement." },
+  CEUT: { title: "Canada–European Union Tariff (CETA)", description: "Preferential tariff rate under the Comprehensive Economic and Trade Agreement between Canada and the European Union." },
+  UKT: { title: "Canada–United Kingdom Tariff (CUKTCA)", description: "Preferential tariff rate under the Canada–United Kingdom Trade Continuity Agreement." },
+  AUT: { title: "Australia Tariff (AUT)", description: "Preferential tariff rate for qualifying goods originating in Australia under the Canada–Australia trade arrangement." },
+  NZT: { title: "New Zealand Tariff (NZT)", description: "Preferential tariff rate for qualifying goods originating in New Zealand under the applicable trade arrangement." },
+  CIAT: { title: "Canada–Israel Agreement Tariff (CIAT)", description: "Preferential tariff rate for qualifying goods originating in Israel under the Canada–Israel Free Trade Agreement." },
+  COLT: { title: "Colombia Tariff (COLT)", description: "Preferential tariff rate for qualifying goods originating in Colombia under the Canada–Colombia Free Trade Agreement." },
+  CRT: { title: "Costa Rica Tariff (CRT)", description: "Preferential tariff rate for qualifying goods originating in Costa Rica under the Canada–Costa Rica Free Trade Agreement." },
+  HNT: { title: "Honduras Tariff (HNT)", description: "Preferential tariff rate for qualifying goods originating in Honduras under the Canada–Honduras Free Trade Agreement." },
+  PAT: { title: "Panama Tariff (PAT)", description: "Preferential tariff rate for qualifying goods originating in Panama under the Canada–Panama Free Trade Agreement." },
+  PT: { title: "Peru Tariff (PT)", description: "Preferential tariff rate for qualifying goods originating in Peru under the Canada–Peru Free Trade Agreement." },
+  KRT: { title: "Korea Tariff (KRT)", description: "Preferential tariff rate for qualifying goods originating in South Korea under the Canada–Korea Free Trade Agreement." },
+  JT: { title: "Jordan Tariff (JT)", description: "Preferential tariff rate for qualifying goods originating in Jordan under the Canada–Jordan Free Trade Agreement." },
+  IT: { title: "Iceland Tariff (IT)", description: "Preferential tariff rate for qualifying goods originating in Iceland under the Canada–EFTA Free Trade Agreement." },
+  NT: { title: "Norway Tariff (NT)", description: "Preferential tariff rate for qualifying goods originating in Norway under the Canada–EFTA Free Trade Agreement." },
+  SLT: { title: "Switzerland–Liechtenstein Tariff (SLT)", description: "Preferential tariff rate for qualifying goods originating in Switzerland or Liechtenstein under the Canada–EFTA Free Trade Agreement." },
+  UAT: { title: "Ukraine Tariff (UAT)", description: "Preferential tariff rate for qualifying goods originating in Ukraine under the Canada–Ukraine Free Trade Agreement." },
   CUSMA: { title: "Canada–United States–Mexico Agreement (CUSMA)", description: "A trade agreement between Canada, the US, and Mexico. Goods must meet specific regional value content and origin rules to qualify for preferential rates." },
-  CPTPP: { title: "Comprehensive and Progressive Trans-Pacific Partnership (CPTPP)", description: "A trade agreement among 11 Pacific Rim countries providing reduced tariffs on qualifying goods." },
+  CPTPP: { title: "Comprehensive and Progressive Agreement for Trans-Pacific Partnership (CPTPP)", description: "A trade agreement between Canada and multiple Indo-Pacific partner countries that can reduce duties on qualifying goods. Eligibility depends on rules of origin and valid proof." },
   CETA: { title: "Canada–EU Comprehensive Economic and Trade Agreement (CETA)", description: "A trade agreement reducing duties on qualifying goods traded between Canada and EU member states." },
   CUKTCA: { title: "Canada–UK Trade Continuity Agreement (CUKTCA)", description: "A trade agreement maintaining preferential tariff treatment for goods traded between Canada and the UK." },
 };
+
+function getTariffTooltipData(code: string): { title: string; description: string } {
+  if (TARIFF_TOOLTIPS[code]) return TARIFF_TOOLTIPS[code];
+  return {
+    title: `Tariff Treatment: ${code}`,
+    description: "This is a Canadian tariff treatment category. Eligibility depends on origin and proof. If unsure, use MFN or request a review.",
+  };
+}
 
 function TariffTooltip({ abbr, title, description }: { abbr: string; title: string; description: string }) {
   return (
@@ -1208,11 +1239,7 @@ export default function CustomsCalculator() {
                     <div>
                       <p className="text-xs text-slate-400">Tariff Treatment</p>
                       <p className="text-slate-800">
-                        {TARIFF_TOOLTIPS[result.appliedTreatment] ? (
-                          <TariffTooltip abbr={result.appliedTreatment} {...TARIFF_TOOLTIPS[result.appliedTreatment]} />
-                        ) : (
-                          result.appliedTreatmentName
-                        )}
+                        <TariffTooltip abbr={result.appliedTreatment} {...getTariffTooltipData(result.appliedTreatment)} />
                       </p>
                     </div>
                     <div>
@@ -1307,11 +1334,7 @@ export default function CustomsCalculator() {
                               <Check className="w-3.5 h-3.5 text-blue-600" />
                             )}
                             <span className={treatment === result.appliedTreatment ? "font-semibold text-blue-800" : "text-slate-600"}>
-                              {TARIFF_TOOLTIPS[treatment] ? (
-                                <TariffTooltip abbr={treatment} {...TARIFF_TOOLTIPS[treatment]} />
-                              ) : (
-                                treatment
-                              )}
+                              <TariffTooltip abbr={treatment} {...getTariffTooltipData(treatment)} />
                             </span>
                           </div>
                           <div className="flex items-center gap-4">
@@ -1354,20 +1377,56 @@ export default function CustomsCalculator() {
                     <CollapsibleContent>
                       <div className="px-4 pb-4 space-y-3">
                         <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">SIMA (Anti-Dumping & Countervailing Duties)</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">This tool does not automatically calculate SIMA duties. Certain goods from specific countries may be subject to additional anti-dumping or countervailing duties. Check the CBSA SIMA measures list for your product.</p>
+                          <a
+                            href="https://www.cbsa-asfc.gc.ca/sima-lmsi/menu-eng.html"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                            data-testid="link-sima"
+                          >
+                            SIMA (Anti-Dumping & Countervailing Duties)
+                            <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                          </a>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">This tool does not automatically calculate SIMA duties. Certain goods from specific countries may be subject to additional anti-dumping or countervailing duties. Check the CBSA SIMA measures list for your product.</p>
                         </div>
                         <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Excise Duties</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Alcohol, tobacco, cannabis, fuel, and certain vehicles may be subject to excise duties not calculated here. These are assessed separately by CBSA.</p>
+                          <a
+                            href="https://www.canada.ca/en/revenue-agency/services/tax/excise-duties-levies.html"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                            data-testid="link-excise"
+                          >
+                            Excise Duties
+                            <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                          </a>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Alcohol, tobacco, cannabis, fuel, and certain vehicles may be subject to excise duties not calculated here. These are assessed separately by CBSA.</p>
                         </div>
                         <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Surtaxes & Temporary Measures</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Retaliatory or temporary surtaxes may apply to certain goods from specific countries. These measures change periodically and are not included in this estimate.</p>
+                          <a
+                            href="https://www.cbsa-asfc.gc.ca/trade-commerce/tariff-tarif/surtax-eng.html"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                            data-testid="link-surtax"
+                          >
+                            Surtaxes & Temporary Measures
+                            <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                          </a>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Retaliatory or temporary surtaxes may apply to certain goods from specific countries. These measures change periodically and are not included in this estimate.</p>
                         </div>
                         <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Import Controls (Permits, Quotas, Prohibitions)</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Certain goods require import permits, are subject to tariff rate quotas, or are prohibited. Check with CBSA or Global Affairs Canada for your product category.</p>
+                          <a
+                            href="https://www.international.gc.ca/controls-controles/about-a_propos/impor/permits-licences.aspx?lang=eng"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                            data-testid="link-import-controls"
+                          >
+                            Import Controls (Permits, Quotas, Prohibitions)
+                            <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                          </a>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Certain goods require import permits, are subject to tariff rate quotas, or are prohibited. Check with CBSA or Global Affairs Canada for your product category.</p>
                         </div>
                         <div className="pt-2">
                           <a
@@ -1515,7 +1574,7 @@ export default function CustomsCalculator() {
                 Canada has free trade agreements with many countries that reduce or eliminate import duties.
                 The calculator automatically applies the best available rate based on the country of origin.
                 Key agreements include <TariffTooltip abbr="CUSMA" {...TARIFF_TOOLTIPS.CUSMA} /> (US/Mexico),{" "}
-                <TariffTooltip abbr="CPTPP" {...TARIFF_TOOLTIPS.CPTPP} /> (Pacific Rim),{" "}
+                <TariffTooltip abbr="CPTPP" {...TARIFF_TOOLTIPS.CPTPP} /> (Indo-Pacific),{" "}
                 <TariffTooltip abbr="CETA" {...TARIFF_TOOLTIPS.CETA} /> (EU), and{" "}
                 <TariffTooltip abbr="CUKTCA" {...TARIFF_TOOLTIPS.CUKTCA} /> (UK).{" "}
                 <TariffTooltip abbr="MFN" {...TARIFF_TOOLTIPS.MFN} /> is the default rate for countries without a special trade agreement.
