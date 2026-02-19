@@ -60,6 +60,7 @@ const DEEP_BLUE = "#0A2540";
 interface HsCodeResult {
   code: string;
   description: string;
+  descriptionFull?: string;
   chapter: string;
   unitOfMeasure: string | null;
 }
@@ -891,11 +892,14 @@ export default function CustomsCalculator() {
                               onClick={() => handleProductSelect(item)}
                               data-testid={`option-product-${item.code}`}
                             >
-                              <span className="text-sm font-mono font-bold text-blue-700 dark:text-blue-400">{item.code}</span>
-                              <span className="text-sm text-slate-600 dark:text-slate-300 ml-2">
-                                {item.description.length > 80 ? item.description.substring(0, 80) + "..." : item.description}
-                              </span>
-                              <span className="text-xs text-slate-400 ml-1">({Math.round(item.score * 100)}% match)</span>
+                              <div className="flex items-start gap-2">
+                                <span className="text-sm font-mono font-bold text-blue-700 dark:text-blue-400 shrink-0">{item.code}</span>
+                                <span className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2">
+                                  {(item.descriptionFull || item.description).length > 140 
+                                    ? (item.descriptionFull || item.description).substring(0, 140) + "..." 
+                                    : (item.descriptionFull || item.description)}
+                                </span>
+                              </div>
                             </button>
                           ))}
                         </motion.div>
