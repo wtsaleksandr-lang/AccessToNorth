@@ -20,6 +20,7 @@ interface ResourceArticleProps {
   outlinePoints: string[];
   relatedLinks?: RelatedLink[];
   ctaText?: string;
+  ctaService?: string;
 }
 
 export function ResourceArticlePage({
@@ -30,6 +31,7 @@ export function ResourceArticlePage({
   outlinePoints,
   relatedLinks,
   ctaText = "Need help? Request a consultation",
+  ctaService,
 }: ResourceArticleProps) {
   usePageMeta({ title: metaTitle, description: metaDescription, canonical });
 
@@ -77,7 +79,7 @@ export function ResourceArticlePage({
           )}
 
           <div className="flex flex-col sm:flex-row gap-3">
-            <Link href="/request">
+            <Link href={ctaService ? `/request?service=${ctaService}` : "/request"}>
               <Button size="lg" className="cursor-pointer w-full sm:w-auto" data-testid="button-article-cta">
                 {ctaText} <ArrowRight className="w-5 h-5 ml-2" />
               </Button>

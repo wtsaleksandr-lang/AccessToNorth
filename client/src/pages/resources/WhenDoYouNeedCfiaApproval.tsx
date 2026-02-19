@@ -18,6 +18,7 @@ export default function WhenDoYouNeedCfiaApproval() {
         { label: "Import Compliance Review", href: "/services/import-compliance-review" },
         { label: "Customs Clearance", href: "/services/customs-clearance-canada" },
       ]}
+      ctaService="compliance-review"
     />
   );
 }

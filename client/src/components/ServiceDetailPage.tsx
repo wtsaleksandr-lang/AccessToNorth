@@ -90,9 +90,9 @@ export function ServiceDetailPage({
           )}
 
           <div className="flex flex-col sm:flex-row gap-3">
-            <Link href={`/request?service=${ctaService}`}>
+            <Link href={ctaService === "customs-clearance" ? "/canadian-customs-clearance" : `/request?service=${ctaService}`}>
               <Button size="lg" className="cursor-pointer w-full sm:w-auto" data-testid="button-request-service">
-                Request This Service
+                {ctaService === "customs-clearance" ? "View Clearance Packages" : "Request This Service"}
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </Link>

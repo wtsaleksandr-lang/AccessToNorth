@@ -18,6 +18,7 @@ export default function WhatIsSimaDuty() {
         { label: "Import Compliance Review", href: "/services/import-compliance-review" },
         { label: "HS Code Classification", href: "/services/hs-code-classification-canada" },
       ]}
+      ctaService="compliance-review"
     />
   );
 }

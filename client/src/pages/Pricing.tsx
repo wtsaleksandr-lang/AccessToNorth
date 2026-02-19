@@ -13,6 +13,7 @@ interface PricingItem {
   note?: string;
   service: string;
   isBundle?: boolean;
+  isClearance?: boolean;
 }
 
 interface PricingSection {
@@ -29,7 +30,7 @@ const sections: PricingSection[] = [
       { name: "Business Number (BN)", price: "$99", service: "business-number" },
       { name: "GST/HST Registration", price: "$249", service: "gst-hst" },
       { name: "Non-Resident Setup", price: "$399", service: "non-resident" },
-      { name: "Business Starter Bundle", price: "$299", note: "BN + GST/HST", service: "business-number", isBundle: true },
+      { name: "Business Starter Bundle", price: "$299", note: "BN + GST/HST", service: "business-starter", isBundle: true },
     ],
   },
   {
@@ -45,9 +46,9 @@ const sections: PricingSection[] = [
     id: "clearance",
     title: "Customs Clearance",
     items: [
-      { name: "Low-Value Import Clearance", price: "$145", note: "Under $2,500 CAD", service: "customs-clearance" },
-      { name: "Commercial Import Clearance", price: "$295", note: "Over $2,500 CAD", service: "customs-clearance" },
-      { name: "Clearance + Compliance Review", price: "$395", service: "customs-clearance" },
+      { name: "Low-Value Import Clearance", price: "$145", note: "Under $2,500 CAD", service: "clearance-lvs", isClearance: true },
+      { name: "Commercial Import Clearance", price: "$295", note: "Over $2,500 CAD", service: "clearance-commercial", isClearance: true },
+      { name: "Clearance + Compliance Review", price: "$395", service: "clearance-compliance", isClearance: true },
     ],
   },
   {
@@ -161,9 +162,9 @@ export default function Pricing() {
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
                             <span className="font-bold text-slate-900 text-sm">{item.price}</span>
-                            <Link href={buildRequestUrl(item.service)}>
+                            <Link href={item.isClearance ? "/canadian-customs-clearance" : buildRequestUrl(item.service)}>
                               <Button size="sm" className="cursor-pointer" data-testid={`button-select-${item.service}`}>
-                                Select
+                                {item.isClearance ? "View Packages" : "Select"}
                               </Button>
                             </Link>
                           </div>
@@ -184,9 +185,9 @@ export default function Pricing() {
                           ))}
                         </div>
                         <div className="mt-3">
-                          <Link href="/request">
+                          <Link href={section.id === "clearance" ? "/canadian-customs-clearance" : "/request"}>
                             <Button variant="outline" size="sm" className="cursor-pointer text-xs" data-testid="button-request-addons">
-                              Request with Add-ons <ArrowRight className="w-3 h-3 ml-1" />
+                              {section.id === "clearance" ? "View Clearance Packages" : "Request with Add-ons"} <ArrowRight className="w-3 h-3 ml-1" />
                             </Button>
                           </Link>
                         </div>

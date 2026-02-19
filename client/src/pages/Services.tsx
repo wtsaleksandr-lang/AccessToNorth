@@ -85,9 +85,9 @@ export default function Services() {
                               Learn More <ArrowRight className="w-4 h-4 ml-2" />
                             </Button>
                           </Link>
-                          <Link href={`/request?service=${service.cta}`}>
+                          <Link href={service.cta === "customs-clearance" ? "/canadian-customs-clearance" : `/request?service=${service.cta}`}>
                             <Button className="w-full cursor-pointer" data-testid={`button-request-${service.cta}`}>
-                              Request Service
+                              {service.cta === "customs-clearance" ? "View Packages" : "Request Service"}
                             </Button>
                           </Link>
                         </div>

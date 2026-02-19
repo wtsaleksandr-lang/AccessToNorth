@@ -18,6 +18,8 @@ export default function CustomsClearanceUnder2500() {
         { label: "Customs Clearance", href: "/services/customs-clearance-canada" },
         { label: "Duty Calculator", href: "/customs-calculator" },
       ]}
+      ctaText="Get a clearance quote"
+      ctaService="carm"
     />
   );
 }

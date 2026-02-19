@@ -19,6 +19,7 @@ export default function HowToImportIntoCanada() {
         { label: "Customs Duty Calculator", href: "/customs-calculator" },
         { label: "Customs Clearance", href: "/services/customs-clearance-canada" },
       ]}
+      ctaService="carm"
     />
   );
 }

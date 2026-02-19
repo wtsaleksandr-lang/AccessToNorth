@@ -18,6 +18,7 @@ export default function FclVsLclCostComparison() {
         { label: "Customs Clearance", href: "/services/customs-clearance-canada" },
         { label: "Freight Quote", href: "/tools/freight-quote" },
       ]}
+      ctaService="carm"
     />
   );
 }

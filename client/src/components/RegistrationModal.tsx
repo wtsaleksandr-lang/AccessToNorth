@@ -41,8 +41,12 @@ type FormValues = z.infer<typeof formSchema>;
 const packageLabels: Record<string, string> = {
   "business-number": "Business Number ($99)",
   "gst-hst": "GST/HST Registration ($249)",
+  "business-starter": "Business Starter Bundle ($299)",
   "non-resident": "Non-Resident ($399)",
   "carm": "CARM Portal ($499)",
+  "rpp-bond": "RPP / Bond Coordination ($395)",
+  "b13-export": "B13 Export Declaration ($125)",
+  "hs-classification": "HS Code Classification ($95)",
   "complete-bundle": "Complete Importer Bundle ($1,500)",
 };
 
@@ -240,7 +244,11 @@ export function RegistrationModal({ isOpen, onClose, defaultPackage }: Registrat
                         <SelectContent>
                           <SelectItem value="business-number">Business Number ($99)</SelectItem>
                           <SelectItem value="gst-hst">GST/HST Registration ($249)</SelectItem>
+                          <SelectItem value="business-starter">Business Starter Bundle ($299)</SelectItem>
                           <SelectItem value="non-resident">Non-Resident ($399)</SelectItem>
+                          <SelectItem value="hs-classification">HS Code Classification ($95)</SelectItem>
+                          <SelectItem value="b13-export">B13 Export Declaration ($125)</SelectItem>
+                          <SelectItem value="rpp-bond">RPP / Bond Coordination ($395)</SelectItem>
                           <SelectItem value="carm">CARM Portal ($499)</SelectItem>
                           <SelectItem value="complete-bundle">Importer Bundle ($1,500)</SelectItem>
                         </SelectContent>

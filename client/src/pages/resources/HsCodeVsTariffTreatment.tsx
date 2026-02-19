@@ -18,6 +18,7 @@ export default function HsCodeVsTariffTreatment() {
         { label: "HS Code Classification", href: "/services/hs-code-classification-canada" },
         { label: "Duty Calculator", href: "/customs-calculator" },
       ]}
+      ctaService="hs-classification"
     />
   );
 }

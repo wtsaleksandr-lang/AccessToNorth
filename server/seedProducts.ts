@@ -31,6 +31,30 @@ const PACKAGES = [
     price: 150000,
     metadata: { packageType: 'complete-bundle', features: 'Everything in CARM,BN Registration,GST/HST,Import/Export Account,Priority Support' },
   },
+  {
+    name: 'Business Starter Bundle',
+    description: 'Business Number + GST/HST Registration bundle at a discounted rate.',
+    price: 29900,
+    metadata: { packageType: 'business-starter', features: 'BN Registration,GST/HST Registration,CRA Account Setup,Filing Guidance' },
+  },
+  {
+    name: 'B13 Export Declaration',
+    description: 'Canadian Export Declaration filing for goods leaving Canada (over $2,000 CAD).',
+    price: 12500,
+    metadata: { packageType: 'b13-export', features: 'B13 Filing,CERS Submission,Export Compliance' },
+  },
+  {
+    name: 'RPP / Bond Coordination',
+    description: 'Release Prior to Payment program enrollment and surety bond coordination with CBSA.',
+    price: 39500,
+    metadata: { packageType: 'rpp-bond', features: 'RPP Enrollment,Surety Bond Setup,CBSA Coordination,Financial Security' },
+  },
+  {
+    name: 'HS Code Classification',
+    description: 'Accurate tariff classification for your products to avoid penalties and duty overpayment.',
+    price: 9500,
+    metadata: { packageType: 'hs-classification', features: 'HS Code Research,Tariff Classification,Ruling Support' },
+  },
 ];
 
 export async function seedProducts() {
