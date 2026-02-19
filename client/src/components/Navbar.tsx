@@ -28,6 +28,7 @@ export function Navbar({ darkHero = false }: NavbarProps) {
     { name: "Pricing", href: "/#pricing" },
     { name: "CARM Calculator", href: "/carm-security-calculator" },
     { name: "Customs Calculator", href: "/customs-calculator" },
+    { name: "Customs Clearance", href: "/canadian-customs-clearance" },
     { name: "Non-Residents", href: "/#non-resident" },
     { name: "FAQ", href: "/#faq" },
     { name: "Contact", href: "/#contact" },

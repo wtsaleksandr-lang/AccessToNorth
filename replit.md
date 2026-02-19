@@ -12,7 +12,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend Architecture
 - **Framework**: React 18 with TypeScript
-- **Routing**: Wouter (lightweight client-side router) with pages: Home (`/`), Client Portal (`/portal`), Payment Success (`/payment-success`), Payment Cancel (`/payment-cancel`), CARM Security Calculator (`/carm-security-calculator`), Customs Calculator (`/customs-calculator`), Admin Dashboard (`/admin`)
+- **Routing**: Wouter (lightweight client-side router) with pages: Home (`/`), Client Portal (`/portal`), Payment Success (`/payment-success`), Payment Cancel (`/payment-cancel`), CARM Security Calculator (`/carm-security-calculator`), Customs Calculator (`/customs-calculator`), Customs Clearance (`/canadian-customs-clearance`), Admin Dashboard (`/admin`)
 - **Styling**: Tailwind CSS with CSS variables for theming, using a professional blue (#007BFF) primary color with Canadian red accents
 - **UI Components**: shadcn/ui (new-york style) built on Radix UI primitives, located in `client/src/components/ui/`
 - **Animations**: Framer Motion for scroll reveals and interactions

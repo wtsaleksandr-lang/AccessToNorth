@@ -14,6 +14,7 @@ import Contact from "@/pages/Contact";
 import AdminDashboard from "@/pages/AdminDashboard";
 import CarmSecurityCalculator from "@/pages/CarmSecurityCalculator";
 import CustomsCalculator from "@/pages/CustomsCalculator";
+import CustomsClearance from "@/pages/CustomsClearance";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -30,6 +31,7 @@ function Router() {
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/carm-security-calculator" component={CarmSecurityCalculator} />
       <Route path="/customs-calculator" component={CustomsCalculator} />
+      <Route path="/canadian-customs-clearance" component={CustomsClearance} />
       <Route component={NotFound} />
     </Switch>
   );
