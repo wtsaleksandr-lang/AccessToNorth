@@ -239,18 +239,25 @@ export class DatabaseStorage implements IStorage {
     const trimmed = query.trim();
     if (!trimmed || trimmed.length < 3) return [];
 
+    const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const compoundPattern = '\\m\\w{0,6}' + escaped;
+    const ilikePattern = '%' + trimmed + '%';
     const ilikeResults = await db.execute(sql`
       SELECT *,
         CASE
           WHEN description ILIKE ${trimmed} THEN 1.0
           WHEN description ILIKE ${trimmed + '%'} THEN 0.95
-          WHEN description ILIKE ${'%' + trimmed + '%'} THEN 0.9
-          WHEN description_full ILIKE ${'%' + trimmed + '%'} THEN 0.85
+          WHEN description ~* ${compoundPattern} THEN 0.9
+          WHEN description_full ~* ${compoundPattern} THEN 0.85
+          WHEN description ILIKE ${ilikePattern} THEN 0.6
+          WHEN description_full ILIKE ${ilikePattern} THEN 0.55
           ELSE 0.5
         END AS score
       FROM hs_codes
-      WHERE description ILIKE ${'%' + trimmed + '%'}
-         OR description_full ILIKE ${'%' + trimmed + '%'}
+      WHERE description ~* ${compoundPattern}
+         OR description_full ~* ${compoundPattern}
+         OR description ILIKE ${ilikePattern}
+         OR description_full ILIKE ${ilikePattern}
       ORDER BY score DESC, description ASC
       LIMIT ${limit}
     `);
