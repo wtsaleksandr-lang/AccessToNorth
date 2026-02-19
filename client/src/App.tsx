@@ -10,6 +10,7 @@ import Home from "@/pages/Home";
 import Services from "@/pages/Services";
 import Pricing from "@/pages/Pricing";
 import Tools from "@/pages/Tools";
+import Resources from "@/pages/Resources";
 import FAQ from "@/pages/FAQ";
 import Request from "@/pages/Request";
 import Contact from "@/pages/Contact";
@@ -24,6 +25,8 @@ import CarmSecurityCalculator from "@/pages/CarmSecurityCalculator";
 import CustomsCalculator from "@/pages/CustomsCalculator";
 import CustomsClearance from "@/pages/CustomsClearance";
 import ClearanceCheckout from "@/pages/ClearanceCheckout";
+import BusinessNumberBN from "@/pages/services/BusinessNumberBN";
+import GstHstRegistration from "@/pages/services/GstHstRegistration";
 import CustomsClearanceCanada from "@/pages/services/CustomsClearanceCanada";
 import ImportComplianceReview from "@/pages/services/ImportComplianceReview";
 import HsCodeClassification from "@/pages/services/HsCodeClassification";
@@ -33,6 +36,15 @@ import B13ExportDeclaration from "@/pages/services/B13ExportDeclaration";
 import NonResidentImporter from "@/pages/services/NonResidentImporter";
 import FreightQuote from "@/pages/tools/FreightQuote";
 import ShipmentTracking from "@/pages/tools/ShipmentTracking";
+import HowToImportIntoCanada from "@/pages/resources/HowToImportIntoCanada";
+import CustomsClearanceUnder2500 from "@/pages/resources/CustomsClearanceUnder2500";
+import WhatIsSimaDuty from "@/pages/resources/WhatIsSimaDuty";
+import WhatIsCarm from "@/pages/resources/WhatIsCarm";
+import HsCodeVsTariffTreatment from "@/pages/resources/HsCodeVsTariffTreatment";
+import IncotermsForCanadianImporters from "@/pages/resources/IncotermsForCanadianImporters";
+import FclVsLclCostComparison from "@/pages/resources/FclVsLclCostComparison";
+import B13ExportDeclarationExplained from "@/pages/resources/B13ExportDeclarationExplained";
+import WhenDoYouNeedCfiaApproval from "@/pages/resources/WhenDoYouNeedCfiaApproval";
 import NotFound from "@/pages/not-found";
 
 function ScrollToTop() {
@@ -50,6 +62,8 @@ function Router() {
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/services" component={Services} />
+        <Route path="/services/business-number-bn" component={BusinessNumberBN} />
+        <Route path="/services/gst-hst-registration" component={GstHstRegistration} />
         <Route path="/services/customs-clearance-canada" component={CustomsClearanceCanada} />
         <Route path="/services/import-compliance-review" component={ImportComplianceReview} />
         <Route path="/services/hs-code-classification-canada" component={HsCodeClassification} />
@@ -61,6 +75,16 @@ function Router() {
         <Route path="/tools" component={Tools} />
         <Route path="/tools/freight-quote" component={FreightQuote} />
         <Route path="/tools/shipment-tracking" component={ShipmentTracking} />
+        <Route path="/resources" component={Resources} />
+        <Route path="/resources/how-to-import-into-canada" component={HowToImportIntoCanada} />
+        <Route path="/resources/customs-clearance-under-2500" component={CustomsClearanceUnder2500} />
+        <Route path="/resources/what-is-sima-duty" component={WhatIsSimaDuty} />
+        <Route path="/resources/what-is-carm" component={WhatIsCarm} />
+        <Route path="/resources/hs-code-vs-tariff-treatment" component={HsCodeVsTariffTreatment} />
+        <Route path="/resources/incoterms-for-canadian-importers" component={IncotermsForCanadianImporters} />
+        <Route path="/resources/fcl-vs-lcl-cost-comparison" component={FclVsLclCostComparison} />
+        <Route path="/resources/b13-export-declaration-explained" component={B13ExportDeclarationExplained} />
+        <Route path="/resources/when-do-you-need-cfia-approval" component={WhenDoYouNeedCfiaApproval} />
         <Route path="/faq" component={FAQ} />
         <Route path="/request" component={Request} />
         <Route path="/contact" component={Contact} />

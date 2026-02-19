@@ -12,7 +12,17 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend Architecture
 - **Framework**: React 18 with TypeScript
-- **Routing**: Wouter (lightweight client-side router) with pages: Home (`/`), Client Portal (`/portal`), Payment Success (`/payment-success`), Payment Cancel (`/payment-cancel`), CARM Security Calculator (`/carm-security-calculator`), Customs Calculator (`/customs-calculator`), Customs Clearance (`/canadian-customs-clearance`), Clearance Checkout (`/canadian-customs-clearance/checkout`), Admin Dashboard (`/admin`)
+- **Routing**: Wouter (lightweight client-side router) with SEO-friendly multi-page structure:
+  - Core pages: Home (`/`), Services hub (`/services`), Pricing (`/pricing`), Tools hub (`/tools`), Resources hub (`/resources`), FAQ (`/faq`), Contact (`/contact`), Request (`/request`)
+  - Service detail pages: `/services/business-number-bn`, `/services/gst-hst-registration`, `/services/non-resident-importer-canada`, `/services/carm-registration-canada`, `/services/rpp-bond-coordination`, `/services/customs-clearance-canada`, `/services/b13-export-declaration`, `/services/hs-code-classification-canada`, `/services/import-compliance-review`
+  - Resource articles: `/resources/how-to-import-into-canada`, `/resources/customs-clearance-under-2500`, `/resources/what-is-sima-duty`, `/resources/what-is-carm`, `/resources/hs-code-vs-tariff-treatment`, `/resources/incoterms-for-canadian-importers`, `/resources/fcl-vs-lcl-cost-comparison`, `/resources/b13-export-declaration-explained`, `/resources/when-do-you-need-cfia-approval`
+  - Existing tool pages (unchanged): `/customs-calculator`, `/carm-security-calculator`, `/canadian-customs-clearance`, `/canadian-customs-clearance/checkout`
+  - Coming-soon tool placeholders: `/tools/freight-quote`, `/tools/shipment-tracking`
+  - Portal/auth: Client Portal (`/portal`), Admin Dashboard (`/admin`), Payment Success/Cancel
+  - Legal: `/terms`, `/privacy`, `/refunds`
+  - Navigation: Dropdown menus for Services (9 items) and Tools (4 items), direct links for Pricing, Resources, FAQ, Contact. CTA buttons: Check Status, Register Now
+  - Breadcrumbs on all service and resource detail pages via `Breadcrumbs` component
+  - Scroll-to-top on all page navigations via `ScrollToTop` component
 - **Styling**: Tailwind CSS with CSS variables for theming, using a professional blue (#007BFF) primary color with Canadian red accents
 - **UI Components**: shadcn/ui (new-york style) built on Radix UI primitives, located in `client/src/components/ui/`
 - **Animations**: Framer Motion for scroll reveals and interactions

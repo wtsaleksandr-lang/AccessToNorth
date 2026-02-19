@@ -67,9 +67,9 @@ export function Footer() {
             <ul className="space-y-2 text-sm">
               <li><Link href="/services" className="hover:text-white transition-colors" data-testid="link-footer-services">All Services</Link></li>
               <li><Link href="/pricing" className="hover:text-white transition-colors" data-testid="link-footer-pricing">Pricing</Link></li>
-              <li><Link href="/services/non-resident-importer-canada" className="hover:text-white transition-colors">Non-Resident Importer</Link></li>
-              <li><Link href="/services/carm-registration-canada" className="hover:text-white transition-colors">CARM Registration</Link></li>
               <li><Link href="/tools" className="hover:text-white transition-colors" data-testid="link-footer-tools">Trade Tools</Link></li>
+              <li><Link href="/resources" className="hover:text-white transition-colors" data-testid="link-footer-resources">Resources</Link></li>
+              <li><Link href="/faq" className="hover:text-white transition-colors" data-testid="link-footer-faq">FAQ</Link></li>
             </ul>
           </div>
 

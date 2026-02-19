@@ -4,64 +4,49 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { usePageMeta } from "@/hooks/use-page-meta";
-import { ArrowRight, FileCheck, Globe, Shield, Landmark, Package, FileText, Building2, Scale } from "lucide-react";
+import { ArrowRight, Building2, Landmark, Globe, Shield, Package, FileText, FileCheck, Scale } from "lucide-react";
 
-const services = [
+const serviceGroups = [
   {
-    title: "Canadian Customs Clearance",
-    description: "End-to-end customs clearance for commercial imports into Canada. Flat-rate pricing, no hidden fees.",
-    icon: Package,
-    href: "/services/customs-clearance-canada",
-    cta: "customs-clearance",
+    category: "Business Setup",
+    services: [
+      { title: "Business Number (BN)", desc: "9-digit CRA Business Number — the foundation for all tax accounts.", icon: Building2, href: "/services/business-number-bn", cta: "business-number" },
+      { title: "GST/HST Registration", desc: "Register for Goods and Services Tax / Harmonized Sales Tax.", icon: Landmark, href: "/services/gst-hst-registration", cta: "gst-hst" },
+      { title: "Non-Resident Importer (NRI)", desc: "Full setup for non-resident businesses importing into or selling in Canada.", icon: Globe, href: "/services/non-resident-importer-canada", cta: "non-resident" },
+    ],
   },
   {
-    title: "Import Compliance Review",
-    description: "Full compliance audit of your import operations including tariff classification, valuation, and origin verification.",
-    icon: Shield,
-    href: "/services/import-compliance-review",
-    cta: "compliance-review",
+    category: "Importer Setup",
+    services: [
+      { title: "CARM Registration", desc: "End-to-end CARM portal onboarding, delegation, and import account setup.", icon: Landmark, href: "/services/carm-registration-canada", cta: "carm" },
+      { title: "RPP / Bond Coordination", desc: "Release Prior to Payment program and surety bond coordination.", icon: Scale, href: "/services/rpp-bond-coordination", cta: "rpp-bond" },
+    ],
   },
   {
-    title: "HS Code Classification",
-    description: "Professional tariff classification for your products. Accurate HS codes to avoid penalties and overpayment.",
-    icon: FileCheck,
-    href: "/services/hs-code-classification-canada",
-    cta: "hs-classification",
+    category: "Customs Clearance",
+    services: [
+      { title: "Canadian Customs Clearance", desc: "Flat-rate commercial import clearance into Canada. LVS, commercial, and compliance packages.", icon: Package, href: "/services/customs-clearance-canada", cta: "customs-clearance" },
+    ],
   },
   {
-    title: "CARM Registration",
-    description: "Complete CARM portal registration and onboarding. Business Number, import account, and delegation setup.",
-    icon: Landmark,
-    href: "/services/carm-registration-canada",
-    cta: "carm",
+    category: "Export",
+    services: [
+      { title: "B13 Export Declaration", desc: "Canadian Export Declaration filing for goods leaving Canada (over $2,000 CAD).", icon: FileText, href: "/services/b13-export-declaration", cta: "b13-export" },
+    ],
   },
   {
-    title: "RPP / Bond Coordination",
-    description: "Release Prior to Payment program setup and surety bond coordination for importers.",
-    icon: Scale,
-    href: "/services/rpp-bond-coordination",
-    cta: "rpp-bond",
-  },
-  {
-    title: "B13 Export Declaration",
-    description: "Canadian Export Declaration (B13) filing for goods leaving Canada. Required for shipments over $2,000 CAD.",
-    icon: FileText,
-    href: "/services/b13-export-declaration",
-    cta: "b13-export",
-  },
-  {
-    title: "Non-Resident Importer (NRI)",
-    description: "Full registration and compliance setup for non-resident businesses importing into or selling in Canada.",
-    icon: Globe,
-    href: "/services/non-resident-importer-canada",
-    cta: "non-resident",
+    category: "Compliance",
+    services: [
+      { title: "HS Code Classification", desc: "Accurate tariff classification to avoid penalties and overpayment of duties.", icon: FileCheck, href: "/services/hs-code-classification-canada", cta: "hs-classification" },
+      { title: "Import Compliance Review", desc: "Comprehensive audit of your import operations — tariff, valuation, and origin.", icon: Shield, href: "/services/import-compliance-review", cta: "compliance-review" },
+    ],
   },
 ];
 
 export default function Services() {
   usePageMeta({
     title: "Services | AccessToNorth.com",
-    description: "Canadian customs clearance, import compliance, CARM registration, HS classification, and non-resident importer services. Flat-rate pricing with no hidden fees.",
+    description: "Canadian business registration, GST/HST, CARM, customs clearance, HS classification, export declarations, and import compliance services. Flat-rate pricing.",
     canonical: "https://www.accesstonorth.com/services",
   });
 
@@ -75,45 +60,59 @@ export default function Services() {
               Our Services
             </h1>
             <p className="text-lg text-slate-600">
-              From customs clearance to CARM registration, we handle the paperwork so you can focus on your business.
+              From business registration to customs clearance — we handle the paperwork so you can focus on your business.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-            {services.map((service) => (
-              <Card key={service.cta} className="flex flex-col border border-slate-200 hover:shadow-lg hover:border-primary/20 transition-all duration-300" data-testid={`card-service-${service.cta}`}>
-                <CardContent className="flex flex-col flex-1 p-6">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-                    <service.icon className="w-6 h-6 text-primary" />
-                  </div>
-                  <h2 className="text-lg font-bold mb-2 text-slate-900">{service.title}</h2>
-                  <p className="text-sm text-slate-600 mb-6 flex-1">{service.description}</p>
-                  <div className="flex flex-col gap-2">
-                    <Link href={service.href}>
-                      <Button variant="outline" className="w-full cursor-pointer" data-testid={`button-learn-${service.cta}`}>
-                        Learn More
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </Button>
-                    </Link>
-                    <Link href={`/request?service=${service.cta}`}>
-                      <Button className="w-full cursor-pointer" data-testid={`button-request-${service.cta}`}>
-                        Request Service
-                      </Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
+          <div className="max-w-5xl mx-auto space-y-12">
+            {serviceGroups.map((group) => (
+              <section key={group.category}>
+                <h2 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2" data-testid={`text-group-${group.category.toLowerCase().replace(/\s+/g, "-")}`}>
+                  {group.category}
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {group.services.map((service) => (
+                    <Card key={service.cta} className="flex flex-col border border-slate-200 hover:shadow-lg hover:border-primary/20 transition-all duration-300" data-testid={`card-service-${service.cta}`}>
+                      <CardContent className="flex flex-col flex-1 p-5">
+                        <div className="w-11 h-11 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
+                          <service.icon className="w-5 h-5 text-primary" />
+                        </div>
+                        <h3 className="text-base font-bold mb-1.5 text-slate-900">{service.title}</h3>
+                        <p className="text-sm text-slate-600 mb-5 flex-1">{service.desc}</p>
+                        <div className="flex flex-col gap-2">
+                          <Link href={service.href}>
+                            <Button variant="outline" className="w-full cursor-pointer" data-testid={`button-learn-${service.cta}`}>
+                              Learn More <ArrowRight className="w-4 h-4 ml-2" />
+                            </Button>
+                          </Link>
+                          <Link href={`/request?service=${service.cta}`}>
+                            <Button className="w-full cursor-pointer" data-testid={`button-request-${service.cta}`}>
+                              Request Service
+                            </Button>
+                          </Link>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
 
-          <div className="text-center mt-12">
+          <div className="text-center mt-14">
             <p className="text-slate-500 mb-4">Not sure which service you need?</p>
-            <Link href="/contact">
-              <Button variant="outline" size="lg" className="cursor-pointer" data-testid="button-contact-us">
-                Contact Us
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </Link>
+            <div className="flex flex-col sm:flex-row justify-center gap-3">
+              <Link href="/pricing">
+                <Button size="lg" className="cursor-pointer" data-testid="button-view-pricing">
+                  View Pricing <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </Link>
+              <Link href="/contact">
+                <Button variant="outline" size="lg" className="cursor-pointer" data-testid="button-contact-us">
+                  Contact Us <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </main>
