@@ -207,6 +207,43 @@ export function buildReportDeliveryEmail(
   };
 }
 
+export function buildRequestInfoEmail(
+  orderId: string,
+  metadata: ClassificationOrderData,
+  questions: string[]
+): SendEmailParams {
+  const questionsList = questions
+    .map((q, i) => `<tr><td style="padding:8px 0;border-bottom:1px solid #edf2f7;font-size:13px;color:#4a5568"><strong>${i + 1}.</strong> ${q}</td></tr>`)
+    .join("");
+
+  const html = emailWrapper(`
+<div class="body">
+<h2>Additional Information Needed</h2>
+<p>We are currently reviewing your HS code classification order <strong style="font-family:monospace;color:${BRAND_COLOR}">${orderId}</strong> for <strong>${metadata.productName}</strong>.</p>
+<p>To complete your classification accurately, we need the following additional information:</p>
+
+<table style="width:100%;border-collapse:collapse;margin:16px 0">
+${questionsList}
+</table>
+
+<div class="highlight-box">
+<p>Please reply to this email with the requested information, or log in to your client portal to upload any supporting documents.</p>
+</div>
+
+<p style="text-align:center;margin-top:24px">
+<a href="${BASE_URL}/portal" class="btn">Open Client Portal</a>
+</p>
+
+<p style="font-size:12px;color:#718096;margin-top:16px">Your order is currently on hold until we receive the requested information. Once received, we will continue processing your classification.</p>
+</div>`);
+
+  return {
+    to: "",
+    subject: `Action Required: Additional Info Needed – ${orderId}`,
+    html,
+  };
+}
+
 export function buildStatusUpdateEmail(
   orderId: string,
   newStatus: string,

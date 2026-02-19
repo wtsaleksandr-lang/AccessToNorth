@@ -56,6 +56,9 @@ export const orders = pgTable("orders", {
   reportToken: text("report_token"),
   reportTokenExpiresAt: timestamp("report_token_expires_at"),
   deliveredAt: timestamp("delivered_at"),
+  aiDraftReport: text("ai_draft_report"),
+  aiGeneratedAt: timestamp("ai_generated_at"),
+  aiModelUsed: text("ai_model_used"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

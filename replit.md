@@ -64,6 +64,11 @@ Preferred communication style: Simple, everyday language.
   - `POST /api/admin/orders/:orderId/send-report` — Upload PDF report + email to customer + set status Delivered (admin auth, multipart)
   - `GET /api/admin/orders/:orderId/report/download` — Download sent report PDF (admin auth)
   - `GET /api/reports/:orderId/download?token=` — Secure customer report download (expiring token, 30 days)
+  - `POST /api/admin/orders/:orderId/generate-draft` — AI-generate draft HS classification report using OpenAI (admin auth)
+  - `POST /api/admin/orders/:orderId/save-draft` — Save edited draft report text (admin auth)
+  - `POST /api/admin/orders/:orderId/export-pdf` — Generate branded PDF from draft report text (admin auth, returns PDF)
+  - `POST /api/admin/orders/:orderId/send-pdf-report` — Generate PDF from draft, email to customer, mark as Delivered (admin auth)
+  - `POST /api/admin/orders/:orderId/request-info` — Extract missing info questions from draft Section 5, email customer, set status On Hold (admin auth)
   - `GET /api/hs-search?q=` — Fuzzy product-name HS code search using pg_trgm trigram similarity (typo-tolerant, min 3 chars, max 15 results, fallback to description_full if < 5 results)
   - `GET /api/customs/hs-search?q=&limit=` — Autocomplete HS code search (by code or description, ILIKE)
   - `GET /api/customs/countries` — List all countries with tariff treatment mappings
@@ -79,7 +84,7 @@ Preferred communication style: Simple, everyday language.
 - **Schema** (in `shared/schema.ts`):
   - `registrations` table: id, fullName, email, phone, businessName, residentStatus, packageType, businessType, estimatedRevenue, notes, authorizationConsent, status, isNonResident, createdAt
   - `contacts` table: id, name, email, message, createdAt
-  - `orders` table: id (text PK, format ATN-XXXXXX or HSC-XXXXXX for classifications), customerEmail, customerName, serviceType, status, steps (jsonb array of OrderStep), stripeSessionId, metadata (jsonb, ClassificationOrderData for HS classification orders), confirmationEmailSentAt, internalEmailSentAt, reportFileId, reportToken, reportTokenExpiresAt, deliveredAt, createdAt, updatedAt
+  - `orders` table: id (text PK, format ATN-XXXXXX or HSC-XXXXXX for classifications), customerEmail, customerName, serviceType, status, steps (jsonb array of OrderStep), stripeSessionId, metadata (jsonb, ClassificationOrderData for HS classification orders), confirmationEmailSentAt, internalEmailSentAt, reportFileId, reportToken, reportTokenExpiresAt, deliveredAt, aiDraftReport, aiGeneratedAt, aiModelUsed, createdAt, updatedAt
   - `uploads` table: id (uuid), orderId (FK→orders), fileName, fileData (base64), fileSize, mimeType, createdAt
   - `messages` table: id (uuid), orderId (FK→orders), sender, message, createdAt
   - `carm_leads` table: id, email, companyName, importValueRange, currentlyImporting, phone, highestMonthlyPayable, bondEstimate, cashEstimate, applyMinimum, frequency, isNonResident, priority, source, createdAt

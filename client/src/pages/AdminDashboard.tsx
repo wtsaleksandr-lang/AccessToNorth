@@ -33,6 +33,13 @@ import {
   ClipboardList,
   Upload,
   X,
+  Sparkles,
+  Save,
+  FileDown,
+  HelpCircle,
+  RefreshCw,
+  Eye,
+  Edit3,
 } from "lucide-react";
 import type { OrderStep } from "@shared/schema";
 
@@ -63,6 +70,9 @@ interface OrderSummary {
   uploadCount: number;
   metadata: ClassificationMetadata | null;
   latestMessage: { sender: string; message: string; createdAt: string } | null;
+  aiDraftReport: string | null;
+  aiGeneratedAt: string | null;
+  aiModelUsed: string | null;
 }
 
 interface UploadData {
@@ -640,6 +650,120 @@ function AdminSendReportSection({
   const [sent, setSent] = useState(order.status === "Delivered");
   const reportInputRef = useRef<HTMLInputElement>(null);
 
+  const [draftReport, setDraftReport] = useState<string>(order.aiDraftReport || "");
+  const [generating, setGenerating] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [requestingInfo, setRequestingInfo] = useState(false);
+  const [sendingPdf, setSendingPdf] = useState(false);
+  const [aiModel, setAiModel] = useState<string>(order.aiModelUsed || "");
+  const [aiGeneratedAt, setAiGeneratedAt] = useState<string>(order.aiGeneratedAt || "");
+  const [viewMode, setViewMode] = useState<"edit" | "preview">("edit");
+  const [draftError, setDraftError] = useState("");
+  const [draftSuccess, setDraftSuccess] = useState("");
+
+  const handleGenerateDraft = async () => {
+    setGenerating(true);
+    setDraftError("");
+    setDraftSuccess("");
+    try {
+      const data = await adminApi(`/api/admin/orders/${orderId}/generate-draft`, {
+        method: "POST",
+      });
+      setDraftReport(data.draft);
+      setAiModel(data.model);
+      setAiGeneratedAt(data.generatedAt);
+      setDraftSuccess("Draft generated successfully");
+      onRefresh();
+    } catch (err: any) {
+      setDraftError(err.message || "Failed to generate draft");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    setSavingDraft(true);
+    setDraftError("");
+    try {
+      await adminApi(`/api/admin/orders/${orderId}/save-draft`, {
+        method: "POST",
+        body: JSON.stringify({ draft: draftReport }),
+      });
+      setDraftSuccess("Draft saved");
+      setTimeout(() => setDraftSuccess(""), 3000);
+    } catch (err: any) {
+      setDraftError(err.message || "Failed to save draft");
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    setExportingPdf(true);
+    setDraftError("");
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/export-pdf`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draft: draftReport }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Export failed");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Report_${orderId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setDraftError(err.message || "Failed to export PDF");
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
+  const handleRequestInfo = async () => {
+    if (!confirm("This will email the customer requesting additional information and put the order on hold. Continue?")) return;
+    setRequestingInfo(true);
+    setDraftError("");
+    try {
+      const data = await adminApi(`/api/admin/orders/${orderId}/request-info`, {
+        method: "POST",
+        body: JSON.stringify({ draft: draftReport }),
+      });
+      setDraftSuccess(`Sent ${data.questionsCount} question(s) to customer. Order set to On Hold.`);
+      onRefresh();
+    } catch (err: any) {
+      setDraftError(err.message || "Failed to request info");
+    } finally {
+      setRequestingInfo(false);
+    }
+  };
+
+  const handleSendPdfReport = async () => {
+    if (!confirm("This will generate a PDF from the current draft, email it to the customer, and mark the order as Delivered. Continue?")) return;
+    setSendingPdf(true);
+    setDraftError("");
+    try {
+      const data = await adminApi(`/api/admin/orders/${orderId}/send-pdf-report`, {
+        method: "POST",
+        body: JSON.stringify({ draft: draftReport }),
+      });
+      setSent(true);
+      setDraftSuccess(data.message);
+      onRefresh();
+    } catch (err: any) {
+      setDraftError(err.message || "Failed to send report");
+    } finally {
+      setSendingPdf(false);
+    }
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -651,7 +775,7 @@ function AdminSendReportSection({
     }
   };
 
-  const handleSendReport = async () => {
+  const handleSendManualReport = async () => {
     if (!reportFile) return;
     setSending(true);
     try {
@@ -681,11 +805,11 @@ function AdminSendReportSection({
     return (
       <Card data-testid="card-report-delivered">
         <CardContent className="pt-6">
-          <div className="flex items-center gap-3 p-4 rounded-lg bg-green-50 border border-green-200">
-            <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+            <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-green-800">Report Delivered</p>
-              <p className="text-xs text-green-600">
+              <p className="text-sm font-semibold text-green-800 dark:text-green-300">Report Delivered</p>
+              <p className="text-xs text-green-600 dark:text-green-400">
                 The classification report has been sent to {order.customerEmail}.
               </p>
             </div>
@@ -711,80 +835,272 @@ function AdminSendReportSection({
   }
 
   return (
-    <Card data-testid="card-send-report">
+    <Card data-testid="card-ai-report">
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <Send className="w-4 h-4 text-primary" />
-          Send Classification Report
+        <CardTitle className="text-base flex items-center justify-between flex-wrap gap-2">
+          <span className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" />
+            AI Classification Report
+          </span>
+          {aiModel && (
+            <span className="text-xs text-muted-foreground font-normal">
+              Model: {aiModel}
+              {aiGeneratedAt && ` | ${new Date(aiGeneratedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`}
+            </span>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          Upload the completed PDF report and send it to the customer. This will update the order status to "Delivered" and email a secure download link.
-        </p>
+        {draftError && (
+          <div className="flex items-center gap-2 p-3 rounded-md bg-destructive/10 border border-destructive/20 text-sm" data-testid="text-draft-error">
+            <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
+            <span className="text-destructive">{draftError}</span>
+            <button className="ml-auto" onClick={() => setDraftError("")}>
+              <X className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+          </div>
+        )}
 
-        <div
-          className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary/40 transition-colors"
-          onClick={() => reportInputRef.current?.click()}
-          data-testid="dropzone-report-upload"
-        >
-          {reportFile ? (
-            <div className="flex items-center justify-center gap-2">
-              <FileText className="w-5 h-5 text-primary" />
-              <span className="text-sm font-medium">{reportFile.name}</span>
-              <span className="text-xs text-muted-foreground">
-                ({(reportFile.size / 1024).toFixed(0)} KB)
-              </span>
-              <button
-                type="button"
-                className="ml-2 p-1 rounded hover-elevate cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setReportFile(null);
-                  if (reportInputRef.current) reportInputRef.current.value = "";
-                }}
-              >
-                <X className="w-3.5 h-3.5 text-muted-foreground" />
-              </button>
+        {draftSuccess && (
+          <div className="flex items-center gap-2 p-3 rounded-md bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-sm" data-testid="text-draft-success">
+            <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+            <span className="text-green-700 dark:text-green-300">{draftSuccess}</span>
+            <button className="ml-auto" onClick={() => setDraftSuccess("")}>
+              <X className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+          </div>
+        )}
+
+        {!draftReport ? (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Generate an AI draft report based on the order details, product information, and uploaded documents. You can then review, edit, and send it.
+            </p>
+            <Button
+              onClick={handleGenerateDraft}
+              disabled={generating}
+              className="w-full"
+              data-testid="button-generate-draft"
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating Draft...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Generate AI Draft Report
+                </>
+              )}
+            </Button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-card px-2 text-muted-foreground">or upload manually</span>
+              </div>
             </div>
-          ) : (
-            <>
-              <Upload className="w-6 h-6 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm font-medium">Click to upload the final report (PDF only)</p>
-              <p className="text-xs text-muted-foreground">Max 20MB</p>
-            </>
-          )}
-          <input
-            ref={reportInputRef}
-            type="file"
-            accept=".pdf"
-            onChange={handleFileSelect}
-            className="hidden"
-            data-testid="input-report-file"
-          />
-        </div>
 
-        <Button
-          onClick={handleSendReport}
-          disabled={!reportFile || sending}
-          className="w-full"
-          data-testid="button-send-report"
-        >
-          {sending ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Sending Report...
-            </>
-          ) : (
-            <>
-              <Send className="w-4 h-4 mr-2" />
-              Send Report to Customer
-            </>
-          )}
-        </Button>
+            <div
+              className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary/40 transition-colors"
+              onClick={() => reportInputRef.current?.click()}
+              data-testid="dropzone-report-upload"
+            >
+              {reportFile ? (
+                <div className="flex items-center justify-center gap-2">
+                  <FileText className="w-5 h-5 text-primary" />
+                  <span className="text-sm font-medium">{reportFile.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    ({(reportFile.size / 1024).toFixed(0)} KB)
+                  </span>
+                  <button
+                    type="button"
+                    className="ml-2 p-1 rounded hover-elevate cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setReportFile(null);
+                      if (reportInputRef.current) reportInputRef.current.value = "";
+                    }}
+                  >
+                    <X className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <Upload className="w-6 h-6 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm font-medium">Click to upload a manually prepared report (PDF)</p>
+                  <p className="text-xs text-muted-foreground">Max 20MB</p>
+                </>
+              )}
+              <input
+                ref={reportInputRef}
+                type="file"
+                accept=".pdf"
+                onChange={handleFileSelect}
+                className="hidden"
+                data-testid="input-report-file"
+              />
+            </div>
+            {reportFile && (
+              <Button
+                onClick={handleSendManualReport}
+                disabled={sending}
+                className="w-full"
+                data-testid="button-send-manual-report"
+              >
+                {sending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Send Manual Report to Customer
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex border rounded-md overflow-visible">
+                <button
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${viewMode === "edit" ? "bg-primary text-primary-foreground" : "hover-elevate"}`}
+                  onClick={() => setViewMode("edit")}
+                  data-testid="button-edit-mode"
+                >
+                  <Edit3 className="w-3 h-3 mr-1 inline" />
+                  Edit
+                </button>
+                <button
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${viewMode === "preview" ? "bg-primary text-primary-foreground" : "hover-elevate"}`}
+                  onClick={() => setViewMode("preview")}
+                  data-testid="button-preview-mode"
+                >
+                  <Eye className="w-3 h-3 mr-1 inline" />
+                  Preview
+                </button>
+              </div>
+              <div className="flex-1" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSaveDraft}
+                disabled={savingDraft}
+                data-testid="button-save-draft"
+              >
+                {savingDraft ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}
+                Save
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGenerateDraft}
+                disabled={generating}
+                data-testid="button-regenerate-draft"
+              >
+                {generating ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1" />}
+                Regenerate
+              </Button>
+            </div>
+
+            {viewMode === "edit" ? (
+              <Textarea
+                value={draftReport}
+                onChange={(e) => setDraftReport(e.target.value)}
+                className="font-mono text-xs min-h-[400px] resize-y"
+                data-testid="textarea-draft-report"
+              />
+            ) : (
+              <div
+                className="border rounded-md p-4 min-h-[400px] max-h-[600px] overflow-y-auto prose prose-sm dark:prose-invert max-w-none"
+                data-testid="div-draft-preview"
+              >
+                <DraftPreview text={draftReport} />
+              </div>
+            )}
+
+            <div className="flex gap-2 flex-wrap pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRequestInfo}
+                disabled={requestingInfo}
+                data-testid="button-request-info"
+              >
+                {requestingInfo ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <HelpCircle className="w-3.5 h-3.5 mr-1" />}
+                Request More Info
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPdf}
+                disabled={exportingPdf}
+                data-testid="button-export-pdf"
+              >
+                {exportingPdf ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <FileDown className="w-3.5 h-3.5 mr-1" />}
+                Export PDF
+              </Button>
+              <div className="flex-1" />
+              <Button
+                size="sm"
+                onClick={handleSendPdfReport}
+                disabled={sendingPdf}
+                data-testid="button-send-pdf-report"
+              >
+                {sendingPdf ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1" />}
+                Send Report to Customer
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
+}
+
+function DraftPreview({ text }: { text: string }) {
+  const lines = text.split("\n");
+  const elements: JSX.Element[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith("### ")) {
+      elements.push(<h4 key={i} className="text-sm font-semibold mt-3 mb-1">{trimmed.replace(/^###\s*/, "")}</h4>);
+    } else if (trimmed.startsWith("## ")) {
+      elements.push(<h3 key={i} className="text-base font-bold text-primary mt-4 mb-2 border-b pb-1">{trimmed.replace(/^##\s*/, "")}</h3>);
+    } else if (trimmed.startsWith("# ")) {
+      elements.push(<h2 key={i} className="text-lg font-bold mt-4 mb-2">{trimmed.replace(/^#\s*/, "")}</h2>);
+    } else if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+      elements.push(
+        <div key={i} className="flex gap-2 ml-2 text-sm">
+          <span className="text-muted-foreground flex-shrink-0">&bull;</span>
+          <span dangerouslySetInnerHTML={{ __html: formatBold(trimmed.replace(/^[-*]\s*/, "")) }} />
+        </div>
+      );
+    } else if (trimmed.match(/^\d+[\.\)]/)) {
+      elements.push(
+        <p key={i} className="ml-2 text-sm" dangerouslySetInnerHTML={{ __html: formatBold(trimmed) }} />
+      );
+    } else if (trimmed === "") {
+      elements.push(<div key={i} className="h-2" />);
+    } else {
+      elements.push(<p key={i} className="text-sm" dangerouslySetInnerHTML={{ __html: formatBold(trimmed) }} />);
+    }
+  }
+
+  return <>{elements}</>;
+}
+
+function formatBold(text: string): string {
+  return text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
 }
 
 function AdminFilesSection({ uploads }: { uploads: UploadData[] }) {
