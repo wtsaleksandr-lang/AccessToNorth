@@ -27,6 +27,20 @@ export const contacts = pgTable("contacts", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export interface ClassificationOrderData {
+  productName: string;
+  productDescription: string;
+  countryOfOrigin: string;
+  industryCategory: string;
+  hsCodesRequested: number;
+  additionalNotes: string;
+  companyName: string;
+  phone: string;
+  packageTier: string;
+  packagePrice: string;
+  deliveryTime: string;
+}
+
 export const orders = pgTable("orders", {
   id: text("id").primaryKey(),
   customerEmail: text("customer_email").notNull(),
@@ -35,6 +49,7 @@ export const orders = pgTable("orders", {
   status: text("status").notNull().default("In Progress"),
   steps: jsonb("steps").notNull().$type<OrderStep[]>(),
   stripeSessionId: text("stripe_session_id"),
+  metadata: jsonb("metadata").$type<ClassificationOrderData>(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

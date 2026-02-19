@@ -4,6 +4,7 @@ import { registerRoutes } from "./routes";
 import { registerPortalRoutes } from "./portalRoutes";
 import { registerAdminRoutes } from "./adminRoutes";
 import { registerCustomsRoutes } from "./customsRoutes";
+import { registerClassificationRoutes } from "./classificationRoutes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { runMigrations } from 'stripe-replit-sync';
@@ -113,8 +114,17 @@ app.post(
           const customerEmail = session.customer_email || session.customer_details?.email;
           const packageType = session.metadata?.packageType;
           const customerName = session.metadata?.customerName || session.customer_details?.name || null;
+          const orderType = session.metadata?.orderType;
+          const existingOrderId = session.metadata?.orderId;
 
-          if (customerEmail && packageType) {
+          if (orderType === 'hs-classification' && existingOrderId) {
+            const { storage } = await import('./storage');
+            const order = await storage.getOrderById(existingOrderId);
+            if (order && order.status === 'Awaiting Payment') {
+              await storage.updateOrderStatus(existingOrderId, 'Pending Review');
+              log(`Classification order ${existingOrderId} payment confirmed, status updated to Pending Review`, 'stripe');
+            }
+          } else if (customerEmail && packageType) {
             const { createOrderFromCheckout } = await import('./orderService');
             const orderId = await createOrderFromCheckout(
               customerEmail,
@@ -180,6 +190,7 @@ app.use((req, res, next) => {
   registerPortalRoutes(app);
   registerAdminRoutes(app);
   registerCustomsRoutes(app);
+  registerClassificationRoutes(app);
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {

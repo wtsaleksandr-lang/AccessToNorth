@@ -37,6 +37,7 @@ export interface IStorage {
   getOrderByStripeSessionId(sessionId: string): Promise<Order | undefined>;
   updateOrderStatus(id: string, status: string): Promise<void>;
   updateOrderSteps(id: string, steps: any[]): Promise<void>;
+  updateOrderStripeSession(id: string, stripeSessionId: string): Promise<void>;
   getAllOrders(): Promise<Order[]>;
   getUploadsByOrderId(orderId: string): Promise<Upload[]>;
   getUploadById(id: string): Promise<Upload | undefined>;
@@ -114,6 +115,13 @@ export class DatabaseStorage implements IStorage {
     await db
       .update(orders)
       .set({ steps, updatedAt: new Date() } as any)
+      .where(eq(orders.id, id));
+  }
+
+  async updateOrderStripeSession(id: string, stripeSessionId: string): Promise<void> {
+    await db
+      .update(orders)
+      .set({ stripeSessionId, updatedAt: new Date() })
       .where(eq(orders.id, id));
   }
 

@@ -55,6 +55,24 @@ const PACKAGES = [
     price: 9500,
     metadata: { packageType: 'hs-classification', features: 'HS Code Research,Tariff Classification,Ruling Support' },
   },
+  {
+    name: 'HS Classification — Basic',
+    description: '1 HS code classification with supporting rationale summary and special measure awareness flag.',
+    price: 2900,
+    metadata: { packageType: 'hs-classification-basic', features: '1 HS Code,Rationale Summary,Special Measure Flag,1 Business Day,Email Support' },
+  },
+  {
+    name: 'HS Classification — Business',
+    description: 'Up to 10 HS codes with cross-consistency review and structured summary report.',
+    price: 9900,
+    metadata: { packageType: 'hs-classification-business', features: 'Up to 10 HS Codes,Cross-Consistency Review,Special Measure Screening,Summary Report,1 Business Day' },
+  },
+  {
+    name: 'HS Classification — Pro',
+    description: 'Up to 50 HS codes with invoice-level consistency check and risk summary overview.',
+    price: 24900,
+    metadata: { packageType: 'hs-classification-pro', features: 'Up to 50 HS Codes,Invoice Consistency Check,Special Measures Screening,Risk Summary,48 Business Hours' },
+  },
 ];
 
 export async function seedProducts() {

@@ -30,8 +30,23 @@ import {
   ChevronDown,
   Trash2,
   Plus,
+  ClipboardList,
 } from "lucide-react";
 import type { OrderStep } from "@shared/schema";
+
+interface ClassificationMetadata {
+  productName?: string;
+  productDescription?: string;
+  countryOfOrigin?: string;
+  industryCategory?: string;
+  hsCodesRequested?: number;
+  additionalNotes?: string;
+  companyName?: string;
+  phone?: string;
+  packageTier?: string;
+  packagePrice?: string;
+  deliveryTime?: string;
+}
 
 interface OrderSummary {
   id: string;
@@ -44,6 +59,7 @@ interface OrderSummary {
   updatedAt: string;
   messageCount: number;
   uploadCount: number;
+  metadata: ClassificationMetadata | null;
   latestMessage: { sender: string; message: string; createdAt: string } | null;
 }
 
@@ -463,6 +479,65 @@ function OrderDetailView({ orderId, onBack }: { orderId: string; onBack: () => v
         </CardContent>
       </Card>
 
+      {order.metadata && order.serviceType.includes("HS Classification") && (
+        <Card data-testid="card-classification-metadata">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <ClipboardList className="w-4 h-4 text-primary" />
+              Classification Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground text-xs">Product Name</p>
+                <p className="font-medium">{order.metadata.productName || "—"}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Country of Origin</p>
+                <p className="font-medium">{order.metadata.countryOfOrigin || "—"}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Package</p>
+                <p className="font-medium">{order.metadata.packageTier ? `${order.metadata.packageTier.charAt(0).toUpperCase() + order.metadata.packageTier.slice(1)} (${order.metadata.packagePrice})` : "—"}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">HS Codes Requested</p>
+                <p className="font-medium">{order.metadata.hsCodesRequested || "—"}</p>
+              </div>
+              {order.metadata.industryCategory && (
+                <div>
+                  <p className="text-muted-foreground text-xs">Industry</p>
+                  <p className="font-medium">{order.metadata.industryCategory}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-muted-foreground text-xs">Delivery</p>
+                <p className="font-medium">{order.metadata.deliveryTime || "—"}</p>
+              </div>
+              {order.metadata.phone && (
+                <div>
+                  <p className="text-muted-foreground text-xs">Phone</p>
+                  <p className="font-medium">{order.metadata.phone}</p>
+                </div>
+              )}
+            </div>
+            {order.metadata.productDescription && (
+              <div className="pt-2 border-t">
+                <p className="text-muted-foreground text-xs mb-1">Product Description</p>
+                <p className="text-sm">{order.metadata.productDescription}</p>
+              </div>
+            )}
+            {order.metadata.additionalNotes && (
+              <div className="pt-2 border-t">
+                <p className="text-muted-foreground text-xs mb-1">Additional Notes</p>
+                <p className="text-sm">{order.metadata.additionalNotes}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <Card data-testid="card-step-editor">
         <CardHeader>
           <CardTitle className="text-base flex items-center justify-between flex-wrap gap-2">
@@ -476,6 +551,8 @@ function OrderDetailView({ orderId, onBack }: { orderId: string; onBack: () => v
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="Awaiting Payment">Awaiting Payment</SelectItem>
+                  <SelectItem value="Pending Review">Pending Review</SelectItem>
                   <SelectItem value="In Progress">In Progress</SelectItem>
                   <SelectItem value="On Hold">On Hold</SelectItem>
                   <SelectItem value="Complete">Complete</SelectItem>

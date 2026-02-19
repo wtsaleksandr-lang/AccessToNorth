@@ -36,6 +36,7 @@ import B13ExportDeclaration from "@/pages/services/B13ExportDeclaration";
 import NonResidentImporter from "@/pages/services/NonResidentImporter";
 import HsCodeFinder from "@/pages/tools/HsCodeFinder";
 import HsClassificationOrder from "@/pages/order/HsClassificationOrder";
+import OrderConfirmation from "@/pages/order/OrderConfirmation";
 import FreightQuote from "@/pages/tools/FreightQuote";
 import ShipmentTracking from "@/pages/tools/ShipmentTracking";
 import HowToImportIntoCanada from "@/pages/resources/HowToImportIntoCanada";
@@ -77,6 +78,7 @@ function Router() {
         <Route path="/tools" component={Tools} />
         <Route path="/tools/hs-code-finder" component={HsCodeFinder} />
         <Route path="/order/hs-classification" component={HsClassificationOrder} />
+        <Route path="/order-confirmation" component={OrderConfirmation} />
         <Route path="/tools/freight-quote" component={FreightQuote} />
         <Route path="/tools/shipment-tracking" component={ShipmentTracking} />
         <Route path="/resources" component={Resources} />

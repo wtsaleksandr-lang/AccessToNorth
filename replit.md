@@ -17,7 +17,8 @@ Preferred communication style: Simple, everyday language.
   - Service detail pages: `/services/business-number-bn`, `/services/gst-hst-registration`, `/services/non-resident-importer-canada`, `/services/carm-registration-canada`, `/services/rpp-bond-coordination`, `/services/customs-clearance-canada`, `/services/b13-export-declaration`, `/services/hs-code-classification-canada`, `/services/import-compliance-review`
   - Resource articles: `/resources/how-to-import-into-canada`, `/resources/customs-clearance-under-2500`, `/resources/what-is-sima-duty`, `/resources/what-is-carm`, `/resources/hs-code-vs-tariff-treatment`, `/resources/incoterms-for-canadian-importers`, `/resources/fcl-vs-lcl-cost-comparison`, `/resources/b13-export-declaration-explained`, `/resources/when-do-you-need-cfia-approval`
   - Existing tool pages (unchanged): `/customs-calculator`, `/carm-security-calculator`, `/canadian-customs-clearance`, `/canadian-customs-clearance/checkout`
-  - Order pages: `/order/hs-classification` (HS Classification tiered pricing: Basic $29, Business $99, Pro $249)
+  - Order pages: `/order/hs-classification` (HS Classification 5-step multi-form: package select, product details, document upload, contact info, review & pay; tiers: Basic $29, Business $99, Pro $249)
+  - Order confirmation: `/order-confirmation?session_id=&order_id=` (post-payment confirmation with order details)
   - Coming-soon tool placeholders: `/tools/freight-quote`, `/tools/shipment-tracking`
   - Portal/auth: Client Portal (`/portal`), Admin Dashboard (`/admin`), Payment Success/Cancel
   - Legal: `/terms`, `/privacy`, `/refunds`
@@ -58,6 +59,8 @@ Preferred communication style: Simple, everyday language.
   - `PATCH /api/admin/orders/:orderId` — Update order steps and status (admin auth required)
   - `POST /api/admin/orders/:orderId/message` — Admin reply to client message (admin auth required)
   - `GET /api/admin/uploads/:uploadId/download` — Download uploaded file (admin auth required)
+  - `POST /api/classification-orders` — Create HS classification order (multipart form + file uploads, creates order + Stripe checkout)
+  - `GET /api/classification-orders/:orderId` — Get classification order summary (public, for confirmation page)
   - `GET /api/hs-search?q=` — Fuzzy product-name HS code search using pg_trgm trigram similarity (typo-tolerant, min 3 chars, max 15 results, fallback to description_full if < 5 results)
   - `GET /api/customs/hs-search?q=&limit=` — Autocomplete HS code search (by code or description, ILIKE)
   - `GET /api/customs/countries` — List all countries with tariff treatment mappings
@@ -73,7 +76,7 @@ Preferred communication style: Simple, everyday language.
 - **Schema** (in `shared/schema.ts`):
   - `registrations` table: id, fullName, email, phone, businessName, residentStatus, packageType, businessType, estimatedRevenue, notes, authorizationConsent, status, isNonResident, createdAt
   - `contacts` table: id, name, email, message, createdAt
-  - `orders` table: id (text PK, format ATN-XXXXXX), customerEmail, customerName, serviceType, status, steps (jsonb array of OrderStep), stripeSessionId, createdAt, updatedAt
+  - `orders` table: id (text PK, format ATN-XXXXXX or HSC-XXXXXX for classifications), customerEmail, customerName, serviceType, status, steps (jsonb array of OrderStep), stripeSessionId, metadata (jsonb, ClassificationOrderData for HS classification orders), createdAt, updatedAt
   - `uploads` table: id (uuid), orderId (FK→orders), fileName, fileData (base64), fileSize, mimeType, createdAt
   - `messages` table: id (uuid), orderId (FK→orders), sender, message, createdAt
   - `carm_leads` table: id, email, companyName, importValueRange, currentlyImporting, phone, highestMonthlyPayable, bondEstimate, cashEstimate, applyMinimum, frequency, isNonResident, priority, source, createdAt
