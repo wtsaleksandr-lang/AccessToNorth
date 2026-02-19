@@ -11,8 +11,29 @@ import { getStripeSync } from './stripeClient';
 import { WebhookHandlers } from './webhookHandlers';
 import { seedProducts } from './seedProducts';
 
+import { pool } from './db';
+
 const app = express();
 const httpServer = createServer(app);
+
+async function ensureTrigramIndexes() {
+  const client = await pool.connect();
+  try {
+    await client.query('CREATE EXTENSION IF NOT EXISTS pg_trgm');
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_hs_description_trgm
+      ON hs_codes USING gin (description gin_trgm_ops)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_hs_description_full_trgm
+      ON hs_codes USING gin (description_full gin_trgm_ops)
+    `);
+  } catch (err: any) {
+    console.error('Warning: Could not create trigram indexes:', err.message);
+  } finally {
+    client.release();
+  }
+}
 
 declare module "http" {
   interface IncomingMessage {
@@ -155,6 +176,7 @@ app.use((req, res, next) => {
 
 (async () => {
   await initStripe();
+  await ensureTrigramIndexes();
   registerPortalRoutes(app);
   registerAdminRoutes(app);
   registerCustomsRoutes(app);
