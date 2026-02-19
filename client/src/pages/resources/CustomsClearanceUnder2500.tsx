@@ -19,7 +19,7 @@ export default function CustomsClearanceUnder2500() {
         { label: "Duty Calculator", href: "/customs-calculator" },
       ]}
       ctaText="Get a clearance quote"
-      ctaService="carm"
+      ctaService="carm_portal"
     />
   );
 }

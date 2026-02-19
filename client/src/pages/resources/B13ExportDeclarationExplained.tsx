@@ -17,7 +17,7 @@ export default function B13ExportDeclarationExplained() {
       relatedLinks={[
         { label: "B13 Export Declaration Service", href: "/services/b13-export-declaration" },
       ]}
-      ctaService="b13-export"
+      ctaService="b13_export"
     />
   );
 }

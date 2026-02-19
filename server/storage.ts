@@ -185,40 +185,99 @@ export class DatabaseStorage implements IStorage {
         .limit(limit);
     }
 
-    return await db
+    const ilikeResults = await db
       .select()
       .from(hsCodes)
-      .where(ilike(hsCodes.description, `%${trimmed}%`))
+      .where(
+        or(
+          ilike(hsCodes.description, `%${trimmed}%`),
+          ilike(hsCodes.descriptionFull, `%${trimmed}%`)
+        )
+      )
       .limit(limit);
+
+    if (ilikeResults.length >= limit) return ilikeResults;
+
+    const remaining = limit - ilikeResults.length;
+    const existingCodes = ilikeResults.map(r => r.code);
+
+    if (trimmed.length >= 3 && remaining > 0) {
+      const existingCodeSet = new Set(existingCodes);
+      const fuzzyResults = await db.execute(sql`
+        SELECT *
+        FROM hs_codes
+        WHERE (description % ${trimmed} OR description_full % ${trimmed})
+        ORDER BY GREATEST(
+          similarity(description, ${trimmed}),
+          similarity(COALESCE(description_full, ''), ${trimmed})
+        ) DESC
+        LIMIT ${remaining + ilikeResults.length}
+      `);
+      const fuzzyRows = (fuzzyResults.rows || fuzzyResults) as Array<any>;
+      const deduped: HsCode[] = [];
+      for (const r of fuzzyRows) {
+        if (!existingCodeSet.has(r.code) && deduped.length < remaining) {
+          deduped.push({
+            id: r.id,
+            code: r.code,
+            description: r.description,
+            descriptionFull: r.description_full,
+            chapter: r.chapter,
+            unitOfMeasure: r.unit_of_measure,
+            dutyRates: r.duty_rates,
+          } as HsCode);
+          existingCodeSet.add(r.code);
+        }
+      }
+      return [...ilikeResults, ...deduped];
+    }
+
+    return ilikeResults;
   }
 
-  async searchHsCodesFuzzy(query: string, limit: number = 15): Promise<Array<HsCode & { score: number }>> {
+  async searchHsCodesFuzzy(query: string, limit: number = 20): Promise<Array<HsCode & { score: number }>> {
     const trimmed = query.trim();
     if (!trimmed || trimmed.length < 3) return [];
 
-    const descResults = await db.execute(sql`
-      SELECT *, similarity(description, ${trimmed}) AS score
+    const ilikeResults = await db.execute(sql`
+      SELECT *,
+        CASE
+          WHEN description ILIKE ${trimmed} THEN 1.0
+          WHEN description ILIKE ${trimmed + '%'} THEN 0.95
+          WHEN description ILIKE ${'%' + trimmed + '%'} THEN 0.9
+          WHEN description_full ILIKE ${'%' + trimmed + '%'} THEN 0.85
+          ELSE 0.5
+        END AS score
       FROM hs_codes
-      WHERE description % ${trimmed}
-      ORDER BY score DESC
+      WHERE description ILIKE ${'%' + trimmed + '%'}
+         OR description_full ILIKE ${'%' + trimmed + '%'}
+      ORDER BY score DESC, description ASC
       LIMIT ${limit}
     `);
 
-    let results = (descResults.rows || descResults) as Array<any>;
+    let results = (ilikeResults.rows || ilikeResults) as Array<any>;
 
-    if (results.length < 5) {
-      const fullResults = await db.execute(sql`
+    if (results.length < 10) {
+      const existingCodeSet = new Set(results.map((r: any) => r.code));
+      const remaining = limit - results.length;
+
+      const fuzzyResults = await db.execute(sql`
         SELECT *, GREATEST(
           similarity(description, ${trimmed}),
           similarity(COALESCE(description_full, ''), ${trimmed})
         ) AS score
         FROM hs_codes
-        WHERE description % ${trimmed}
-           OR description_full % ${trimmed}
+        WHERE (description % ${trimmed} OR description_full % ${trimmed})
         ORDER BY score DESC
-        LIMIT ${limit}
+        LIMIT ${remaining + results.length}
       `);
-      results = (fullResults.rows || fullResults) as Array<any>;
+      const fuzzyRows = (fuzzyResults.rows || fuzzyResults) as Array<any>;
+      for (const row of fuzzyRows) {
+        if (!existingCodeSet.has(row.code) && results.length < limit && parseFloat(row.score) >= 0.2) {
+          results.push(row);
+          existingCodeSet.add(row.code);
+        }
+      }
     }
 
     return results.map((r: any) => ({

@@ -39,15 +39,15 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 const packageLabels: Record<string, string> = {
-  "business-number": "Business Number ($99)",
-  "gst-hst": "GST/HST Registration ($249)",
-  "business-starter": "Business Starter Bundle ($299)",
-  "non-resident": "Non-Resident ($399)",
-  "carm": "CARM Portal ($499)",
-  "rpp-bond": "RPP / Bond Coordination ($395)",
-  "b13-export": "B13 Export Declaration ($125)",
-  "hs-classification": "HS Code Classification ($95)",
-  "complete-bundle": "Complete Importer Bundle ($1,500)",
+  bn: "Business Number ($99)",
+  gst_hst: "GST/HST Registration ($249)",
+  bundle_business_starter: "Business Starter Bundle ($299)",
+  non_resident_tax: "Non-Resident Tax Registration ($399)",
+  carm_portal: "CARM Portal Registration ($499)",
+  rpp_bond: "RPP / Bond Coordination ($395)",
+  b13_export: "B13 Export Declaration ($125)",
+  hs_classification: "HS Code Classification ($95)",
+  bundle_complete_importer: "Complete Importer Bundle ($1,500)",
 };
 
 
@@ -65,20 +65,20 @@ export function RegistrationModal({ isOpen, onClose, defaultPackage }: Registrat
       email: "",
       phone: "",
       businessName: "",
-      residentStatus: defaultPackage === 'non-resident' ? 'non-resident' : 'canadian',
+      residentStatus: defaultPackage === 'non_resident_tax' ? 'non-resident' : 'canadian',
       packageType: defaultPackage,
       businessType: "",
       estimatedRevenue: "",
       notes: "",
       authorizationConsent: false,
-      isNonResident: defaultPackage === 'non-resident',
+      isNonResident: defaultPackage === 'non_resident_tax',
     },
   });
 
   useEffect(() => {
     form.setValue("packageType", defaultPackage);
-    form.setValue("isNonResident", defaultPackage === 'non-resident');
-    if (defaultPackage === 'non-resident') {
+    form.setValue("isNonResident", defaultPackage === 'non_resident_tax');
+    if (defaultPackage === 'non_resident_tax') {
       form.setValue("residentStatus", "non-resident");
     }
   }, [defaultPackage, form]);
@@ -242,15 +242,15 @@ export function RegistrationModal({ isOpen, onClose, defaultPackage }: Registrat
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="business-number">Business Number ($99)</SelectItem>
-                          <SelectItem value="gst-hst">GST/HST Registration ($249)</SelectItem>
-                          <SelectItem value="business-starter">Business Starter Bundle ($299)</SelectItem>
-                          <SelectItem value="non-resident">Non-Resident ($399)</SelectItem>
-                          <SelectItem value="hs-classification">HS Code Classification ($95)</SelectItem>
-                          <SelectItem value="b13-export">B13 Export Declaration ($125)</SelectItem>
-                          <SelectItem value="rpp-bond">RPP / Bond Coordination ($395)</SelectItem>
-                          <SelectItem value="carm">CARM Portal ($499)</SelectItem>
-                          <SelectItem value="complete-bundle">Importer Bundle ($1,500)</SelectItem>
+                          <SelectItem value="bn">Business Number ($99)</SelectItem>
+                          <SelectItem value="gst_hst">GST/HST Registration ($249)</SelectItem>
+                          <SelectItem value="bundle_business_starter">Business Starter Bundle ($299)</SelectItem>
+                          <SelectItem value="non_resident_tax">Non-Resident Tax Registration ($399)</SelectItem>
+                          <SelectItem value="hs_classification">HS Code Classification ($95)</SelectItem>
+                          <SelectItem value="b13_export">B13 Export Declaration ($125)</SelectItem>
+                          <SelectItem value="rpp_bond">RPP / Bond Coordination ($395)</SelectItem>
+                          <SelectItem value="carm_portal">CARM Portal Registration ($499)</SelectItem>
+                          <SelectItem value="bundle_complete_importer">Complete Importer Bundle ($1,500)</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

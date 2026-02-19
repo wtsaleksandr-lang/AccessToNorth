@@ -22,7 +22,7 @@ export default function CarmRegistration() {
         label: "CARM Financial Security Calculator",
         href: "/carm-security-calculator",
       }}
-      ctaService="carm"
+      ctaService="carm_portal"
       additionalInfo="CARM is mandatory for all commercial importers in Canada. If you import goods, you need to be registered and compliant with the new system."
     />
   );

@@ -22,7 +22,7 @@ export default function HsCodeClassification() {
         label: "HS Code Finder (built into Customs Calculator)",
         href: "/customs-calculator",
       }}
-      ctaService="hs-classification"
+      ctaService="hs_classification"
       additionalInfo="Incorrect HS codes are one of the most common reasons for CBSA audits and penalties. Our classifications are based on the Canadian Customs Tariff and CBSA interpretation guidelines."
     />
   );

@@ -19,7 +19,7 @@ export default function WhatIsCarm() {
         { label: "CARM Security Calculator", href: "/carm-security-calculator" },
         { label: "RPP / Bond Coordination", href: "/services/rpp-bond-coordination" },
       ]}
-      ctaService="carm"
+      ctaService="carm_portal"
     />
   );
 }

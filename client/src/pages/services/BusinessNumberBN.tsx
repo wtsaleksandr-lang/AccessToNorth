@@ -17,7 +17,7 @@ export default function BusinessNumberBN() {
         "Digital filing — no paper forms required",
         "Follow-up with CRA on your behalf if needed",
       ]}
-      ctaService="business-number"
+      ctaService="bn"
       additionalInfo="A Business Number is required before you can open GST/HST, payroll, import/export, or corporate income tax accounts with the CRA. Processing typically takes 5–10 business days."
     />
   );

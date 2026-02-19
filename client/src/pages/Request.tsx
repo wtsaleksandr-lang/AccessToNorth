@@ -9,34 +9,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, CheckCircle2, X, MessageSquare } from "lucide-react";
 
-const serviceToPackage: Record<string, string> = {
-  "business-number": "business-number",
-  "gst-hst": "gst-hst",
-  "non-resident": "non-resident",
-  "carm": "carm",
-  "complete-bundle": "complete-bundle",
-  "business-starter": "business-starter",
-  "b13-export": "b13-export",
-  "rpp-bond": "rpp-bond",
-  "hs-classification": "hs-classification",
+const SERVICE_MAP: Record<string, { label: string; price: string; packageType: string }> = {
+  bn: { label: "Business Number (BN)", price: "$99", packageType: "bn" },
+  gst_hst: { label: "GST/HST Registration", price: "$249", packageType: "gst_hst" },
+  bundle_business_starter: { label: "Business Starter Bundle", price: "$299", packageType: "bundle_business_starter" },
+  non_resident_tax: { label: "Non-Resident Tax Registration", price: "$399", packageType: "non_resident_tax" },
+  carm_portal: { label: "CARM Portal Registration", price: "$499", packageType: "carm_portal" },
+  rpp_bond: { label: "RPP / Bond Coordination", price: "$395", packageType: "rpp_bond" },
+  b13_export: { label: "B13 Export Declaration", price: "$125", packageType: "b13_export" },
+  hs_classification: { label: "HS Code Classification", price: "$95", packageType: "hs_classification" },
+  bundle_complete_importer: { label: "Complete Importer Bundle", price: "$1,500", packageType: "bundle_complete_importer" },
 };
 
-const packageLabels: Record<string, string> = {
-  "business-number": "Business Number ($99)",
-  "gst-hst": "GST/HST Registration ($249)",
-  "business-starter": "Business Starter Bundle ($299)",
-  "non-resident": "Non-Resident Tax ($399)",
-  "carm": "CARM Portal ($499)",
-  "rpp-bond": "RPP / Bond Coordination ($395)",
-  "b13-export": "B13 Export Declaration ($125)",
-  "hs-classification": "HS Code Classification ($95)",
-  "complete-bundle": "Complete Importer Bundle ($1,500)",
-};
-
-const CONTACT_SERVICES = ["compliance-review"];
+const CONTACT_SERVICES = ["compliance_review"];
 
 const contactServiceLabels: Record<string, string> = {
-  "compliance-review": "Import Compliance Review",
+  compliance_review: "Import Compliance Review",
 };
 
 export default function Request() {
@@ -44,12 +32,13 @@ export default function Request() {
   const params = new URLSearchParams(search);
   const serviceParam = params.get("service") || "";
   const isContactService = CONTACT_SERVICES.includes(serviceParam);
-  const defaultPkg = serviceToPackage[serviceParam] || "";
+  const matched = SERVICE_MAP[serviceParam];
   const ctaRef = useRef<HTMLDivElement>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState(defaultPkg);
+  const [selectedPackage, setSelectedPackage] = useState(matched?.packageType || "");
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [listCollapsed, setListCollapsed] = useState(!!matched);
 
   usePageMeta({
     title: "Start Your Registration | AccessToNorth.com",
@@ -58,11 +47,17 @@ export default function Request() {
   });
 
   useEffect(() => {
-    const pkg = serviceToPackage[serviceParam] || "";
-    setSelectedPackage(pkg);
+    const svc = SERVICE_MAP[serviceParam];
+    if (svc) {
+      setSelectedPackage(svc.packageType);
+      setListCollapsed(true);
+    } else {
+      setSelectedPackage("");
+      setListCollapsed(false);
+    }
     setBannerDismissed(false);
 
-    if (pkg && ctaRef.current) {
+    if (svc && ctaRef.current) {
       setTimeout(() => {
         ctaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 300);
@@ -74,8 +69,9 @@ export default function Request() {
     setModalOpen(true);
   };
 
-  const showBanner = serviceParam && defaultPkg && !bannerDismissed && !isContactService;
-  const bannerLabel = packageLabels[defaultPkg];
+  const showBanner = serviceParam && matched && !bannerDismissed && !isContactService;
+  const bannerLabel = matched ? `${matched.label} (${matched.price})` : "";
+  const selectedEntry = SERVICE_MAP[selectedPackage];
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
@@ -128,37 +124,56 @@ export default function Request() {
 
           {!isContactService && (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
-                {Object.entries(packageLabels).map(([type, label]) => (
-                  <Card
-                    key={type}
-                    className={`cursor-pointer border transition-all duration-200 ${
-                      selectedPackage === type
-                        ? "border-primary shadow-md ring-1 ring-primary/20"
-                        : "border-slate-200 hover:border-primary/30"
-                    }`}
-                    onClick={() => setSelectedPackage(type)}
-                    data-testid={`card-request-${type}`}
+              {listCollapsed && selectedEntry ? (
+                <div className="mb-10 p-5 rounded-xl border border-primary/20 bg-white flex items-center justify-between gap-3" data-testid="collapsed-selection">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
+                    <span className="font-medium text-slate-800" data-testid="text-collapsed-label">
+                      {selectedEntry.label} — {selectedEntry.price}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setListCollapsed(false)}
+                    className="text-sm text-primary hover:underline cursor-pointer font-medium"
+                    data-testid="button-change-selection"
                   >
-                    <CardContent className="flex items-center gap-4 p-5">
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                        selectedPackage === type ? "border-primary bg-primary" : "border-slate-300"
-                      }`}>
-                        {selectedPackage === type && (
-                          <CheckCircle2 className="w-4 h-4 text-white" />
-                        )}
-                      </div>
-                      <span className="font-medium text-slate-800">{label}</span>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                    Change selection
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+                  {Object.entries(SERVICE_MAP).map(([key, svc]) => (
+                    <Card
+                      key={key}
+                      className={`cursor-pointer border transition-all duration-200 ${
+                        selectedPackage === key
+                          ? "border-primary shadow-md ring-1 ring-primary/20"
+                          : "border-slate-200 hover:border-primary/30"
+                      }`}
+                      onClick={() => { setSelectedPackage(key); setListCollapsed(true); }}
+                      data-testid={`card-request-${key}`}
+                    >
+                      <CardContent className="flex items-center gap-4 p-5">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                          selectedPackage === key ? "border-primary bg-primary" : "border-slate-300"
+                        }`}>
+                          {selectedPackage === key && (
+                            <CheckCircle2 className="w-4 h-4 text-white" />
+                          )}
+                        </div>
+                        <span className="font-medium text-slate-800">{svc.label} — {svc.price}</span>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
 
               <div className="text-center" ref={ctaRef}>
                 <Button
                   size="lg"
                   className="px-10 cursor-pointer"
-                  onClick={() => handleStart(selectedPackage || "gst-hst")}
+                  disabled={!selectedPackage}
+                  onClick={() => handleStart(selectedPackage || "gst_hst")}
                   data-testid="button-begin-application"
                 >
                   Begin Application
@@ -177,7 +192,7 @@ export default function Request() {
       <RegistrationModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        defaultPackage={selectedPackage || "gst-hst"}
+        defaultPackage={selectedPackage || "gst_hst"}
       />
     </div>
   );

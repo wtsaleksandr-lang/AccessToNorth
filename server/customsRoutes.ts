@@ -300,7 +300,7 @@ export function registerCustomsRoutes(app: Express) {
   app.get("/api/hs-search", async (req, res) => {
     try {
       const query = (req.query.q as string) || "";
-      const limit = Math.min(parseInt(req.query.limit as string) || 15, 15);
+      const limit = Math.min(parseInt(req.query.limit as string) || 20, 30);
 
       if (query.length < 3) {
         return res.json([]);
@@ -327,7 +327,7 @@ export function registerCustomsRoutes(app: Express) {
       const query = (req.query.q as string) || "";
       const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
 
-      if (query.length < 2) {
+      if (query.length < 2 || (!/^[\d.]+$/.test(query.trim()) && query.trim().length < 3)) {
         return res.json([]);
       }
 

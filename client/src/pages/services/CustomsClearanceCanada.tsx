@@ -22,7 +22,7 @@ export default function CustomsClearanceCanada() {
         label: "Customs Duty & Tax Calculator",
         href: "/customs-calculator",
       }}
-      ctaService="customs-clearance"
+      ctaService="customs_clearance"
       additionalInfo="We offer three flat-rate clearance packages: LVS ($145 CAD for shipments under $2,500), Commercial Import ($295 CAD for shipments over $2,500), and Clearance + Compliance Review ($395 CAD for full audit). Visit our Customs Clearance page for details."
     />
   );

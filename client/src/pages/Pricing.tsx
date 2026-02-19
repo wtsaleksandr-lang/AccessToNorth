@@ -27,19 +27,19 @@ const sections: PricingSection[] = [
     id: "business",
     title: "Business Setup",
     items: [
-      { name: "Business Number (BN)", price: "$99", service: "business-number" },
-      { name: "GST/HST Registration", price: "$249", service: "gst-hst" },
-      { name: "Non-Resident Setup", price: "$399", service: "non-resident" },
-      { name: "Business Starter Bundle", price: "$299", note: "BN + GST/HST", service: "business-starter", isBundle: true },
+      { name: "Business Number (BN)", price: "$99", service: "bn" },
+      { name: "GST/HST Registration", price: "$249", service: "gst_hst" },
+      { name: "Non-Resident Setup", price: "$399", service: "non_resident_tax" },
+      { name: "Business Starter Bundle", price: "$299", note: "BN + GST/HST", service: "bundle_business_starter", isBundle: true },
     ],
   },
   {
     id: "importer",
     title: "Importer Setup",
     items: [
-      { name: "CARM Portal Setup", price: "$499", service: "carm" },
-      { name: "RPP / Security Coordination", price: "$395", service: "rpp-bond" },
-      { name: "Importer Launch Kit", price: "$1,500", note: "BN + GST/HST + CARM + RPP", service: "complete-bundle", isBundle: true },
+      { name: "CARM Portal Setup", price: "$499", service: "carm_portal" },
+      { name: "RPP / Security Coordination", price: "$395", service: "rpp_bond" },
+      { name: "Importer Launch Kit", price: "$1,500", note: "BN + GST/HST + CARM + RPP", service: "bundle_complete_importer", isBundle: true },
     ],
   },
   {
@@ -55,7 +55,7 @@ const sections: PricingSection[] = [
     id: "export",
     title: "Export",
     items: [
-      { name: "B13 Export Declaration", price: "$125", service: "b13-export" },
+      { name: "B13 Export Declaration", price: "$125", service: "b13_export" },
     ],
   },
 ];

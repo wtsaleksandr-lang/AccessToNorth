@@ -6,6 +6,18 @@ import { z } from "zod";
 import { insertCarmLeadSchema } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 
+const FRONTEND_TO_STRIPE_KEY: Record<string, string> = {
+  bn: "business-number",
+  gst_hst: "gst-hst",
+  bundle_business_starter: "business-starter",
+  non_resident_tax: "non-resident",
+  carm_portal: "carm",
+  rpp_bond: "rpp-bond",
+  b13_export: "b13-export",
+  hs_classification: "hs-classification",
+  bundle_complete_importer: "complete-bundle",
+};
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -114,9 +126,11 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Package type is required" });
       }
 
+      const stripePackageType = FRONTEND_TO_STRIPE_KEY[packageType] || packageType;
+
       if (registrationId) {
         const registrations = await storage.getRegistrationsByEmail(customerEmail);
-        const match = registrations.find(r => r.id === registrationId && r.packageType === packageType);
+        const match = registrations.find(r => r.id === registrationId && (r.packageType === packageType || r.packageType === stripePackageType));
         if (!match) {
           return res.status(400).json({ message: "Invalid registration" });
         }
@@ -125,7 +139,7 @@ export async function registerRoutes(
       const stripe = await getUncachableStripeClient();
 
       const products = await stripe.products.list({ active: true, limit: 100 });
-      const matchingProduct = products.data.find(p => p.metadata?.packageType === packageType);
+      const matchingProduct = products.data.find(p => p.metadata?.packageType === stripePackageType);
       if (!matchingProduct) {
         return res.status(400).json({ message: "Invalid package type" });
       }

@@ -18,7 +18,7 @@ export default function B13ExportDeclaration() {
         "Export compliance documentation review",
         "Post-filing confirmation and records retention",
       ]}
-      ctaService="b13-export"
+      ctaService="b13_export"
       additionalInfo="Canadian law requires an export declaration for most goods valued over $2,000 CAD leaving Canada. Controlled goods, technology, and certain commodities may require export permits regardless of value."
     />
   );

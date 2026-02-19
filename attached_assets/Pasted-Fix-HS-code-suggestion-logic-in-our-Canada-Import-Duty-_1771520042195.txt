@@ -1,0 +1,55 @@
+Fix HS code suggestion logic in our Canada Import Duty/Tax Calculator.
+
+Problem:
+- When user searches “pants”, our dropdown suggestions return irrelevant items (e.g., ostomy appliances, foodstuffs) and MISS obvious HS codes whose descriptions contain “pants” (e.g., 6107/6207 where descriptions include “underpants”, “pants”, etc.).
+- This indicates our search logic is not doing true keyword/lexical matching, or whole-word matching blocks substring matches (pants vs underpants), or our dataset is incomplete.
+
+Goal:
+Make HS code lookup suggestions accurate and predictable for commodity name searches.
+A simple keyword search must always surface HS codes whose descriptions literally contain the user query (including substring matches like pants ⟶ underpants).
+Semantic/embedding search can be used only as a fallback or secondary ranking, not the primary that overrides literal matches.
+
+Required Implementation:
+1) Confirm dataset integrity
+   - Verify our HS dataset includes codes 6107 and 6207 (and that descriptions contain “underpants/pants”).
+   - Add a quick debug script/endpoint to run:
+     a) count rows where description ILIKE '%pants%'
+     b) fetch top 20 rows where description ILIKE '%pants%' (return hs_code + description)
+   - If missing, fix ingestion/source file and re-import.
+
+2) Implement HYBRID SEARCH for the HS dropdown
+   Primary (lexical):
+   - Use PostgreSQL full-text search if available:
+     - Create tsvector index on (description + keywords)
+     - Query with plainto_tsquery(user_input)
+     - Rank by ts_rank_cd
+   OR, if FTS isn’t available quickly:
+     - Use ILIKE substring match:
+       WHERE description ILIKE '%' || q || '%'
+          OR keywords ILIKE '%' || q || '%'
+
+   Secondary (fuzzy):
+   - If lexical results < 10, add trigram similarity (pg_trgm) or a simple fuzzy score.
+   - Semantic embeddings (if currently used) should be FALLBACK only when lexical returns too few results.
+
+3) Ranking rules (must follow)
+   - Exact substring matches in description should rank first.
+   - Starts-with matches next.
+   - Fuzzy/semantic matches last.
+   - Return at least top 20 results (not top 3–5) to avoid hiding correct codes.
+
+4) UX requirements
+   - Dropdown should show: HS code + short description.
+   - Debounce input (200–300ms).
+   - Minimum 2–3 chars before searching.
+   - If no results, show “No matches — try a broader term.”
+
+5) Acceptance tests (must pass)
+   - Searching “pants” returns results containing “pants” or “underpants” in description, including 6107/6207 if present in our dataset.
+   - Searching “bolt” returns fastener-related HS codes (7318… etc.), not random unrelated items.
+   - Searching “ostomy” returns the ostomy-related HS code (3304.99.10.00 etc.) and ranks it above unrelated items.
+
+Deliverables:
+- Patch the backend search endpoint used by the dropdown.
+- Add a small internal debug page or console output to validate the query results.
+- Provide before/after example outputs for queries: “pants”, “bolt”, “ostomy”.

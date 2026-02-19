@@ -18,7 +18,7 @@ export default function IncotermsForCanadianImporters() {
         { label: "Customs Duty Calculator", href: "/customs-calculator" },
         { label: "Import Compliance Review", href: "/services/import-compliance-review" },
       ]}
-      ctaService="compliance-review"
+      ctaService="compliance_review"
     />
   );
 }

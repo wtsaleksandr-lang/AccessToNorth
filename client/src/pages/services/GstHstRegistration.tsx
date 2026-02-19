@@ -18,7 +18,7 @@ export default function GstHstRegistration() {
         "Compliance review and filing reminders",
         "Input Tax Credit (ITC) eligibility guidance",
       ]}
-      ctaService="gst-hst"
+      ctaService="gst_hst"
       additionalInfo="You must register for GST/HST if your worldwide taxable revenues exceed $30,000 over four consecutive calendar quarters. Voluntary registration is available for businesses below the threshold who want to claim ITCs."
     />
   );

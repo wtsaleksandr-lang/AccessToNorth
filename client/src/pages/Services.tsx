@@ -10,35 +10,35 @@ const serviceGroups = [
   {
     category: "Business Setup",
     services: [
-      { title: "Business Number (BN)", desc: "9-digit CRA Business Number — the foundation for all tax accounts.", icon: Building2, href: "/services/business-number-bn", cta: "business-number" },
-      { title: "GST/HST Registration", desc: "Register for Goods and Services Tax / Harmonized Sales Tax.", icon: Landmark, href: "/services/gst-hst-registration", cta: "gst-hst" },
-      { title: "Non-Resident Importer (NRI)", desc: "Full setup for non-resident businesses importing into or selling in Canada.", icon: Globe, href: "/services/non-resident-importer-canada", cta: "non-resident" },
+      { title: "Business Number (BN)", desc: "9-digit CRA Business Number — the foundation for all tax accounts.", icon: Building2, href: "/services/business-number-bn", cta: "bn" },
+      { title: "GST/HST Registration", desc: "Register for Goods and Services Tax / Harmonized Sales Tax.", icon: Landmark, href: "/services/gst-hst-registration", cta: "gst_hst" },
+      { title: "Non-Resident Importer (NRI)", desc: "Full setup for non-resident businesses importing into or selling in Canada.", icon: Globe, href: "/services/non-resident-importer-canada", cta: "non_resident_tax" },
     ],
   },
   {
     category: "Importer Setup",
     services: [
-      { title: "CARM Registration", desc: "End-to-end CARM portal onboarding, delegation, and import account setup.", icon: Landmark, href: "/services/carm-registration-canada", cta: "carm" },
-      { title: "RPP / Bond Coordination", desc: "Release Prior to Payment program and surety bond coordination.", icon: Scale, href: "/services/rpp-bond-coordination", cta: "rpp-bond" },
+      { title: "CARM Registration", desc: "End-to-end CARM portal onboarding, delegation, and import account setup.", icon: Landmark, href: "/services/carm-registration-canada", cta: "carm_portal" },
+      { title: "RPP / Bond Coordination", desc: "Release Prior to Payment program and surety bond coordination.", icon: Scale, href: "/services/rpp-bond-coordination", cta: "rpp_bond" },
     ],
   },
   {
     category: "Customs Clearance",
     services: [
-      { title: "Canadian Customs Clearance", desc: "Flat-rate commercial import clearance into Canada. LVS, commercial, and compliance packages.", icon: Package, href: "/services/customs-clearance-canada", cta: "customs-clearance" },
+      { title: "Canadian Customs Clearance", desc: "Flat-rate commercial import clearance into Canada. LVS, commercial, and compliance packages.", icon: Package, href: "/services/customs-clearance-canada", cta: "customs_clearance" },
     ],
   },
   {
     category: "Export",
     services: [
-      { title: "B13 Export Declaration", desc: "Canadian Export Declaration filing for goods leaving Canada (over $2,000 CAD).", icon: FileText, href: "/services/b13-export-declaration", cta: "b13-export" },
+      { title: "B13 Export Declaration", desc: "Canadian Export Declaration filing for goods leaving Canada (over $2,000 CAD).", icon: FileText, href: "/services/b13-export-declaration", cta: "b13_export" },
     ],
   },
   {
     category: "Compliance",
     services: [
-      { title: "HS Code Classification", desc: "Accurate tariff classification to avoid penalties and overpayment of duties.", icon: FileCheck, href: "/services/hs-code-classification-canada", cta: "hs-classification" },
-      { title: "Import Compliance Review", desc: "Comprehensive audit of your import operations — tariff, valuation, and origin.", icon: Shield, href: "/services/import-compliance-review", cta: "compliance-review" },
+      { title: "HS Code Classification", desc: "Accurate tariff classification to avoid penalties and overpayment of duties.", icon: FileCheck, href: "/services/hs-code-classification-canada", cta: "hs_classification" },
+      { title: "Import Compliance Review", desc: "Comprehensive audit of your import operations — tariff, valuation, and origin.", icon: Shield, href: "/services/import-compliance-review", cta: "compliance_review" },
     ],
   },
 ];
@@ -85,9 +85,9 @@ export default function Services() {
                               Learn More <ArrowRight className="w-4 h-4 ml-2" />
                             </Button>
                           </Link>
-                          <Link href={service.cta === "customs-clearance" ? "/canadian-customs-clearance" : `/request?service=${service.cta}`}>
+                          <Link href={service.cta === "customs_clearance" ? "/canadian-customs-clearance" : `/request?service=${service.cta}`}>
                             <Button className="w-full cursor-pointer" data-testid={`button-request-${service.cta}`}>
-                              {service.cta === "customs-clearance" ? "View Packages" : "Request Service"}
+                              {service.cta === "customs_clearance" ? "View Packages" : "Request Service"}
                             </Button>
                           </Link>
                         </div>

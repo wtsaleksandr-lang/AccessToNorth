@@ -23,7 +23,7 @@ export default function ImportComplianceReview() {
         label: "Customs Duty & Tax Calculator",
         href: "/customs-calculator",
       }}
-      ctaService="compliance-review"
+      ctaService="compliance_review"
       additionalInfo="A compliance review can uncover duty savings opportunities and reduce the risk of CBSA audits, penalties, and shipment delays."
     />
   );
