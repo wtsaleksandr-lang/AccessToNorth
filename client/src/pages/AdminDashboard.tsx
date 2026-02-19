@@ -40,6 +40,10 @@ import {
   RefreshCw,
   Eye,
   Edit3,
+  Copy,
+  Clipboard,
+  FileCheck,
+  Briefcase,
 } from "lucide-react";
 import type { OrderStep } from "@shared/schema";
 
@@ -73,6 +77,15 @@ interface OrderSummary {
   aiDraftReport: string | null;
   aiGeneratedAt: string | null;
   aiModelUsed: string | null;
+  aiSummary: string | null;
+  aiClientUpdateDraft: string | null;
+  aiMissingDocs: string | null;
+  aiNextSteps: string | null;
+  aiAssistGeneratedAt: string | null;
+  aiReadinessSnapshotText: string | null;
+  readinessSnapshotSentAt: string | null;
+  aiBrokerPackText: string | null;
+  brokerPackSentAt: string | null;
 }
 
 interface UploadData {
@@ -620,6 +633,8 @@ function OrderDetailView({ orderId, onBack }: { orderId: string; onBack: () => v
         </CardContent>
       </Card>
 
+      <AdminAiAssistCard orderId={orderId} order={order} />
+
       {order.serviceType.includes("HS Classification") && (
         <AdminSendReportSection
           orderId={orderId}
@@ -628,11 +643,394 @@ function OrderDetailView({ orderId, onBack }: { orderId: string; onBack: () => v
         />
       )}
 
+      {showReadinessSnapshot(order.serviceType) && (
+        <AdminReadinessSnapshotCard orderId={orderId} order={order} />
+      )}
+
+      {showBrokerPack(order.serviceType) && (
+        <AdminBrokerPackCard orderId={orderId} order={order} />
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <AdminFilesSection uploads={uploads} />
         <AdminMessagesSection orderId={orderId} messages={messages} onRefresh={loadOrder} />
       </div>
     </div>
+  );
+}
+
+function showReadinessSnapshot(serviceType: string): boolean {
+  const types = ["CARM", "GST/HST", "Business Number", "Complete Importer", "Non-Resident"];
+  return types.some(t => serviceType.includes(t));
+}
+
+function showBrokerPack(serviceType: string): boolean {
+  const types = ["Complete Importer", "HS Classification", "CARM"];
+  return types.some(t => serviceType.includes(t));
+}
+
+function AdminAiAssistCard({ orderId, order }: { orderId: string; order: OrderSummary }) {
+  const [summary, setSummary] = useState(order.aiSummary || "");
+  const [clientUpdate, setClientUpdate] = useState(order.aiClientUpdateDraft || "");
+  const [missingDocs, setMissingDocs] = useState(order.aiMissingDocs || "");
+  const [nextSteps, setNextSteps] = useState(order.aiNextSteps || "");
+  const [loading, setLoading] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const handleGenerate = async (type: string) => {
+    setLoading(type);
+    try {
+      const data = await adminApi(`/api/admin/orders/${orderId}/ai-${type}`, { method: "POST" });
+      switch (type) {
+        case "summary": setSummary(data.text); break;
+        case "client-update": setClientUpdate(data.text); break;
+        case "missing-docs": setMissingDocs(data.text); break;
+        case "next-steps": setNextSteps(data.text); break;
+      }
+    } catch (err: any) {
+      console.error(`AI ${type} error:`, err);
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleCopy = (text: string, type: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(type);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  const sections = [
+    { key: "summary", label: "Summarize Order", value: summary },
+    { key: "client-update", label: "Draft Client Update", value: clientUpdate },
+    { key: "missing-docs", label: "Missing Documents", value: missingDocs },
+    { key: "next-steps", label: "Next Steps", value: nextSteps },
+  ];
+
+  return (
+    <Card data-testid="card-ai-assist">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-primary" />
+          AI Assist
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-2">
+          {sections.map((s) => (
+            <Button
+              key={s.key}
+              variant="outline"
+              size="sm"
+              onClick={() => handleGenerate(s.key)}
+              disabled={loading === s.key}
+              data-testid={`button-ai-${s.key}`}
+            >
+              {loading === s.key ? (
+                <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+              ) : (
+                <Sparkles className="w-3.5 h-3.5 mr-1" />
+              )}
+              {s.label}
+            </Button>
+          ))}
+        </div>
+        {sections.map((s) =>
+          s.value ? (
+            <div key={s.key} className="space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-medium text-muted-foreground">{s.label}</p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleCopy(s.value, s.key)}
+                  data-testid={`button-copy-${s.key}`}
+                >
+                  {copied === s.key ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                </Button>
+              </div>
+              <div className="border rounded-md p-3 text-sm whitespace-pre-wrap" data-testid={`text-ai-${s.key}`}>
+                {s.value}
+              </div>
+            </div>
+          ) : null
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AdminReadinessSnapshotCard({ orderId, order }: { orderId: string; order: OrderSummary }) {
+  const [text, setText] = useState(order.aiReadinessSnapshotText || "");
+  const [generating, setGenerating] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sentAt, setSentAt] = useState(order.readinessSnapshotSentAt || "");
+  const [error, setError] = useState("");
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    setError("");
+    try {
+      const data = await adminApi(`/api/admin/orders/${orderId}/readiness-snapshot`, { method: "POST" });
+      setText(data.text);
+    } catch (err: any) {
+      setError(err.message || "Failed to generate snapshot");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    setExportingPdf(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/readiness-snapshot/export-pdf`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Export failed");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Readiness_Snapshot_${orderId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setError(err.message || "Failed to export PDF");
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!confirm("This will send the readiness snapshot to the customer. Continue?")) return;
+    setSending(true);
+    setError("");
+    try {
+      const data = await adminApi(`/api/admin/orders/${orderId}/readiness-snapshot/send`, { method: "POST" });
+      setSentAt(data.sentAt || new Date().toISOString());
+    } catch (err: any) {
+      setError(err.message || "Failed to send snapshot");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Card data-testid="card-readiness-snapshot">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <FileCheck className="w-4 h-4 text-primary" />
+          Import Readiness Snapshot
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {error && (
+          <div className="flex items-center gap-2 p-3 rounded-md bg-destructive/10 border border-destructive/20 text-sm" data-testid="text-snapshot-error">
+            <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
+            <span className="text-destructive">{error}</span>
+            <button className="ml-auto" onClick={() => setError("")}>
+              <X className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+          </div>
+        )}
+
+        {sentAt && (
+          <div className="flex items-center gap-2 p-3 rounded-md bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-sm" data-testid="text-snapshot-sent">
+            <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+            <span className="text-green-700 dark:text-green-300">
+              Already Sent {new Date(sentAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+            </span>
+          </div>
+        )}
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleGenerate}
+          disabled={generating}
+          data-testid="button-generate-snapshot"
+        >
+          {generating ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />}
+          {text ? "Regenerate Snapshot" : "Generate Snapshot"}
+        </Button>
+
+        {text && (
+          <>
+            <div className="border rounded-md p-4 max-h-[400px] overflow-y-auto prose prose-sm dark:prose-invert max-w-none" data-testid="div-snapshot-preview">
+              <DraftPreview text={text} />
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPdf}
+                disabled={exportingPdf}
+                data-testid="button-snapshot-export-pdf"
+              >
+                {exportingPdf ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <FileDown className="w-3.5 h-3.5 mr-1" />}
+                Export PDF
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSend}
+                disabled={sending || !!sentAt}
+                data-testid="button-snapshot-send"
+              >
+                {sending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1" />}
+                Send to Client
+              </Button>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AdminBrokerPackCard({ orderId, order }: { orderId: string; order: OrderSummary }) {
+  const [text, setText] = useState(order.aiBrokerPackText || "");
+  const [generating, setGenerating] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sentAt, setSentAt] = useState(order.brokerPackSentAt || "");
+  const [error, setError] = useState("");
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    setError("");
+    try {
+      const data = await adminApi(`/api/admin/orders/${orderId}/broker-pack`, { method: "POST" });
+      setText(data.text);
+    } catch (err: any) {
+      setError(err.message || "Failed to generate pack");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    setExportingPdf(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/broker-pack/export-pdf`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Export failed");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Broker_Pack_${orderId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setError(err.message || "Failed to export PDF");
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!confirm("This will send the broker handoff pack to the customer. Continue?")) return;
+    setSending(true);
+    setError("");
+    try {
+      const data = await adminApi(`/api/admin/orders/${orderId}/broker-pack/send`, { method: "POST" });
+      setSentAt(data.sentAt || new Date().toISOString());
+    } catch (err: any) {
+      setError(err.message || "Failed to send pack");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Card data-testid="card-broker-pack">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Briefcase className="w-4 h-4 text-primary" />
+          Broker Handoff Pack
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {error && (
+          <div className="flex items-center gap-2 p-3 rounded-md bg-destructive/10 border border-destructive/20 text-sm" data-testid="text-broker-pack-error">
+            <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
+            <span className="text-destructive">{error}</span>
+            <button className="ml-auto" onClick={() => setError("")}>
+              <X className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+          </div>
+        )}
+
+        {sentAt && (
+          <div className="flex items-center gap-2 p-3 rounded-md bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-sm" data-testid="text-broker-pack-sent">
+            <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+            <span className="text-green-700 dark:text-green-300">
+              Already Sent {new Date(sentAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+            </span>
+          </div>
+        )}
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleGenerate}
+          disabled={generating}
+          data-testid="button-generate-broker-pack"
+        >
+          {generating ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />}
+          {text ? "Regenerate Pack" : "Generate Pack"}
+        </Button>
+
+        {text && (
+          <>
+            <div className="border rounded-md p-4 max-h-[400px] overflow-y-auto prose prose-sm dark:prose-invert max-w-none" data-testid="div-broker-pack-preview">
+              <DraftPreview text={text} />
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPdf}
+                disabled={exportingPdf}
+                data-testid="button-broker-pack-export-pdf"
+              >
+                {exportingPdf ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <FileDown className="w-3.5 h-3.5 mr-1" />}
+                Export PDF
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSend}
+                disabled={sending || !!sentAt}
+                data-testid="button-broker-pack-send"
+              >
+                {sending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1" />}
+                Send to Client
+              </Button>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

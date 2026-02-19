@@ -244,6 +244,64 @@ ${questionsList}
   };
 }
 
+export function buildSnapshotDeliveryEmail(
+  orderId: string,
+  customerName: string,
+  downloadUrl: string
+): SendEmailParams {
+  const html = emailWrapper(`
+<div class="body">
+<h2>Your Import Readiness Snapshot</h2>
+<p>Hi ${customerName},</p>
+<p>We've prepared an Import Readiness Snapshot for your order <strong style="font-family:monospace;color:${BRAND_COLOR}">${orderId}</strong>. This document summarizes your current import readiness and outlines recommended next steps.</p>
+
+<p style="text-align:center;margin:28px 0">
+<a href="${downloadUrl}" class="btn">Download Your Snapshot</a>
+</p>
+
+<div class="highlight-box">
+<p>This download link will expire in 30 days. If you need access after that, please contact us at ${OPS_EMAIL}.</p>
+</div>
+
+<p>If you have any questions about your snapshot or need further assistance, feel free to reply to this email.</p>
+</div>`);
+
+  return {
+    to: "",
+    subject: `Your Import Readiness Snapshot – ${orderId}`,
+    html,
+  };
+}
+
+export function buildBrokerPackDeliveryEmail(
+  orderId: string,
+  customerName: string,
+  downloadUrl: string
+): SendEmailParams {
+  const html = emailWrapper(`
+<div class="body">
+<h2>Your Broker Handoff Pack</h2>
+<p>Hi ${customerName},</p>
+<p>We've prepared a Broker Handoff Pack for your order <strong style="font-family:monospace;color:${BRAND_COLOR}">${orderId}</strong>. This document helps you organize the information your customs broker will need.</p>
+
+<p style="text-align:center;margin:28px 0">
+<a href="${downloadUrl}" class="btn">Download Your Pack</a>
+</p>
+
+<div class="highlight-box">
+<p>This download link will expire in 30 days. If you need access after that, please contact us at ${OPS_EMAIL}.</p>
+</div>
+
+<p>If you have any questions, feel free to reply to this email or contact us at ${OPS_EMAIL}.</p>
+</div>`);
+
+  return {
+    to: "",
+    subject: `Your Broker Handoff Pack – ${orderId}`,
+    html,
+  };
+}
+
 export function buildStatusUpdateEmail(
   orderId: string,
   newStatus: string,
