@@ -823,7 +823,7 @@ export default function CustomsCalculator() {
                           initial={{ opacity: 0, y: -4 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -4 }}
-                          className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 rounded-lg border shadow-xl max-h-64 overflow-y-auto"
+                          className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 rounded-lg border shadow-xl max-h-96 overflow-y-auto"
                           data-testid="dropdown-hs-results"
                         >
                           {hsResults.map((item) => (
@@ -834,13 +834,14 @@ export default function CustomsCalculator() {
                               onClick={() => handleHsSelect(item)}
                               data-testid={`option-hs-${item.code}`}
                             >
-                              <span className="text-sm font-mono font-semibold text-blue-700 dark:text-blue-400">{item.code}</span>
-                              <span className="text-sm text-slate-600 dark:text-slate-300 ml-2">
-                                {item.description.length > 80 ? item.description.substring(0, 80) + "..." : item.description}
-                              </span>
-                              {item.unitOfMeasure && (
-                                <span className="text-xs text-slate-400 ml-1">({item.unitOfMeasure})</span>
-                              )}
+                              <div className="flex items-start gap-2">
+                                <span className="text-sm font-mono font-semibold text-blue-700 dark:text-blue-400 shrink-0">{item.code}</span>
+                                <span className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2">
+                                  {(item.descriptionFull || item.description).length > 140
+                                    ? (item.descriptionFull || item.description).substring(0, 140) + "..."
+                                    : (item.descriptionFull || item.description)}
+                                </span>
+                              </div>
                             </button>
                           ))}
                         </motion.div>
@@ -883,7 +884,7 @@ export default function CustomsCalculator() {
                           initial={{ opacity: 0, y: -4 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -4 }}
-                          className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 rounded-lg border shadow-xl max-h-64 overflow-y-auto"
+                          className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 rounded-lg border shadow-xl max-h-96 overflow-y-auto"
                           data-testid="dropdown-product-results"
                         >
                           {productResults.map((item) => (
