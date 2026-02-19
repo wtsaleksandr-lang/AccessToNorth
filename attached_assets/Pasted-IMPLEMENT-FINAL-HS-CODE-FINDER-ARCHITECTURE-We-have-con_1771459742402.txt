@@ -1,0 +1,103 @@
+IMPLEMENT FINAL HS CODE FINDER ARCHITECTURE
+
+We have confirmed:
+
+- Table: hs_codes
+- description (short labels, avg 39 chars)
+- description_full (rare long legal text)
+- ~7,050 rows total
+
+Goal: Build fast, typo-tolerant HS product-name search.
+
+========================
+DATABASE SETUP
+========================
+
+1) Enable trigram extension:
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+2) Add trigram indexes:
+CREATE INDEX IF NOT EXISTS idx_hs_description_trgm
+ON hs_codes USING GIN (description gin_trgm_ops);
+
+CREATE INDEX IF NOT EXISTS idx_hs_description_full_trgm
+ON hs_codes USING GIN (description_full gin_trgm_ops);
+
+========================
+SEARCH API
+========================
+
+Create GET /api/hs-search?q=
+
+Logic:
+
+- Minimum 3 characters required
+- Debounce client-side 300ms
+- Query primarily on description
+- If fewer than 5 results, fallback to include description_full
+- Rank by similarity score (highest first)
+- Limit results to 15
+
+Example logic (conceptually):
+
+SELECT
+  hs_code,
+  description,
+  similarity(description, $1) AS score
+FROM hs_codes
+WHERE description % $1
+ORDER BY score DESC
+LIMIT 15;
+
+If results < 5:
+Repeat including description_full in similarity ranking.
+
+========================
+UI REQUIREMENTS
+========================
+
+On /customs-calculator:
+
+Add toggle:
+- Enter HS code
+- Find HS by product name
+
+In product name mode:
+
+- Text input: “Describe your product”
+- Autocomplete dropdown
+- Show:
+    HS code (bold)
+    description
+- Selecting result fills HS code field
+
+========================
+PERFORMANCE
+========================
+
+- Debounce 300ms
+- Return max 15 results
+- No heavy payloads
+- Target response <200ms
+
+========================
+SAFETY
+========================
+
+Display visible note above dropdown:
+
+“Suggested matches only. HS classification depends on product details. Verify before relying on results.”
+
+Add CTA under dropdown:
+
+“Need confirmation? Order HS code & duty review.”
+
+========================
+IMPORTANT
+========================
+
+Do not modify duty calculation logic.
+Do not rebuild database schema.
+Do not add unnecessary features.
+
+Implement cleanly and efficiently.
