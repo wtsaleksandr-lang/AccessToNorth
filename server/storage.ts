@@ -45,6 +45,7 @@ export interface IStorage {
   createMessage(message: InsertMessage): Promise<Message>;
   createCarmLead(lead: InsertCarmLead): Promise<CarmLead>;
   searchHsCodes(query: string, limit?: number): Promise<HsCode[]>;
+  searchHsCodesFuzzy(query: string, limit?: number): Promise<Array<HsCode & { score: number }>>;
   getHsCodeByCode(code: string): Promise<HsCode | undefined>;
   getAllCountries(): Promise<TariffCountry[]>;
   createCustomsLead(lead: InsertCustomsLead): Promise<CustomsLead>;
@@ -189,6 +190,47 @@ export class DatabaseStorage implements IStorage {
       .from(hsCodes)
       .where(ilike(hsCodes.description, `%${trimmed}%`))
       .limit(limit);
+  }
+
+  async searchHsCodesFuzzy(query: string, limit: number = 15): Promise<Array<HsCode & { score: number }>> {
+    const trimmed = query.trim();
+    if (!trimmed || trimmed.length < 3) return [];
+
+    const descResults = await db.execute(sql`
+      SELECT *, similarity(description, ${trimmed}) AS score
+      FROM hs_codes
+      WHERE description % ${trimmed}
+      ORDER BY score DESC
+      LIMIT ${limit}
+    `);
+
+    let results = (descResults.rows || descResults) as Array<any>;
+
+    if (results.length < 5) {
+      const fullResults = await db.execute(sql`
+        SELECT *, GREATEST(
+          similarity(description, ${trimmed}),
+          similarity(COALESCE(description_full, ''), ${trimmed})
+        ) AS score
+        FROM hs_codes
+        WHERE description % ${trimmed}
+           OR description_full % ${trimmed}
+        ORDER BY score DESC
+        LIMIT ${limit}
+      `);
+      results = (fullResults.rows || fullResults) as Array<any>;
+    }
+
+    return results.map((r: any) => ({
+      id: r.id,
+      code: r.code,
+      description: r.description,
+      descriptionFull: r.description_full,
+      chapter: r.chapter,
+      unitOfMeasure: r.unit_of_measure,
+      dutyRates: r.duty_rates,
+      score: parseFloat(r.score),
+    }));
   }
 
   async getHsCodeByCode(code: string): Promise<HsCode | undefined> {

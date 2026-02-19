@@ -47,7 +47,8 @@ Preferred communication style: Simple, everyday language.
   - `PATCH /api/admin/orders/:orderId` — Update order steps and status (admin auth required)
   - `POST /api/admin/orders/:orderId/message` — Admin reply to client message (admin auth required)
   - `GET /api/admin/uploads/:uploadId/download` — Download uploaded file (admin auth required)
-  - `GET /api/customs/hs-search?q=&limit=` — Autocomplete HS code search (by code or description)
+  - `GET /api/hs-search?q=` — Fuzzy product-name HS code search using pg_trgm trigram similarity (typo-tolerant, min 3 chars, max 15 results, fallback to description_full if < 5 results)
+  - `GET /api/customs/hs-search?q=&limit=` — Autocomplete HS code search (by code or description, ILIKE)
   - `GET /api/customs/countries` — List all countries with tariff treatment mappings
   - `GET /api/customs/provinces` — List all provinces with tax rates
   - `POST /api/customs/calculate` — Calculate duty/tax for single item (hsCode, countryOfOrigin, valueCAD, quantity, province, shipmentType)

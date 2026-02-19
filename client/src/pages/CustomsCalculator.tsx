@@ -155,11 +155,19 @@ function formatPercent(value: number): string {
 }
 
 export default function CustomsCalculator() {
+  const [searchMode, setSearchMode] = useState<"code" | "product">("code");
   const [hsQuery, setHsQuery] = useState("");
   const [hsResults, setHsResults] = useState<HsCodeResult[]>([]);
   const [selectedHsCode, setSelectedHsCode] = useState<HsCodeResult | null>(null);
   const [showHsDropdown, setShowHsDropdown] = useState(false);
   const [hsSearching, setHsSearching] = useState(false);
+  const [productQuery, setProductQuery] = useState("");
+  const [productResults, setProductResults] = useState<(HsCodeResult & { score: number })[]>([]);
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
+  const [productSearching, setProductSearching] = useState(false);
+  const productInputRef = useRef<HTMLInputElement>(null);
+  const productDropdownRef = useRef<HTMLDivElement>(null);
+  const productSearchTimeout = useRef<ReturnType<typeof setTimeout>>();
 
   const [countries, setCountries] = useState<Country[]>([]);
   const [selectedCountry, setSelectedCountry] = useState("");
@@ -205,6 +213,14 @@ export default function CustomsCalculator() {
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (
+        productDropdownRef.current &&
+        !productDropdownRef.current.contains(e.target as Node) &&
+        productInputRef.current &&
+        !productInputRef.current.contains(e.target as Node)
+      ) {
+        setShowProductDropdown(false);
+      }
+      if (
         hsDropdownRef.current &&
         !hsDropdownRef.current.contains(e.target as Node) &&
         hsInputRef.current &&
@@ -240,6 +256,49 @@ export default function CustomsCalculator() {
       }
     }, 300);
   }, []);
+
+  const searchProductNames = useCallback((query: string) => {
+    if (query.length < 3) {
+      setProductResults([]);
+      setShowProductDropdown(false);
+      return;
+    }
+
+    setProductSearching(true);
+    if (productSearchTimeout.current) clearTimeout(productSearchTimeout.current);
+
+    productSearchTimeout.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/hs-search?q=${encodeURIComponent(query)}&limit=15`);
+        const data = await res.json();
+        setProductResults(data);
+        setShowProductDropdown(data.length > 0);
+      } catch {
+        setProductResults([]);
+      } finally {
+        setProductSearching(false);
+      }
+    }, 300);
+  }, []);
+
+  const handleProductSelect = (item: HsCodeResult & { score: number }) => {
+    setSelectedHsCode({ code: item.code, description: item.description, chapter: item.chapter, unitOfMeasure: item.unitOfMeasure });
+    setProductQuery(`${item.code} - ${item.description}`);
+    setShowProductDropdown(false);
+    setInputError("");
+  };
+
+  const handleModeSwitch = (mode: "code" | "product") => {
+    setSearchMode(mode);
+    setSelectedHsCode(null);
+    setHsQuery("");
+    setHsResults([]);
+    setShowHsDropdown(false);
+    setProductQuery("");
+    setProductResults([]);
+    setShowProductDropdown(false);
+    setInputError("");
+  };
 
   const handleHsSelect = (item: HsCodeResult) => {
     setSelectedHsCode(item);
@@ -636,76 +695,184 @@ export default function CustomsCalculator() {
 
             <div className="space-y-5">
               <div className="relative">
-                <Label htmlFor="hs-code" className="text-sm font-medium mb-1.5 block">
-                  HS Code or Product Description
+                <Label className="text-sm font-medium mb-1.5 block">
+                  HS Code Lookup
                 </Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <Input
-                    ref={hsInputRef}
-                    id="hs-code"
-                    data-testid="input-hs-code"
-                    placeholder="Search by code (e.g. 6110) or description (e.g. cotton sweater)"
-                    value={hsQuery}
-                    onChange={(e) => {
-                      setHsQuery(e.target.value);
-                      setSelectedHsCode(null);
-                      searchHsCodes(e.target.value);
-                    }}
-                    onFocus={() => {
-                      if (hsResults.length > 0) setShowHsDropdown(true);
-                    }}
-                    className="pl-9"
-                  />
-                  {hsSearching && (
-                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 animate-spin" />
-                  )}
+                <div className="flex gap-1 mb-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                  <button
+                    type="button"
+                    className={`flex-1 text-xs font-medium py-1.5 px-3 rounded-md transition-colors ${
+                      searchMode === "code"
+                        ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                        : "text-slate-500 dark:text-slate-400"
+                    }`}
+                    onClick={() => handleModeSwitch("code")}
+                    data-testid="toggle-search-code"
+                  >
+                    Enter HS Code
+                  </button>
+                  <button
+                    type="button"
+                    className={`flex-1 text-xs font-medium py-1.5 px-3 rounded-md transition-colors ${
+                      searchMode === "product"
+                        ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                        : "text-slate-500 dark:text-slate-400"
+                    }`}
+                    onClick={() => handleModeSwitch("product")}
+                    data-testid="toggle-search-product"
+                  >
+                    Find HS by Product Name
+                  </button>
                 </div>
 
-                <AnimatePresence>
-                  {showHsDropdown && hsResults.length > 0 && (
-                    <motion.div
-                      ref={hsDropdownRef}
-                      initial={{ opacity: 0, y: -4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -4 }}
-                      className="absolute z-50 w-full mt-1 bg-white rounded-lg border shadow-xl max-h-64 overflow-y-auto"
-                      data-testid="dropdown-hs-results"
-                    >
-                      {hsResults.map((item) => (
-                        <button
-                          key={item.code}
-                          type="button"
-                          className="w-full text-left px-3 py-2.5 hover-elevate cursor-pointer transition-colors border-b last:border-b-0"
-                          onClick={() => handleHsSelect(item)}
-                          data-testid={`option-hs-${item.code}`}
+                {searchMode === "code" ? (
+                  <>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <Input
+                        ref={hsInputRef}
+                        id="hs-code"
+                        data-testid="input-hs-code"
+                        placeholder="Search by code (e.g. 6110) or keyword"
+                        value={hsQuery}
+                        onChange={(e) => {
+                          setHsQuery(e.target.value);
+                          setSelectedHsCode(null);
+                          searchHsCodes(e.target.value);
+                        }}
+                        onFocus={() => {
+                          if (hsResults.length > 0) setShowHsDropdown(true);
+                        }}
+                        className="pl-9"
+                      />
+                      {hsSearching && (
+                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 animate-spin" />
+                      )}
+                    </div>
+
+                    <AnimatePresence>
+                      {showHsDropdown && hsResults.length > 0 && (
+                        <motion.div
+                          ref={hsDropdownRef}
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 rounded-lg border shadow-xl max-h-64 overflow-y-auto"
+                          data-testid="dropdown-hs-results"
                         >
-                          <span className="text-sm font-mono font-semibold text-blue-700">{item.code}</span>
-                          <span className="text-sm text-slate-600 ml-2">
-                            {item.description.length > 80 ? item.description.substring(0, 80) + "..." : item.description}
-                          </span>
-                          {item.unitOfMeasure && (
-                            <span className="text-xs text-slate-400 ml-1">({item.unitOfMeasure})</span>
-                          )}
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                          {hsResults.map((item) => (
+                            <button
+                              key={item.code}
+                              type="button"
+                              className="w-full text-left px-3 py-2.5 hover-elevate cursor-pointer transition-colors border-b last:border-b-0"
+                              onClick={() => handleHsSelect(item)}
+                              data-testid={`option-hs-${item.code}`}
+                            >
+                              <span className="text-sm font-mono font-semibold text-blue-700 dark:text-blue-400">{item.code}</span>
+                              <span className="text-sm text-slate-600 dark:text-slate-300 ml-2">
+                                {item.description.length > 80 ? item.description.substring(0, 80) + "..." : item.description}
+                              </span>
+                              {item.unitOfMeasure && (
+                                <span className="text-xs text-slate-400 ml-1">({item.unitOfMeasure})</span>
+                              )}
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mb-1.5 flex items-center gap-1">
+                      <Info className="w-3 h-3 flex-shrink-0" />
+                      Suggested matches only. HS classification depends on product details. Verify before relying on results.
+                    </p>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <Input
+                        ref={productInputRef}
+                        id="product-name"
+                        data-testid="input-product-name"
+                        placeholder="Describe your product (e.g. rubber gloves, steel pipe, chocolate)"
+                        value={productQuery}
+                        onChange={(e) => {
+                          setProductQuery(e.target.value);
+                          setSelectedHsCode(null);
+                          searchProductNames(e.target.value);
+                        }}
+                        onFocus={() => {
+                          if (productResults.length > 0) setShowProductDropdown(true);
+                        }}
+                        className="pl-9"
+                      />
+                      {productSearching && (
+                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 animate-spin" />
+                      )}
+                    </div>
+
+                    <AnimatePresence>
+                      {showProductDropdown && productResults.length > 0 && (
+                        <motion.div
+                          ref={productDropdownRef}
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 rounded-lg border shadow-xl max-h-64 overflow-y-auto"
+                          data-testid="dropdown-product-results"
+                        >
+                          {productResults.map((item) => (
+                            <button
+                              key={item.code}
+                              type="button"
+                              className="w-full text-left px-3 py-2.5 hover-elevate cursor-pointer transition-colors border-b last:border-b-0"
+                              onClick={() => handleProductSelect(item)}
+                              data-testid={`option-product-${item.code}`}
+                            >
+                              <span className="text-sm font-mono font-bold text-blue-700 dark:text-blue-400">{item.code}</span>
+                              <span className="text-sm text-slate-600 dark:text-slate-300 ml-2">
+                                {item.description.length > 80 ? item.description.substring(0, 80) + "..." : item.description}
+                              </span>
+                              <span className="text-xs text-slate-400 ml-1">({Math.round(item.score * 100)}% match)</span>
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {!selectedHsCode && productQuery.length >= 3 && !productSearching && productResults.length === 0 && (
+                      <p className="text-xs text-slate-500 mt-1.5">No matches found. Try different keywords or switch to HS code search.</p>
+                    )}
+
+                    {!selectedHsCode && (
+                      <div className="mt-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                          Need confirmation?{" "}
+                          <a
+                            href="/#pricing"
+                            className="text-blue-600 dark:text-blue-400 font-semibold underline underline-offset-2"
+                            data-testid="link-hs-review-cta"
+                          >
+                            Order an HS code & duty review
+                          </a>
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
 
                 {selectedHsCode && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="mt-2 p-2.5 rounded-lg bg-blue-50 border border-blue-100"
+                    className="mt-2 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-800"
                     data-testid="selected-hs-info"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="text-xs font-semibold text-blue-800">
+                        <p className="text-xs font-semibold text-blue-800 dark:text-blue-300">
                           Selected: {selectedHsCode.code}
                         </p>
-                        <p className="text-xs text-blue-600 mt-0.5">{selectedHsCode.description}</p>
+                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">{selectedHsCode.description}</p>
                       </div>
                       <button
                         type="button"

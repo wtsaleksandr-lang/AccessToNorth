@@ -297,6 +297,31 @@ function calculateDuty(
 }
 
 export function registerCustomsRoutes(app: Express) {
+  app.get("/api/hs-search", async (req, res) => {
+    try {
+      const query = (req.query.q as string) || "";
+      const limit = Math.min(parseInt(req.query.limit as string) || 15, 15);
+
+      if (query.length < 3) {
+        return res.json([]);
+      }
+
+      const results = await storage.searchHsCodesFuzzy(query, limit);
+      res.json(
+        results.map((r) => ({
+          code: r.code,
+          description: r.description,
+          chapter: r.chapter,
+          unitOfMeasure: r.unitOfMeasure,
+          score: r.score,
+        }))
+      );
+    } catch (err) {
+      console.error("Error in fuzzy HS search:", err);
+      res.status(500).json({ message: "Search failed" });
+    }
+  });
+
   app.get("/api/customs/hs-search", async (req, res) => {
     try {
       const query = (req.query.q as string) || "";
