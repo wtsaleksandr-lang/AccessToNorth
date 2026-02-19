@@ -5,6 +5,7 @@ import { registerPortalRoutes } from "./portalRoutes";
 import { registerAdminRoutes } from "./adminRoutes";
 import { registerCustomsRoutes } from "./customsRoutes";
 import { registerClassificationRoutes } from "./classificationRoutes";
+import { registerReportRoutes } from "./reportRoutes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { runMigrations } from 'stripe-replit-sync';
@@ -123,6 +124,33 @@ app.post(
             if (order && order.status === 'Awaiting Payment') {
               await storage.updateOrderStatus(existingOrderId, 'Pending Review');
               log(`Classification order ${existingOrderId} payment confirmed, status updated to Pending Review`, 'stripe');
+
+              try {
+                const { sendEmail, buildCustomerConfirmationEmail, buildInternalOrderAlertEmail } = await import('./emailService');
+                const meta = order.metadata as any;
+
+                if (meta && !order.confirmationEmailSentAt) {
+                  const confirmEmail = buildCustomerConfirmationEmail(existingOrderId, meta);
+                  confirmEmail.to = order.customerEmail;
+                  const confirmSent = await sendEmail(confirmEmail);
+                  if (confirmSent) {
+                    await storage.updateOrderMetadata(existingOrderId, { confirmationEmailSentAt: new Date() });
+                  }
+                }
+
+                if (meta && !order.internalEmailSentAt) {
+                  const uploads = await storage.getUploadsByOrderId(existingOrderId);
+                  const alertEmail = buildInternalOrderAlertEmail(existingOrderId, order.customerEmail, meta, uploads.length);
+                  const alertSent = await sendEmail(alertEmail);
+                  if (alertSent) {
+                    await storage.updateOrderMetadata(existingOrderId, { internalEmailSentAt: new Date() });
+                  }
+                }
+
+                log(`Classification order ${existingOrderId} emails dispatched`, 'stripe');
+              } catch (emailErr) {
+                log(`Email dispatch failed for order ${existingOrderId}: ${emailErr}`, 'stripe');
+              }
             }
           } else if (customerEmail && packageType) {
             const { createOrderFromCheckout } = await import('./orderService');
@@ -191,6 +219,7 @@ app.use((req, res, next) => {
   registerAdminRoutes(app);
   registerCustomsRoutes(app);
   registerClassificationRoutes(app);
+  registerReportRoutes(app);
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {

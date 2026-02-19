@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,8 @@ import {
   Trash2,
   Plus,
   ClipboardList,
+  Upload,
+  X,
 } from "lucide-react";
 import type { OrderStep } from "@shared/schema";
 
@@ -556,6 +558,7 @@ function OrderDetailView({ orderId, onBack }: { orderId: string; onBack: () => v
                   <SelectItem value="In Progress">In Progress</SelectItem>
                   <SelectItem value="On Hold">On Hold</SelectItem>
                   <SelectItem value="Complete">Complete</SelectItem>
+                  <SelectItem value="Delivered">Delivered</SelectItem>
                   <SelectItem value="Cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
@@ -607,11 +610,180 @@ function OrderDetailView({ orderId, onBack }: { orderId: string; onBack: () => v
         </CardContent>
       </Card>
 
+      {order.serviceType.includes("HS Classification") && (
+        <AdminSendReportSection
+          orderId={orderId}
+          order={order}
+          onRefresh={loadOrder}
+        />
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <AdminFilesSection uploads={uploads} />
         <AdminMessagesSection orderId={orderId} messages={messages} onRefresh={loadOrder} />
       </div>
     </div>
+  );
+}
+
+function AdminSendReportSection({
+  orderId,
+  order,
+  onRefresh,
+}: {
+  orderId: string;
+  order: OrderSummary;
+  onRefresh: () => void;
+}) {
+  const [reportFile, setReportFile] = useState<File | null>(null);
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(order.status === "Delivered");
+  const reportInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type !== "application/pdf") {
+        alert("Only PDF files are accepted for reports.");
+        return;
+      }
+      setReportFile(file);
+    }
+  };
+
+  const handleSendReport = async () => {
+    if (!reportFile) return;
+    setSending(true);
+    try {
+      const fd = new FormData();
+      fd.append("report", reportFile);
+
+      const res = await fetch(`/api/admin/orders/${orderId}/send-report`, {
+        method: "POST",
+        credentials: "include",
+        body: fd,
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to send report");
+
+      setSent(true);
+      setReportFile(null);
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || "Failed to send report");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (sent) {
+    return (
+      <Card data-testid="card-report-delivered">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-green-50 border border-green-200">
+            <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-green-800">Report Delivered</p>
+              <p className="text-xs text-green-600">
+                The classification report has been sent to {order.customerEmail}.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-auto flex-shrink-0"
+              onClick={() => {
+                const link = document.createElement("a");
+                link.href = `/api/admin/orders/${orderId}/report/download`;
+                link.download = `Report_${orderId}.pdf`;
+                link.click();
+              }}
+              data-testid="button-download-sent-report"
+            >
+              <Download className="w-3.5 h-3.5 mr-1" />
+              Download
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card data-testid="card-send-report">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Send className="w-4 h-4 text-primary" />
+          Send Classification Report
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Upload the completed PDF report and send it to the customer. This will update the order status to "Delivered" and email a secure download link.
+        </p>
+
+        <div
+          className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary/40 transition-colors"
+          onClick={() => reportInputRef.current?.click()}
+          data-testid="dropzone-report-upload"
+        >
+          {reportFile ? (
+            <div className="flex items-center justify-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              <span className="text-sm font-medium">{reportFile.name}</span>
+              <span className="text-xs text-muted-foreground">
+                ({(reportFile.size / 1024).toFixed(0)} KB)
+              </span>
+              <button
+                type="button"
+                className="ml-2 p-1 rounded hover-elevate cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setReportFile(null);
+                  if (reportInputRef.current) reportInputRef.current.value = "";
+                }}
+              >
+                <X className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
+            </div>
+          ) : (
+            <>
+              <Upload className="w-6 h-6 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm font-medium">Click to upload the final report (PDF only)</p>
+              <p className="text-xs text-muted-foreground">Max 20MB</p>
+            </>
+          )}
+          <input
+            ref={reportInputRef}
+            type="file"
+            accept=".pdf"
+            onChange={handleFileSelect}
+            className="hidden"
+            data-testid="input-report-file"
+          />
+        </div>
+
+        <Button
+          onClick={handleSendReport}
+          disabled={!reportFile || sending}
+          className="w-full"
+          data-testid="button-send-report"
+        >
+          {sending ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Sending Report...
+            </>
+          ) : (
+            <>
+              <Send className="w-4 h-4 mr-2" />
+              Send Report to Customer
+            </>
+          )}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 

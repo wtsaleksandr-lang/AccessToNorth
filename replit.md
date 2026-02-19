@@ -61,6 +61,9 @@ Preferred communication style: Simple, everyday language.
   - `GET /api/admin/uploads/:uploadId/download` — Download uploaded file (admin auth required)
   - `POST /api/classification-orders` — Create HS classification order (multipart form + file uploads, creates order + Stripe checkout)
   - `GET /api/classification-orders/:orderId` — Get classification order summary (public, for confirmation page)
+  - `POST /api/admin/orders/:orderId/send-report` — Upload PDF report + email to customer + set status Delivered (admin auth, multipart)
+  - `GET /api/admin/orders/:orderId/report/download` — Download sent report PDF (admin auth)
+  - `GET /api/reports/:orderId/download?token=` — Secure customer report download (expiring token, 30 days)
   - `GET /api/hs-search?q=` — Fuzzy product-name HS code search using pg_trgm trigram similarity (typo-tolerant, min 3 chars, max 15 results, fallback to description_full if < 5 results)
   - `GET /api/customs/hs-search?q=&limit=` — Autocomplete HS code search (by code or description, ILIKE)
   - `GET /api/customs/countries` — List all countries with tariff treatment mappings
@@ -76,7 +79,7 @@ Preferred communication style: Simple, everyday language.
 - **Schema** (in `shared/schema.ts`):
   - `registrations` table: id, fullName, email, phone, businessName, residentStatus, packageType, businessType, estimatedRevenue, notes, authorizationConsent, status, isNonResident, createdAt
   - `contacts` table: id, name, email, message, createdAt
-  - `orders` table: id (text PK, format ATN-XXXXXX or HSC-XXXXXX for classifications), customerEmail, customerName, serviceType, status, steps (jsonb array of OrderStep), stripeSessionId, metadata (jsonb, ClassificationOrderData for HS classification orders), createdAt, updatedAt
+  - `orders` table: id (text PK, format ATN-XXXXXX or HSC-XXXXXX for classifications), customerEmail, customerName, serviceType, status, steps (jsonb array of OrderStep), stripeSessionId, metadata (jsonb, ClassificationOrderData for HS classification orders), confirmationEmailSentAt, internalEmailSentAt, reportFileId, reportToken, reportTokenExpiresAt, deliveredAt, createdAt, updatedAt
   - `uploads` table: id (uuid), orderId (FK→orders), fileName, fileData (base64), fileSize, mimeType, createdAt
   - `messages` table: id (uuid), orderId (FK→orders), sender, message, createdAt
   - `carm_leads` table: id, email, companyName, importValueRange, currentlyImporting, phone, highestMonthlyPayable, bondEstimate, cashEstimate, applyMinimum, frequency, isNonResident, priority, source, createdAt
@@ -115,4 +118,13 @@ This ensures type safety and validation consistency across the full stack.
 - **Replit Plugins**: @replit/vite-plugin-runtime-error-modal, @replit/vite-plugin-cartographer, @replit/vite-plugin-dev-banner (dev only)
 
 ### Email/Form Handling
-- Form submissions currently save to the PostgreSQL database. The business email is `operations@accesstonorth.com` (displayed in footer only). There is no email-sending integration configured yet — form handler may need EmailJS, Formspree, or similar in the future.
+- **Email Provider**: Resend via Replit connector integration (server/resendClient.ts). Dev fallback logs emails to console if Resend is not connected.
+- **Email Service**: server/emailService.ts with branded HTML templates for:
+  - Customer order confirmation (triggered by Stripe webhook after classification order payment)
+  - Internal new order alert to operations@accesstonorth.com (same trigger)
+  - Report delivery to customer (triggered by admin "Send Report" action)
+  - Status update notification (triggered when admin changes status to "In Progress")
+- **Duplicate Prevention**: confirmationEmailSentAt and internalEmailSentAt flags on orders table prevent re-sending on webhook replays.
+- **Report Delivery**: Admin uploads PDF report → stored in uploads table → secure expiring download token generated (30-day expiry) → email sent to customer with download link → order status set to "Delivered".
+- **Secure Download**: GET /api/reports/:orderId/download?token= validates token + expiry. Admin can always download via GET /api/admin/orders/:orderId/report/download.
+- Form submissions save to the PostgreSQL database. The business email is `operations@accesstonorth.com`.

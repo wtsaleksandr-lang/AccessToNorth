@@ -38,6 +38,7 @@ export interface IStorage {
   updateOrderStatus(id: string, status: string): Promise<void>;
   updateOrderSteps(id: string, steps: any[]): Promise<void>;
   updateOrderStripeSession(id: string, stripeSessionId: string): Promise<void>;
+  updateOrderMetadata(id: string, fields: Partial<Record<string, any>>): Promise<void>;
   getAllOrders(): Promise<Order[]>;
   getUploadsByOrderId(orderId: string): Promise<Upload[]>;
   getUploadById(id: string): Promise<Upload | undefined>;
@@ -122,6 +123,13 @@ export class DatabaseStorage implements IStorage {
     await db
       .update(orders)
       .set({ stripeSessionId, updatedAt: new Date() })
+      .where(eq(orders.id, id));
+  }
+
+  async updateOrderMetadata(id: string, fields: Partial<Record<string, any>>): Promise<void> {
+    await db
+      .update(orders)
+      .set({ ...fields, updatedAt: new Date() } as any)
       .where(eq(orders.id, id));
   }
 

@@ -50,6 +50,12 @@ export const orders = pgTable("orders", {
   steps: jsonb("steps").notNull().$type<OrderStep[]>(),
   stripeSessionId: text("stripe_session_id"),
   metadata: jsonb("metadata").$type<ClassificationOrderData>(),
+  confirmationEmailSentAt: timestamp("confirmation_email_sent_at"),
+  internalEmailSentAt: timestamp("internal_email_sent_at"),
+  reportFileId: text("report_file_id"),
+  reportToken: text("report_token"),
+  reportTokenExpiresAt: timestamp("report_token_expires_at"),
+  deliveredAt: timestamp("delivered_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

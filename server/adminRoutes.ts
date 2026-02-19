@@ -103,7 +103,24 @@ export function registerAdminRoutes(app: Express): void {
 
       await storage.updateOrderSteps(order.id, steps);
       if (status) {
+        const previousStatus = order.status;
         await storage.updateOrderStatus(order.id, status);
+
+        if (
+          status === "In Progress" &&
+          previousStatus !== "In Progress" &&
+          order.metadata &&
+          order.serviceType.includes("HS Classification")
+        ) {
+          try {
+            const { sendEmail, buildStatusUpdateEmail } = await import("./emailService");
+            const emailParams = buildStatusUpdateEmail(order.id, status, order.metadata as any);
+            emailParams.to = order.customerEmail;
+            await sendEmail(emailParams);
+          } catch (emailErr) {
+            console.error("Status email failed (non-blocking):", emailErr);
+          }
+        }
       }
 
       res.json({ success: true });

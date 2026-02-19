@@ -1,0 +1,245 @@
+import type { ClassificationOrderData } from "@shared/schema";
+
+const BRAND_COLOR = "#007BFF";
+const BRAND_DARK = "#0A2540";
+const BASE_URL = process.env.REPLIT_DEV_DOMAIN
+  ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+  : "https://www.accesstonorth.com";
+const OPS_EMAIL = "operations@accesstonorth.com";
+
+function log(msg: string) {
+  const ts = new Date().toLocaleTimeString();
+  console.log(`${ts} [email] ${msg}`);
+}
+
+function emailWrapper(content: string): string {
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f4f6f9;color:#1a1a2e}
+.container{max-width:600px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+.header{background:${BRAND_DARK};padding:24px 32px;text-align:center}
+.header img{height:28px}
+.header h1{color:#fff;font-size:18px;margin:8px 0 0;font-weight:600}
+.body{padding:32px}
+.body h2{color:${BRAND_DARK};font-size:20px;margin:0 0 16px}
+.body p{color:#4a5568;font-size:14px;line-height:1.7;margin:0 0 12px}
+.detail-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #edf2f7}
+.detail-label{color:#718096;font-size:13px}
+.detail-value{color:${BRAND_DARK};font-size:13px;font-weight:600}
+.detail-table{width:100%;border-collapse:collapse;margin:16px 0}
+.detail-table td{padding:10px 0;border-bottom:1px solid #edf2f7;font-size:13px;vertical-align:top}
+.detail-table td:first-child{color:#718096;width:40%}
+.detail-table td:last-child{color:${BRAND_DARK};font-weight:600}
+.btn{display:inline-block;background:${BRAND_COLOR};color:#fff;text-decoration:none;padding:12px 28px;border-radius:6px;font-size:14px;font-weight:600;margin:8px 4px}
+.btn-outline{display:inline-block;border:1px solid ${BRAND_COLOR};color:${BRAND_COLOR};text-decoration:none;padding:10px 24px;border-radius:6px;font-size:13px;font-weight:500;margin:8px 4px}
+.highlight-box{background:#f0f7ff;border:1px solid #d0e3ff;border-radius:6px;padding:16px;margin:16px 0}
+.highlight-box p{color:#2d5a9e;font-size:13px;margin:0}
+.footer{background:#f7f9fc;padding:20px 32px;text-align:center;border-top:1px solid #edf2f7}
+.footer p{color:#a0aec0;font-size:11px;margin:4px 0}
+.footer a{color:${BRAND_COLOR};text-decoration:none}
+</style></head><body>
+<div class="container">
+<div class="header">
+<h1>AccessToNorth.com</h1>
+</div>
+${content}
+<div class="footer">
+<p>AccessToNorth.com &mdash; Canadian Trade &amp; Tax Registration Services</p>
+<p><a href="${BASE_URL}">accesstonorth.com</a></p>
+</div>
+</div>
+</body></html>`;
+}
+
+export interface SendEmailParams {
+  to: string;
+  subject: string;
+  html: string;
+}
+
+export async function sendEmail(params: SendEmailParams): Promise<boolean> {
+  try {
+    const { getUncachableResendClient } = await import("./resendClient");
+    const { client, fromEmail } = await getUncachableResendClient();
+
+    const result = await client.emails.send({
+      from: fromEmail,
+      to: params.to,
+      subject: params.subject,
+      html: params.html,
+    });
+
+    if ((result as any).error) {
+      log(`Failed to send email to ${params.to}: ${JSON.stringify((result as any).error)}`);
+      return false;
+    }
+
+    log(`Email sent to ${params.to}: "${params.subject}"`);
+    return true;
+  } catch (err: any) {
+    log(`Email send error (falling back to console log): ${err.message}`);
+    log(`--- DEV EMAIL FALLBACK ---`);
+    log(`To: ${params.to}`);
+    log(`Subject: ${params.subject}`);
+    log(`HTML length: ${params.html.length} chars`);
+    log(`--- END DEV EMAIL ---`);
+    return false;
+  }
+}
+
+export function buildCustomerConfirmationEmail(
+  orderId: string,
+  metadata: ClassificationOrderData
+): SendEmailParams {
+  const html = emailWrapper(`
+<div class="body">
+<h2>Order Confirmed</h2>
+<p>Thank you for your order. Your HS code classification review is now being processed by our team.</p>
+
+<table class="detail-table">
+<tr><td>Order ID</td><td style="font-family:monospace;color:${BRAND_COLOR}">${orderId}</td></tr>
+<tr><td>Package</td><td>${metadata.packageTier.charAt(0).toUpperCase() + metadata.packageTier.slice(1)} &mdash; ${metadata.packagePrice}</td></tr>
+<tr><td>Product</td><td>${metadata.productName}</td></tr>
+<tr><td>Country of Origin</td><td>${metadata.countryOfOrigin}</td></tr>
+<tr><td>HS Codes Requested</td><td>Up to ${metadata.hsCodesRequested}</td></tr>
+<tr><td>Estimated Delivery</td><td>${metadata.deliveryTime}</td></tr>
+</table>
+
+<div class="highlight-box">
+<p>If we need additional details to complete your classification, we will contact you by email.</p>
+</div>
+
+<p style="text-align:center;margin-top:24px">
+<a href="${BASE_URL}/tools/hs-code-finder" class="btn-outline">HS Code Finder</a>
+<a href="${BASE_URL}/customs-calculator" class="btn-outline">Duty &amp; Tax Calculator</a>
+</p>
+</div>`);
+
+  return {
+    to: "",
+    subject: `HS Classification Order Confirmed – ${orderId}`,
+    html,
+  };
+}
+
+export function buildInternalOrderAlertEmail(
+  orderId: string,
+  customerEmail: string,
+  metadata: ClassificationOrderData,
+  documentCount: number
+): SendEmailParams {
+  const html = emailWrapper(`
+<div class="body">
+<h2>New Paid HS Classification Order</h2>
+<p>A new classification order has been received and paid.</p>
+
+<table class="detail-table">
+<tr><td>Order ID</td><td style="font-family:monospace;color:${BRAND_COLOR}">${orderId}</td></tr>
+<tr><td>Customer Email</td><td>${customerEmail}</td></tr>
+${metadata.companyName ? `<tr><td>Company</td><td>${metadata.companyName}</td></tr>` : ""}
+${metadata.phone ? `<tr><td>Phone</td><td>${metadata.phone}</td></tr>` : ""}
+<tr><td>Package</td><td>${metadata.packageTier.charAt(0).toUpperCase() + metadata.packageTier.slice(1)} &mdash; ${metadata.packagePrice}</td></tr>
+<tr><td>Product</td><td>${metadata.productName}</td></tr>
+<tr><td>Country of Origin</td><td>${metadata.countryOfOrigin}</td></tr>
+${metadata.industryCategory ? `<tr><td>Industry</td><td>${metadata.industryCategory}</td></tr>` : ""}
+<tr><td>Documents</td><td>${documentCount} file${documentCount !== 1 ? "s" : ""} uploaded</td></tr>
+</table>
+
+${metadata.productDescription ? `
+<div style="margin-top:16px">
+<p style="color:#718096;font-size:12px;margin-bottom:4px">Product Description:</p>
+<p style="font-size:13px">${metadata.productDescription}</p>
+</div>` : ""}
+
+${metadata.additionalNotes ? `
+<div style="margin-top:12px">
+<p style="color:#718096;font-size:12px;margin-bottom:4px">Additional Notes:</p>
+<p style="font-size:13px">${metadata.additionalNotes}</p>
+</div>` : ""}
+
+<p style="text-align:center;margin-top:24px">
+<a href="${BASE_URL}/admin" class="btn">View in Admin Dashboard</a>
+</p>
+</div>`);
+
+  return {
+    to: OPS_EMAIL,
+    subject: `New Paid HS Classification Order – ${orderId}`,
+    html,
+  };
+}
+
+export function buildReportDeliveryEmail(
+  orderId: string,
+  metadata: ClassificationOrderData,
+  downloadUrl: string
+): SendEmailParams {
+  const html = emailWrapper(`
+<div class="body">
+<h2>Your Classification Report is Ready</h2>
+<p>Your HS code classification report for order <strong style="font-family:monospace;color:${BRAND_COLOR}">${orderId}</strong> has been completed and is ready for download.</p>
+
+<table class="detail-table">
+<tr><td>Product</td><td>${metadata.productName}</td></tr>
+<tr><td>Country of Origin</td><td>${metadata.countryOfOrigin}</td></tr>
+<tr><td>Package</td><td>${metadata.packageTier.charAt(0).toUpperCase() + metadata.packageTier.slice(1)}</td></tr>
+</table>
+
+<p style="text-align:center;margin:28px 0">
+<a href="${downloadUrl}" class="btn">Download Your Report</a>
+</p>
+
+<div class="highlight-box">
+<p>This download link will expire in 30 days. If you need access after that, please contact us at ${OPS_EMAIL}.</p>
+</div>
+
+<p>You can use your HS code in our duty and tax calculator to estimate your import costs:</p>
+<p style="text-align:center">
+<a href="${BASE_URL}/customs-calculator" class="btn-outline">Calculate Import Duty</a>
+</p>
+</div>`);
+
+  return {
+    to: "",
+    subject: `Your HS Classification Report – ${orderId}`,
+    html,
+  };
+}
+
+export function buildStatusUpdateEmail(
+  orderId: string,
+  newStatus: string,
+  metadata: ClassificationOrderData
+): SendEmailParams {
+  let statusMessage = "";
+  let statusDetail = "";
+
+  if (newStatus === "In Progress") {
+    statusMessage = "Classification Review Started";
+    statusDetail = `Our team has begun reviewing your product classification for <strong>${metadata.productName}</strong>. You will receive your report within the estimated delivery timeframe.`;
+  } else {
+    statusMessage = `Order Status Updated: ${newStatus}`;
+    statusDetail = `The status of your classification order has been updated to <strong>${newStatus}</strong>.`;
+  }
+
+  const html = emailWrapper(`
+<div class="body">
+<h2>${statusMessage}</h2>
+<p>${statusDetail}</p>
+
+<table class="detail-table">
+<tr><td>Order ID</td><td style="font-family:monospace;color:${BRAND_COLOR}">${orderId}</td></tr>
+<tr><td>Product</td><td>${metadata.productName}</td></tr>
+<tr><td>New Status</td><td>${newStatus}</td></tr>
+</table>
+
+<p>If you have any questions, feel free to reply to this email or contact us at ${OPS_EMAIL}.</p>
+</div>`);
+
+  return {
+    to: "",
+    subject: `HS Classification Order Update – ${orderId}`,
+    html,
+  };
+}
