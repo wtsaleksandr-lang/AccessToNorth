@@ -1,0 +1,122 @@
+Build a new standalone tool page: “HS Code Finder (Canada)”. This must be separate from the Duty/Tax Calculator page for SEO intent, but it should reuse the same HS lookup backend we already fixed.
+
+GOALS
+1) Create a dedicated HS code classification / lookup experience (keyword → HS suggestions).
+2) Make it SEO-friendly and useful (not just a dropdown).
+3) Connect it to our existing Duty/Tax Calculator so the selected HS code transfers automatically (no re-typing).
+4) Add this new tool into the site menu under Tools.
+5) Keep language safe: “suggested codes” + disclaimer (not official classification).
+
+ROUTE + NAV
+- New route: /tools/hs-code-finder (or /hs-code-finder if we keep tools at root; choose whichever matches our current routing scheme)
+- Add to Tools menu section as: “HS Code Finder”
+- Also add a CTA link on the Duty/Tax Calculator page: “Need help finding an HS code? Use HS Code Finder”
+
+PAGE UI / LAYOUT (TOP → DOWN)
+A) Hero header
+- Title: “HS Code Finder (Canada)”
+- Subtitle: “Search by product name to see suggested HS codes and descriptions. Then calculate duty/tax in one click.”
+- Note: “Estimates only — final classification is confirmed by CBSA / your customs broker.”
+
+B) Search card (main tool)
+Inputs:
+1) Search box: “Describe your product (e.g., ‘men’s cotton pants’, ‘stainless steel bolts’)”
+   - Debounce 250ms
+   - Minimum 2–3 characters before querying
+2) Optional filters (collapsed by default):
+   - Category dropdown (simple): Apparel, Electronics, Hardware/Fasteners, Food, Cosmetics, Industrial parts, Other
+   - Material (free text) optional
+   - Gender/Age (only if Apparel category) optional
+Buttons:
+- “Search” (optional if instant results)
+- “Clear”
+
+C) Results list (must be strong)
+For each result item show:
+- HS code (6–10 digits as available)
+- Short description (truncate nicely)
+- “Examples” (1–3 short examples if we can generate from stored metadata; if not available, omit)
+- Confidence tag (Low/Med/High)
+- Buttons:
+  1) “Use this code → Duty/Tax Calculator”
+  2) “Copy HS code”
+- Allow expand to view full description.
+
+Ranking rules:
+- Literal keyword matches first (lexical)
+- Then close/fuzzy
+- Semantic only as fallback
+- Return top 20 results (not 5)
+
+D) “Not sure?” assist section (lead capture)
+- Small card: “Not sure which code is correct?”
+- Bullet list: “We can help confirm classification for your shipment.”
+- Button: “Request HS classification help” (links to /request with service_key=hs_classification OR opens a short form)
+Keep this optional and not intrusive.
+
+E) FAQ section (SEO)
+Add 6–10 FAQs with schema markup (FAQPage), short answers:
+- What is an HS code?
+- HS vs HTS vs Canadian tariff item (keep simple)
+- Why country of origin matters
+- Common mistakes (underpants vs pants, parts vs accessories, sets/kits)
+- How to verify your HS code
+- Does this tool provide official classification? (Answer: no; estimates)
+
+DATA + BACKEND
+- Reuse the existing HS lookup endpoint / database.
+- Ensure the search supports substring matches and includes “pants” matching “underpants”.
+- Add an endpoint that can return:
+  - hs_code
+  - description_short
+  - description_full
+  - optional category tags if available
+  - optional examples if available
+
+CONNECT TO DUTY/TAX CALCULATOR (NO RETYPING)
+Implement deep-link transfer in the cleanest way:
+
+Option A (preferred): Query parameters
+- Duty calculator route example: /tools/duty-tax-calculator
+- When user clicks “Use this code”, navigate to:
+  /tools/duty-tax-calculator?hs=6107.11.00.00&src=hsfinder&q=pants
+- On duty calculator page load:
+  - Read query param “hs”
+  - Prefill HS code input with this value
+  - Trigger downstream rate/tax logic normally (do not auto-submit unless already designed that way)
+  - Show a small notice: “HS code prefilled from HS Code Finder”
+
+Option B: Local storage fallback
+- If routing constraints exist, store selected HS in localStorage:
+  localStorage.setItem("prefill_hs_code", code)
+- Duty calculator reads and clears it on load.
+
+Make sure:
+- It works on mobile
+- It works even if user refreshes the duty calculator page
+
+ANALYTICS (if we have it)
+- Track:
+  - hs_search
+  - hs_select
+  - click_to_duty_calculator
+  - classification_help_request
+
+QUALITY CHECKS / ACCEPTANCE TESTS
+1) Searching “pants” returns apparel results, including codes where descriptions contain “underpants/pants” (e.g., 6107/6207 if in our dataset).
+2) “Use this code → Duty/Tax Calculator” opens the duty calculator with HS prefilled correctly.
+3) Copy button copies HS code with correct formatting.
+4) Results show at least top 20 and are relevant.
+5) Page is added to Tools menu and discoverable.
+6) Add internal links between:
+   - HS Code Finder → Duty Calculator
+   - Duty Calculator → HS Code Finder
+
+TONE / COPY
+- Clean, professional, simple English.
+- No claims of official CBSA ruling.
+- Use: “suggested”, “common classifications”, “verify with broker/CBSA”.
+
+DELIVER
+- Implement the new page, routes, menu update, and integration.
+- Provide final URLs and confirm the query-param prefill works.

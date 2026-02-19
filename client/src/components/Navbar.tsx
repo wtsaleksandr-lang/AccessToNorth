@@ -23,6 +23,7 @@ const serviceLinks = [
 
 const toolLinks = [
   { name: "All Tools", href: "/tools" },
+  { name: "HS Code Finder", href: "/tools/hs-code-finder" },
   { name: "Customs Duty & Tax Calculator", href: "/customs-calculator" },
   { name: "CARM Security Calculator", href: "/carm-security-calculator" },
   { name: "Freight Quote", href: "/tools/freight-quote", comingSoon: true },

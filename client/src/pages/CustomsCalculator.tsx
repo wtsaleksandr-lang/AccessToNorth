@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { Link } from "wouter";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Card } from "@/components/ui/card";
@@ -260,12 +261,42 @@ export default function CustomsCalculator() {
   const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
 
   const { toast } = useToast();
+  const [prefillSource, setPrefillSource] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/customs/countries")
       .then((r) => r.json())
       .then(setCountries)
       .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const hsParam = params.get("hs");
+    const srcParam = params.get("src");
+    if (hsParam) {
+      setHsQuery(hsParam);
+      setHsSearching(true);
+      fetch(`/api/customs/hs-search?q=${encodeURIComponent(hsParam)}&limit=5`)
+        .then((r) => r.json())
+        .then((data: HsCodeResult[]) => {
+          const exact = data.find((d) => d.code === hsParam);
+          if (exact) {
+            const displayDesc = exact.descriptionFull || exact.description;
+            setSelectedHsCode({ ...exact, descriptionFull: displayDesc });
+            setHsQuery(`${exact.code} - ${displayDesc.length > 80 ? displayDesc.substring(0, 80) + "..." : displayDesc}`);
+          } else {
+            setHsResults(data);
+            setShowHsDropdown(data.length > 0);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setHsSearching(false));
+      if (srcParam === "hsfinder") {
+        setPrefillSource("hsfinder");
+      }
+      window.history.replaceState({}, "", window.location.pathname);
+    }
   }, []);
 
   useEffect(() => {
@@ -770,17 +801,27 @@ export default function CustomsCalculator() {
                 )}
 
                 {!selectedHsCode && (
-                  <div className="mt-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                    <p className="text-xs text-slate-600 dark:text-slate-400">
-                      Need confirmation?{" "}
-                      <a
-                        href="/services/hs-code-classification-canada"
-                        className="text-blue-600 dark:text-blue-400 font-semibold underline underline-offset-2"
-                        data-testid="link-hs-review-cta"
-                      >
-                        Order an HS code & duty review
-                      </a>
-                    </p>
+                  <div className="mt-2 space-y-2">
+                    <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                      <p className="text-xs text-slate-600 dark:text-slate-400">
+                        Need help finding an HS code?{" "}
+                        <Link
+                          href="/tools/hs-code-finder"
+                          className="text-blue-600 dark:text-blue-400 font-semibold underline underline-offset-2"
+                          data-testid="link-hs-finder"
+                        >
+                          Use HS Code Finder
+                        </Link>
+                        {" "} | {" "}
+                        <a
+                          href="/services/hs-code-classification-canada"
+                          className="text-blue-600 dark:text-blue-400 font-semibold underline underline-offset-2"
+                          data-testid="link-hs-review-cta"
+                        >
+                          Order an HS code & duty review
+                        </a>
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -795,6 +836,11 @@ export default function CustomsCalculator() {
                       <div>
                         <p className="text-xs font-semibold text-blue-800 dark:text-blue-300">
                           Selected: {selectedHsCode.code}
+                          {prefillSource === "hsfinder" && (
+                            <span className="ml-2 text-xs font-normal text-blue-500" data-testid="text-prefill-notice">
+                              (prefilled from HS Code Finder)
+                            </span>
+                          )}
                         </p>
                         <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
                           {((selectedHsCode.descriptionFull || selectedHsCode.description).length > 120 
@@ -808,6 +854,7 @@ export default function CustomsCalculator() {
                         onClick={() => {
                           setSelectedHsCode(null);
                           setHsQuery("");
+                          setPrefillSource(null);
                           hsInputRef.current?.focus();
                         }}
                         data-testid="button-clear-hs"

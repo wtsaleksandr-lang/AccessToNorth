@@ -5,9 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { usePageMeta } from "@/hooks/use-page-meta";
-import { Calculator, Shield, Truck, Package } from "lucide-react";
+import { Calculator, Shield, Truck, Package, FileSearch } from "lucide-react";
 
 const tools = [
+  {
+    title: "HS Code Finder",
+    description: "Search Canadian HS codes by product name or code number. Find suggested tariff classifications, then calculate duty in one click.",
+    icon: FileSearch,
+    href: "/tools/hs-code-finder",
+    available: true,
+  },
   {
     title: "Customs Duty & Tax Calculator",
     description: "Calculate duties, GST, and provincial taxes on imports to Canada. Includes HS code search by product name or description.",

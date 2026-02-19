@@ -34,6 +34,7 @@ import CarmRegistration from "@/pages/services/CarmRegistration";
 import RppBondCoordination from "@/pages/services/RppBondCoordination";
 import B13ExportDeclaration from "@/pages/services/B13ExportDeclaration";
 import NonResidentImporter from "@/pages/services/NonResidentImporter";
+import HsCodeFinder from "@/pages/tools/HsCodeFinder";
 import FreightQuote from "@/pages/tools/FreightQuote";
 import ShipmentTracking from "@/pages/tools/ShipmentTracking";
 import HowToImportIntoCanada from "@/pages/resources/HowToImportIntoCanada";
@@ -73,6 +74,7 @@ function Router() {
         <Route path="/services/non-resident-importer-canada" component={NonResidentImporter} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/tools" component={Tools} />
+        <Route path="/tools/hs-code-finder" component={HsCodeFinder} />
         <Route path="/tools/freight-quote" component={FreightQuote} />
         <Route path="/tools/shipment-tracking" component={ShipmentTracking} />
         <Route path="/resources" component={Resources} />
