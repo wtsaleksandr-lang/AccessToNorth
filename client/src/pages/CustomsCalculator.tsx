@@ -25,6 +25,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calculator,
@@ -154,6 +156,35 @@ function formatPercent(value: number): string {
   return `${(value * 100).toFixed(value * 100 % 1 === 0 ? 0 : 2)}%`;
 }
 
+const TARIFF_TOOLTIPS: Record<string, { title: string; description: string }> = {
+  MFN: { title: "Most Favoured Nation (MFN)", description: "The default tariff rate applied to imports from countries that do not have a preferential trade agreement with Canada." },
+  GPT: { title: "General Preferential Tariff (GPT)", description: "A Canadian tariff program providing reduced or zero duty rates for imports from eligible developing countries." },
+  CUSMA: { title: "Canada–United States–Mexico Agreement (CUSMA)", description: "A trade agreement between Canada, the US, and Mexico. Goods must meet specific regional value content and origin rules to qualify for preferential rates." },
+  CPTPP: { title: "Comprehensive and Progressive Trans-Pacific Partnership (CPTPP)", description: "A trade agreement among 11 Pacific Rim countries providing reduced tariffs on qualifying goods." },
+  CETA: { title: "Canada–EU Comprehensive Economic and Trade Agreement (CETA)", description: "A trade agreement reducing duties on qualifying goods traded between Canada and EU member states." },
+  CUKTCA: { title: "Canada–UK Trade Continuity Agreement (CUKTCA)", description: "A trade agreement maintaining preferential tariff treatment for goods traded between Canada and the UK." },
+};
+
+function TariffTooltip({ abbr, title, description }: { abbr: string; title: string; description: string }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="text-blue-700 dark:text-blue-400 font-semibold underline underline-offset-2 decoration-dotted cursor-pointer"
+          data-testid={`tooltip-trigger-${abbr.toLowerCase()}`}
+        >
+          {abbr}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 p-3" side="top">
+        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1">{title}</p>
+        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{description}</p>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function CustomsCalculator() {
   const [searchMode, setSearchMode] = useState<"code" | "product">("code");
   const [hsQuery, setHsQuery] = useState("");
@@ -186,6 +217,7 @@ export default function CustomsCalculator() {
   const [bulkResult, setBulkResult] = useState<BulkResult | null>(null);
   const [bulkCalculating, setBulkCalculating] = useState(false);
 
+  const [measuresOpen, setMeasuresOpen] = useState(false);
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [leadEmail, setLeadEmail] = useState("");
   const [leadCompany, setLeadCompany] = useState("");
@@ -994,18 +1026,27 @@ export default function CustomsCalculator() {
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                <input
-                  type="checkbox"
-                  id="confirmedOrigin"
-                  checked={confirmedOrigin}
-                  onChange={(e) => setConfirmedOrigin(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  data-testid="checkbox-origin-confirmation"
-                />
-                <label htmlFor="confirmedOrigin" className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed cursor-pointer">
-                  I confirm the goods qualify under the applicable rules of origin for preferential tariff treatment (e.g., CUSMA, CPTPP, CETA). If unchecked, the Most Favoured Nation (MFN) rate will be applied.
-                </label>
+              <div className="space-y-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                <p className="text-xs font-semibold text-blue-800 dark:text-blue-300">Preferential Tariff Eligibility</p>
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    id="confirmedOrigin"
+                    checked={confirmedOrigin}
+                    onChange={(e) => setConfirmedOrigin(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    data-testid="checkbox-origin-confirmation"
+                  />
+                  <label htmlFor="confirmedOrigin" className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed cursor-pointer">
+                    I confirm that I have proof that these goods qualify under the selected trade agreement rules of origin
+                    (e.g., <TariffTooltip abbr="CUSMA" {...TARIFF_TOOLTIPS.CUSMA} />,{" "}
+                    <TariffTooltip abbr="CPTPP" {...TARIFF_TOOLTIPS.CPTPP} />,{" "}
+                    <TariffTooltip abbr="CETA" {...TARIFF_TOOLTIPS.CETA} />).
+                  </label>
+                </div>
+                <p className="text-xs text-blue-600 dark:text-blue-400 pl-7">
+                  If unsure, leave unchecked and <TariffTooltip abbr="MFN" {...TARIFF_TOOLTIPS.MFN} /> rate will apply.
+                </p>
               </div>
 
               <AnimatePresence>
@@ -1166,7 +1207,13 @@ export default function CustomsCalculator() {
                     </div>
                     <div>
                       <p className="text-xs text-slate-400">Tariff Treatment</p>
-                      <p className="text-slate-800">{result.appliedTreatmentName}</p>
+                      <p className="text-slate-800">
+                        {TARIFF_TOOLTIPS[result.appliedTreatment] ? (
+                          <TariffTooltip abbr={result.appliedTreatment} {...TARIFF_TOOLTIPS[result.appliedTreatment]} />
+                        ) : (
+                          result.appliedTreatmentName
+                        )}
+                      </p>
                     </div>
                     <div>
                       <p className="text-xs text-slate-400">Province</p>
@@ -1260,7 +1307,11 @@ export default function CustomsCalculator() {
                               <Check className="w-3.5 h-3.5 text-blue-600" />
                             )}
                             <span className={treatment === result.appliedTreatment ? "font-semibold text-blue-800" : "text-slate-600"}>
-                              {treatment}
+                              {TARIFF_TOOLTIPS[treatment] ? (
+                                <TariffTooltip abbr={treatment} {...TARIFF_TOOLTIPS[treatment]} />
+                              ) : (
+                                treatment
+                              )}
                             </span>
                           </div>
                           <div className="flex items-center gap-4">
@@ -1284,6 +1335,53 @@ export default function CustomsCalculator() {
                     </div>
                   </div>
                 </div>
+
+                <Collapsible open={measuresOpen} onOpenChange={setMeasuresOpen}>
+                  <Card className="overflow-visible">
+                    <CollapsibleTrigger asChild>
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between p-4 text-left hover-elevate rounded-md"
+                        data-testid="button-additional-measures"
+                      >
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-amber-600" />
+                          <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Additional Measures Check</span>
+                        </div>
+                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${measuresOpen ? "rotate-180" : ""}`} />
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="px-4 pb-4 space-y-3">
+                        <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">SIMA (Anti-Dumping & Countervailing Duties)</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">This tool does not automatically calculate SIMA duties. Certain goods from specific countries may be subject to additional anti-dumping or countervailing duties. Check the CBSA SIMA measures list for your product.</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Excise Duties</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Alcohol, tobacco, cannabis, fuel, and certain vehicles may be subject to excise duties not calculated here. These are assessed separately by CBSA.</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Surtaxes & Temporary Measures</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Retaliatory or temporary surtaxes may apply to certain goods from specific countries. These measures change periodically and are not included in this estimate.</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Import Controls (Permits, Quotas, Prohibitions)</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Certain goods require import permits, are subject to tariff rate quotas, or are prohibited. Check with CBSA or Global Affairs Canada for your product category.</p>
+                        </div>
+                        <div className="pt-2">
+                          <a
+                            href="/#pricing"
+                            className="text-xs text-blue-600 dark:text-blue-400 font-semibold underline underline-offset-2"
+                            data-testid="link-measures-review"
+                          >
+                            Need help? Order a professional customs review
+                          </a>
+                        </div>
+                      </div>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
 
                 <Card className="p-5 text-center" style={{ backgroundColor: `${DEEP_BLUE}05` }} data-testid="card-lead-cta">
                   <p className="text-sm font-semibold text-slate-700 mb-2">Want a detailed breakdown emailed to you?</p>
@@ -1399,10 +1497,10 @@ export default function CustomsCalculator() {
 
           <Accordion type="single" collapsible className="space-y-3">
             <AccordionItem value="what-is-hs" className="bg-white rounded-lg border px-4">
-              <AccordionTrigger className="text-sm font-medium text-slate-800 py-4" data-testid="faq-what-is-hs">
+              <AccordionTrigger className="text-sm font-medium text-slate-800 py-4 text-left" data-testid="faq-what-is-hs">
                 What is an HS Code?
               </AccordionTrigger>
-              <AccordionContent className="text-sm text-slate-600 pb-4">
+              <AccordionContent className="text-sm text-slate-600 pb-4 text-left">
                 An HS (Harmonized System) code is an internationally standardized classification number for traded products.
                 Canada uses 10-digit codes from the Canadian Customs Tariff to determine the duty rate for each product.
                 The first 6 digits are internationally standardized, while the remaining digits are Canada-specific.
@@ -1410,22 +1508,25 @@ export default function CustomsCalculator() {
             </AccordionItem>
 
             <AccordionItem value="tariff-treatments" className="bg-white rounded-lg border px-4">
-              <AccordionTrigger className="text-sm font-medium text-slate-800 py-4" data-testid="faq-tariff-treatments">
+              <AccordionTrigger className="text-sm font-medium text-slate-800 py-4 text-left" data-testid="faq-tariff-treatments">
                 What are tariff treatments (MFN, CUSMA, CPTPP)?
               </AccordionTrigger>
-              <AccordionContent className="text-sm text-slate-600 pb-4">
+              <AccordionContent className="text-sm text-slate-600 pb-4 text-left">
                 Canada has free trade agreements with many countries that reduce or eliminate import duties.
                 The calculator automatically applies the best available rate based on the country of origin.
-                Key agreements include CUSMA (US/Mexico), CPTPP (Pacific Rim), CETA (EU), and CUKTCA (UK).
-                MFN (Most Favoured Nation) is the default rate for countries without a special trade agreement.
+                Key agreements include <TariffTooltip abbr="CUSMA" {...TARIFF_TOOLTIPS.CUSMA} /> (US/Mexico),{" "}
+                <TariffTooltip abbr="CPTPP" {...TARIFF_TOOLTIPS.CPTPP} /> (Pacific Rim),{" "}
+                <TariffTooltip abbr="CETA" {...TARIFF_TOOLTIPS.CETA} /> (EU), and{" "}
+                <TariffTooltip abbr="CUKTCA" {...TARIFF_TOOLTIPS.CUKTCA} /> (UK).{" "}
+                <TariffTooltip abbr="MFN" {...TARIFF_TOOLTIPS.MFN} /> is the default rate for countries without a special trade agreement.
               </AccordionContent>
             </AccordionItem>
 
             <AccordionItem value="gst-hst" className="bg-white rounded-lg border px-4">
-              <AccordionTrigger className="text-sm font-medium text-slate-800 py-4" data-testid="faq-gst-hst">
+              <AccordionTrigger className="text-sm font-medium text-slate-800 py-4 text-left" data-testid="faq-gst-hst">
                 How is GST/HST calculated on imports?
               </AccordionTrigger>
-              <AccordionContent className="text-sm text-slate-600 pb-4">
+              <AccordionContent className="text-sm text-slate-600 pb-4 text-left">
                 GST (5% federal) is applied to the value of goods plus any customs duty.
                 In provinces with HST (Ontario, Atlantic provinces), a single harmonized rate is charged instead.
                 In provinces with separate PST (BC, MB, SK) or QST (Quebec), the provincial tax is charged in addition to GST.
@@ -1434,10 +1535,10 @@ export default function CustomsCalculator() {
             </AccordionItem>
 
             <AccordionItem value="duty-types" className="bg-white rounded-lg border px-4">
-              <AccordionTrigger className="text-sm font-medium text-slate-800 py-4" data-testid="faq-duty-types">
+              <AccordionTrigger className="text-sm font-medium text-slate-800 py-4 text-left" data-testid="faq-duty-types">
                 What types of duty rates exist?
               </AccordionTrigger>
-              <AccordionContent className="text-sm text-slate-600 pb-4">
+              <AccordionContent className="text-sm text-slate-600 pb-4 text-left">
                 There are three main types: <strong>Ad valorem</strong> (percentage of value, e.g., "8%"),
                 <strong>specific</strong> (fixed amount per unit, e.g., "$1.45/kg"), and
                 <strong>compound</strong> (combination, e.g., "5% but not less than $0.50/kg").
@@ -1446,10 +1547,10 @@ export default function CustomsCalculator() {
             </AccordionItem>
 
             <AccordionItem value="accuracy" className="bg-white rounded-lg border px-4">
-              <AccordionTrigger className="text-sm font-medium text-slate-800 py-4" data-testid="faq-accuracy">
+              <AccordionTrigger className="text-sm font-medium text-slate-800 py-4 text-left" data-testid="faq-accuracy">
                 How accurate are these estimates?
               </AccordionTrigger>
-              <AccordionContent className="text-sm text-slate-600 pb-4">
+              <AccordionContent className="text-sm text-slate-600 pb-4 text-left">
                 This calculator uses the official 2026 Canadian Customs Tariff (T2026) published by CBSA.
                 However, estimates may differ from final assessments because: (1) HS code classification can vary,
                 (2) special duties (anti-dumping, countervailing) are not included,
@@ -1472,7 +1573,7 @@ export default function CustomsCalculator() {
             <Button
               size="lg"
               style={{ backgroundColor: DEEP_BLUE }}
-              className="text-white font-semibold"
+              className="text-white font-semibold min-w-[220px] w-full sm:w-auto justify-center"
               onClick={() => window.location.href = "/#pricing"}
               data-testid="button-view-services"
             >
@@ -1482,6 +1583,7 @@ export default function CustomsCalculator() {
             <Button
               size="lg"
               variant="outline"
+              className="min-w-[220px] w-full sm:w-auto justify-center"
               onClick={() => window.location.href = "/carm-security-calculator"}
               data-testid="button-carm-calculator"
             >
