@@ -1,0 +1,111 @@
+STEP 1: ADD AI “DRAFT HS CLASSIFICATION REPORT” TO ADMIN ORDER VIEW (HSC ONLY)
+
+Goal:
+Inside admin classification order detail page, add a controlled AI drafting workflow that generates a consistent HS Classification Report draft, then lets admin edit, export to PDF, and send to customer.
+
+REQUIREMENTS / CONFIG
+- Use OpenAI API server-side.
+- Add env var: OPENAI_API_KEY
+- Choose a stable model suitable for structured writing (use best available in your stack).
+- NEVER expose API key client-side.
+- Store generation metadata (timestamp, model name) with the order.
+
+UI Additions (Admin Order Detail for HS Classification orders only)
+1) Button: “Generate Draft Report”
+2) Editable rich text area: “Draft Report” (pre-filled after generation; admin can edit)
+3) Button: “Request More Info”
+4) Button: “Export PDF”
+5) Button: “Send Report”
+
+Data used for AI draft (v1)
+- order_id
+- package_tier and codes_requested
+- product_name
+- country_of_origin
+- industry_category
+- product_description (verbatim)
+- additional_notes
+- uploaded_docs list (filenames + sizes only; DO NOT parse content in v1)
+
+AI Behavior
+When “Generate Draft Report” is clicked:
+- Call OpenAI API server-side with the PROMPT TEMPLATE below.
+- Save output into order.ai_draft_report (editable).
+- Save metadata: ai_generated_at, ai_model_used.
+
+PROMPT TEMPLATE (MUST USE EXACT HEADINGS + ORDER)
+SYSTEM:
+You are a trade compliance assistant drafting a tariff classification report. Write in a professional, concise compliance tone. Do NOT mention AI or automation.
+If info is insufficient, do NOT guess. Provide up to 3 candidate HS codes and list missing details needed to confirm.
+Do NOT claim anti-dumping/countervailing applicability as fact. If relevant, say “may apply — verify.”
+
+INPUT DATA:
+Order ID: {{order_id}}
+Package Tier: {{package_tier}} (codes requested: {{codes_requested}})
+Product Name: {{product_name}}
+Country of Origin: {{country_of_origin}}
+Industry Category: {{industry_category}}
+Client Description (verbatim): {{product_description}}
+Additional Notes: {{additional_notes}}
+Uploaded Documents: {{uploaded_files_list}} (if none: “None provided”)
+
+OUTPUT FORMAT (exact headings, in this order):
+
+ACCESS TO NORTH – HS CLASSIFICATION REPORT
+Order ID: {{order_id}}
+Date: {{today_date}}
+Delivery Standard: {{delivery_timeframe}}
+
+1) Product Summary
+- Product name:
+- Intended use:
+- Material/composition:
+- Key characteristics:
+- Country of origin:
+
+2) Classification Recommendation
+Provide either:
+A) Confirmed HS code(s) (if high confidence), OR
+B) Candidate HS code(s) (if medium/low confidence)
+
+For each code include:
+- HS Code:
+- Short description (plain English):
+- Confidence: High / Medium / Low
+- Rationale (3–6 bullets, specific)
+
+3) Duty/Tax Impact Note (non-numeric)
+- Duty/tax depends on HS code and origin. Use duty calculator for estimates.
+
+4) Special Measures Awareness (non-committal)
+- If relevant category, state:
+  “This category may be subject to special measures (e.g., surtaxes or SIMA) depending on origin and product specifics. Verify before import.”
+
+5) Missing Information (ONLY if needed)
+- List specific questions to confirm final HS code.
+
+6) Compliance Notice
+AccessToNorth provides independent tariff classification guidance. Final determination of tariff treatment is made by the Canada Border Services Agency (CBSA).
+
+END.
+
+Request More Info Button
+- If the draft report contains section “5) Missing Information”, extract those questions and generate a pre-filled email to the customer asking only those questions.
+- Use existing Resend integration to send the email.
+- Also email operations@accesstonorth.com a copy.
+
+Export PDF
+- Generate a clean PDF from the Draft Report text (branding header + Order ID + date).
+- Save PDF and attach/link it to the order.
+
+Send Report
+- Email customer with short email body + secure PDF link (or attach PDF if your mail setup supports attachments).
+- Update status to “Delivered”.
+- Prevent duplicate sends (store delivered_at; block if already delivered unless admin confirms resend).
+
+Store Fields (add to DB if missing)
+- ai_draft_report (text)
+- ai_generated_at (datetime)
+- ai_model_used (text)
+- final_report_pdf_id (text or file reference)
+- delivered_at (datetime)
