@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { usePageMeta } from "@/hooks/use-page-meta";
-import { Calculator, Shield, Truck, Package, FileSearch, Ship } from "lucide-react";
+import { Calculator, Shield, Truck, Package, FileSearch, Box } from "lucide-react";
 
 const tools = [
   {
@@ -32,7 +32,7 @@ const tools = [
   {
     title: "Container Loading Calculator",
     description: "Plan optimal cargo placement with interactive 3D visualization. See exactly how your goods fit in 20', 40', 40' HC, and 45' HC shipping containers.",
-    icon: Ship,
+    icon: Box,
     href: "/tools/container-calculator",
     available: true,
   },
