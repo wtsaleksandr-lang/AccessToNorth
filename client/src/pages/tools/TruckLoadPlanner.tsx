@@ -45,20 +45,23 @@ import {
 } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
-import { Loader } from "@googlemaps/js-api-loader";
+import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
-let googleMapsLoaderPromise: Promise<any> | null = null;
-function loadGoogleMaps(): Promise<any> {
+let googleMapsLoaderPromise: Promise<void> | null = null;
+function loadGoogleMaps(): Promise<void> {
   if (googleMapsLoaderPromise) return googleMapsLoaderPromise;
-  const loader = new Loader({
+  setOptions({
     apiKey: GOOGLE_MAPS_API_KEY,
     version: "weekly",
-    libraries: ["places", "geometry"],
   });
-  googleMapsLoaderPromise = (loader as any).load().then(() => (window as any).google);
-  return googleMapsLoaderPromise!;
+  googleMapsLoaderPromise = Promise.all([
+    importLibrary("maps"),
+    importLibrary("places"),
+    importLibrary("geometry"),
+  ]).then(() => {});
+  return googleMapsLoaderPromise;
 }
 
 interface Jurisdiction {
