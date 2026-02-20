@@ -157,6 +157,20 @@ interface LoadingResult {
   piecesTotal: number;
 }
 
+interface MultiContainerResult {
+  containers: {
+    container: ContainerSpec;
+    result: LoadingResult;
+    label: string;
+  }[];
+  totalContainers: number;
+  upgraded: boolean;
+  upgradeFrom?: string;
+  upgradeTo?: string;
+  totalPiecesAll: number;
+  totalPiecesLoaded: number;
+}
+
 const CARGO_COLORS = [
   "#22c55e", "#3b82f6", "#ef4444", "#f59e0b", "#8b5cf6",
   "#ec4899", "#06b6d4", "#f97316", "#14b8a6", "#a855f7",
@@ -700,7 +714,7 @@ export default function ContainerCalculator() {
   }), []);
 
   const [cargoItems, setCargoItems] = useState<CargoItem[]>([defaultCargoItem(0)]);
-  const [result, setResult] = useState<LoadingResult | null>(null);
+  const [multiResult, setMultiResult] = useState<MultiContainerResult | null>(null);
   const [calculating, setCalculating] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail] = useState("");
@@ -752,7 +766,7 @@ export default function ContainerCalculator() {
   const handleUnitSwitch = useCallback((newUnit: "imperial" | "metric") => {
     if (newUnit === unitSystem) return;
     setUnitSystem(newUnit);
-    setResult(null);
+    setMultiResult(null);
   }, [unitSystem]);
 
   const addItem = useCallback(() => {
@@ -780,6 +794,12 @@ export default function ContainerCalculator() {
     );
   }, []);
 
+  const UPGRADE_MAP: Record<string, string> = {
+    "20dc": "40dc",
+    "40dc": "40hc",
+    "40hc": "45hc",
+  };
+
   const handleCalculate = useCallback(() => {
     const validItems = cargoItems.filter(
       (i) => i.included && i.length > 0 && i.width > 0 && i.height > 0 && i.quantity > 0
@@ -796,16 +816,99 @@ export default function ContainerCalculator() {
     setCalculating(true);
     setTimeout(() => {
       try {
-        const res = packBoxes(validItems, container);
-        setResult(res);
-        setCalculating(false);
+        const totalPiecesAll = validItems.reduce((s, i) => s + i.quantity, 0);
 
-        if (res.unplaced.length > 0) {
-          toast({
-            title: "Some items didn't fit",
-            description: `${res.unplaced.reduce((s, u) => s + u.qty, 0)} piece(s) could not fit in the container.`,
-          });
+        let useContainer = container;
+        let upgraded = false;
+        let upgradeFrom = "";
+        let upgradeTo = "";
+
+        let res = packBoxes(validItems, useContainer);
+
+        if (res.unplaced.length > 0 && containerId !== "custom") {
+          let nextId = UPGRADE_MAP[containerId];
+          while (nextId && res.unplaced.length > 0) {
+            const nextContainer = CONTAINER_PRESETS.find((c) => c.id === nextId)!;
+            const tryRes = packBoxes(validItems, nextContainer);
+            if (tryRes.unplaced.length < res.unplaced.length || tryRes.piecesLoaded > res.piecesLoaded) {
+              if (!upgraded) {
+                upgradeFrom = useContainer.name;
+              }
+              useContainer = nextContainer;
+              res = tryRes;
+              upgraded = true;
+              upgradeTo = nextContainer.name;
+            }
+            nextId = UPGRADE_MAP[nextId] || "";
+          }
         }
+
+        if (res.unplaced.length === 0) {
+          setMultiResult({
+            containers: [{ container: useContainer, result: res, label: `1 × ${useContainer.name}` }],
+            totalContainers: 1,
+            upgraded,
+            upgradeFrom: upgraded ? upgradeFrom : undefined,
+            upgradeTo: upgraded ? upgradeTo : undefined,
+            totalPiecesAll,
+            totalPiecesLoaded: res.piecesLoaded,
+          });
+        } else {
+          const allContainers: MultiContainerResult["containers"] = [];
+          let remaining = validItems.map((i) => ({ ...i }));
+          let containerNum = 0;
+
+          while (remaining.length > 0 && containerNum < 10) {
+            containerNum++;
+            const thisResult = packBoxes(remaining, useContainer);
+            allContainers.push({
+              container: useContainer,
+              result: thisResult,
+              label: `Container ${containerNum} — ${useContainer.name}`,
+            });
+
+            if (thisResult.unplaced.length === 0) {
+              remaining = [];
+            } else {
+              const placedCounts = new Map<string, number>();
+              for (const p of thisResult.placed) {
+                placedCounts.set(p.cargoId, (placedCounts.get(p.cargoId) || 0) + 1);
+              }
+              const nextRemaining: CargoItem[] = [];
+              for (const item of remaining) {
+                const placedQty = placedCounts.get(item.id) || 0;
+                const leftover = item.quantity - placedQty;
+                if (leftover > 0) {
+                  nextRemaining.push({ ...item, quantity: leftover });
+                }
+              }
+              remaining = nextRemaining;
+
+              if (thisResult.piecesLoaded === 0) break;
+            }
+          }
+
+          const totalLoaded = allContainers.reduce((s, c) => s + c.result.piecesLoaded, 0);
+
+          setMultiResult({
+            containers: allContainers,
+            totalContainers: allContainers.length,
+            upgraded,
+            upgradeFrom: upgraded ? upgradeFrom : undefined,
+            upgradeTo: upgraded ? upgradeTo : undefined,
+            totalPiecesAll,
+            totalPiecesLoaded: totalLoaded,
+          });
+
+          if (totalLoaded < totalPiecesAll) {
+            toast({
+              title: "Some items still didn't fit",
+              description: `${totalPiecesAll - totalLoaded} piece(s) could not be placed even with ${allContainers.length} container(s).`,
+              variant: "destructive",
+            });
+          }
+        }
+        setCalculating(false);
       } catch (err) {
         console.error("packBoxes error:", err);
         setCalculating(false);
@@ -816,7 +919,7 @@ export default function ContainerCalculator() {
         });
       }
     }, 500);
-  }, [cargoItems, container, toast]);
+  }, [cargoItems, container, containerId, toast]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -851,7 +954,7 @@ export default function ContainerCalculator() {
   }, [selectedIds]);
 
   const handleReset = useCallback(() => {
-    setResult(null);
+    setMultiResult(null);
     setCargoItems([defaultCargoItem(0)]);
     setSelectedIds(new Set());
     setExpandedIds(new Set());
@@ -899,7 +1002,7 @@ export default function ContainerCalculator() {
                         key={ct.id}
                         onClick={() => {
                           setContainerId(ct.id);
-                          setResult(null);
+                          setMultiResult(null);
                         }}
                         className={`text-left p-3 rounded-lg border text-sm transition-all ${
                           containerId === ct.id
@@ -919,7 +1022,7 @@ export default function ContainerCalculator() {
                     <button
                       onClick={() => {
                         setContainerId("custom");
-                        setResult(null);
+                        setMultiResult(null);
                       }}
                       className={`text-left p-3 rounded-lg border text-sm transition-all col-span-2 ${
                         containerId === "custom"
@@ -1581,166 +1684,221 @@ export default function ContainerCalculator() {
                 </CardContent>
               </Card>
 
-              {result && (
+              {multiResult && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4 }}
                   className="space-y-5"
+                  data-testid="results-section"
                 >
-                  <Card className="border-slate-200 overflow-hidden">
-                    <div className="bg-gradient-to-r from-primary/5 to-transparent border-b border-slate-200 px-5 py-3 flex items-center justify-between">
-                      <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                        <Maximize2 className="w-4 h-4 text-primary" />
-                        3D Loading Visualization
-                      </h2>
-                      <p className="text-xs text-slate-500">Click and drag to rotate, scroll to zoom</p>
+                  {multiResult.upgraded && (
+                    <div className="p-4 rounded-lg bg-blue-50 border border-blue-200 flex items-start gap-3" data-testid="notice-upgrade">
+                      <Info className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+                      <div className="text-sm">
+                        <p className="font-semibold text-blue-900">
+                          Container automatically upgraded
+                        </p>
+                        <p className="text-blue-800 mt-1">
+                          Your cargo didn't fit in a {multiResult.upgradeFrom}. We upgraded to a{" "}
+                          <strong>{multiResult.upgradeTo}</strong> to accommodate all items.
+                        </p>
+                      </div>
                     </div>
-                    <CardContent className="p-4">
-                      <ContainerViewer3D placed={result.placed} container={container} />
-                    </CardContent>
-                  </Card>
+                  )}
 
-                  <Card className="border-slate-200">
-                    <CardContent className="p-5">
-                      <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
-                        <BarChart3 className="w-4 h-4 text-primary" />
-                        Loading Summary
-                      </h2>
+                  {multiResult.totalContainers > 1 && (
+                    <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-3" data-testid="notice-multi-container">
+                      <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                      <div className="text-sm">
+                        <p className="font-semibold text-amber-900">
+                          Multiple containers required
+                        </p>
+                        <p className="text-amber-800 mt-1">
+                          Your cargo requires <strong>{multiResult.totalContainers} containers</strong> to
+                          fit all {multiResult.totalPiecesAll} pieces.
+                          {multiResult.totalPiecesLoaded < multiResult.totalPiecesAll && (
+                            <span className="block mt-1 text-red-700 font-medium">
+                              {multiResult.totalPiecesAll - multiResult.totalPiecesLoaded} piece(s) still
+                              could not be placed.
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
-                      {result.unplaced.length > 0 && (
-                        <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-2">
-                          <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                          <div className="text-sm">
-                            <p className="font-medium text-amber-800">
-                              {result.unplaced.reduce((s, u) => s + u.qty, 0)} item(s) could not fit
-                            </p>
-                            <p className="text-amber-700 text-xs mt-1">
-                              {result.unplaced.map((u) => `${u.name} (×${u.qty})`).join(", ")}
-                            </p>
+                  {multiResult.totalContainers === 1 && !multiResult.upgraded && multiResult.containers[0].result.unplaced.length === 0 && (
+                    <div className="p-4 rounded-lg bg-green-50 border border-green-200 flex items-start gap-3" data-testid="notice-all-fit">
+                      <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                      <p className="text-sm font-semibold text-green-800">
+                        All {multiResult.totalPiecesAll} piece(s) fit in 1 × {multiResult.containers[0].container.name}
+                      </p>
+                    </div>
+                  )}
+
+                  {multiResult.containers.map((cr, ci) => {
+                    const cResult = cr.result;
+                    return (
+                      <div key={ci} className="space-y-5" data-testid={`container-result-${ci}`}>
+                        {multiResult.totalContainers > 1 && (
+                          <div className="flex items-center gap-2 pt-2">
+                            <div className="h-px flex-1 bg-slate-200" />
+                            <Badge variant="outline" className="text-xs font-bold px-3 py-1 border-primary/30 text-primary">
+                              {cr.label}
+                            </Badge>
+                            <div className="h-px flex-1 bg-slate-200" />
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      {result.unplaced.length === 0 && (
-                        <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 flex items-start gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-                          <p className="text-sm font-medium text-green-800">
-                            All {result.piecesTotal} piece(s) fit in 1 × {container.name}
-                          </p>
-                        </div>
-                      )}
+                        <Card className="border-slate-200 overflow-hidden">
+                          <div className="bg-gradient-to-r from-primary/5 to-transparent border-b border-slate-200 px-5 py-3 flex items-center justify-between">
+                            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                              <Maximize2 className="w-4 h-4 text-primary" />
+                              3D Loading Visualization
+                              {multiResult.totalContainers > 1 && (
+                                <span className="text-xs font-normal text-slate-500 ml-1">
+                                  ({ci + 1} of {multiResult.totalContainers})
+                                </span>
+                              )}
+                            </h2>
+                            <p className="text-xs text-slate-500">Click and drag to rotate, scroll to zoom</p>
+                          </div>
+                          <CardContent className="p-4">
+                            <ContainerViewer3D placed={cResult.placed} container={cr.container} />
+                          </CardContent>
+                        </Card>
 
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-                        <StatCard
-                          icon={Package}
-                          label="Pieces Loaded"
-                          value={`${result.piecesLoaded} / ${result.piecesTotal}`}
-                          color="#3b82f6"
-                        />
-                        <StatCard
-                          icon={Weight}
-                          label="Weight"
-                          value={`${result.totalWeight.toLocaleString(undefined, {
-                            maximumFractionDigits: 0,
-                          })} lbs`}
-                          sub={`of ${result.maxPayload.toLocaleString()} lbs`}
-                          color="#22c55e"
-                        />
-                        <StatCard
-                          icon={Box}
-                          label="Volume Used"
-                          value={`${result.totalVolume.toFixed(1)} ft³`}
-                          sub={`of ${result.containerVolume.toFixed(0)} ft³`}
-                          color="#8b5cf6"
-                        />
-                        <StatCard
-                          icon={Ruler}
-                          label="Floor Area"
-                          value={`${result.floorArea.toFixed(1)} ft²`}
-                          sub={`of ${result.containerFloorArea.toFixed(0)} ft²`}
-                          color="#f59e0b"
-                        />
+                        <Card className="border-slate-200">
+                          <CardContent className="p-5">
+                            <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+                              <BarChart3 className="w-4 h-4 text-primary" />
+                              Loading Summary
+                              {multiResult.totalContainers > 1 && (
+                                <span className="text-xs font-normal text-slate-500 ml-1">
+                                  — {cr.container.name}
+                                </span>
+                              )}
+                            </h2>
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+                              <StatCard
+                                icon={Package}
+                                label="Pieces Loaded"
+                                value={`${cResult.piecesLoaded} / ${cResult.piecesTotal}`}
+                                color="#3b82f6"
+                              />
+                              <StatCard
+                                icon={Weight}
+                                label="Weight"
+                                value={`${cResult.totalWeight.toLocaleString(undefined, {
+                                  maximumFractionDigits: 0,
+                                })} lbs`}
+                                sub={`of ${cResult.maxPayload.toLocaleString()} lbs`}
+                                color="#22c55e"
+                              />
+                              <StatCard
+                                icon={Box}
+                                label="Volume Used"
+                                value={`${cResult.totalVolume.toFixed(1)} ft³`}
+                                sub={`of ${cResult.containerVolume.toFixed(0)} ft³`}
+                                color="#8b5cf6"
+                              />
+                              <StatCard
+                                icon={Ruler}
+                                label="Floor Area"
+                                value={`${cResult.floorArea.toFixed(1)} ft²`}
+                                sub={`of ${cResult.containerFloorArea.toFixed(0)} ft²`}
+                                color="#f59e0b"
+                              />
+                            </div>
+
+                            <div className="space-y-3">
+                              <UtilBar
+                                pct={cResult.volumeUtil}
+                                label="Volume Utilization"
+                                color="#8b5cf6"
+                              />
+                              <UtilBar
+                                pct={cResult.weightUtil}
+                                label="Weight Utilization"
+                                color="#22c55e"
+                              />
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        <Card className="border-slate-200">
+                          <CardContent className="p-5">
+                            <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+                              <Info className="w-4 h-4 text-primary" />
+                              Loading Details
+                              {multiResult.totalContainers > 1 && (
+                                <span className="text-xs font-normal text-slate-500 ml-1">
+                                  — {cr.container.name}
+                                </span>
+                              )}
+                            </h2>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-sm" data-testid={`table-loading-details-${ci}`}>
+                                <thead>
+                                  <tr className="border-b border-slate-200">
+                                    <th className="text-left py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
+                                      #
+                                    </th>
+                                    <th className="text-left py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
+                                      Item
+                                    </th>
+                                    <th className="text-right py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
+                                      L × W × H (in)
+                                    </th>
+                                    <th className="text-right py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
+                                      Weight
+                                    </th>
+                                    <th className="text-center py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
+                                      Rot.
+                                    </th>
+                                    <th className="text-right py-2 text-xs font-semibold text-slate-500 uppercase">
+                                      ft³
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {cResult.placed.map((p, i) => (
+                                    <tr key={i} className="border-b border-slate-100 last:border-0">
+                                      <td className="py-2 pr-2">
+                                        <div
+                                          className="w-5 h-5 rounded flex items-center justify-center text-white text-[10px] font-bold"
+                                          style={{ backgroundColor: p.color }}
+                                        >
+                                          {i + 1}
+                                        </div>
+                                      </td>
+                                      <td className="py-2 pr-2 font-medium text-slate-900 text-xs">
+                                        {p.cargoName}
+                                      </td>
+                                      <td className="py-2 pr-2 text-right text-slate-600 text-xs">
+                                        {p.l.toFixed(1)} × {p.w.toFixed(1)} × {p.h.toFixed(1)}
+                                      </td>
+                                      <td className="py-2 pr-2 text-right text-slate-600 text-xs">
+                                        {p.weight.toFixed(0)}
+                                      </td>
+                                      <td className="py-2 pr-2 text-center">
+                                        <span className="text-[10px] font-mono text-slate-400">{p.rotation}</span>
+                                      </td>
+                                      <td className="py-2 text-right text-slate-600 text-xs">
+                                        {cuInToCuFt(p.l * p.w * p.h).toFixed(1)}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </CardContent>
+                        </Card>
                       </div>
-
-                      <div className="space-y-3">
-                        <UtilBar
-                          pct={result.volumeUtil}
-                          label="Volume Utilization"
-                          color="#8b5cf6"
-                        />
-                        <UtilBar
-                          pct={result.weightUtil}
-                          label="Weight Utilization"
-                          color="#22c55e"
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border-slate-200">
-                    <CardContent className="p-5">
-                      <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
-                        <Info className="w-4 h-4 text-primary" />
-                        Loading Details
-                      </h2>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm" data-testid="table-loading-details">
-                          <thead>
-                            <tr className="border-b border-slate-200">
-                              <th className="text-left py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
-                                #
-                              </th>
-                              <th className="text-left py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
-                                Item
-                              </th>
-                              <th className="text-right py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
-                                L × W × H (in)
-                              </th>
-                              <th className="text-right py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
-                                Weight
-                              </th>
-                              <th className="text-center py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
-                                Rot.
-                              </th>
-                              <th className="text-right py-2 text-xs font-semibold text-slate-500 uppercase">
-                                ft³
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {result.placed.map((p, i) => (
-                              <tr key={i} className="border-b border-slate-100 last:border-0">
-                                <td className="py-2 pr-2">
-                                  <div
-                                    className="w-5 h-5 rounded flex items-center justify-center text-white text-[10px] font-bold"
-                                    style={{ backgroundColor: p.color }}
-                                  >
-                                    {i + 1}
-                                  </div>
-                                </td>
-                                <td className="py-2 pr-2 font-medium text-slate-900 text-xs">
-                                  {p.cargoName}
-                                </td>
-                                <td className="py-2 pr-2 text-right text-slate-600 text-xs">
-                                  {p.l.toFixed(1)} × {p.w.toFixed(1)} × {p.h.toFixed(1)}
-                                </td>
-                                <td className="py-2 pr-2 text-right text-slate-600 text-xs">
-                                  {p.weight.toFixed(0)}
-                                </td>
-                                <td className="py-2 pr-2 text-center">
-                                  <span className="text-[10px] font-mono text-slate-400">{p.rotation}</span>
-                                </td>
-                                <td className="py-2 text-right text-slate-600 text-xs">
-                                  {cuInToCuFt(p.l * p.w * p.h).toFixed(1)}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </CardContent>
-                  </Card>
+                    );
+                  })}
 
                   <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
                     <CardContent className="p-5">
