@@ -1704,105 +1704,264 @@ export default function ContainerCalculator() {
                           </button>
                         </div>
                         <p className="text-xs text-slate-500 mb-4">Changes will apply to all existing items and set defaults for new items.</p>
-                        <div className="space-y-4">
+                        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
                           <div>
                             <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide block mb-2">Stacking</label>
-                            <div className="flex gap-2">
+                            <div className="space-y-2">
                               <button
                                 onClick={() => setTempBulk(p => ({ ...p, stackable: true }))}
-                                className={`flex-1 flex items-center justify-center gap-2 p-2.5 rounded-lg border-2 text-xs font-medium transition-all ${
-                                  tempBulk.stackable ? "border-green-400 bg-green-50 text-green-700" : "border-slate-200 text-slate-600 hover:border-green-300"
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                  tempBulk.stackable ? "border-green-400 bg-green-50" : "border-slate-200 hover:border-green-300 hover:bg-green-50/50"
                                 }`}
                                 data-testid="bulk-modal-stackable-yes"
                               >
-                                <svg width="24" height="24" viewBox="0 0 56 56" className="shrink-0">
+                                <svg width="44" height="44" viewBox="0 0 56 56" className="shrink-0">
                                   <rect x="8" y="30" width="40" height="18" rx="2" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1.5" />
                                   <rect x="8" y="8" width="40" height="18" rx="2" fill="#bbf7d0" stroke="#22c55e" strokeWidth="1.5" />
+                                  <path d="M28 4 L32 8 H24 Z" fill="#22c55e" />
+                                  <text x="28" y="42" textAnchor="middle" fontSize="7" fill="#64748b" fontWeight="600">BOX</text>
+                                  <text x="28" y="20" textAnchor="middle" fontSize="7" fill="#15803d" fontWeight="600">BOX</text>
                                 </svg>
-                                Stackable
+                                <div className="text-left">
+                                  <div className="text-xs font-semibold text-green-700">Stackable</div>
+                                  <div className="text-[10px] text-slate-500 mt-0.5">Other items can be placed on top</div>
+                                </div>
                               </button>
                               <button
                                 onClick={() => setTempBulk(p => ({ ...p, stackable: false }))}
-                                className={`flex-1 flex items-center justify-center gap-2 p-2.5 rounded-lg border-2 text-xs font-medium transition-all ${
-                                  !tempBulk.stackable ? "border-amber-400 bg-amber-50 text-amber-700" : "border-slate-200 text-slate-600 hover:border-amber-300"
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                  !tempBulk.stackable ? "border-amber-400 bg-amber-50" : "border-slate-200 hover:border-amber-300 hover:bg-amber-50/50"
                                 }`}
                                 data-testid="bulk-modal-stackable-no"
                               >
-                                <svg width="24" height="24" viewBox="0 0 56 56" className="shrink-0">
+                                <svg width="44" height="44" viewBox="0 0 56 56" className="shrink-0">
                                   <rect x="8" y="20" width="40" height="28" rx="2" fill="#fef3c7" stroke="#f59e0b" strokeWidth="1.5" />
+                                  <text x="28" y="38" textAnchor="middle" fontSize="7" fill="#92400e" fontWeight="600">BOX</text>
                                   <line x1="14" y1="8" x2="42" y2="16" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" />
                                   <line x1="42" y1="8" x2="14" y2="16" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" />
                                 </svg>
-                                Not Stackable
+                                <div className="text-left">
+                                  <div className="text-xs font-semibold text-amber-700">Not Stackable</div>
+                                  <div className="text-[10px] text-slate-500 mt-0.5">Nothing placed on top of this item</div>
+                                </div>
                               </button>
                             </div>
                           </div>
 
                           <div>
                             <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide block mb-2">Rotation</label>
-                            <div className="grid grid-cols-3 gap-2">
-                              {([
-                                { val: "all" as RotationMode, label: "All Axes", active: "border-blue-400 bg-blue-50 text-blue-700", hover: "hover:border-blue-300" },
-                                { val: "horizontal" as RotationMode, label: "Horizontal", active: "border-purple-400 bg-purple-50 text-purple-700", hover: "hover:border-purple-300" },
-                                { val: "fixed" as RotationMode, label: "Fixed", active: "border-slate-400 bg-slate-100 text-slate-700", hover: "hover:border-slate-300" },
-                              ] as const).map(opt => (
-                                <button
-                                  key={opt.val}
-                                  onClick={() => setTempBulk(p => ({ ...p, rotationMode: opt.val }))}
-                                  className={`p-2 rounded-lg border-2 text-[11px] font-medium transition-all ${
-                                    tempBulk.rotationMode === opt.val ? opt.active : `border-slate-200 text-slate-600 ${opt.hover}`
-                                  }`}
-                                  data-testid={`bulk-modal-rotation-${opt.val}`}
-                                >
-                                  {opt.label}
-                                </button>
-                              ))}
+                            <div className="space-y-2">
+                              <button
+                                onClick={() => setTempBulk(p => ({ ...p, rotationMode: "all" }))}
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                  tempBulk.rotationMode === "all" ? "border-blue-400 bg-blue-50" : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/50"
+                                }`}
+                                data-testid="bulk-modal-rotation-all"
+                              >
+                                <svg width="44" height="44" viewBox="0 0 56 56" className="shrink-0">
+                                  <rect x="14" y="14" width="28" height="28" rx="2" fill="#dbeafe" stroke="#3b82f6" strokeWidth="1.5" />
+                                  <text x="28" y="32" textAnchor="middle" fontSize="7" fill="#1d4ed8" fontWeight="600">BOX</text>
+                                  <path d="M28 6 C36 6 44 10 46 16" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" markerEnd="url(#bArrowBlue)" />
+                                  <path d="M50 28 C50 36 46 44 40 46" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" markerEnd="url(#bArrowBlue)" />
+                                  <path d="M6 28 C6 20 10 12 16 10" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" markerEnd="url(#bArrowBlue)" />
+                                  <defs><marker id="bArrowBlue" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="#3b82f6" /></marker></defs>
+                                </svg>
+                                <div className="text-left">
+                                  <div className="text-xs font-semibold text-blue-700">All Axes</div>
+                                  <div className="text-[10px] text-slate-500 mt-0.5">Rotate freely in all directions</div>
+                                </div>
+                              </button>
+                              <button
+                                onClick={() => setTempBulk(p => ({ ...p, rotationMode: "horizontal" }))}
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                  tempBulk.rotationMode === "horizontal" ? "border-purple-400 bg-purple-50" : "border-slate-200 hover:border-purple-300 hover:bg-purple-50/50"
+                                }`}
+                                data-testid="bulk-modal-rotation-horizontal"
+                              >
+                                <svg width="44" height="44" viewBox="0 0 56 56" className="shrink-0">
+                                  <rect x="14" y="18" width="28" height="24" rx="2" fill="#f3e8ff" stroke="#8b5cf6" strokeWidth="1.5" />
+                                  <text x="28" y="34" textAnchor="middle" fontSize="7" fill="#6d28d9" fontWeight="600">BOX</text>
+                                  <path d="M14 12 C20 6 36 6 42 12" fill="none" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" />
+                                  <path d="M40 10 L42 12 L40 14" fill="none" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d="M16 10 L14 12 L16 14" fill="none" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                  <line x1="28" y1="46" x2="28" y2="50" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" />
+                                  <circle cx="28" cy="52" r="1.5" fill="#dc2626" />
+                                </svg>
+                                <div className="text-left">
+                                  <div className="text-xs font-semibold text-purple-700">Horizontal Only</div>
+                                  <div className="text-[10px] text-slate-500 mt-0.5">Rotate on floor plane only (keeps upright)</div>
+                                </div>
+                              </button>
+                              <button
+                                onClick={() => setTempBulk(p => ({ ...p, rotationMode: "fixed" }))}
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                  tempBulk.rotationMode === "fixed" ? "border-slate-400 bg-slate-50" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
+                                }`}
+                                data-testid="bulk-modal-rotation-fixed"
+                              >
+                                <svg width="44" height="44" viewBox="0 0 56 56" className="shrink-0">
+                                  <rect x="14" y="14" width="28" height="28" rx="2" fill="#f1f5f9" stroke="#94a3b8" strokeWidth="1.5" />
+                                  <text x="28" y="32" textAnchor="middle" fontSize="7" fill="#475569" fontWeight="600">BOX</text>
+                                  <rect x="22" y="4" width="12" height="9" rx="2" fill="#fef2f2" stroke="#ef4444" strokeWidth="1.2" />
+                                  <circle cx="28" cy="10" r="1.5" fill="#ef4444" />
+                                  <rect x="27" y="10" width="2" height="4" rx="0.5" fill="#ef4444" />
+                                </svg>
+                                <div className="text-left">
+                                  <div className="text-xs font-semibold text-slate-700">Fixed</div>
+                                  <div className="text-[10px] text-slate-500 mt-0.5">No rotation — exactly as entered</div>
+                                </div>
+                              </button>
                             </div>
                           </div>
 
                           <div>
                             <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide block mb-2">Loading Sequence</label>
-                            <div className="grid grid-cols-3 gap-2">
-                              {([
-                                { val: "first" as LoadPriority, label: "Load First", active: "border-red-400 bg-red-50 text-red-700", hover: "hover:border-red-300" },
-                                { val: "normal" as LoadPriority, label: "Normal", active: "border-blue-400 bg-blue-50 text-blue-700", hover: "hover:border-blue-300" },
-                                { val: "last" as LoadPriority, label: "Load Last", active: "border-emerald-400 bg-emerald-50 text-emerald-700", hover: "hover:border-emerald-300" },
-                              ] as const).map(opt => (
-                                <button
-                                  key={opt.val}
-                                  onClick={() => setTempBulk(p => ({ ...p, loadPriority: opt.val }))}
-                                  className={`p-2 rounded-lg border-2 text-[11px] font-medium transition-all ${
-                                    tempBulk.loadPriority === opt.val ? opt.active : `border-slate-200 text-slate-600 ${opt.hover}`
-                                  }`}
-                                  data-testid={`bulk-modal-priority-${opt.val}`}
-                                >
-                                  {opt.label}
-                                </button>
-                              ))}
+                            <div className="space-y-2">
+                              <button
+                                onClick={() => setTempBulk(p => ({ ...p, loadPriority: "first" }))}
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                  tempBulk.loadPriority === "first" ? "border-red-400 bg-red-50" : "border-slate-200 hover:border-red-300 hover:bg-red-50/50"
+                                }`}
+                                data-testid="bulk-modal-priority-first"
+                              >
+                                <svg width="44" height="44" viewBox="0 0 56 56" className="shrink-0">
+                                  <rect x="4" y="30" width="48" height="22" rx="3" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1" />
+                                  <text x="28" y="45" textAnchor="middle" fontSize="5" fill="#94a3b8" fontWeight="500">CONTAINER</text>
+                                  <rect x="8" y="8" width="16" height="16" rx="2" fill="#fecaca" stroke="#ef4444" strokeWidth="1.5" />
+                                  <text x="16" y="19" textAnchor="middle" fontSize="6" fill="#dc2626" fontWeight="700">1st</text>
+                                  <path d="M28 16 L34 16" stroke="#94a3b8" strokeWidth="1" strokeDasharray="2 1" />
+                                  <rect x="36" y="10" width="12" height="12" rx="1" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1" />
+                                </svg>
+                                <div className="text-left">
+                                  <div className="text-xs font-semibold text-red-700">Load First</div>
+                                  <div className="text-[10px] text-slate-500 mt-0.5">Goes in first, at the back of container</div>
+                                </div>
+                              </button>
+                              <button
+                                onClick={() => setTempBulk(p => ({ ...p, loadPriority: "normal" }))}
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                  tempBulk.loadPriority === "normal" ? "border-blue-400 bg-blue-50" : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/50"
+                                }`}
+                                data-testid="bulk-modal-priority-normal"
+                              >
+                                <svg width="44" height="44" viewBox="0 0 56 56" className="shrink-0">
+                                  <rect x="4" y="30" width="48" height="22" rx="3" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1" />
+                                  <text x="28" y="45" textAnchor="middle" fontSize="5" fill="#94a3b8" fontWeight="500">CONTAINER</text>
+                                  <rect x="8" y="10" width="12" height="12" rx="1" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1" />
+                                  <rect x="22" y="8" width="16" height="16" rx="2" fill="#bfdbfe" stroke="#3b82f6" strokeWidth="1.5" />
+                                  <text x="30" y="19" textAnchor="middle" fontSize="5" fill="#1d4ed8" fontWeight="700">ANY</text>
+                                  <rect x="40" y="10" width="12" height="12" rx="1" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1" />
+                                </svg>
+                                <div className="text-left">
+                                  <div className="text-xs font-semibold text-blue-700">Normal</div>
+                                  <div className="text-[10px] text-slate-500 mt-0.5">Algorithm decides best placement</div>
+                                </div>
+                              </button>
+                              <button
+                                onClick={() => setTempBulk(p => ({ ...p, loadPriority: "last" }))}
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                  tempBulk.loadPriority === "last" ? "border-emerald-400 bg-emerald-50" : "border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/50"
+                                }`}
+                                data-testid="bulk-modal-priority-last"
+                              >
+                                <svg width="44" height="44" viewBox="0 0 56 56" className="shrink-0">
+                                  <rect x="4" y="30" width="48" height="22" rx="3" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1" />
+                                  <text x="28" y="45" textAnchor="middle" fontSize="5" fill="#94a3b8" fontWeight="500">CONTAINER</text>
+                                  <rect x="8" y="10" width="12" height="12" rx="1" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1" />
+                                  <path d="M24 16 L30 16" stroke="#94a3b8" strokeWidth="1" strokeDasharray="2 1" />
+                                  <rect x="32" y="8" width="16" height="16" rx="2" fill="#a7f3d0" stroke="#10b981" strokeWidth="1.5" />
+                                  <text x="40" y="18" textAnchor="middle" fontSize="5" fill="#047857" fontWeight="700">LAST</text>
+                                </svg>
+                                <div className="text-left">
+                                  <div className="text-xs font-semibold text-emerald-700">Load Last</div>
+                                  <div className="text-[10px] text-slate-500 mt-0.5">Placed near container doors for easy access</div>
+                                </div>
+                              </button>
                             </div>
                           </div>
 
                           <div>
                             <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide block mb-2">Pallet</label>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                              {([
-                                { val: "none" as PalletType, pal: false, label: "None", active: "border-slate-400 bg-slate-100 text-slate-700", hover: "hover:border-slate-300" },
-                                { val: "us48x40" as PalletType, pal: true, label: "US 48×40", active: "border-teal-400 bg-teal-50 text-teal-700", hover: "hover:border-teal-300" },
-                                { val: "euro" as PalletType, pal: true, label: "Euro", active: "border-indigo-400 bg-indigo-50 text-indigo-700", hover: "hover:border-indigo-300" },
-                                { val: "custom" as PalletType, pal: true, label: "Custom", active: "border-orange-400 bg-orange-50 text-orange-700", hover: "hover:border-orange-300" },
-                              ] as const).map(opt => (
-                                <button
-                                  key={opt.val}
-                                  onClick={() => setTempBulk(p => ({ ...p, palletized: opt.pal, palletType: opt.val }))}
-                                  className={`p-2 rounded-lg border-2 text-[11px] font-medium transition-all ${
-                                    (opt.val === "none" ? !tempBulk.palletized : tempBulk.palletized && tempBulk.palletType === opt.val)
-                                      ? opt.active : `border-slate-200 text-slate-600 ${opt.hover}`
-                                  }`}
-                                  data-testid={`bulk-modal-pallet-${opt.val}`}
-                                >
-                                  {opt.label}
-                                </button>
-                              ))}
+                            <div className="space-y-2">
+                              <button
+                                onClick={() => setTempBulk(p => ({ ...p, palletized: false, palletType: "none" }))}
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                  !tempBulk.palletized ? "border-slate-400 bg-slate-50" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
+                                }`}
+                                data-testid="bulk-modal-pallet-none"
+                              >
+                                <svg width="44" height="44" viewBox="0 0 56 56" className="shrink-0">
+                                  <rect x="10" y="14" width="36" height="28" rx="2" fill="#dbeafe" stroke="#3b82f6" strokeWidth="1.5" />
+                                  <text x="28" y="32" textAnchor="middle" fontSize="7" fill="#1d4ed8" fontWeight="600">BOX</text>
+                                  <line x1="10" y1="48" x2="46" y2="48" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3 2" />
+                                  <text x="28" y="54" textAnchor="middle" fontSize="5" fill="#94a3b8">FLOOR</text>
+                                </svg>
+                                <div className="text-left">
+                                  <div className="text-xs font-semibold text-slate-700">No Pallet</div>
+                                  <div className="text-[10px] text-slate-500 mt-0.5">Cargo placed directly on container floor</div>
+                                </div>
+                              </button>
+                              <button
+                                onClick={() => setTempBulk(p => ({ ...p, palletized: true, palletType: "us48x40" }))}
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                  tempBulk.palletized && tempBulk.palletType === "us48x40" ? "border-teal-400 bg-teal-50/50" : "border-slate-200 hover:border-teal-300 hover:bg-teal-50/50"
+                                }`}
+                                data-testid="bulk-modal-pallet-us48x40"
+                              >
+                                <svg width="44" height="44" viewBox="0 0 56 56" className="shrink-0">
+                                  <rect x="6" y="40" width="44" height="6" rx="1" fill="#99f6e4" stroke="#14b8a6" strokeWidth="1" />
+                                  <rect x="10" y="44" width="4" height="8" rx="0.5" fill="#5eead4" stroke="#14b8a6" strokeWidth="0.5" />
+                                  <rect x="24" y="44" width="4" height="8" rx="0.5" fill="#5eead4" stroke="#14b8a6" strokeWidth="0.5" />
+                                  <rect x="38" y="44" width="4" height="8" rx="0.5" fill="#5eead4" stroke="#14b8a6" strokeWidth="0.5" />
+                                  <rect x="10" y="12" width="32" height="26" rx="2" fill="#dbeafe" stroke="#3b82f6" strokeWidth="1.5" />
+                                  <text x="26" y="28" textAnchor="middle" fontSize="7" fill="#1d4ed8" fontWeight="600">BOX</text>
+                                </svg>
+                                <div className="text-left">
+                                  <div className="text-xs font-semibold text-teal-700">US Standard Pallet</div>
+                                  <div className="text-[10px] text-slate-500 mt-0.5">48 × 40 × 6 in — GMA standard</div>
+                                </div>
+                              </button>
+                              <button
+                                onClick={() => setTempBulk(p => ({ ...p, palletized: true, palletType: "euro" }))}
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                  tempBulk.palletized && tempBulk.palletType === "euro" ? "border-indigo-400 bg-indigo-50/50" : "border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50"
+                                }`}
+                                data-testid="bulk-modal-pallet-euro"
+                              >
+                                <svg width="44" height="44" viewBox="0 0 56 56" className="shrink-0">
+                                  <rect x="8" y="40" width="40" height="6" rx="1" fill="#c7d2fe" stroke="#6366f1" strokeWidth="1" />
+                                  <rect x="12" y="44" width="4" height="8" rx="0.5" fill="#a5b4fc" stroke="#6366f1" strokeWidth="0.5" />
+                                  <rect x="26" y="44" width="4" height="8" rx="0.5" fill="#a5b4fc" stroke="#6366f1" strokeWidth="0.5" />
+                                  <rect x="40" y="44" width="4" height="8" rx="0.5" fill="#a5b4fc" stroke="#6366f1" strokeWidth="0.5" />
+                                  <rect x="12" y="14" width="30" height="24" rx="2" fill="#dbeafe" stroke="#3b82f6" strokeWidth="1.5" />
+                                  <text x="27" y="29" textAnchor="middle" fontSize="7" fill="#1d4ed8" fontWeight="600">BOX</text>
+                                </svg>
+                                <div className="text-left">
+                                  <div className="text-xs font-semibold text-indigo-700">Euro Pallet (EPAL)</div>
+                                  <div className="text-[10px] text-slate-500 mt-0.5">1200 × 800 × 144 mm — European standard</div>
+                                </div>
+                              </button>
+                              <button
+                                onClick={() => setTempBulk(p => ({ ...p, palletized: true, palletType: "custom" }))}
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                  tempBulk.palletized && tempBulk.palletType === "custom" ? "border-orange-400 bg-orange-50/50" : "border-slate-200 hover:border-orange-300 hover:bg-orange-50/50"
+                                }`}
+                                data-testid="bulk-modal-pallet-custom"
+                              >
+                                <svg width="44" height="44" viewBox="0 0 56 56" className="shrink-0">
+                                  <rect x="6" y="40" width="44" height="6" rx="1" fill="#fed7aa" stroke="#f97316" strokeWidth="1" strokeDasharray="4 2" />
+                                  <rect x="10" y="44" width="4" height="8" rx="0.5" fill="#fdba74" stroke="#f97316" strokeWidth="0.5" />
+                                  <rect x="24" y="44" width="4" height="8" rx="0.5" fill="#fdba74" stroke="#f97316" strokeWidth="0.5" />
+                                  <rect x="38" y="44" width="4" height="8" rx="0.5" fill="#fdba74" stroke="#f97316" strokeWidth="0.5" />
+                                  <rect x="10" y="12" width="32" height="26" rx="2" fill="#dbeafe" stroke="#3b82f6" strokeWidth="1.5" />
+                                  <text x="26" y="25" textAnchor="middle" fontSize="7" fill="#1d4ed8" fontWeight="600">BOX</text>
+                                  <text x="26" y="34" textAnchor="middle" fontSize="5" fill="#ea580c">? × ? × ?</text>
+                                </svg>
+                                <div className="text-left">
+                                  <div className="text-xs font-semibold text-orange-700">Custom Pallet Size</div>
+                                  <div className="text-[10px] text-slate-500 mt-0.5">Enter your own pallet dimensions per item</div>
+                                </div>
+                              </button>
                             </div>
                           </div>
 
