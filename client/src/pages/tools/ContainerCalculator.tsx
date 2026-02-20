@@ -46,6 +46,7 @@ import {
   Table,
 } from "lucide-react";
 import Papa from "papaparse";
+import * as XLSX from "xlsx";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
@@ -748,6 +749,18 @@ export default function ContainerCalculator() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [visualPopup, setVisualPopup] = useState<{ type: "stackable" | "rotation" | "palletized" | "priority"; itemId: string } | null>(null);
 
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importStep, setImportStep] = useState<"upload" | "mapping" | "preview">("upload");
+  const [importLoading, setImportLoading] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importUnits, setImportUnits] = useState<"imperial" | "metric">("imperial");
+  const [importItems, setImportItems] = useState<Array<{ name: string; length: number; width: number; height: number; weight: number; quantity: number; include: boolean }>>([]);
+  const [dragOver, setDragOver] = useState(false);
+  const importFileRef = useRef<HTMLInputElement>(null);
+  const [importRawHeaders, setImportRawHeaders] = useState<string[]>([]);
+  const [importRawRows, setImportRawRows] = useState<Record<string, string>[]>([]);
+  const [importColMap, setImportColMap] = useState<Record<string, string>>({ name: "", length: "", width: "", height: "", weight: "", quantity: "" });
+
   const isMetric = unitSystem === "metric";
   const dimFactor = isMetric ? IN_TO_CM : 1;
   const weightFactor = isMetric ? LB_TO_KG : 1;
@@ -814,6 +827,212 @@ export default function ContainerCalculator() {
     setCargoItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
     );
+  }, []);
+
+  const openImportModal = useCallback(() => {
+    setImportStep("upload");
+    setImportLoading(false);
+    setImportError(null);
+    setImportItems([]);
+    setImportUnits(unitSystem);
+    setDragOver(false);
+    setImportRawHeaders([]);
+    setImportRawRows([]);
+    setImportColMap({ name: "", length: "", width: "", height: "", weight: "", quantity: "" });
+    setShowImportModal(true);
+  }, [unitSystem]);
+
+  const autoDetectColumns = useCallback((headers: string[]): Record<string, string> => {
+    const lc = headers.map((h) => h.toLowerCase().trim());
+    const find = (keywords: string[]) => {
+      const idx = lc.findIndex((h) => keywords.some((k) => h.includes(k)));
+      return idx >= 0 ? headers[idx] : "";
+    };
+    return {
+      name: find(["name", "item", "description", "product", "desc"]),
+      length: find(["length", "len"]),
+      width: find(["width", "wid"]),
+      height: find(["height", "hgt", "ht"]),
+      weight: find(["weight", "wt", "wgt", "mass"]),
+      quantity: find(["quantity", "qty", "count", "units", "pcs"]),
+    };
+  }, []);
+
+  const parseSpreadsheetToRows = useCallback((headers: string[], rows: Record<string, string>[]) => {
+    setImportRawHeaders(headers);
+    setImportRawRows(rows);
+    setImportColMap(autoDetectColumns(headers));
+    setImportStep("mapping");
+    setImportLoading(false);
+  }, [autoDetectColumns]);
+
+  const applyColumnMapping = useCallback(() => {
+    const { name: nKey, length: lKey, width: wKey, height: hKey, weight: wtKey, quantity: qKey } = importColMap;
+    if (!lKey && !wKey && !hKey) {
+      setImportError("Please map at least one dimension column (Length, Width, or Height).");
+      return;
+    }
+    const items = importRawRows
+      .map((r) => ({
+        name: nKey ? String(r[nKey] || "").substring(0, 100) : "",
+        length: Math.max(0, parseFloat(lKey ? r[lKey] : "") || 0),
+        width: Math.max(0, parseFloat(wKey ? r[wKey] : "") || 0),
+        height: Math.max(0, parseFloat(hKey ? r[hKey] : "") || 0),
+        weight: Math.max(0, parseFloat(wtKey ? r[wtKey] : "") || 0),
+        quantity: Math.max(1, Math.round(parseFloat(qKey ? r[qKey] : "") || 1)),
+        include: true,
+      }))
+      .filter((i) => i.length > 0 || i.width > 0 || i.height > 0);
+    if (items.length === 0) {
+      setImportError("No valid dimensional data found with the selected column mapping.");
+      return;
+    }
+    setImportError(null);
+    setImportItems(items);
+    setImportStep("preview");
+  }, [importColMap, importRawRows]);
+
+  const handleImportFile = useCallback(async (file: File) => {
+    setImportError(null);
+    setImportLoading(true);
+
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "";
+      const isCSV = ext === "csv" || ext === "tsv" || file.type === "text/csv";
+      const isExcel = ext === "xlsx" || ext === "xls" || file.type.includes("spreadsheet") || file.type.includes("excel");
+
+      if (isCSV) {
+        const text = await file.text();
+        Papa.parse(text, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results: any) => {
+            if (!results.data || results.data.length === 0) {
+              setImportError("No data rows found in the file.");
+              setImportLoading(false);
+              return;
+            }
+            const rows = results.data as Record<string, string>[];
+            const headers = Object.keys(rows[0]);
+            parseSpreadsheetToRows(headers, rows);
+          },
+          error: () => {
+            setImportError("Failed to parse the CSV file. Please check the format.");
+            setImportLoading(false);
+          },
+        });
+        return;
+      }
+
+      if (isExcel) {
+        const buffer = await file.arrayBuffer();
+        const wb = XLSX.read(buffer, { type: "array" });
+        const sheetName = wb.SheetNames[0];
+        if (!sheetName) {
+          setImportError("No sheets found in the Excel file.");
+          setImportLoading(false);
+          return;
+        }
+        const sheet = wb.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "" });
+        if (jsonData.length === 0) {
+          setImportError("No data rows found in the Excel file.");
+          setImportLoading(false);
+          return;
+        }
+        const headers = Object.keys(jsonData[0]);
+        const rows = jsonData.map((r) => {
+          const row: Record<string, string> = {};
+          for (const k of headers) row[k] = String(r[k] ?? "");
+          return row;
+        });
+        parseSpreadsheetToRows(headers, rows);
+        return;
+      }
+
+      const isImage = file.type.startsWith("image/");
+      const isPdf = file.type === "application/pdf";
+      if (isImage || isPdf) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/cargo/extract", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setImportError(data.error || "Failed to process document.");
+          setImportLoading(false);
+          return;
+        }
+        if (!data.items || data.items.length === 0) {
+          setImportError("No cargo items were found in the document. Try a clearer image.");
+          setImportLoading(false);
+          return;
+        }
+        setImportUnits(data.units === "metric" ? "metric" : "imperial");
+        setImportItems(data.items.map((i: any) => ({ ...i, include: true })));
+        setImportStep("preview");
+        setImportLoading(false);
+        return;
+      }
+
+      setImportError("Unsupported file type. Please upload a CSV, Excel, PDF, or image (JPG/PNG).");
+      setImportLoading(false);
+    } catch (err) {
+      setImportError("An unexpected error occurred while processing the file.");
+      setImportLoading(false);
+    }
+  }, [parseSpreadsheetToRows]);
+
+  const handleImportDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleImportFile(file);
+  }, [handleImportFile]);
+
+  const confirmImport = useCallback(() => {
+    const toAdd = importItems.filter((i) => i.include && (i.length > 0 || i.width > 0 || i.height > 0));
+    if (toAdd.length === 0) return;
+    const isImportMetric = importUnits === "metric";
+    const startIdx = cargoItems.length;
+    const newItems: CargoItem[] = toAdd.map((item, idx) => ({
+      id: generateId(),
+      name: item.name,
+      length: isImportMetric ? item.length * CM_TO_IN : item.length,
+      width: isImportMetric ? item.width * CM_TO_IN : item.width,
+      height: isImportMetric ? item.height * CM_TO_IN : item.height,
+      weight: isImportMetric ? item.weight * KG_TO_LB : item.weight,
+      quantity: item.quantity,
+      color: CARGO_COLORS[(startIdx + idx) % CARGO_COLORS.length],
+      stackable: bulkDefaults.stackable,
+      palletized: bulkDefaults.palletized,
+      palletType: bulkDefaults.palletType,
+      customPalletL: bulkDefaults.customPalletL,
+      customPalletW: bulkDefaults.customPalletW,
+      customPalletH: bulkDefaults.customPalletH,
+      rotationMode: bulkDefaults.rotationMode,
+      included: true,
+      loadPriority: bulkDefaults.loadPriority,
+    }));
+    setCargoItems((prev) => [...prev, ...newItems]);
+    setShowImportModal(false);
+    toast({
+      title: `${newItems.length} item${newItems.length > 1 ? "s" : ""} imported`,
+      description: "Items have been added to your packing list.",
+    });
+  }, [importItems, importUnits, cargoItems.length, bulkDefaults, toast]);
+
+  const downloadSampleCSV = useCallback(() => {
+    const csvContent = `Name,Length,Width,Height,Weight,Quantity\nCardboard Box A,24,18,12,15,10\nPallet Load B,48,40,36,250,4\nSmall Carton C,12,10,8,5,25`;
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "cargo-import-template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
   }, []);
 
   const UPGRADE_MAP: Record<string, string> = {
@@ -1240,6 +1459,17 @@ export default function ContainerCalculator() {
                           cm/kg
                         </button>
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={openImportModal}
+                        className="gap-1.5 h-7 text-xs"
+                        data-testid="button-import"
+                        aria-label="Import Data"
+                      >
+                        <FileUp className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Import</span>
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -2113,6 +2343,461 @@ export default function ContainerCalculator() {
                               Cancel
                             </Button>
                           </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {showImportModal && (
+                    <div
+                      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+                      onClick={() => setShowImportModal(false)}
+                      data-testid="import-modal-overlay"
+                    >
+                      <div
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="p-6">
+                          <div className="flex items-center justify-between mb-5">
+                            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                              <FileUp className="w-5 h-5 text-primary" />
+                              Import Cargo Data
+                            </h3>
+                            <button
+                              onClick={() => setShowImportModal(false)}
+                              className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+                              data-testid="import-modal-close"
+                              aria-label="Close"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+
+                          {importStep === "upload" && (
+                            <div className="space-y-5">
+                              <div
+                                className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
+                                  dragOver
+                                    ? "border-primary bg-primary/5"
+                                    : "border-slate-300 hover:border-primary/50 hover:bg-slate-50"
+                                }`}
+                                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                                onDragLeave={() => setDragOver(false)}
+                                onDrop={handleImportDrop}
+                                onClick={() => importFileRef.current?.click()}
+                                data-testid="import-drop-zone"
+                              >
+                                <input
+                                  ref={importFileRef}
+                                  type="file"
+                                  accept=".csv,.tsv,.xlsx,.xls,.pdf,.jpg,.jpeg,.png,.webp"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    if (f) handleImportFile(f);
+                                    e.target.value = "";
+                                  }}
+                                  data-testid="import-file-input"
+                                />
+                                {importLoading ? (
+                                  <div className="py-4">
+                                    <Loader2 className="w-10 h-10 text-primary mx-auto animate-spin mb-3" />
+                                    <p className="text-sm font-medium text-slate-700">Processing document...</p>
+                                    <p className="text-xs text-slate-500 mt-1">AI is reading your file and extracting cargo data</p>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="flex justify-center gap-3 mb-4">
+                                      <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center">
+                                        <FileSpreadsheet className="w-6 h-6 text-emerald-600" />
+                                      </div>
+                                      <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
+                                        <FileImage className="w-6 h-6 text-blue-600" />
+                                      </div>
+                                      <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center">
+                                        <Sparkles className="w-6 h-6 text-purple-600" />
+                                      </div>
+                                    </div>
+                                    <p className="text-sm font-semibold text-slate-700 mb-1">
+                                      Drop your file here, or click to browse
+                                    </p>
+                                    <p className="text-xs text-slate-500">
+                                      CSV spreadsheets are parsed instantly. Images and PDFs are read by AI.
+                                    </p>
+                                    <div className="flex flex-wrap justify-center gap-2 mt-3">
+                                      <Badge variant="secondary" className="text-[10px] font-medium gap-1">
+                                        <FileSpreadsheet className="w-3 h-3" /> CSV
+                                      </Badge>
+                                      <Badge variant="secondary" className="text-[10px] font-medium gap-1">
+                                        <FileSpreadsheet className="w-3 h-3" /> Excel
+                                      </Badge>
+                                      <Badge variant="secondary" className="text-[10px] font-medium gap-1">
+                                        <FileImage className="w-3 h-3" /> JPG / PNG
+                                      </Badge>
+                                      <Badge variant="secondary" className="text-[10px] font-medium gap-1">
+                                        <FileUp className="w-3 h-3" /> PDF
+                                      </Badge>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+
+                              {importError && (
+                                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700 flex items-start gap-2" data-testid="import-error">
+                                  <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                                  {importError}
+                                </div>
+                              )}
+
+                              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Table className="w-4 h-4 text-slate-600" />
+                                  <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">CSV Template</span>
+                                </div>
+                                <p className="text-xs text-slate-500 mb-3">
+                                  Use headers like: Name, Length, Width, Height, Weight, Quantity
+                                </p>
+                                <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white mb-3">
+                                  <table className="w-full text-[11px]">
+                                    <thead>
+                                      <tr className="bg-slate-100 text-slate-600">
+                                        <th className="px-3 py-1.5 text-left font-semibold">Name</th>
+                                        <th className="px-3 py-1.5 text-right font-semibold">Length</th>
+                                        <th className="px-3 py-1.5 text-right font-semibold">Width</th>
+                                        <th className="px-3 py-1.5 text-right font-semibold">Height</th>
+                                        <th className="px-3 py-1.5 text-right font-semibold">Weight</th>
+                                        <th className="px-3 py-1.5 text-right font-semibold">Qty</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="text-slate-600">
+                                      <tr className="border-t border-slate-100">
+                                        <td className="px-3 py-1.5">Cardboard Box A</td>
+                                        <td className="px-3 py-1.5 text-right">24</td>
+                                        <td className="px-3 py-1.5 text-right">18</td>
+                                        <td className="px-3 py-1.5 text-right">12</td>
+                                        <td className="px-3 py-1.5 text-right">15</td>
+                                        <td className="px-3 py-1.5 text-right">10</td>
+                                      </tr>
+                                      <tr className="border-t border-slate-100">
+                                        <td className="px-3 py-1.5">Pallet Load B</td>
+                                        <td className="px-3 py-1.5 text-right">48</td>
+                                        <td className="px-3 py-1.5 text-right">40</td>
+                                        <td className="px-3 py-1.5 text-right">36</td>
+                                        <td className="px-3 py-1.5 text-right">250</td>
+                                        <td className="px-3 py-1.5 text-right">4</td>
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => { e.stopPropagation(); downloadSampleCSV(); }}
+                                  className="gap-1.5 text-xs"
+                                  data-testid="button-download-template"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                  Download Sample CSV
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+
+                          {importStep === "mapping" && (
+                            <div className="space-y-4">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Layers className="w-4 h-4 text-primary" />
+                                <h4 className="text-sm font-semibold text-slate-800">Map Your Columns</h4>
+                              </div>
+                              <p className="text-xs text-slate-500">
+                                We detected {importRawHeaders.length} columns and {importRawRows.length} rows. Verify the mapping below matches your data.
+                              </p>
+
+                              {importError && (
+                                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700 flex items-start gap-2" data-testid="mapping-error">
+                                  <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                                  {importError}
+                                </div>
+                              )}
+
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                {(["name", "length", "width", "height", "weight", "quantity"] as const).map((field) => {
+                                  const labels: Record<string, string> = { name: "Item Name", length: "Length", width: "Width", height: "Height", weight: "Weight", quantity: "Quantity" };
+                                  const required = field === "length" || field === "width" || field === "height";
+                                  return (
+                                    <div key={field}>
+                                      <Label className="text-[10px] text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                                        {labels[field]}
+                                        {required && <span className="text-red-400">*</span>}
+                                      </Label>
+                                      <select
+                                        value={importColMap[field]}
+                                        onChange={(e) => setImportColMap((prev) => ({ ...prev, [field]: e.target.value }))}
+                                        className="mt-1 w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none"
+                                        data-testid={`mapping-select-${field}`}
+                                      >
+                                        <option value="">— Skip —</option>
+                                        {importRawHeaders.map((h) => (
+                                          <option key={h} value={h}>{h}</option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              {importRawRows.length > 0 && (
+                                <div className="mt-3">
+                                  <p className="text-[10px] text-slate-500 uppercase tracking-wide font-medium mb-1">Preview (first 3 rows)</p>
+                                  <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+                                    <table className="w-full text-[11px]">
+                                      <thead>
+                                        <tr className="bg-slate-100 text-slate-600">
+                                          {importRawHeaders.map((h) => (
+                                            <th key={h} className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">{h}</th>
+                                          ))}
+                                        </tr>
+                                      </thead>
+                                      <tbody className="text-slate-600">
+                                        {importRawRows.slice(0, 3).map((row, idx) => (
+                                          <tr key={idx} className="border-t border-slate-100">
+                                            {importRawHeaders.map((h) => (
+                                              <td key={h} className="px-2 py-1 whitespace-nowrap">{row[h]}</td>
+                                            ))}
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="flex items-center gap-2 pt-1">
+                                <Button onClick={applyColumnMapping} className="gap-1.5" data-testid="button-apply-mapping">
+                                  <ChevronRight className="w-4 h-4" />
+                                  Continue to Preview
+                                </Button>
+                                <Button variant="outline" onClick={() => { setImportStep("upload"); setImportError(null); }} className="gap-1.5" data-testid="button-mapping-back">
+                                  <RotateCcw className="w-4 h-4" />
+                                  Back
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+
+                          {importStep === "preview" && (
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between">
+                                <p className="text-sm text-slate-600">
+                                  <span className="font-semibold text-slate-800">{importItems.filter((i) => i.include).length}</span> of{" "}
+                                  <span className="font-semibold text-slate-800">{importItems.length}</span> items selected for import
+                                </p>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] text-slate-500 uppercase tracking-wide font-medium">Units:</span>
+                                  <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+                                    <button
+                                      onClick={() => setImportUnits("imperial")}
+                                      className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                                        importUnits === "imperial"
+                                          ? "bg-primary text-white"
+                                          : "bg-white text-slate-600 hover:bg-slate-50"
+                                      }`}
+                                      data-testid="import-unit-imperial"
+                                    >
+                                      in/lbs
+                                    </button>
+                                    <button
+                                      onClick={() => setImportUnits("metric")}
+                                      className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                                        importUnits === "metric"
+                                          ? "bg-primary text-white"
+                                          : "bg-white text-slate-600 hover:bg-slate-50"
+                                      }`}
+                                      data-testid="import-unit-metric"
+                                    >
+                                      cm/kg
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="overflow-x-auto rounded-xl border border-slate-200 max-h-[45vh]">
+                                <table className="w-full text-xs">
+                                  <thead className="sticky top-0 z-10">
+                                    <tr className="bg-slate-100 text-slate-600">
+                                      <th className="px-2 py-2 text-center w-8">
+                                        <button
+                                          onClick={() => {
+                                            const allChecked = importItems.every((i) => i.include);
+                                            setImportItems((prev) => prev.map((i) => ({ ...i, include: !allChecked })));
+                                          }}
+                                          className="mx-auto block"
+                                          data-testid="import-toggle-all"
+                                        >
+                                          {importItems.every((i) => i.include) ? (
+                                            <CheckSquare className="w-3.5 h-3.5 text-primary" />
+                                          ) : (
+                                            <Square className="w-3.5 h-3.5 text-slate-400" />
+                                          )}
+                                        </button>
+                                      </th>
+                                      <th className="px-2 py-2 text-left font-semibold">Name</th>
+                                      <th className="px-2 py-2 text-right font-semibold">L</th>
+                                      <th className="px-2 py-2 text-right font-semibold">W</th>
+                                      <th className="px-2 py-2 text-right font-semibold">H</th>
+                                      <th className="px-2 py-2 text-right font-semibold">Wt</th>
+                                      <th className="px-2 py-2 text-right font-semibold">Qty</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {importItems.map((item, idx) => (
+                                      <tr
+                                        key={idx}
+                                        className={`border-t border-slate-100 transition-colors ${
+                                          item.include ? "bg-white" : "bg-slate-50 opacity-50"
+                                        }`}
+                                        data-testid={`import-row-${idx}`}
+                                      >
+                                        <td className="px-2 py-1.5 text-center">
+                                          <button
+                                            onClick={() =>
+                                              setImportItems((prev) =>
+                                                prev.map((r, i) => (i === idx ? { ...r, include: !r.include } : r))
+                                              )
+                                            }
+                                            data-testid={`import-check-${idx}`}
+                                          >
+                                            {item.include ? (
+                                              <CheckSquare className="w-3.5 h-3.5 text-primary" />
+                                            ) : (
+                                              <Square className="w-3.5 h-3.5 text-slate-400" />
+                                            )}
+                                          </button>
+                                        </td>
+                                        <td className="px-2 py-1.5">
+                                          <input
+                                            type="text"
+                                            value={item.name}
+                                            onChange={(e) =>
+                                              setImportItems((prev) =>
+                                                prev.map((r, i) => (i === idx ? { ...r, name: e.target.value } : r))
+                                              )
+                                            }
+                                            className="w-full min-w-[100px] bg-transparent border-0 outline-none text-xs text-slate-800 focus:bg-blue-50 rounded px-1 py-0.5"
+                                            data-testid={`import-name-${idx}`}
+                                          />
+                                        </td>
+                                        <td className="px-2 py-1.5">
+                                          <input
+                                            type="number"
+                                            value={item.length || ""}
+                                            onChange={(e) =>
+                                              setImportItems((prev) =>
+                                                prev.map((r, i) =>
+                                                  i === idx ? { ...r, length: Math.max(0, parseFloat(e.target.value) || 0) } : r
+                                                )
+                                              )
+                                            }
+                                            className="w-14 text-right bg-transparent border-0 outline-none text-xs text-slate-800 focus:bg-blue-50 rounded px-1 py-0.5"
+                                            data-testid={`import-length-${idx}`}
+                                          />
+                                        </td>
+                                        <td className="px-2 py-1.5">
+                                          <input
+                                            type="number"
+                                            value={item.width || ""}
+                                            onChange={(e) =>
+                                              setImportItems((prev) =>
+                                                prev.map((r, i) =>
+                                                  i === idx ? { ...r, width: Math.max(0, parseFloat(e.target.value) || 0) } : r
+                                                )
+                                              )
+                                            }
+                                            className="w-14 text-right bg-transparent border-0 outline-none text-xs text-slate-800 focus:bg-blue-50 rounded px-1 py-0.5"
+                                            data-testid={`import-width-${idx}`}
+                                          />
+                                        </td>
+                                        <td className="px-2 py-1.5">
+                                          <input
+                                            type="number"
+                                            value={item.height || ""}
+                                            onChange={(e) =>
+                                              setImportItems((prev) =>
+                                                prev.map((r, i) =>
+                                                  i === idx ? { ...r, height: Math.max(0, parseFloat(e.target.value) || 0) } : r
+                                                )
+                                              )
+                                            }
+                                            className="w-14 text-right bg-transparent border-0 outline-none text-xs text-slate-800 focus:bg-blue-50 rounded px-1 py-0.5"
+                                            data-testid={`import-height-${idx}`}
+                                          />
+                                        </td>
+                                        <td className="px-2 py-1.5">
+                                          <input
+                                            type="number"
+                                            value={item.weight || ""}
+                                            onChange={(e) =>
+                                              setImportItems((prev) =>
+                                                prev.map((r, i) =>
+                                                  i === idx ? { ...r, weight: Math.max(0, parseFloat(e.target.value) || 0) } : r
+                                                )
+                                              )
+                                            }
+                                            className="w-14 text-right bg-transparent border-0 outline-none text-xs text-slate-800 focus:bg-blue-50 rounded px-1 py-0.5"
+                                            data-testid={`import-weight-${idx}`}
+                                          />
+                                        </td>
+                                        <td className="px-2 py-1.5">
+                                          <input
+                                            type="number"
+                                            value={item.quantity || ""}
+                                            onChange={(e) =>
+                                              setImportItems((prev) =>
+                                                prev.map((r, i) =>
+                                                  i === idx ? { ...r, quantity: Math.max(1, Math.round(parseFloat(e.target.value) || 1)) } : r
+                                                )
+                                              )
+                                            }
+                                            className="w-12 text-right bg-transparent border-0 outline-none text-xs text-slate-800 focus:bg-blue-50 rounded px-1 py-0.5"
+                                            data-testid={`import-qty-${idx}`}
+                                          />
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+
+                              <div className="flex items-center gap-2 pt-1">
+                                <Button
+                                  onClick={confirmImport}
+                                  disabled={importItems.filter((i) => i.include).length === 0}
+                                  className="gap-1.5"
+                                  data-testid="button-confirm-import"
+                                >
+                                  <Plus className="w-4 h-4" />
+                                  Import {importItems.filter((i) => i.include).length} Item{importItems.filter((i) => i.include).length !== 1 ? "s" : ""}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => { setImportStep("upload"); setImportItems([]); setImportError(null); }}
+                                  className="gap-1.5"
+                                  data-testid="button-import-back"
+                                >
+                                  <RotateCcw className="w-4 h-4" />
+                                  Upload Different File
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  onClick={() => setShowImportModal(false)}
+                                  data-testid="button-import-cancel"
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
