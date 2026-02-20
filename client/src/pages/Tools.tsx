@@ -37,6 +37,13 @@ const tools = [
     available: true,
   },
   {
+    title: "Truck Load Planner",
+    description: "Plan truck loads with smart trailer matching. Calculate volume and weight utilization, get oversize/overweight warnings for dry vans, reefers, flatbeds, and more.",
+    icon: Truck,
+    href: "/tools/truck-load-planner",
+    available: true,
+  },
+  {
     title: "Freight Quote",
     description: "Get instant freight quotes for shipments to and from Canada. Compare rates from multiple carriers.",
     icon: Truck,

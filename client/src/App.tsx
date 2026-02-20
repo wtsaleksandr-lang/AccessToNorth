@@ -43,6 +43,7 @@ import OrderConfirmation from "@/pages/order/OrderConfirmation";
 import FreightQuote from "@/pages/tools/FreightQuote";
 import ShipmentTracking from "@/pages/tools/ShipmentTracking";
 import ContainerCalculator from "@/pages/tools/ContainerCalculator";
+import TruckLoadPlanner from "@/pages/tools/TruckLoadPlanner";
 import HowToImportIntoCanada from "@/pages/resources/HowToImportIntoCanada";
 import CustomsClearanceUnder2500 from "@/pages/resources/CustomsClearanceUnder2500";
 import WhatIsSimaDuty from "@/pages/resources/WhatIsSimaDuty";
@@ -86,6 +87,7 @@ function Router() {
         <Route path="/tools/freight-quote" component={FreightQuote} />
         <Route path="/tools/shipment-tracking" component={ShipmentTracking} />
         <Route path="/tools/container-calculator" component={ContainerCalculator} />
+        <Route path="/tools/truck-load-planner" component={TruckLoadPlanner} />
         <Route path="/resources" component={Resources} />
         <Route path="/resources/how-to-import-into-canada" component={HowToImportIntoCanada} />
         <Route path="/resources/customs-clearance-under-2500" component={CustomsClearanceUnder2500} />
