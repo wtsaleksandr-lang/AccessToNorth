@@ -104,7 +104,7 @@ const ADDONS = [
 export default function CustomsClearance() {
   const [, setLocation] = useLocation();
   const packagesRef = useRef<HTMLDivElement>(null);
-  const { addItem, setIsOpen, itemCount } = useCart();
+  const { addItem, setIsOpen } = useCart();
   const { formatPrice, isUSD } = useCurrency();
 
   const navigateToCalculator = () => {
@@ -179,19 +179,6 @@ export default function CustomsClearance() {
   return (
     <div className="min-h-screen bg-white">
       <Navbar darkHero />
-
-      {itemCount > 0 && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-40 bg-blue-600 text-white rounded-full p-4 shadow-lg shadow-blue-600/30 cursor-pointer"
-          data-testid="button-floating-cart"
-        >
-          <ShoppingCart className="w-5 h-5" />
-          <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
-            {itemCount}
-          </span>
-        </button>
-      )}
 
       {/* HERO SECTION */}
       <section

@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X, ShieldCheck, ChevronDown } from "lucide-react";
+import { Menu, X, ShieldCheck, ChevronDown, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { useCart } from "@/contexts/CartContext";
 
 interface NavbarProps {
   darkHero?: boolean;
@@ -68,6 +69,7 @@ export function Navbar({ darkHero = false }: NavbarProps) {
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
   const [location, setLocation] = useLocation();
   const dropdownTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { itemCount, setIsOpen: setCartOpen } = useCart();
 
   const useLight = darkHero && !scrolled;
 
@@ -224,6 +226,22 @@ export function Navbar({ darkHero = false }: NavbarProps) {
             <CurrencyToggle light={useLight} />
 
             <div className="flex items-center gap-2 ml-3">
+              {itemCount > 0 && (
+                <button
+                  onClick={() => setCartOpen(true)}
+                  className={`relative p-2 rounded-lg transition-colors cursor-pointer ${
+                    useLight
+                      ? "text-white hover:bg-white/10"
+                      : "text-slate-700 hover:bg-slate-100"
+                  }`}
+                  data-testid="button-navbar-cart"
+                >
+                  <ShoppingCart className="w-5 h-5" />
+                  <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center leading-none px-1">
+                    {itemCount}
+                  </span>
+                </button>
+              )}
               <Button
                 variant="outline"
                 className={`cursor-pointer ${useLight ? "border-white/30 text-white" : "border-primary/20 text-primary"}`}
@@ -243,13 +261,29 @@ export function Navbar({ darkHero = false }: NavbarProps) {
           </div>
 
           {/* Mobile toggle */}
-          <button
-            className={`lg:hidden cursor-pointer ${useLight ? "text-white" : "text-slate-700"}`}
-            onClick={() => setIsOpen(!isOpen)}
-            data-testid="button-mobile-menu"
-          >
-            {isOpen ? <X /> : <Menu />}
-          </button>
+          <div className="lg:hidden flex items-center gap-1">
+            {itemCount > 0 && (
+              <button
+                onClick={() => setCartOpen(true)}
+                className={`relative p-2 rounded-lg transition-colors cursor-pointer ${
+                  useLight ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100"
+                }`}
+                data-testid="button-mobile-cart"
+              >
+                <ShoppingCart className="w-5 h-5" />
+                <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center leading-none px-1">
+                  {itemCount}
+                </span>
+              </button>
+            )}
+            <button
+              className={`cursor-pointer p-2 ${useLight ? "text-white" : "text-slate-700"}`}
+              onClick={() => setIsOpen(!isOpen)}
+              data-testid="button-mobile-menu"
+            >
+              {isOpen ? <X /> : <Menu />}
+            </button>
+          </div>
         </div>
       </div>
 
