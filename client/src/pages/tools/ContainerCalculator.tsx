@@ -719,6 +719,7 @@ export default function ContainerCalculator() {
   const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [visualPopup, setVisualPopup] = useState<{ type: "stackable" | "rotation"; itemId: string } | null>(null);
 
   const isMetric = unitSystem === "metric";
   const dimFactor = isMetric ? IN_TO_CM : 1;
@@ -1318,7 +1319,266 @@ export default function ContainerCalculator() {
                     </div>
                   )}
 
-                  <div className="overflow-x-auto -mx-5 px-5" data-testid="cargo-table-scroll">
+                  {visualPopup && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setVisualPopup(null)} data-testid="visual-popup-overlay">
+                      <div className="bg-white rounded-xl shadow-2xl border border-slate-200 p-5 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()} data-testid="visual-popup">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="font-bold text-sm text-slate-900">
+                            {visualPopup.type === "stackable" ? "Stackable Options" : "Rotation Modes"}
+                          </h3>
+                          <button onClick={() => setVisualPopup(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-1" data-testid="button-close-popup">
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        {visualPopup.type === "stackable" ? (
+                          <div className="space-y-4">
+                            <button
+                              onClick={() => {
+                                updateItem(visualPopup.itemId, "stackable", true);
+                                setVisualPopup(null);
+                              }}
+                              className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                cargoItems.find(i => i.id === visualPopup.itemId)?.stackable
+                                  ? "border-green-400 bg-green-50"
+                                  : "border-slate-200 hover:border-green-300 hover:bg-green-50/50"
+                              }`}
+                              data-testid="popup-stackable-yes"
+                            >
+                              <svg width="56" height="56" viewBox="0 0 56 56" className="shrink-0">
+                                <rect x="8" y="30" width="40" height="18" rx="2" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1.5" />
+                                <rect x="8" y="8" width="40" height="18" rx="2" fill="#bbf7d0" stroke="#22c55e" strokeWidth="1.5" />
+                                <path d="M28 4 L32 8 H24 Z" fill="#22c55e" />
+                                <text x="28" y="42" textAnchor="middle" fontSize="7" fill="#64748b" fontWeight="600">BOX</text>
+                                <text x="28" y="20" textAnchor="middle" fontSize="7" fill="#15803d" fontWeight="600">BOX</text>
+                              </svg>
+                              <div className="text-left">
+                                <div className="text-xs font-semibold text-green-700">Stackable (✓)</div>
+                                <div className="text-[10px] text-slate-500 mt-0.5">Other items can be placed on top</div>
+                              </div>
+                            </button>
+                            <button
+                              onClick={() => {
+                                updateItem(visualPopup.itemId, "stackable", false);
+                                setVisualPopup(null);
+                              }}
+                              className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                !cargoItems.find(i => i.id === visualPopup.itemId)?.stackable
+                                  ? "border-amber-400 bg-amber-50"
+                                  : "border-slate-200 hover:border-amber-300 hover:bg-amber-50/50"
+                              }`}
+                              data-testid="popup-stackable-no"
+                            >
+                              <svg width="56" height="56" viewBox="0 0 56 56" className="shrink-0">
+                                <rect x="8" y="20" width="40" height="28" rx="2" fill="#fef3c7" stroke="#f59e0b" strokeWidth="1.5" />
+                                <text x="28" y="38" textAnchor="middle" fontSize="7" fill="#92400e" fontWeight="600">BOX</text>
+                                <line x1="14" y1="8" x2="42" y2="16" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" />
+                                <line x1="42" y1="8" x2="14" y2="16" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" />
+                              </svg>
+                              <div className="text-left">
+                                <div className="text-xs font-semibold text-amber-700">Not Stackable (✗)</div>
+                                <div className="text-[10px] text-slate-500 mt-0.5">Nothing placed on top of this item</div>
+                              </div>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {(() => {
+                              const currentMode = cargoItems.find(i => i.id === visualPopup.itemId)?.rotationMode;
+                              return (
+                                <>
+                                  <button
+                                    onClick={() => { updateItem(visualPopup.itemId, "rotationMode", "all"); setVisualPopup(null); }}
+                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                      currentMode === "all" ? "border-blue-400 bg-blue-50" : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/50"
+                                    }`}
+                                    data-testid="popup-rotation-all"
+                                  >
+                                    <svg width="56" height="56" viewBox="0 0 56 56" className="shrink-0">
+                                      <rect x="14" y="14" width="28" height="28" rx="2" fill="#dbeafe" stroke="#3b82f6" strokeWidth="1.5" />
+                                      <text x="28" y="32" textAnchor="middle" fontSize="7" fill="#1d4ed8" fontWeight="600">BOX</text>
+                                      <path d="M28 6 C36 6 44 10 46 16" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" markerEnd="url(#arrowBlue)" />
+                                      <path d="M50 28 C50 36 46 44 40 46" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" markerEnd="url(#arrowBlue)" />
+                                      <path d="M6 28 C6 20 10 12 16 10" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" markerEnd="url(#arrowBlue)" />
+                                      <defs><marker id="arrowBlue" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="#3b82f6" /></marker></defs>
+                                    </svg>
+                                    <div className="text-left">
+                                      <div className="text-xs font-semibold text-blue-700">All Axes</div>
+                                      <div className="text-[10px] text-slate-500 mt-0.5">Rotate freely in all directions</div>
+                                    </div>
+                                  </button>
+                                  <button
+                                    onClick={() => { updateItem(visualPopup.itemId, "rotationMode", "horizontal"); setVisualPopup(null); }}
+                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                      currentMode === "horizontal" ? "border-purple-400 bg-purple-50" : "border-slate-200 hover:border-purple-300 hover:bg-purple-50/50"
+                                    }`}
+                                    data-testid="popup-rotation-horizontal"
+                                  >
+                                    <svg width="56" height="56" viewBox="0 0 56 56" className="shrink-0">
+                                      <rect x="14" y="18" width="28" height="24" rx="2" fill="#f3e8ff" stroke="#8b5cf6" strokeWidth="1.5" />
+                                      <text x="28" y="34" textAnchor="middle" fontSize="7" fill="#6d28d9" fontWeight="600">BOX</text>
+                                      <path d="M14 12 C20 6 36 6 42 12" fill="none" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" />
+                                      <path d="M40 10 L42 12 L40 14" fill="none" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                      <path d="M16 10 L14 12 L16 14" fill="none" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                      <line x1="28" y1="46" x2="28" y2="50" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" />
+                                      <circle cx="28" cy="52" r="1.5" fill="#dc2626" />
+                                    </svg>
+                                    <div className="text-left">
+                                      <div className="text-xs font-semibold text-purple-700">Horizontal Only</div>
+                                      <div className="text-[10px] text-slate-500 mt-0.5">Rotate on floor plane only (keeps upright)</div>
+                                    </div>
+                                  </button>
+                                  <button
+                                    onClick={() => { updateItem(visualPopup.itemId, "rotationMode", "fixed"); setVisualPopup(null); }}
+                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                      currentMode === "fixed" ? "border-slate-400 bg-slate-50" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
+                                    }`}
+                                    data-testid="popup-rotation-fixed"
+                                  >
+                                    <svg width="56" height="56" viewBox="0 0 56 56" className="shrink-0">
+                                      <rect x="14" y="14" width="28" height="28" rx="2" fill="#f1f5f9" stroke="#94a3b8" strokeWidth="1.5" />
+                                      <text x="28" y="32" textAnchor="middle" fontSize="7" fill="#475569" fontWeight="600">BOX</text>
+                                      <rect x="22" y="4" width="12" height="9" rx="2" fill="#fef2f2" stroke="#ef4444" strokeWidth="1.2" />
+                                      <circle cx="28" cy="10" r="1.5" fill="#ef4444" />
+                                      <rect x="27" y="10" width="2" height="4" rx="0.5" fill="#ef4444" />
+                                    </svg>
+                                    <div className="text-left">
+                                      <div className="text-xs font-semibold text-slate-700">Fixed</div>
+                                      <div className="text-[10px] text-slate-500 mt-0.5">No rotation — exactly as entered</div>
+                                    </div>
+                                  </button>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="sm:hidden space-y-2" data-testid="cargo-mobile-cards">
+                    {cargoItems.map((item, idx) => {
+                      const totalWt = item.weight * item.quantity;
+                      const displayTotalWt = unitSystem === "metric" ? (totalWt * LB_TO_KG).toFixed(1) : totalWt.toFixed(1);
+                      const volIn3 = item.length * item.width * item.height * item.quantity;
+                      const displayVol = unitSystem === "imperial" ? (volIn3 / 1728).toFixed(2) : (volIn3 * 0.000016387064).toFixed(4);
+
+                      return (
+                        <div
+                          key={item.id}
+                          className={`border rounded-lg p-2.5 transition-all ${
+                            !item.included ? "opacity-40 border-slate-200/60 bg-slate-50/50"
+                              : selectedIds.has(item.id) ? "border-primary/30 bg-primary/[0.02]"
+                              : "border-slate-200"
+                          }`}
+                          data-testid={`cargo-item-${idx}`}
+                        >
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <button onClick={() => toggleSelect(item.id)} className="shrink-0 text-slate-400 hover:text-primary" data-testid={`checkbox-cargo-${idx}`}>
+                              {selectedIds.has(item.id) ? <CheckSquare className="w-3.5 h-3.5 text-primary" /> : <Square className="w-3.5 h-3.5" />}
+                            </button>
+                            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                            <Input
+                              placeholder={`Cargo ${idx + 1}`}
+                              value={item.name}
+                              onChange={(e) => updateItem(item.id, "name", e.target.value)}
+                              className="h-7 text-xs flex-1 min-w-0"
+                              data-testid={`input-cargo-name-${idx}`}
+                            />
+                            {cargoItems.length > 1 && (
+                              <button onClick={() => removeItem(item.id)} className="shrink-0 text-slate-300 hover:text-red-500 p-0.5" data-testid={`button-remove-cargo-${idx}`}>
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-6 gap-1 mb-1.5">
+                            <div className="text-center">
+                              <span className="text-[8px] text-slate-400 uppercase block">L</span>
+                              <Input type="number" min={0} step="0.1" value={toDisplay(item.length)} onChange={(e) => updateItem(item.id, "length", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-cargo-length-${idx}`} />
+                            </div>
+                            <div className="text-center">
+                              <span className="text-[8px] text-slate-400 uppercase block">W</span>
+                              <Input type="number" min={0} step="0.1" value={toDisplay(item.width)} onChange={(e) => updateItem(item.id, "width", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-cargo-width-${idx}`} />
+                            </div>
+                            <div className="text-center">
+                              <span className="text-[8px] text-slate-400 uppercase block">H</span>
+                              <Input type="number" min={0} step="0.1" value={toDisplay(item.height)} onChange={(e) => updateItem(item.id, "height", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-cargo-height-${idx}`} />
+                            </div>
+                            <div className="text-center">
+                              <span className="text-[8px] text-slate-400 uppercase block">Qty</span>
+                              <Input type="number" min={1} value={item.quantity || ""} onChange={(e) => updateItem(item.id, "quantity", parseInt(e.target.value) || 0)} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-cargo-qty-${idx}`} />
+                            </div>
+                            <div className="text-center">
+                              <span className="text-[8px] text-slate-400 uppercase block">W/pc</span>
+                              <Input type="number" min={0} step="0.1" value={toDisplayWeight(item.weight)} onChange={(e) => updateItem(item.id, "weight", fromDisplayWeight(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-cargo-weight-${idx}`} />
+                            </div>
+                            <div className="text-center">
+                              <span className="text-[8px] text-slate-400 uppercase block">Total</span>
+                              <div className="h-6 flex items-center justify-center text-[10px] text-slate-500 font-medium" data-testid={`text-wtotal-${idx}`}>
+                                {item.weight > 0 && item.quantity > 0 ? displayTotalWt : "—"}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-4 gap-1.5">
+                            <div>
+                              <span className="text-[8px] text-slate-400 uppercase block mb-0.5">Stack</span>
+                              <button
+                                onClick={() => setVisualPopup({ type: "stackable", itemId: item.id })}
+                                className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
+                                  item.stackable ? "bg-green-50 border-green-300 text-green-700" : "bg-amber-50 border-amber-300 text-amber-700"
+                                }`}
+                                data-testid={`toggle-stackable-yes-${idx}`}
+                              >
+                                {item.stackable ? "✓ Yes" : "✗ No"}
+                              </button>
+                            </div>
+                            <div>
+                              <span className="text-[8px] text-slate-400 uppercase block mb-0.5">Rotate</span>
+                              <button
+                                onClick={() => setVisualPopup({ type: "rotation", itemId: item.id })}
+                                className="w-full h-6 rounded text-[10px] font-medium border border-slate-200 bg-white text-slate-600 hover:border-primary/50 transition-colors"
+                                data-testid={`select-rotation-${idx}`}
+                              >
+                                {item.rotationMode === "all" ? "All" : item.rotationMode === "horizontal" ? "Horiz" : "Fixed"}
+                              </button>
+                            </div>
+                            <div>
+                              <span className="text-[8px] text-slate-400 uppercase block mb-0.5">Priority</span>
+                              <select
+                                value={item.loadPriority}
+                                onChange={(e) => updateItem(item.id, "loadPriority", e.target.value as LoadPriority)}
+                                className="w-full h-6 px-0.5 text-[10px] font-medium rounded border border-slate-200 bg-white cursor-pointer"
+                                data-testid={`select-priority-${idx}`}
+                              >
+                                <option value="first">1st</option>
+                                <option value="normal">Norm</option>
+                                <option value="last">Last</option>
+                              </select>
+                            </div>
+                            <div>
+                              <span className="text-[8px] text-slate-400 uppercase block mb-0.5">Pallet</span>
+                              <div className="flex rounded border border-slate-200 overflow-hidden h-6">
+                                <button
+                                  onClick={() => { updateItem(item.id, "palletized", true); if (item.palletType === "none") updateItem(item.id, "palletType", "us48x40"); }}
+                                  className={`flex-1 text-[10px] font-medium transition-colors ${item.palletized ? "bg-green-500 text-white" : "bg-white text-slate-400"}`}
+                                  data-testid={`toggle-palletized-yes-${idx}`}
+                                >Y</button>
+                                <button
+                                  onClick={() => { updateItem(item.id, "palletized", false); updateItem(item.id, "palletType", "none"); }}
+                                  className={`flex-1 text-[10px] font-medium transition-colors ${!item.palletized ? "bg-slate-500 text-white" : "bg-white text-slate-400"}`}
+                                  data-testid={`toggle-palletized-no-${idx}`}
+                                >N</button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="hidden sm:block overflow-x-auto -mx-5 px-5" data-testid="cargo-table-scroll">
                     <table className="w-full border-collapse min-w-[920px]" data-testid="cargo-table">
                       <thead>
                         <tr className="border-b border-slate-200">
@@ -1496,42 +1756,36 @@ export default function ContainerCalculator() {
                                 </span>
                               </td>
                               <td className="px-1 py-1.5">
-                                <div className="flex rounded-md border border-slate-200 overflow-hidden">
-                                  <button
-                                    onClick={() => updateItem(item.id, "stackable", true)}
-                                    className={`flex-1 px-1 py-1 text-[10px] font-medium transition-colors ${
-                                      item.stackable
-                                        ? "bg-green-500 text-white"
-                                        : "bg-white text-slate-400 hover:bg-slate-50"
-                                    }`}
-                                    data-testid={`toggle-stackable-yes-${idx}`}
-                                  >
-                                    ✓
-                                  </button>
-                                  <button
-                                    onClick={() => updateItem(item.id, "stackable", false)}
-                                    className={`flex-1 px-1 py-1 text-[10px] font-medium transition-colors ${
-                                      !item.stackable
-                                        ? "bg-amber-500 text-white"
-                                        : "bg-white text-slate-400 hover:bg-slate-50"
-                                    }`}
-                                    data-testid={`toggle-stackable-no-${idx}`}
-                                  >
-                                    ✗
-                                  </button>
-                                </div>
+                                <button
+                                  onClick={() => setVisualPopup({ type: "stackable", itemId: item.id })}
+                                  className={`w-full flex items-center justify-center gap-1 h-7 rounded-md border text-[10px] font-medium transition-colors cursor-pointer ${
+                                    item.stackable
+                                      ? "bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+                                      : "bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100"
+                                  }`}
+                                  data-testid={`toggle-stackable-yes-${idx}`}
+                                  title="Click to change"
+                                >
+                                  {item.stackable ? "✓ Yes" : "✗ No"}
+                                  <Eye className="w-2.5 h-2.5 opacity-50" />
+                                </button>
                               </td>
                               <td className="px-1 py-1.5">
-                                <select
-                                  value={item.rotationMode}
-                                  onChange={(e) => updateItem(item.id, "rotationMode", e.target.value as RotationMode)}
-                                  className="w-full h-7 px-1 text-[10px] font-medium rounded-md border border-slate-200 bg-white hover:border-primary/50 transition-colors cursor-pointer"
+                                <button
+                                  onClick={() => setVisualPopup({ type: "rotation", itemId: item.id })}
+                                  className={`w-full flex items-center justify-center gap-1 h-7 rounded-md border text-[10px] font-medium transition-colors cursor-pointer ${
+                                    item.rotationMode === "all"
+                                      ? "bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100"
+                                      : item.rotationMode === "horizontal"
+                                      ? "bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100"
+                                      : "bg-slate-50 border-slate-300 text-slate-700 hover:bg-slate-100"
+                                  }`}
                                   data-testid={`select-rotation-${idx}`}
+                                  title="Click to change"
                                 >
-                                  <option value="all">All axes</option>
-                                  <option value="horizontal">Horiz.</option>
-                                  <option value="fixed">Fixed</option>
-                                </select>
+                                  {item.rotationMode === "all" ? "All" : item.rotationMode === "horizontal" ? "Horiz." : "Fixed"}
+                                  <Eye className="w-2.5 h-2.5 opacity-50" />
+                                </button>
                               </td>
                               <td className="px-1 py-1.5">
                                 <select
