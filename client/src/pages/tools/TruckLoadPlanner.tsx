@@ -771,15 +771,46 @@ export default function TruckLoadPlanner() {
     }
   }, [originPlace, destPlace, extractJurisdictionsFromRoute]);
 
+  const geocodeAddress = useCallback(async (address: string): Promise<{ lat: number; lng: number; formatted: string } | null> => {
+    const g = (window as any).google;
+    if (!g?.maps?.Geocoder || !address.trim()) return null;
+    const geocoder = new g.maps.Geocoder();
+    return new Promise((resolve) => {
+      geocoder.geocode({ address }, (results: any[], status: string) => {
+        if (status === "OK" && results?.[0]?.geometry?.location) {
+          const loc = results[0].geometry.location;
+          resolve({ lat: loc.lat(), lng: loc.lng(), formatted: results[0].formatted_address || address });
+        } else {
+          resolve(null);
+        }
+      });
+    });
+  }, []);
+
+  const handleCalculateRoute = useCallback(async () => {
+    let origin = originPlace;
+    let dest = destPlace;
+
+    if (!origin && originText.trim()) {
+      origin = await geocodeAddress(originText);
+      if (origin) setOriginPlace(origin);
+    }
+    if (!dest && destText.trim()) {
+      dest = await geocodeAddress(destText);
+      if (dest) setDestPlace(dest);
+    }
+
+    if (!origin || !dest) {
+      setRouteError("Please enter valid origin and destination addresses.");
+      return;
+    }
+  }, [originPlace, destPlace, originText, destText, geocodeAddress]);
+
   useEffect(() => {
     if (originPlace && destPlace) {
       calculateRoute();
     }
   }, [originPlace, destPlace, calculateRoute]);
-
-  // TODO: Later we will add a jurisdiction rules dataset with standard weight limits per state/province
-  // TODO: Later we will add overweight detection + permit estimate feature using that dataset
-  // TODO: Later we will add permit fees per jurisdiction
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
@@ -1318,19 +1349,18 @@ export default function TruckLoadPlanner() {
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                       <div>
                         <Label className="text-xs text-slate-500 mb-1 flex items-center gap-1">
                           <MapPin className="w-3 h-3 text-green-600" />
                           Origin (A)
                         </Label>
-                        <input
+                        <Input
                           ref={originInputRef}
                           type="text"
                           placeholder="Start typing an address..."
                           value={originText}
                           onChange={e => { setOriginText(e.target.value); setOriginPlace(null); }}
-                          className="w-full h-10 px-3 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
                           data-testid="input-origin"
                         />
                       </div>
@@ -1339,16 +1369,28 @@ export default function TruckLoadPlanner() {
                           <MapPin className="w-3 h-3 text-red-500" />
                           Destination (B)
                         </Label>
-                        <input
+                        <Input
                           ref={destInputRef}
                           type="text"
                           placeholder="Start typing an address..."
                           value={destText}
                           onChange={e => { setDestText(e.target.value); setDestPlace(null); }}
-                          className="w-full h-10 px-3 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
                           data-testid="input-destination"
                         />
                       </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <Button
+                        onClick={handleCalculateRoute}
+                        disabled={routeLoading || (!originText.trim() || !destText.trim())}
+                        size="sm"
+                        className="gap-2"
+                        data-testid="button-calculate-route"
+                      >
+                        {routeLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Navigation className="w-3.5 h-3.5" />}
+                        Calculate Route
+                      </Button>
                     </div>
 
                     {routeLoading && (
@@ -1374,13 +1416,19 @@ export default function TruckLoadPlanner() {
                       </div>
                     )}
 
-                    <div
-                      ref={mapContainerRef}
-                      className={`w-full rounded-xl border border-slate-200 overflow-hidden transition-all ${
-                        routeInfo ? "h-[300px] sm:h-[400px] mb-4" : "h-0 border-0"
-                      }`}
-                      data-testid="route-map"
-                    />
+                    <div className="relative w-full rounded-xl border border-slate-200 overflow-hidden mb-4 h-[250px] sm:h-[350px]" data-testid="route-map-wrapper">
+                      <div
+                        ref={mapContainerRef}
+                        className="w-full h-full"
+                        data-testid="route-map"
+                      />
+                      {!routeInfo && !routeLoading && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-100 text-slate-400">
+                          <MapPin className="w-8 h-8 mb-2 opacity-40" />
+                          <p className="text-sm">Enter addresses and calculate route to see map</p>
+                        </div>
+                      )}
+                    </div>
 
                     {routeInfo && jurisdictions.length > 0 && (
                       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} data-testid="jurisdictions-section">
@@ -1414,7 +1462,7 @@ export default function TruckLoadPlanner() {
                                   </td>
                                   <td className="px-4 py-2.5 text-slate-600">
                                     <Badge variant="outline" className="text-[10px]">
-                                      {j.country === "Canada" ? "🇨🇦 Canada" : j.country === "United States" ? "🇺🇸 USA" : j.country}
+                                      {j.country === "Canada" ? "CA" : j.country === "United States" ? "US" : j.country}
                                     </Badge>
                                   </td>
                                   <td className="px-4 py-2.5 text-slate-400 text-xs italic">
@@ -1439,7 +1487,7 @@ export default function TruckLoadPlanner() {
                                   <div>
                                     <p className="text-sm font-semibold text-slate-900">{j.name} ({j.code})</p>
                                     <p className="text-[11px] text-slate-500">
-                                      {j.country === "Canada" ? "🇨🇦 Canada" : j.country === "United States" ? "🇺🇸 USA" : j.country}
+                                      {j.country === "Canada" ? "Canada" : j.country === "United States" ? "United States" : j.country}
                                     </p>
                                   </div>
                                 </div>
