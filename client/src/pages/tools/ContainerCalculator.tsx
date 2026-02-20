@@ -719,7 +719,6 @@ export default function ContainerCalculator() {
   const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const isMetric = unitSystem === "metric";
   const dimFactor = isMetric ? IN_TO_CM : 1;
@@ -777,11 +776,6 @@ export default function ContainerCalculator() {
   const removeItem = useCallback((id: string) => {
     setCargoItems((prev) => prev.filter((i) => i.id !== id));
     setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-    setExpandedIds((prev) => {
       const next = new Set(prev);
       next.delete(id);
       return next;
@@ -937,14 +931,6 @@ export default function ContainerCalculator() {
     );
   }, [cargoItems]);
 
-  const toggleExpanded = useCallback((id: string) => {
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  }, []);
-
   const bulkUpdate = useCallback((field: keyof CargoItem, value: any) => {
     setCargoItems((prev) =>
       prev.map((item) =>
@@ -957,7 +943,6 @@ export default function ContainerCalculator() {
     setMultiResult(null);
     setCargoItems([defaultCargoItem(0), defaultCargoItem(1)]);
     setSelectedIds(new Set());
-    setExpandedIds(new Set());
   }, [defaultCargoItem]);
 
   return (
@@ -1211,43 +1196,45 @@ export default function ContainerCalculator() {
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                       <Box className="w-4 h-4 text-primary" />
-                      Cargo Items
+                      Your Cargo List
                     </h2>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={addItem}
-                      className="gap-1"
-                      data-testid="button-add-cargo"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Add Item
-                    </Button>
-                  </div>
-
-                  {cargoItems.length > 1 && (
-                    <div className="flex items-center gap-2 mb-3 pb-3 border-b border-slate-100">
-                      <button
-                        onClick={toggleSelectAll}
-                        className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-primary transition-colors"
-                        data-testid="button-select-all"
+                    <div className="flex items-center gap-2">
+                      <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+                        <button
+                          onClick={() => handleUnitSwitch("imperial")}
+                          className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                            unitSystem === "imperial"
+                              ? "bg-primary text-white"
+                              : "bg-white text-slate-600 hover:bg-slate-50"
+                          }`}
+                          data-testid="button-unit-imperial-table"
+                        >
+                          in/lbs
+                        </button>
+                        <button
+                          onClick={() => handleUnitSwitch("metric")}
+                          className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                            unitSystem === "metric"
+                              ? "bg-primary text-white"
+                              : "bg-white text-slate-600 hover:bg-slate-50"
+                          }`}
+                          data-testid="button-unit-metric-table"
+                        >
+                          cm/kg
+                        </button>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={addItem}
+                        className="gap-1 h-7 text-xs"
+                        data-testid="button-add-cargo"
                       >
-                        {selectedIds.size === cargoItems.length ? (
-                          <CheckSquare className="w-3.5 h-3.5 text-primary" />
-                        ) : selectedIds.size > 0 ? (
-                          <Minus className="w-3.5 h-3.5 text-primary" />
-                        ) : (
-                          <Square className="w-3.5 h-3.5" />
-                        )}
-                        {selectedIds.size === cargoItems.length ? "Deselect All" : "Select All"}
-                      </button>
-                      {selectedIds.size > 0 && (
-                        <span className="text-xs text-slate-400">
-                          {selectedIds.size} selected
-                        </span>
-                      )}
+                        <Plus className="w-3.5 h-3.5" />
+                        Add Item
+                      </Button>
                     </div>
-                  )}
+                  </div>
 
                   {selectedIds.size > 0 && (
                     <div
@@ -1331,316 +1318,295 @@ export default function ContainerCalculator() {
                     </div>
                   )}
 
-                  <div className="hidden sm:flex items-center gap-1.5 px-3 mb-1.5">
-                    <div className="w-4 shrink-0" />
-                    <div className="w-3 shrink-0" />
-                    <div className="flex-1 min-w-0 grid grid-cols-[1fr_52px_68px_68px_68px_68px] gap-1.5">
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Name</span>
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide text-center">Qty</span>
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide text-center">Wt ({weightUnit})</span>
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide text-center">L ({dimUnit})</span>
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide text-center">W ({dimUnit})</span>
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide text-center">H ({dimUnit})</span>
-                    </div>
-                    <div className="w-6 shrink-0" />
-                    <div className="w-4 shrink-0" />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    {cargoItems.map((item, idx) => (
-                      <div
-                        key={item.id}
-                        className={`border rounded-lg relative group transition-all ${
-                          !item.included
-                            ? "border-slate-200/60 bg-slate-50/50 opacity-60"
-                            : selectedIds.has(item.id)
-                            ? "border-primary/30 bg-primary/[0.02] ring-1 ring-primary/10"
-                            : "border-slate-200"
-                        }`}
-                        data-testid={`cargo-item-${idx}`}
-                      >
-                        <div className="px-2.5 py-2">
-                          <div className="flex items-center gap-1.5">
-                            {cargoItems.length > 1 ? (
-                              <button
-                                onClick={() => toggleSelect(item.id)}
-                                className="shrink-0 text-slate-400 hover:text-primary transition-colors"
-                                data-testid={`checkbox-cargo-${idx}`}
-                              >
-                                {selectedIds.has(item.id) ? (
-                                  <CheckSquare className="w-4 h-4 text-primary" />
-                                ) : (
-                                  <Square className="w-4 h-4" />
-                                )}
-                              </button>
-                            ) : (
-                              <div className="w-4 shrink-0" />
-                            )}
-                            <div
-                              className="w-3 h-3 rounded-full shrink-0"
-                              style={{ backgroundColor: item.color }}
-                            />
-                            <div className="flex-1 min-w-0 grid grid-cols-2 sm:grid-cols-[1fr_52px_68px_68px_68px_68px] gap-1.5">
-                              <Input
-                                placeholder={`Cargo ${idx + 1}`}
-                                value={item.name}
-                                onChange={(e) => updateItem(item.id, "name", e.target.value)}
-                                className="h-7 text-xs min-w-0 col-span-1"
-                                data-testid={`input-cargo-name-${idx}`}
-                              />
-                              <Input
-                                type="number"
-                                min={1}
-                                value={item.quantity || ""}
-                                onChange={(e) =>
-                                  updateItem(item.id, "quantity", parseInt(e.target.value) || 0)
-                                }
-                                className="h-7 text-xs text-center px-1"
-                                placeholder="Qty"
-                                data-testid={`input-cargo-qty-${idx}`}
-                              />
-                              <Input
-                                type="number"
-                                min={0}
-                                step="0.1"
-                                value={toDisplayWeight(item.weight)}
-                                onChange={(e) =>
-                                  updateItem(item.id, "weight", fromDisplayWeight(e.target.value))
-                                }
-                                className="h-7 text-xs text-center px-1"
-                                placeholder={`Wt`}
-                                data-testid={`input-cargo-weight-${idx}`}
-                              />
-                              <Input
-                                type="number"
-                                min={0}
-                                step="0.1"
-                                value={toDisplay(item.length)}
-                                onChange={(e) =>
-                                  updateItem(item.id, "length", fromDisplay(e.target.value))
-                                }
-                                className="h-7 text-xs text-center px-1"
-                                placeholder="L"
-                                data-testid={`input-cargo-length-${idx}`}
-                              />
-                              <Input
-                                type="number"
-                                min={0}
-                                step="0.1"
-                                value={toDisplay(item.width)}
-                                onChange={(e) =>
-                                  updateItem(item.id, "width", fromDisplay(e.target.value))
-                                }
-                                className="h-7 text-xs text-center px-1"
-                                placeholder="W"
-                                data-testid={`input-cargo-width-${idx}`}
-                              />
-                              <Input
-                                type="number"
-                                min={0}
-                                step="0.1"
-                                value={toDisplay(item.height)}
-                                onChange={(e) =>
-                                  updateItem(item.id, "height", fromDisplay(e.target.value))
-                                }
-                                className="h-7 text-xs text-center px-1"
-                                placeholder="H"
-                                data-testid={`input-cargo-height-${idx}`}
-                              />
-                            </div>
+                  <div className="overflow-x-auto -mx-5 px-5" data-testid="cargo-table-scroll">
+                    <table className="w-full border-collapse min-w-[920px]" data-testid="cargo-table">
+                      <thead>
+                        <tr className="border-b border-slate-200">
+                          <th className="px-1.5 py-2 text-left w-[32px]">
                             <button
-                              onClick={() => toggleExpanded(item.id)}
-                              className={`shrink-0 p-1 rounded transition-colors ${
-                                expandedIds.has(item.id)
-                                  ? "text-primary bg-primary/10"
-                                  : "text-slate-400 hover:text-primary hover:bg-primary/5"
-                              }`}
-                              title="Advanced Options"
-                              data-testid={`button-advanced-${idx}`}
+                              onClick={toggleSelectAll}
+                              className="text-slate-400 hover:text-primary transition-colors"
+                              data-testid="button-select-all"
+                              title={selectedIds.size === cargoItems.length ? "Deselect All" : "Select All"}
                             >
-                              <Settings2 className="w-4 h-4" />
+                              {selectedIds.size === cargoItems.length && cargoItems.length > 0 ? (
+                                <CheckSquare className="w-4 h-4 text-primary" />
+                              ) : selectedIds.size > 0 ? (
+                                <Minus className="w-4 h-4 text-primary" />
+                              ) : (
+                                <Square className="w-4 h-4" />
+                              )}
                             </button>
-                            {cargoItems.length > 1 ? (
-                              <button
-                                onClick={() => removeItem(item.id)}
-                                className="shrink-0 text-slate-300 hover:text-red-500 transition-colors p-0.5"
-                                data-testid={`button-remove-cargo-${idx}`}
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            ) : (
-                              <div className="w-4 shrink-0" />
-                            )}
-                          </div>
+                          </th>
+                          <th className="px-1 py-2 text-left min-w-[100px]">
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Name</span>
+                          </th>
+                          <th className="px-1 py-2 text-center w-[58px]">
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">L<span className="text-slate-300 ml-0.5">({dimUnit})</span></span>
+                          </th>
+                          <th className="px-1 py-2 text-center w-[58px]">
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">W<span className="text-slate-300 ml-0.5">({dimUnit})</span></span>
+                          </th>
+                          <th className="px-1 py-2 text-center w-[58px]">
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">H<span className="text-slate-300 ml-0.5">({dimUnit})</span></span>
+                          </th>
+                          <th className="px-1 py-2 text-center w-[48px]">
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Qty</span>
+                          </th>
+                          <th className="px-1 py-2 text-center w-[62px]">
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">W/pcs<span className="text-slate-300 ml-0.5">({weightUnit})</span></span>
+                          </th>
+                          <th className="px-1 py-2 text-center w-[62px]">
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">W/total</span>
+                          </th>
+                          <th className="px-1 py-2 text-center w-[62px]">
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Vol<span className="text-slate-300 ml-0.5">({unitSystem === "imperial" ? "ft³" : "m³"})</span></span>
+                          </th>
+                          <th className="px-1 py-2 text-center w-[68px]">
+                            <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Stack</div>
+                            <button
+                              onClick={() => {
+                                const allStackable = cargoItems.every(i => i.stackable);
+                                cargoItems.forEach(i => updateItem(i.id, "stackable", !allStackable));
+                              }}
+                              className="text-[8px] text-slate-300 hover:text-primary transition-colors"
+                              data-testid="button-toggle-all-stackable"
+                            >
+                              {cargoItems.every(i => i.stackable) ? "all ✓" : "toggle all"}
+                            </button>
+                          </th>
+                          <th className="px-1 py-2 text-center w-[78px]">
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Rotation</span>
+                          </th>
+                          <th className="px-1 py-2 text-center w-[72px]">
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Priority</span>
+                          </th>
+                          <th className="px-1 py-2 text-center w-[78px]">
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Pallet</span>
+                          </th>
+                          <th className="px-1 py-2 text-center w-[30px]">
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cargoItems.map((item, idx) => {
+                          const displayWt = toDisplayWeight(item.weight);
+                          const totalWt = item.weight * item.quantity;
+                          const displayTotalWt = unitSystem === "metric"
+                            ? (totalWt * LB_TO_KG).toFixed(1)
+                            : totalWt.toFixed(1);
+                          const volIn3 = item.length * item.width * item.height * item.quantity;
+                          const displayVol = unitSystem === "imperial"
+                            ? (volIn3 / 1728).toFixed(2)
+                            : (volIn3 * 0.000016387064).toFixed(4);
 
-                          {(!item.stackable || item.rotationMode !== "all" || item.loadPriority !== "normal" || item.palletized || !item.included) && !expandedIds.has(item.id) && (
-                            <div className="flex gap-1 mt-1.5 ml-[calc(1rem+14px)]">
-                              {!item.stackable && (
-                                <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[9px] font-medium leading-none">No Stack</span>
-                              )}
-                              {item.rotationMode !== "all" && (
-                                <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-[9px] font-medium leading-none">
-                                  {item.rotationMode === "fixed" ? "Fixed" : "Horiz."}
-                                </span>
-                              )}
-                              {item.loadPriority !== "normal" && (
-                                <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 text-[9px] font-medium leading-none">
-                                  {item.loadPriority === "first" ? "1st" : "Last"}
-                                </span>
-                              )}
-                              {item.palletized && (
-                                <span className="px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[9px] font-medium leading-none">Pallet</span>
-                              )}
-                              {!item.included && (
-                                <span className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 text-[9px] font-medium leading-none">Excluded</span>
-                              )}
-                            </div>
-                          )}
-
-                          {expandedIds.has(item.id) && (
-                            <div className="mt-2 p-2.5 rounded-lg bg-slate-50/80 border border-slate-100">
-                              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                                <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase tracking-wide mb-1 block">
-                                    Stackable
-                                  </Label>
-                                  <div className="flex rounded-md border border-slate-200 overflow-hidden">
-                                    <button
-                                      onClick={() => updateItem(item.id, "stackable", true)}
-                                      className={`flex-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
-                                        item.stackable
-                                          ? "bg-green-500 text-white"
-                                          : "bg-white text-slate-500 hover:bg-slate-50"
-                                      }`}
-                                      data-testid={`toggle-stackable-yes-${idx}`}
-                                    >
-                                      Yes
-                                    </button>
-                                    <button
-                                      onClick={() => updateItem(item.id, "stackable", false)}
-                                      className={`flex-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
-                                        !item.stackable
-                                          ? "bg-amber-500 text-white"
-                                          : "bg-white text-slate-500 hover:bg-slate-50"
-                                      }`}
-                                      data-testid={`toggle-stackable-no-${idx}`}
-                                    >
-                                      No
-                                    </button>
-                                  </div>
-                                </div>
-                                <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase tracking-wide mb-1 block">
-                                    Rotation
-                                  </Label>
-                                  <select
-                                    value={item.rotationMode}
-                                    onChange={(e) => updateItem(item.id, "rotationMode", e.target.value as RotationMode)}
-                                    className="w-full h-[26px] px-1.5 text-[10px] font-medium rounded-md border border-slate-200 bg-white hover:border-primary/50 transition-colors cursor-pointer"
-                                    data-testid={`select-rotation-${idx}`}
+                          return (
+                            <tr
+                              key={item.id}
+                              className={`border-b border-slate-100 transition-colors ${
+                                !item.included
+                                  ? "opacity-40"
+                                  : selectedIds.has(item.id)
+                                  ? "bg-primary/[0.03]"
+                                  : "hover:bg-slate-50/50"
+                              }`}
+                              data-testid={`cargo-item-${idx}`}
+                            >
+                              <td className="px-1.5 py-1.5">
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => toggleSelect(item.id)}
+                                    className="shrink-0 text-slate-400 hover:text-primary transition-colors"
+                                    data-testid={`checkbox-cargo-${idx}`}
                                   >
-                                    <option value="all">All axes</option>
-                                    <option value="horizontal">Horiz. only</option>
-                                    <option value="fixed">Fixed</option>
-                                  </select>
+                                    {selectedIds.has(item.id) ? (
+                                      <CheckSquare className="w-3.5 h-3.5 text-primary" />
+                                    ) : (
+                                      <Square className="w-3.5 h-3.5" />
+                                    )}
+                                  </button>
+                                  <div
+                                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                                    style={{ backgroundColor: item.color }}
+                                  />
                                 </div>
-                                <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase tracking-wide mb-1 block">
-                                    Priority
-                                  </Label>
-                                  <select
-                                    value={item.loadPriority}
-                                    onChange={(e) => updateItem(item.id, "loadPriority", e.target.value as LoadPriority)}
-                                    className="w-full h-[26px] px-1.5 text-[10px] font-medium rounded-md border border-slate-200 bg-white hover:border-primary/50 transition-colors cursor-pointer"
-                                    data-testid={`select-priority-${idx}`}
+                              </td>
+                              <td className="px-1 py-1.5">
+                                <Input
+                                  placeholder={`Cargo ${idx + 1}`}
+                                  value={item.name}
+                                  onChange={(e) => updateItem(item.id, "name", e.target.value)}
+                                  className="h-7 text-xs min-w-0"
+                                  data-testid={`input-cargo-name-${idx}`}
+                                />
+                              </td>
+                              <td className="px-1 py-1.5">
+                                <Input
+                                  type="number" min={0} step="0.1"
+                                  value={toDisplay(item.length)}
+                                  onChange={(e) => updateItem(item.id, "length", fromDisplay(e.target.value))}
+                                  className="h-7 text-xs text-center px-1"
+                                  data-testid={`input-cargo-length-${idx}`}
+                                />
+                              </td>
+                              <td className="px-1 py-1.5">
+                                <Input
+                                  type="number" min={0} step="0.1"
+                                  value={toDisplay(item.width)}
+                                  onChange={(e) => updateItem(item.id, "width", fromDisplay(e.target.value))}
+                                  className="h-7 text-xs text-center px-1"
+                                  data-testid={`input-cargo-width-${idx}`}
+                                />
+                              </td>
+                              <td className="px-1 py-1.5">
+                                <Input
+                                  type="number" min={0} step="0.1"
+                                  value={toDisplay(item.height)}
+                                  onChange={(e) => updateItem(item.id, "height", fromDisplay(e.target.value))}
+                                  className="h-7 text-xs text-center px-1"
+                                  data-testid={`input-cargo-height-${idx}`}
+                                />
+                              </td>
+                              <td className="px-1 py-1.5">
+                                <Input
+                                  type="number" min={1}
+                                  value={item.quantity || ""}
+                                  onChange={(e) => updateItem(item.id, "quantity", parseInt(e.target.value) || 0)}
+                                  className="h-7 text-xs text-center px-1"
+                                  data-testid={`input-cargo-qty-${idx}`}
+                                />
+                              </td>
+                              <td className="px-1 py-1.5">
+                                <Input
+                                  type="number" min={0} step="0.1"
+                                  value={toDisplayWeight(item.weight)}
+                                  onChange={(e) => updateItem(item.id, "weight", fromDisplayWeight(e.target.value))}
+                                  className="h-7 text-xs text-center px-1"
+                                  data-testid={`input-cargo-weight-${idx}`}
+                                />
+                              </td>
+                              <td className="px-1 py-1.5 text-center">
+                                <span className="text-[11px] text-slate-500 font-medium" data-testid={`text-wtotal-${idx}`}>
+                                  {item.weight > 0 && item.quantity > 0 ? displayTotalWt : "—"}
+                                </span>
+                              </td>
+                              <td className="px-1 py-1.5 text-center">
+                                <span className="text-[11px] text-slate-500 font-medium" data-testid={`text-volume-${idx}`}>
+                                  {item.length > 0 && item.width > 0 && item.height > 0 && item.quantity > 0 ? displayVol : "—"}
+                                </span>
+                              </td>
+                              <td className="px-1 py-1.5">
+                                <div className="flex rounded-md border border-slate-200 overflow-hidden">
+                                  <button
+                                    onClick={() => updateItem(item.id, "stackable", true)}
+                                    className={`flex-1 px-1 py-1 text-[10px] font-medium transition-colors ${
+                                      item.stackable
+                                        ? "bg-green-500 text-white"
+                                        : "bg-white text-slate-400 hover:bg-slate-50"
+                                    }`}
+                                    data-testid={`toggle-stackable-yes-${idx}`}
                                   >
-                                    <option value="first">First</option>
-                                    <option value="normal">Normal</option>
-                                    <option value="last">Last</option>
+                                    ✓
+                                  </button>
+                                  <button
+                                    onClick={() => updateItem(item.id, "stackable", false)}
+                                    className={`flex-1 px-1 py-1 text-[10px] font-medium transition-colors ${
+                                      !item.stackable
+                                        ? "bg-amber-500 text-white"
+                                        : "bg-white text-slate-400 hover:bg-slate-50"
+                                    }`}
+                                    data-testid={`toggle-stackable-no-${idx}`}
+                                  >
+                                    ✗
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="px-1 py-1.5">
+                                <select
+                                  value={item.rotationMode}
+                                  onChange={(e) => updateItem(item.id, "rotationMode", e.target.value as RotationMode)}
+                                  className="w-full h-7 px-1 text-[10px] font-medium rounded-md border border-slate-200 bg-white hover:border-primary/50 transition-colors cursor-pointer"
+                                  data-testid={`select-rotation-${idx}`}
+                                >
+                                  <option value="all">All axes</option>
+                                  <option value="horizontal">Horiz.</option>
+                                  <option value="fixed">Fixed</option>
+                                </select>
+                              </td>
+                              <td className="px-1 py-1.5">
+                                <select
+                                  value={item.loadPriority}
+                                  onChange={(e) => updateItem(item.id, "loadPriority", e.target.value as LoadPriority)}
+                                  className="w-full h-7 px-1 text-[10px] font-medium rounded-md border border-slate-200 bg-white hover:border-primary/50 transition-colors cursor-pointer"
+                                  data-testid={`select-priority-${idx}`}
+                                >
+                                  <option value="first">First</option>
+                                  <option value="normal">Normal</option>
+                                  <option value="last">Last</option>
+                                </select>
+                              </td>
+                              <td className="px-1 py-1.5">
+                                <div className="flex rounded-md border border-slate-200 overflow-hidden mb-0.5">
+                                  <button
+                                    onClick={() => {
+                                      updateItem(item.id, "palletized", true);
+                                      if (item.palletType === "none") updateItem(item.id, "palletType", "us48x40");
+                                    }}
+                                    className={`flex-1 px-1 py-1 text-[10px] font-medium transition-colors ${
+                                      item.palletized
+                                        ? "bg-green-500 text-white"
+                                        : "bg-white text-slate-400 hover:bg-slate-50"
+                                    }`}
+                                    data-testid={`toggle-palletized-yes-${idx}`}
+                                  >
+                                    Y
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      updateItem(item.id, "palletized", false);
+                                      updateItem(item.id, "palletType", "none");
+                                    }}
+                                    className={`flex-1 px-1 py-1 text-[10px] font-medium transition-colors ${
+                                      !item.palletized
+                                        ? "bg-slate-500 text-white"
+                                        : "bg-white text-slate-400 hover:bg-slate-50"
+                                    }`}
+                                    data-testid={`toggle-palletized-no-${idx}`}
+                                  >
+                                    N
+                                  </button>
+                                </div>
+                                {item.palletized && (
+                                  <select
+                                    value={item.palletType}
+                                    onChange={(e) => updateItem(item.id, "palletType", e.target.value as PalletType)}
+                                    className="w-full h-5 px-0.5 text-[9px] font-medium rounded border border-slate-200 bg-white cursor-pointer"
+                                    data-testid={`select-pallet-type-${idx}`}
+                                  >
+                                    <option value="us48x40">US 48×40"</option>
+                                    <option value="euro">Euro</option>
+                                    <option value="custom">Custom</option>
                                   </select>
-                                </div>
-                                <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase tracking-wide mb-1 block">
-                                    Palletized
-                                  </Label>
-                                  <div className="flex rounded-md border border-slate-200 overflow-hidden">
-                                    <button
-                                      onClick={() => {
-                                        updateItem(item.id, "palletized", true);
-                                        if (item.palletType === "none") updateItem(item.id, "palletType", "us48x40");
-                                      }}
-                                      className={`flex-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
-                                        item.palletized
-                                          ? "bg-green-500 text-white"
-                                          : "bg-white text-slate-500 hover:bg-slate-50"
-                                      }`}
-                                      data-testid={`toggle-palletized-yes-${idx}`}
-                                    >
-                                      Yes
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        updateItem(item.id, "palletized", false);
-                                        updateItem(item.id, "palletType", "none");
-                                      }}
-                                      className={`flex-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
-                                        !item.palletized
-                                          ? "bg-slate-500 text-white"
-                                          : "bg-white text-slate-500 hover:bg-slate-50"
-                                      }`}
-                                      data-testid={`toggle-palletized-no-${idx}`}
-                                    >
-                                      No
-                                    </button>
-                                  </div>
-                                  {item.palletized && (
-                                    <select
-                                      value={item.palletType}
-                                      onChange={(e) => updateItem(item.id, "palletType", e.target.value as PalletType)}
-                                      className="mt-1 w-full h-[24px] px-1.5 text-[10px] font-medium rounded-md border border-slate-200 bg-white cursor-pointer"
-                                      data-testid={`select-pallet-type-${idx}`}
-                                    >
-                                      <option value="us48x40">US 48×40"</option>
-                                      <option value="euro">Euro 1200×800mm</option>
-                                      <option value="custom">Custom</option>
-                                    </select>
-                                  )}
-                                </div>
-                                <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase tracking-wide mb-1 block">
-                                    Include
-                                  </Label>
-                                  <div className="flex rounded-md border border-slate-200 overflow-hidden">
-                                    <button
-                                      onClick={() => updateItem(item.id, "included", true)}
-                                      className={`flex-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
-                                        item.included
-                                          ? "bg-green-500 text-white"
-                                          : "bg-white text-slate-500 hover:bg-slate-50"
-                                      }`}
-                                      data-testid={`toggle-included-yes-${idx}`}
-                                    >
-                                      Yes
-                                    </button>
-                                    <button
-                                      onClick={() => updateItem(item.id, "included", false)}
-                                      className={`flex-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
-                                        !item.included
-                                          ? "bg-slate-500 text-white"
-                                          : "bg-white text-slate-500 hover:bg-slate-50"
-                                      }`}
-                                      data-testid={`toggle-included-no-${idx}`}
-                                    >
-                                      No
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                                )}
+                              </td>
+                              <td className="px-1 py-1.5 text-center">
+                                {cargoItems.length > 1 ? (
+                                  <button
+                                    onClick={() => removeItem(item.id)}
+                                    className="text-slate-300 hover:text-red-500 transition-colors p-0.5"
+                                    data-testid={`button-remove-cargo-${idx}`}
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                ) : (
+                                  <div className="w-4" />
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
 
                   <div className="mt-5 flex gap-3">
