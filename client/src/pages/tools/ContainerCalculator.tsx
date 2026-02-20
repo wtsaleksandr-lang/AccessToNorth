@@ -754,12 +754,12 @@ export default function ContainerCalculator() {
   const [importLoading, setImportLoading] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importUnits, setImportUnits] = useState<"imperial" | "metric">("imperial");
-  const [importItems, setImportItems] = useState<Array<{ name: string; length: number; width: number; height: number; weight: number; quantity: number; include: boolean }>>([]);
+  const [importItems, setImportItems] = useState<Array<{ name: string; length: number; width: number; height: number; weight: number; quantity: number; stackable?: boolean; rotationMode?: RotationMode; loadPriority?: LoadPriority; palletized?: boolean; include: boolean }>>([]);
   const [dragOver, setDragOver] = useState(false);
   const importFileRef = useRef<HTMLInputElement>(null);
   const [importRawHeaders, setImportRawHeaders] = useState<string[]>([]);
   const [importRawRows, setImportRawRows] = useState<Record<string, string>[]>([]);
-  const [importColMap, setImportColMap] = useState<Record<string, string>>({ name: "", length: "", width: "", height: "", weight: "", quantity: "" });
+  const [importColMap, setImportColMap] = useState<Record<string, string>>({ name: "", length: "", width: "", height: "", weight: "", quantity: "", stackable: "", rotation: "", priority: "", palletized: "" });
 
   const isMetric = unitSystem === "metric";
   const dimFactor = isMetric ? IN_TO_CM : 1;
@@ -838,7 +838,7 @@ export default function ContainerCalculator() {
     setDragOver(false);
     setImportRawHeaders([]);
     setImportRawRows([]);
-    setImportColMap({ name: "", length: "", width: "", height: "", weight: "", quantity: "" });
+    setImportColMap({ name: "", length: "", width: "", height: "", weight: "", quantity: "", stackable: "", rotation: "", priority: "", palletized: "" });
     setShowImportModal(true);
   }, [unitSystem]);
 
@@ -855,6 +855,10 @@ export default function ContainerCalculator() {
       height: find(["height", "hgt", "ht"]),
       weight: find(["weight", "wt", "wgt", "mass"]),
       quantity: find(["quantity", "qty", "count", "units", "pcs"]),
+      stackable: find(["stackable", "stack"]),
+      rotation: find(["rotation", "rotate", "orient"]),
+      priority: find(["priority", "sequence", "order", "load"]),
+      palletized: find(["palletized", "pallet"]),
     };
   }, []);
 
@@ -866,8 +870,29 @@ export default function ContainerCalculator() {
     setImportLoading(false);
   }, [autoDetectColumns]);
 
+  const parseStackable = (val: string): boolean | undefined => {
+    const v = val.toLowerCase().trim();
+    if (["yes", "true", "1", "y"].includes(v)) return true;
+    if (["no", "false", "0", "n"].includes(v)) return false;
+    return undefined;
+  };
+  const parseRotation = (val: string): RotationMode | undefined => {
+    const v = val.toLowerCase().trim();
+    if (["all", "any", "full"].includes(v)) return "all";
+    if (["horizontal", "horiz", "h"].includes(v)) return "horizontal";
+    if (["fixed", "none", "no", "f"].includes(v)) return "fixed";
+    return undefined;
+  };
+  const parsePriority = (val: string): LoadPriority | undefined => {
+    const v = val.toLowerCase().trim();
+    if (["first", "1", "high", "top"].includes(v)) return "first";
+    if (["normal", "medium", "mid", "2"].includes(v)) return "normal";
+    if (["last", "3", "low", "bottom"].includes(v)) return "last";
+    return undefined;
+  };
+
   const applyColumnMapping = useCallback(() => {
-    const { name: nKey, length: lKey, width: wKey, height: hKey, weight: wtKey, quantity: qKey } = importColMap;
+    const { name: nKey, length: lKey, width: wKey, height: hKey, weight: wtKey, quantity: qKey, stackable: sKey, rotation: rKey, priority: pKey, palletized: plKey } = importColMap;
     if (!lKey && !wKey && !hKey) {
       setImportError("Please map at least one dimension column (Length, Width, or Height).");
       return;
@@ -880,6 +905,10 @@ export default function ContainerCalculator() {
         height: Math.max(0, parseFloat(hKey ? r[hKey] : "") || 0),
         weight: Math.max(0, parseFloat(wtKey ? r[wtKey] : "") || 0),
         quantity: Math.max(1, Math.round(parseFloat(qKey ? r[qKey] : "") || 1)),
+        stackable: sKey ? parseStackable(r[sKey] || "") : undefined,
+        rotationMode: rKey ? parseRotation(r[rKey] || "") : undefined,
+        loadPriority: pKey ? parsePriority(r[pKey] || "") : undefined,
+        palletized: plKey ? parseStackable(r[plKey] || "") : undefined,
         include: true,
       }))
       .filter((i) => i.length > 0 || i.width > 0 || i.height > 0);
@@ -1006,15 +1035,15 @@ export default function ContainerCalculator() {
       weight: isImportMetric ? item.weight * KG_TO_LB : item.weight,
       quantity: item.quantity,
       color: CARGO_COLORS[(startIdx + idx) % CARGO_COLORS.length],
-      stackable: bulkDefaults.stackable,
-      palletized: bulkDefaults.palletized,
+      stackable: item.stackable !== undefined ? item.stackable : bulkDefaults.stackable,
+      palletized: item.palletized !== undefined ? item.palletized : bulkDefaults.palletized,
       palletType: bulkDefaults.palletType,
       customPalletL: bulkDefaults.customPalletL,
       customPalletW: bulkDefaults.customPalletW,
       customPalletH: bulkDefaults.customPalletH,
-      rotationMode: bulkDefaults.rotationMode,
+      rotationMode: item.rotationMode !== undefined ? item.rotationMode : bulkDefaults.rotationMode,
       included: true,
-      loadPriority: bulkDefaults.loadPriority,
+      loadPriority: item.loadPriority !== undefined ? item.loadPriority : bulkDefaults.loadPriority,
     }));
     setCargoItems((prev) => [...prev, ...newItems]);
     setShowImportModal(false);
@@ -1025,7 +1054,7 @@ export default function ContainerCalculator() {
   }, [importItems, importUnits, cargoItems.length, bulkDefaults, toast]);
 
   const downloadSampleCSV = useCallback(() => {
-    const csvContent = `Name,Length,Width,Height,Weight,Quantity\nCardboard Box A,24,18,12,15,10\nPallet Load B,48,40,36,250,4\nSmall Carton C,12,10,8,5,25`;
+    const csvContent = `Name,Length,Width,Height,Weight,Quantity,Stackable,Rotation,Priority,Palletized\nCardboard Box A,24,18,12,15,10,yes,all,normal,no\nPallet Load B,48,40,36,250,4,no,fixed,first,yes\nSmall Carton C,12,10,8,5,25,yes,horizontal,last,no`;
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -2455,37 +2484,52 @@ export default function ContainerCalculator() {
                                   <Table className="w-4 h-4 text-slate-600" />
                                   <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">CSV Template</span>
                                 </div>
-                                <p className="text-xs text-slate-500 mb-3">
-                                  Use headers like: Name, Length, Width, Height, Weight, Quantity
+                                <p className="text-xs text-slate-500 mb-2">
+                                  Use headers like: Name, Length, Width, Height, Weight, Quantity, Stackable, Rotation, Priority, Palletized
+                                </p>
+                                <p className="text-[10px] text-slate-400 mb-3">
+                                  Stackable/Palletized: yes/no &bull; Rotation: all/horizontal/fixed &bull; Priority: first/normal/last
                                 </p>
                                 <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white mb-3">
                                   <table className="w-full text-[11px]">
                                     <thead>
                                       <tr className="bg-slate-100 text-slate-600">
-                                        <th className="px-3 py-1.5 text-left font-semibold">Name</th>
-                                        <th className="px-3 py-1.5 text-right font-semibold">Length</th>
-                                        <th className="px-3 py-1.5 text-right font-semibold">Width</th>
-                                        <th className="px-3 py-1.5 text-right font-semibold">Height</th>
-                                        <th className="px-3 py-1.5 text-right font-semibold">Weight</th>
-                                        <th className="px-3 py-1.5 text-right font-semibold">Qty</th>
+                                        <th className="px-2 py-1.5 text-left font-semibold">Name</th>
+                                        <th className="px-2 py-1.5 text-right font-semibold">Length</th>
+                                        <th className="px-2 py-1.5 text-right font-semibold">Width</th>
+                                        <th className="px-2 py-1.5 text-right font-semibold">Height</th>
+                                        <th className="px-2 py-1.5 text-right font-semibold">Weight</th>
+                                        <th className="px-2 py-1.5 text-right font-semibold">Qty</th>
+                                        <th className="px-2 py-1.5 text-center font-semibold">Stackable</th>
+                                        <th className="px-2 py-1.5 text-center font-semibold">Rotation</th>
+                                        <th className="px-2 py-1.5 text-center font-semibold">Priority</th>
+                                        <th className="px-2 py-1.5 text-center font-semibold">Palletized</th>
                                       </tr>
                                     </thead>
                                     <tbody className="text-slate-600">
                                       <tr className="border-t border-slate-100">
-                                        <td className="px-3 py-1.5">Cardboard Box A</td>
-                                        <td className="px-3 py-1.5 text-right">24</td>
-                                        <td className="px-3 py-1.5 text-right">18</td>
-                                        <td className="px-3 py-1.5 text-right">12</td>
-                                        <td className="px-3 py-1.5 text-right">15</td>
-                                        <td className="px-3 py-1.5 text-right">10</td>
+                                        <td className="px-2 py-1.5">Cardboard Box A</td>
+                                        <td className="px-2 py-1.5 text-right">24</td>
+                                        <td className="px-2 py-1.5 text-right">18</td>
+                                        <td className="px-2 py-1.5 text-right">12</td>
+                                        <td className="px-2 py-1.5 text-right">15</td>
+                                        <td className="px-2 py-1.5 text-right">10</td>
+                                        <td className="px-2 py-1.5 text-center">yes</td>
+                                        <td className="px-2 py-1.5 text-center">all</td>
+                                        <td className="px-2 py-1.5 text-center">normal</td>
+                                        <td className="px-2 py-1.5 text-center">no</td>
                                       </tr>
                                       <tr className="border-t border-slate-100">
-                                        <td className="px-3 py-1.5">Pallet Load B</td>
-                                        <td className="px-3 py-1.5 text-right">48</td>
-                                        <td className="px-3 py-1.5 text-right">40</td>
-                                        <td className="px-3 py-1.5 text-right">36</td>
-                                        <td className="px-3 py-1.5 text-right">250</td>
-                                        <td className="px-3 py-1.5 text-right">4</td>
+                                        <td className="px-2 py-1.5">Pallet Load B</td>
+                                        <td className="px-2 py-1.5 text-right">48</td>
+                                        <td className="px-2 py-1.5 text-right">40</td>
+                                        <td className="px-2 py-1.5 text-right">36</td>
+                                        <td className="px-2 py-1.5 text-right">250</td>
+                                        <td className="px-2 py-1.5 text-right">4</td>
+                                        <td className="px-2 py-1.5 text-center">no</td>
+                                        <td className="px-2 py-1.5 text-center">fixed</td>
+                                        <td className="px-2 py-1.5 text-center">first</td>
+                                        <td className="px-2 py-1.5 text-center">yes</td>
                                       </tr>
                                     </tbody>
                                   </table>
@@ -2522,8 +2566,8 @@ export default function ContainerCalculator() {
                               )}
 
                               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                {(["name", "length", "width", "height", "weight", "quantity"] as const).map((field) => {
-                                  const labels: Record<string, string> = { name: "Item Name", length: "Length", width: "Width", height: "Height", weight: "Weight", quantity: "Quantity" };
+                                {(["name", "length", "width", "height", "weight", "quantity", "stackable", "rotation", "priority", "palletized"] as const).map((field) => {
+                                  const labels: Record<string, string> = { name: "Item Name", length: "Length", width: "Width", height: "Height", weight: "Weight", quantity: "Quantity", stackable: "Stackable", rotation: "Rotation", priority: "Priority", palletized: "Palletized" };
                                   const required = field === "length" || field === "width" || field === "height";
                                   return (
                                     <div key={field}>
