@@ -3412,24 +3412,24 @@ export default function ContainerCalculator() {
                               <StatCard
                                 icon={Weight}
                                 label="Weight"
-                                value={`${cResult.totalWeight.toLocaleString(undefined, {
+                                value={`${(isMetric ? cResult.totalWeight * LB_TO_KG : cResult.totalWeight).toLocaleString(undefined, {
                                   maximumFractionDigits: 0,
-                                })} lbs`}
-                                sub={`of ${cResult.maxPayload.toLocaleString()} lbs`}
+                                })} ${weightUnit}`}
+                                sub={`of ${(isMetric ? cResult.maxPayload * LB_TO_KG : cResult.maxPayload).toLocaleString(undefined, { maximumFractionDigits: 0 })} ${weightUnit}`}
                                 color="#22c55e"
                               />
                               <StatCard
                                 icon={Box}
                                 label="Volume Used"
-                                value={`${cResult.totalVolume.toFixed(1)} ft³`}
-                                sub={`of ${cResult.containerVolume.toFixed(0)} ft³`}
+                                value={`${(isMetric ? cResult.totalVolume * 0.0283168 : cResult.totalVolume).toFixed(1)} ${isMetric ? "m³" : "ft³"}`}
+                                sub={`of ${(isMetric ? cResult.containerVolume * 0.0283168 : cResult.containerVolume).toFixed(isMetric ? 1 : 0)} ${isMetric ? "m³" : "ft³"}`}
                                 color="#8b5cf6"
                               />
                               <StatCard
                                 icon={Ruler}
                                 label="Floor Area"
-                                value={`${cResult.floorArea.toFixed(1)} ft²`}
-                                sub={`of ${cResult.containerFloorArea.toFixed(0)} ft²`}
+                                value={`${(isMetric ? cResult.floorArea * 0.092903 : cResult.floorArea).toFixed(1)} ${isMetric ? "m²" : "ft²"}`}
+                                sub={`of ${(isMetric ? cResult.containerFloorArea * 0.092903 : cResult.containerFloorArea).toFixed(isMetric ? 1 : 0)} ${isMetric ? "m²" : "ft²"}`}
                                 color="#f59e0b"
                               />
                             </div>
@@ -3471,16 +3471,16 @@ export default function ContainerCalculator() {
                                       Item
                                     </th>
                                     <th className="text-right py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
-                                      L × W × H (in)
+                                      L × W × H ({dimUnit})
                                     </th>
                                     <th className="text-right py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
-                                      Weight
+                                      {weightUnit}
                                     </th>
                                     <th className="text-center py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
                                       Rot.
                                     </th>
                                     <th className="text-right py-2 text-xs font-semibold text-slate-500 uppercase">
-                                      ft³
+                                      {isMetric ? "m³" : "ft³"}
                                     </th>
                                   </tr>
                                 </thead>
@@ -3499,16 +3499,19 @@ export default function ContainerCalculator() {
                                         {p.cargoName}
                                       </td>
                                       <td className="py-2 pr-2 text-right text-slate-600 text-xs">
-                                        {p.l.toFixed(1)} × {p.w.toFixed(1)} × {p.h.toFixed(1)}
+                                        {(p.l * dimFactor).toFixed(1)} × {(p.w * dimFactor).toFixed(1)} × {(p.h * dimFactor).toFixed(1)}
                                       </td>
                                       <td className="py-2 pr-2 text-right text-slate-600 text-xs">
-                                        {p.weight.toFixed(0)}
+                                        {(p.weight * weightFactor).toFixed(0)}
                                       </td>
                                       <td className="py-2 pr-2 text-center">
                                         <span className="text-[10px] font-mono text-slate-400">{p.rotation}</span>
                                       </td>
                                       <td className="py-2 text-right text-slate-600 text-xs">
-                                        {cuInToCuFt(p.l * p.w * p.h).toFixed(1)}
+                                        {isMetric
+                                          ? (p.l * IN_TO_CM * p.w * IN_TO_CM * p.h * IN_TO_CM / 1000000).toFixed(3)
+                                          : cuInToCuFt(p.l * p.w * p.h).toFixed(1)
+                                        }
                                       </td>
                                     </tr>
                                   ))}
