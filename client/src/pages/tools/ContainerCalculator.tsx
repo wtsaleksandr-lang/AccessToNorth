@@ -39,7 +39,13 @@ import {
   CheckSquare,
   Square,
   Minus,
+  FileUp,
+  FileSpreadsheet,
+  FileImage,
+  Sparkles,
+  Table,
 } from "lucide-react";
+import Papa from "papaparse";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
