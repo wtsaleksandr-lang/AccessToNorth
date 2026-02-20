@@ -118,10 +118,15 @@ interface CargoItem {
   stackable: boolean;
   palletized: boolean;
   palletType: PalletType;
+  customPalletL: number;
+  customPalletW: number;
+  customPalletH: number;
   rotationMode: RotationMode;
   included: boolean;
   loadPriority: LoadPriority;
 }
+
+type BulkApplyScope = "all" | "selected" | "defaults";
 
 const PALLET_DIMS: Record<string, { l: number; w: number; h: number; label: string }> = {
   us48x40: { l: 48, w: 40, h: 6, label: "US 48×40\"" },
@@ -703,8 +708,12 @@ export default function ContainerCalculator() {
     loadPriority: "normal" as LoadPriority,
     palletized: false,
     palletType: "none" as PalletType,
+    customPalletL: 48,
+    customPalletW: 40,
+    customPalletH: 6,
   });
   const [tempBulk, setTempBulk] = useState({ ...bulkDefaults });
+  const [bulkApplyScope, setBulkApplyScope] = useState<BulkApplyScope>("all");
   const defaultCargoItem = useCallback((colorIdx: number): CargoItem => ({
     id: generateId(),
     name: "",
@@ -717,6 +726,9 @@ export default function ContainerCalculator() {
     stackable: bulkDefaults.stackable,
     palletized: bulkDefaults.palletized,
     palletType: bulkDefaults.palletType,
+    customPalletL: bulkDefaults.customPalletL,
+    customPalletW: bulkDefaults.customPalletW,
+    customPalletH: bulkDefaults.customPalletH,
     rotationMode: bulkDefaults.rotationMode,
     included: true,
     loadPriority: bulkDefaults.loadPriority,
@@ -1225,7 +1237,7 @@ export default function ContainerCalculator() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => { setTempBulk({ ...bulkDefaults }); setShowBulkModal(true); }}
+                        onClick={() => { setTempBulk({ ...bulkDefaults }); setBulkApplyScope(selectedIds.size > 0 ? "selected" : "all"); setShowBulkModal(true); }}
                         className="gap-1.5 h-7 text-xs"
                         data-testid="button-bulk-edit"
                         aria-label="Bulk Edit Settings"
@@ -1941,26 +1953,116 @@ export default function ContainerCalculator() {
                                   <div className="text-[10px] text-slate-500 mt-0.5">1200 × 800 × 144 mm — European standard</div>
                                 </div>
                               </button>
+                              <div className={`rounded-lg border-2 transition-all ${
+                                tempBulk.palletized && tempBulk.palletType === "custom" ? "border-orange-400 bg-orange-50/50" : "border-slate-200 hover:border-orange-300"
+                              }`}>
+                                <button
+                                  onClick={() => setTempBulk(p => ({ ...p, palletized: true, palletType: "custom" }))}
+                                  className="w-full flex items-center gap-3 p-3 hover:bg-orange-50/50 transition-all"
+                                  data-testid="bulk-modal-pallet-custom"
+                                >
+                                  <svg width="44" height="44" viewBox="0 0 56 56" className="shrink-0">
+                                    <rect x="6" y="40" width="44" height="6" rx="1" fill="#fed7aa" stroke="#f97316" strokeWidth="1" strokeDasharray="4 2" />
+                                    <rect x="10" y="44" width="4" height="8" rx="0.5" fill="#fdba74" stroke="#f97316" strokeWidth="0.5" />
+                                    <rect x="24" y="44" width="4" height="8" rx="0.5" fill="#fdba74" stroke="#f97316" strokeWidth="0.5" />
+                                    <rect x="38" y="44" width="4" height="8" rx="0.5" fill="#fdba74" stroke="#f97316" strokeWidth="0.5" />
+                                    <rect x="10" y="12" width="32" height="26" rx="2" fill="#dbeafe" stroke="#3b82f6" strokeWidth="1.5" />
+                                    <text x="26" y="25" textAnchor="middle" fontSize="7" fill="#1d4ed8" fontWeight="600">BOX</text>
+                                    <text x="26" y="34" textAnchor="middle" fontSize="5" fill="#ea580c">? × ? × ?</text>
+                                  </svg>
+                                  <div className="text-left">
+                                    <div className="text-xs font-semibold text-orange-700">Custom Pallet Size</div>
+                                    <div className="text-[10px] text-slate-500 mt-0.5">Enter your own pallet dimensions below</div>
+                                  </div>
+                                </button>
+                                {tempBulk.palletized && tempBulk.palletType === "custom" && (
+                                  <div className="px-3 pb-3 pt-1 border-t border-orange-200">
+                                    <div className="text-[10px] text-orange-600 font-medium mb-2">Custom pallet dimensions ({isMetric ? "cm" : "in"}):</div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                      <div>
+                                        <label className="text-[9px] text-slate-400 uppercase">Length</label>
+                                        <input
+                                          type="number"
+                                          value={isMetric ? +(tempBulk.customPalletL * IN_TO_CM).toFixed(1) : tempBulk.customPalletL}
+                                          onChange={(e) => {
+                                            const v = parseFloat(e.target.value) || 0;
+                                            setTempBulk(p => ({ ...p, customPalletL: isMetric ? v / IN_TO_CM : v }));
+                                          }}
+                                          className="w-full h-7 px-2 text-xs rounded border border-orange-200 focus:border-orange-400 focus:ring-1 focus:ring-orange-200 outline-none"
+                                          data-testid="bulk-modal-custom-pallet-l"
+                                          onKeyDown={(e) => e.stopPropagation()}
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="text-[9px] text-slate-400 uppercase">Width</label>
+                                        <input
+                                          type="number"
+                                          value={isMetric ? +(tempBulk.customPalletW * IN_TO_CM).toFixed(1) : tempBulk.customPalletW}
+                                          onChange={(e) => {
+                                            const v = parseFloat(e.target.value) || 0;
+                                            setTempBulk(p => ({ ...p, customPalletW: isMetric ? v / IN_TO_CM : v }));
+                                          }}
+                                          className="w-full h-7 px-2 text-xs rounded border border-orange-200 focus:border-orange-400 focus:ring-1 focus:ring-orange-200 outline-none"
+                                          data-testid="bulk-modal-custom-pallet-w"
+                                          onKeyDown={(e) => e.stopPropagation()}
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="text-[9px] text-slate-400 uppercase">Height</label>
+                                        <input
+                                          type="number"
+                                          value={isMetric ? +(tempBulk.customPalletH * IN_TO_CM).toFixed(1) : tempBulk.customPalletH}
+                                          onChange={(e) => {
+                                            const v = parseFloat(e.target.value) || 0;
+                                            setTempBulk(p => ({ ...p, customPalletH: isMetric ? v / IN_TO_CM : v }));
+                                          }}
+                                          className="w-full h-7 px-2 text-xs rounded border border-orange-200 focus:border-orange-400 focus:ring-1 focus:ring-orange-200 outline-none"
+                                          data-testid="bulk-modal-custom-pallet-h"
+                                          onKeyDown={(e) => e.stopPropagation()}
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide block mb-2">Apply To</label>
+                            <div className="grid grid-cols-3 gap-2">
                               <button
-                                onClick={() => setTempBulk(p => ({ ...p, palletized: true, palletType: "custom" }))}
-                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                                  tempBulk.palletized && tempBulk.palletType === "custom" ? "border-orange-400 bg-orange-50/50" : "border-slate-200 hover:border-orange-300 hover:bg-orange-50/50"
+                                onClick={() => setBulkApplyScope("all")}
+                                className={`p-2.5 rounded-lg border-2 text-[11px] font-medium transition-all text-center ${
+                                  bulkApplyScope === "all" ? "border-primary bg-primary/10 text-primary" : "border-slate-200 text-slate-600 hover:border-primary/40"
                                 }`}
-                                data-testid="bulk-modal-pallet-custom"
+                                data-testid="bulk-modal-scope-all"
                               >
-                                <svg width="44" height="44" viewBox="0 0 56 56" className="shrink-0">
-                                  <rect x="6" y="40" width="44" height="6" rx="1" fill="#fed7aa" stroke="#f97316" strokeWidth="1" strokeDasharray="4 2" />
-                                  <rect x="10" y="44" width="4" height="8" rx="0.5" fill="#fdba74" stroke="#f97316" strokeWidth="0.5" />
-                                  <rect x="24" y="44" width="4" height="8" rx="0.5" fill="#fdba74" stroke="#f97316" strokeWidth="0.5" />
-                                  <rect x="38" y="44" width="4" height="8" rx="0.5" fill="#fdba74" stroke="#f97316" strokeWidth="0.5" />
-                                  <rect x="10" y="12" width="32" height="26" rx="2" fill="#dbeafe" stroke="#3b82f6" strokeWidth="1.5" />
-                                  <text x="26" y="25" textAnchor="middle" fontSize="7" fill="#1d4ed8" fontWeight="600">BOX</text>
-                                  <text x="26" y="34" textAnchor="middle" fontSize="5" fill="#ea580c">? × ? × ?</text>
-                                </svg>
-                                <div className="text-left">
-                                  <div className="text-xs font-semibold text-orange-700">Custom Pallet Size</div>
-                                  <div className="text-[10px] text-slate-500 mt-0.5">Enter your own pallet dimensions per item</div>
-                                </div>
+                                <div className="font-semibold">All Items</div>
+                                <div className="text-[9px] mt-0.5 opacity-70">{cargoItems.length} items</div>
+                              </button>
+                              <button
+                                onClick={() => setBulkApplyScope("selected")}
+                                disabled={selectedIds.size === 0}
+                                className={`p-2.5 rounded-lg border-2 text-[11px] font-medium transition-all text-center ${
+                                  bulkApplyScope === "selected" ? "border-primary bg-primary/10 text-primary"
+                                    : selectedIds.size === 0 ? "border-slate-100 text-slate-300 cursor-not-allowed"
+                                    : "border-slate-200 text-slate-600 hover:border-primary/40"
+                                }`}
+                                data-testid="bulk-modal-scope-selected"
+                              >
+                                <div className="font-semibold">Selected</div>
+                                <div className="text-[9px] mt-0.5 opacity-70">{selectedIds.size} items</div>
+                              </button>
+                              <button
+                                onClick={() => setBulkApplyScope("defaults")}
+                                className={`p-2.5 rounded-lg border-2 text-[11px] font-medium transition-all text-center ${
+                                  bulkApplyScope === "defaults" ? "border-primary bg-primary/10 text-primary" : "border-slate-200 text-slate-600 hover:border-primary/40"
+                                }`}
+                                data-testid="bulk-modal-scope-defaults"
+                              >
+                                <div className="font-semibold">Defaults Only</div>
+                                <div className="text-[9px] mt-0.5 opacity-70">New items</div>
                               </button>
                             </div>
                           </div>
@@ -1969,21 +2071,33 @@ export default function ContainerCalculator() {
                             <Button
                               onClick={() => {
                                 setBulkDefaults({ ...tempBulk });
-                                setCargoItems(prev => prev.map(item => ({
-                                  ...item,
-                                  stackable: tempBulk.stackable,
-                                  rotationMode: tempBulk.rotationMode,
-                                  loadPriority: tempBulk.loadPriority,
-                                  palletized: tempBulk.palletized,
-                                  palletType: tempBulk.palletType,
-                                })));
+                                if (bulkApplyScope !== "defaults") {
+                                  const applyToIds = bulkApplyScope === "selected" ? selectedIds : null;
+                                  setCargoItems(prev => prev.map(item => {
+                                    if (applyToIds && !applyToIds.has(item.id)) return item;
+                                    return {
+                                      ...item,
+                                      stackable: tempBulk.stackable,
+                                      rotationMode: tempBulk.rotationMode,
+                                      loadPriority: tempBulk.loadPriority,
+                                      palletized: tempBulk.palletized,
+                                      palletType: tempBulk.palletType,
+                                      customPalletL: tempBulk.customPalletL,
+                                      customPalletW: tempBulk.customPalletW,
+                                      customPalletH: tempBulk.customPalletH,
+                                    };
+                                  }));
+                                }
                                 setShowBulkModal(false);
-                                toast({ title: "Bulk settings applied", description: `Updated ${cargoItems.length} items` });
+                                const countMsg = bulkApplyScope === "all" ? `Updated ${cargoItems.length} items`
+                                  : bulkApplyScope === "selected" ? `Updated ${selectedIds.size} selected items`
+                                  : "Defaults updated for new items";
+                                toast({ title: "Bulk settings applied", description: countMsg });
                               }}
                               className="flex-1"
                               data-testid="bulk-modal-save"
                             >
-                              Save & Apply to All
+                              {bulkApplyScope === "all" ? "Apply to All Items" : bulkApplyScope === "selected" ? `Apply to ${selectedIds.size} Selected` : "Save Defaults"}
                             </Button>
                             <Button
                               variant="outline"
