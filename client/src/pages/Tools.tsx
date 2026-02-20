@@ -85,15 +85,17 @@ export default function Tools() {
                 data-testid={`card-tool-${tool.title.toLowerCase().replace(/\s+/g, "-")}`}
               >
                 <CardContent className="flex flex-col flex-1 p-6">
-                  <div className="flex items-start justify-between mb-4 gap-2">
-                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                      <tool.icon className="w-6 h-6 text-primary" />
+                  <div className="flex items-center justify-between mb-3 gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <tool.icon className="w-5 h-5 text-primary" />
+                      </div>
+                      <h2 className="text-lg font-bold text-slate-900">{tool.title}</h2>
                     </div>
                     {!tool.available && (
                       <Badge variant="secondary" className="text-xs shrink-0">Coming Soon</Badge>
                     )}
                   </div>
-                  <h2 className="text-lg font-bold mb-2 text-slate-900">{tool.title}</h2>
                   <p className="text-sm text-slate-600 mb-5 flex-1">{tool.description}</p>
                   {tool.available ? (
                     <Link href={tool.href}>
