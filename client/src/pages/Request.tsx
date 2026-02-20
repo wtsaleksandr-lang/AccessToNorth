@@ -8,17 +8,18 @@ import { usePageMeta } from "@/hooks/use-page-meta";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, CheckCircle2, X, MessageSquare } from "lucide-react";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
-const SERVICE_MAP: Record<string, { label: string; price: string; packageType: string }> = {
-  bn: { label: "Business Number (BN)", price: "$99", packageType: "bn" },
-  gst_hst: { label: "GST/HST Registration", price: "$249", packageType: "gst_hst" },
-  bundle_business_starter: { label: "Business Starter Bundle", price: "$299", packageType: "bundle_business_starter" },
-  non_resident_tax: { label: "Non-Resident Tax Registration", price: "$399", packageType: "non_resident_tax" },
-  carm_portal: { label: "CARM Portal Registration", price: "$499", packageType: "carm_portal" },
-  rpp_bond: { label: "RPP / Bond Coordination", price: "$395", packageType: "rpp_bond" },
-  b13_export: { label: "B13 Export Declaration", price: "$125", packageType: "b13_export" },
-  hs_classification: { label: "HS Code Classification", price: "$95", packageType: "hs_classification" },
-  bundle_complete_importer: { label: "Complete Importer Bundle", price: "$1,500", packageType: "bundle_complete_importer" },
+const SERVICE_MAP: Record<string, { label: string; priceCAD: number; packageType: string }> = {
+  bn: { label: "Business Number (BN)", priceCAD: 99, packageType: "bn" },
+  gst_hst: { label: "GST/HST Registration", priceCAD: 249, packageType: "gst_hst" },
+  bundle_business_starter: { label: "Business Starter Bundle", priceCAD: 299, packageType: "bundle_business_starter" },
+  non_resident_tax: { label: "Non-Resident Tax Registration", priceCAD: 399, packageType: "non_resident_tax" },
+  carm_portal: { label: "CARM Portal Registration", priceCAD: 499, packageType: "carm_portal" },
+  rpp_bond: { label: "RPP / Bond Coordination", priceCAD: 395, packageType: "rpp_bond" },
+  b13_export: { label: "B13 Export Declaration", priceCAD: 125, packageType: "b13_export" },
+  hs_classification: { label: "HS Code Classification", priceCAD: 95, packageType: "hs_classification" },
+  bundle_complete_importer: { label: "Complete Importer Bundle", priceCAD: 1500, packageType: "bundle_complete_importer" },
 };
 
 const CONTACT_SERVICES = ["compliance_review"];
@@ -28,6 +29,7 @@ const contactServiceLabels: Record<string, string> = {
 };
 
 export default function Request() {
+  const { formatPrice } = useCurrency();
   const search = useSearch();
   const params = new URLSearchParams(search);
   const serviceParam = params.get("service") || "";
@@ -70,7 +72,7 @@ export default function Request() {
   };
 
   const showBanner = serviceParam && matched && !bannerDismissed && !isContactService;
-  const bannerLabel = matched ? `${matched.label} (${matched.price})` : "";
+  const bannerLabel = matched ? `${matched.label} (${formatPrice(matched.priceCAD)})` : "";
   const selectedEntry = SERVICE_MAP[selectedPackage];
 
   return (
@@ -129,7 +131,7 @@ export default function Request() {
                   <div className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
                     <span className="font-medium text-slate-800" data-testid="text-collapsed-label">
-                      {selectedEntry.label} — {selectedEntry.price}
+                      {selectedEntry.label} — {formatPrice(selectedEntry.priceCAD)}
                     </span>
                   </div>
                   <button
@@ -161,7 +163,7 @@ export default function Request() {
                             <CheckCircle2 className="w-4 h-4 text-white" />
                           )}
                         </div>
-                        <span className="font-medium text-slate-800">{svc.label} — {svc.price}</span>
+                        <span className="font-medium text-slate-800">{svc.label} — {formatPrice(svc.priceCAD)}</span>
                       </CardContent>
                     </Card>
                   ))}

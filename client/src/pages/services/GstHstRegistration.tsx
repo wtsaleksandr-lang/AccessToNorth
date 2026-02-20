@@ -7,7 +7,7 @@ export default function GstHstRegistration() {
       title="GST/HST Registration"
       subtitle="Register your business for Goods and Services Tax / Harmonized Sales Tax with the CRA."
       metaTitle="GST/HST Registration Canada | AccessToNorth.com"
-      metaDescription="Complete GST/HST registration with the CRA. Includes Business Number, filing guidance, and compliance review. Flat fee $249 CAD. No hidden costs."
+      metaDescription="Complete GST/HST registration with the CRA. Includes Business Number, filing guidance, and compliance review. Flat fee CA$249. No hidden costs."
       canonical="https://www.accesstonorth.com/services/gst-hst-registration"
       icon={Landmark}
       whatsIncluded={[

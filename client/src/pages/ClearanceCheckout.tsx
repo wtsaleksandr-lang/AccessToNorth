@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import {
   ArrowLeft,
   ShoppingCart,
@@ -107,6 +108,7 @@ export default function ClearanceCheckout() {
   const { items, removeItem, updateQuantity, subtotal, clearCart, itemCount } = useCart();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { formatPrice, isUSD } = useCurrency();
 
   const [contactInfo, setContactInfo] = useState({
     fullName: "",
@@ -250,7 +252,7 @@ export default function ClearanceCheckout() {
                             </Badge>
                           </div>
                           <span className="text-sm font-semibold text-slate-900 mt-0.5 block">
-                            {item.priceLabel} CAD
+                            {formatPrice(item.price)}
                             {item.quantity > 1 && ` x${item.quantity}`}
                           </span>
                         </div>
@@ -408,7 +410,7 @@ export default function ClearanceCheckout() {
                             {item.quantity > 1 && ` x${item.quantity}`}
                           </span>
                           <span className="font-medium text-slate-900 whitespace-nowrap">
-                            ${(item.price * item.quantity).toLocaleString()}
+                            {formatPrice(item.price * item.quantity)}
                           </span>
                         </div>
                       ))}
@@ -417,9 +419,14 @@ export default function ClearanceCheckout() {
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-slate-600">Subtotal</span>
                         <span className="text-xl font-bold text-slate-900" data-testid="text-checkout-subtotal">
-                          ${subtotal.toLocaleString()} CAD
+                          {formatPrice(subtotal)}
                         </span>
                       </div>
+                      {isUSD && (
+                        <p className="text-xs text-amber-600 mt-1" data-testid="text-checkout-usd-notice">
+                          Prices shown in USD are estimates. All services are billed in CAD.
+                        </p>
+                      )}
                       <p className="text-xs text-slate-400 mt-1">Final total confirmed after scope review.</p>
                     </div>
                     <Button

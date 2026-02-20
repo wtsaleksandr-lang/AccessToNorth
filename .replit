@@ -42,3 +42,8 @@ waitForPort = 5000
 
 [agent]
 integrations = ["stripe:2.0.0", "resend:1.0.0", "javascript_openai_ai_integrations:2.0.0"]
+
+[userenv]
+
+[userenv.shared]
+FX_CAD_TO_USD = "0.72"

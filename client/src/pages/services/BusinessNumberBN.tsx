@@ -7,7 +7,7 @@ export default function BusinessNumberBN() {
       title="Business Number (BN) Registration"
       subtitle="Get your 9-digit Business Number from the CRA — the foundation for all Canadian tax accounts."
       metaTitle="Business Number (BN) Registration | AccessToNorth.com"
-      metaDescription="Register for a CRA Business Number (BN) quickly and correctly. Required for GST/HST, payroll, import/export, and corporate tax accounts. From $99 CAD."
+      metaDescription="Register for a CRA Business Number (BN) quickly and correctly. Required for GST/HST, payroll, import/export, and corporate tax accounts. From CA$99."
       canonical="https://www.accesstonorth.com/services/business-number-bn"
       icon={Building2}
       whatsIncluded={[

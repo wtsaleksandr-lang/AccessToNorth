@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { ArrowRight, ChevronDown, Award, Check } from "lucide-react";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 interface PricingItem {
   name: string;
-  price: string;
+  priceCAD: number;
+  pricePrefix?: string;
   note?: string;
   service: string;
   isBundle?: boolean;
@@ -27,48 +29,48 @@ const sections: PricingSection[] = [
     id: "business",
     title: "Business Setup",
     items: [
-      { name: "Business Number (BN)", price: "$99", service: "bn" },
-      { name: "GST/HST Registration", price: "$249", service: "gst_hst" },
-      { name: "Non-Resident Setup", price: "$399", service: "non_resident_tax" },
-      { name: "Business Starter Bundle", price: "$299", note: "BN + GST/HST", service: "bundle_business_starter", isBundle: true },
+      { name: "Business Number (BN)", priceCAD: 99, service: "bn" },
+      { name: "GST/HST Registration", priceCAD: 249, service: "gst_hst" },
+      { name: "Non-Resident Setup", priceCAD: 399, service: "non_resident_tax" },
+      { name: "Business Starter Bundle", priceCAD: 299, note: "BN + GST/HST", service: "bundle_business_starter", isBundle: true },
     ],
   },
   {
     id: "importer",
     title: "Importer Setup",
     items: [
-      { name: "CARM Portal Setup", price: "$499", service: "carm_portal" },
-      { name: "RPP / Security Coordination", price: "$395", service: "rpp_bond" },
-      { name: "Importer Launch Kit", price: "$1,500", note: "BN + GST/HST + CARM + RPP", service: "bundle_complete_importer", isBundle: true },
+      { name: "CARM Portal Setup", priceCAD: 499, service: "carm_portal" },
+      { name: "RPP / Security Coordination", priceCAD: 395, service: "rpp_bond" },
+      { name: "Importer Launch Kit", priceCAD: 1500, note: "BN + GST/HST + CARM + RPP", service: "bundle_complete_importer", isBundle: true },
     ],
   },
   {
     id: "clearance",
     title: "Customs Clearance",
     items: [
-      { name: "Low-Value Import Clearance", price: "$145", note: "Under $2,500 CAD", service: "clearance-lvs", isClearance: true },
-      { name: "Commercial Import Clearance", price: "$295", note: "Over $2,500 CAD", service: "clearance-commercial", isClearance: true },
-      { name: "Clearance + Compliance Review", price: "$395", service: "clearance-compliance", isClearance: true },
+      { name: "Low-Value Import Clearance", priceCAD: 145, note: "Under CA$2,500", service: "clearance-lvs", isClearance: true },
+      { name: "Commercial Import Clearance", priceCAD: 295, note: "Over CA$2,500", service: "clearance-commercial", isClearance: true },
+      { name: "Clearance + Compliance Review", priceCAD: 395, service: "clearance-compliance", isClearance: true },
     ],
   },
   {
     id: "export",
     title: "Export",
     items: [
-      { name: "B13 Export Declaration", price: "$125", service: "b13_export" },
+      { name: "B13 Export Declaration", priceCAD: 125, service: "b13_export" },
     ],
   },
 ];
 
 const addons = [
-  { name: "HS Code Classification (1 line)", price: "$95", key: "hs1" },
-  { name: "Additional HS Line", price: "$25", key: "hs_extra" },
-  { name: "Import Permit Submission", price: "$125", key: "import_permit" },
-  { name: "CFIA Coordination", price: "$150", key: "cfia" },
-  { name: "B2 Correction", price: "from $250", key: "b2_correction" },
-  { name: "After-Hours Clearance", price: "$175", key: "after_hours" },
-  { name: "Importer Account Setup", price: "$95", key: "importer_account" },
-  { name: "CBSA ID Assistance", price: "$95", key: "cbsa_id" },
+  { name: "HS Code Classification (1 line)", priceCAD: 95, key: "hs1" },
+  { name: "Additional HS Line", priceCAD: 25, key: "hs_extra" },
+  { name: "Import Permit Submission", priceCAD: 125, key: "import_permit" },
+  { name: "CFIA Coordination", priceCAD: 150, key: "cfia" },
+  { name: "B2 Correction", priceCAD: 250, key: "b2_correction", pricePrefix: "from " },
+  { name: "After-Hours Clearance", priceCAD: 175, key: "after_hours" },
+  { name: "Importer Account Setup", priceCAD: 95, key: "importer_account" },
+  { name: "CBSA ID Assistance", priceCAD: 95, key: "cbsa_id" },
 ];
 
 const tabs = [
@@ -80,10 +82,11 @@ const tabs = [
 
 export default function Pricing() {
   const [expandedSection, setExpandedSection] = useState<string>("business");
+  const { formatPrice, isUSD } = useCurrency();
 
   usePageMeta({
     title: "Pricing | AccessToNorth.com",
-    description: "Transparent, flat-rate pricing for Canadian business registration, GST/HST, CARM, customs clearance, and export services. From $99. No hidden fees.",
+    description: "Transparent, flat-rate pricing for Canadian business registration, GST/HST, CARM, customs clearance, and export services. From CA$99. No hidden fees.",
     canonical: "https://www.accesstonorth.com/pricing",
   });
 
@@ -111,6 +114,11 @@ export default function Pricing() {
             <p className="text-lg text-slate-600">
               One-time fees. No hidden costs. Choose your service below.
             </p>
+            {isUSD && (
+              <p className="text-xs text-amber-600 mt-2" data-testid="text-usd-notice">
+                Prices shown in USD are estimates. All services are billed in CAD.
+              </p>
+            )}
           </div>
 
           {/* Quick selector tabs */}
@@ -161,7 +169,7 @@ export default function Pricing() {
                             )}
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
-                            <span className="font-bold text-slate-900 text-sm">{item.price}</span>
+                            <span className="font-bold text-slate-900 text-sm">{formatPrice(item.priceCAD)}</span>
                             <Link href={item.isClearance ? "/canadian-customs-clearance" : buildRequestUrl(item.service)}>
                               <Button size="sm" className="cursor-pointer" data-testid={`button-select-${item.service}`}>
                                 {item.isClearance ? "View Packages" : "Select"}
@@ -180,7 +188,7 @@ export default function Pricing() {
                           {addons.map((addon) => (
                             <div key={addon.key} className="flex items-center justify-between text-sm py-1.5" data-testid={`addon-${addon.key}`}>
                               <span className="text-slate-600">{addon.name}</span>
-                              <span className="font-medium text-slate-800 ml-2 shrink-0">{addon.price}</span>
+                              <span className="font-medium text-slate-800 ml-2 shrink-0">{"pricePrefix" in addon && addon.pricePrefix ? addon.pricePrefix : ""}{formatPrice(addon.priceCAD)}</span>
                             </div>
                           ))}
                         </div>

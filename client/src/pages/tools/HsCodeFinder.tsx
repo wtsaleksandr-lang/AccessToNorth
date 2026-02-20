@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import {
   Search,
   Loader2,
@@ -89,7 +90,7 @@ const faqItems = [
 const classificationTiers = [
   {
     name: "Basic",
-    price: "$29",
+    priceCAD: 29,
     param: "basic",
     popular: false,
     features: [
@@ -103,7 +104,7 @@ const classificationTiers = [
   },
   {
     name: "Business",
-    price: "$99",
+    priceCAD: 99,
     param: "business",
     popular: true,
     features: [
@@ -117,7 +118,7 @@ const classificationTiers = [
   },
   {
     name: "Pro",
-    price: "$249",
+    priceCAD: 249,
     param: "pro",
     popular: false,
     features: [
@@ -132,6 +133,7 @@ const classificationTiers = [
 ];
 
 export default function HsCodeFinder() {
+  const { formatPrice } = useCurrency();
   const [, navigate] = useLocation();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<HsCodeResult[]>([]);
@@ -530,7 +532,7 @@ export default function HsCodeFinder() {
                   <CardContent className="p-6 pt-7">
                     <div className="text-center mb-5">
                       <h3 className="text-lg font-bold text-slate-900 mb-1">{tier.name}</h3>
-                      <p className="text-3xl font-extrabold text-slate-900">{tier.price}</p>
+                      <p className="text-3xl font-extrabold text-slate-900">{formatPrice(tier.priceCAD)}</p>
                     </div>
                     <ul className="space-y-2.5 mb-6">
                       {tier.features.map((f) => (

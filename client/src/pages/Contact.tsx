@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent } from "@/components/ui/card";
 import { Mail, Clock, MessageCircle } from "lucide-react";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 const contactSchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -31,8 +32,17 @@ const contactSchema = z.object({
 
 type ContactFormData = z.infer<typeof contactSchema>;
 
+const contactServicePrices: Record<string, number> = {
+  "business-number": 99,
+  "gst-hst": 249,
+  "non-resident": 399,
+  "carm": 499,
+  "complete-bundle": 1500,
+};
+
 export default function Contact() {
   const { toast } = useToast();
+  const { formatPrice } = useCurrency();
 
   const form = useForm<ContactFormData>({
     resolver: zodResolver(contactSchema),
@@ -151,11 +161,11 @@ export default function Contact() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="business-number">Business Number ($99)</SelectItem>
-                              <SelectItem value="gst-hst">GST/HST Registration ($249)</SelectItem>
-                              <SelectItem value="non-resident">Non-Resident Tax ($399)</SelectItem>
-                              <SelectItem value="carm">CARM Portal ($499)</SelectItem>
-                              <SelectItem value="complete-bundle">Complete Importer Bundle ($1,500)</SelectItem>
+                              <SelectItem value="business-number">Business Number ({formatPrice(99)})</SelectItem>
+                              <SelectItem value="gst-hst">GST/HST Registration ({formatPrice(249)})</SelectItem>
+                              <SelectItem value="non-resident">Non-Resident Tax ({formatPrice(399)})</SelectItem>
+                              <SelectItem value="carm">CARM Portal ({formatPrice(499)})</SelectItem>
+                              <SelectItem value="complete-bundle">Complete Importer Bundle ({formatPrice(1500)})</SelectItem>
                               <SelectItem value="general">General Inquiry</SelectItem>
                             </SelectContent>
                           </Select>

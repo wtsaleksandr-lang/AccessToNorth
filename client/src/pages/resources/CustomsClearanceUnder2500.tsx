@@ -3,9 +3,9 @@ import { ResourceArticlePage } from "@/components/ResourceArticlePage";
 export default function CustomsClearanceUnder2500() {
   return (
     <ResourceArticlePage
-      title="Customs Clearance Under $2,500"
-      metaTitle="LVS Customs Clearance Under $2,500 CAD | AccessToNorth.com"
-      metaDescription="How low-value shipments (LVS) under $2,500 CAD are cleared through Canadian customs. Simplified process, documentation requirements, and when you still need a broker."
+      title="Customs Clearance Under CA$2,500"
+      metaTitle="LVS Customs Clearance Under CA$2,500 | AccessToNorth.com"
+      metaDescription="How low-value shipments (LVS) under CA$2,500 are cleared through Canadian customs. Simplified process, documentation requirements, and when you still need a broker."
       canonical="https://www.accesstonorth.com/resources/customs-clearance-under-2500"
       outlinePoints={[
         "What qualifies as a low-value shipment (LVS) under CBSA rules",

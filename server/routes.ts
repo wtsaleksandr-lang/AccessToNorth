@@ -241,5 +241,10 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/fx-rate", (_req, res) => {
+    const rate = parseFloat(process.env.FX_CAD_TO_USD || "0.72");
+    res.json({ rate, base: "CAD", target: "USD" });
+  });
+
   return httpServer;
 }

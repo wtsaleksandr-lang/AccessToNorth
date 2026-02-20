@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Menu, X, ShieldCheck, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 interface NavbarProps {
   darkHero?: boolean;
@@ -29,6 +30,36 @@ const toolLinks = [
   { name: "Freight Quote", href: "/tools/freight-quote", comingSoon: true },
   { name: "Tracking", href: "/tools/shipment-tracking", comingSoon: true },
 ];
+
+function CurrencyToggle({ light }: { light?: boolean }) {
+  const { currency, setCurrency } = useCurrency();
+  const base = light
+    ? "text-xs font-semibold px-2 py-1 rounded-md transition-colors cursor-pointer"
+    : "text-xs font-semibold px-2 py-1 rounded-md transition-colors cursor-pointer";
+  const activeLight = light ? "bg-white/20 text-white" : "bg-primary/10 text-primary";
+  const inactiveLight = light ? "text-white/50 hover:text-white/80" : "text-slate-400 hover:text-slate-600";
+  return (
+    <div
+      className={`flex items-center rounded-lg p-0.5 ${light ? "bg-white/10" : "bg-slate-100"}`}
+      data-testid="currency-toggle"
+    >
+      <button
+        onClick={() => setCurrency("CAD")}
+        className={`${base} ${currency === "CAD" ? activeLight : inactiveLight}`}
+        data-testid="button-cad"
+      >
+        CAD
+      </button>
+      <button
+        onClick={() => setCurrency("USD")}
+        className={`${base} ${currency === "USD" ? activeLight : inactiveLight}`}
+        data-testid="button-usd"
+      >
+        USD
+      </button>
+    </div>
+  );
+}
 
 export function Navbar({ darkHero = false }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -190,6 +221,8 @@ export function Navbar({ darkHero = false }: NavbarProps) {
             <button className={`px-3 py-2 text-sm font-medium transition-colors cursor-pointer rounded-md ${textClass}`} onClick={() => navigate("/faq")} data-testid="nav-link-faq">FAQ</button>
             <button className={`px-3 py-2 text-sm font-medium transition-colors cursor-pointer rounded-md ${textClass}`} onClick={() => navigate("/contact")} data-testid="nav-link-contact">Contact</button>
 
+            <CurrencyToggle light={useLight} />
+
             <div className="flex items-center gap-2 ml-3">
               <Button
                 variant="outline"
@@ -239,6 +272,11 @@ export function Navbar({ darkHero = false }: NavbarProps) {
               <button onClick={() => navigate("/contact")} className="py-3 px-2 text-left text-base font-medium text-slate-700 cursor-pointer rounded-md hover:bg-slate-50" data-testid="mobile-nav-contact">Contact</button>
 
               <hr className="border-slate-100 my-2" />
+
+              <div className="flex items-center justify-between py-2 px-2">
+                <span className="text-sm text-slate-500">Display currency</span>
+                <CurrencyToggle />
+              </div>
 
               <Button variant="outline" className="w-full justify-center cursor-pointer" onClick={() => navigate("/portal")} data-testid="button-mobile-check-status">Check Status</Button>
               <Button className="w-full cursor-pointer" onClick={() => navigate("/request")} data-testid="button-mobile-register">Register Now</Button>

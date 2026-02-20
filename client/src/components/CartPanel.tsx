@@ -10,10 +10,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Minus, Plus, Trash2, ShoppingCart, ArrowRight } from "lucide-react";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 export function CartPanel() {
   const { items, isOpen, setIsOpen, removeItem, updateQuantity, subtotal, clearCart } = useCart();
   const [, setLocation] = useLocation();
+  const { formatPrice, isUSD } = useCurrency();
 
   const handleCheckout = () => {
     setIsOpen(false);
@@ -60,7 +62,7 @@ export function CartPanel() {
                       </Badge>
                     </div>
                     <p className="text-sm font-semibold text-slate-900 mt-1">
-                      {item.priceLabel} CAD
+                      {formatPrice(item.price)}
                       {item.quantity > 1 && (
                         <span className="text-xs text-slate-400 font-normal ml-1">
                           x{item.quantity}
@@ -112,9 +114,14 @@ export function CartPanel() {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-slate-500">Subtotal</span>
                 <span className="text-lg font-bold text-slate-900" data-testid="text-subtotal">
-                  ${subtotal.toLocaleString()} CAD
+                  {formatPrice(subtotal)}
                 </span>
               </div>
+              {isUSD && (
+                <p className="text-xs text-amber-600" data-testid="text-cart-usd-notice">
+                  Prices shown in USD are estimates. All services are billed in CAD.
+                </p>
+              )}
               <Button
                 className="w-full cursor-pointer"
                 onClick={handleCheckout}

@@ -8,7 +8,7 @@ export default function B13ExportDeclarationExplained() {
       metaDescription="Canadian Export Declaration (B13) explained. When it's required, how to file through CERS, and penalties for non-compliance on goods leaving Canada."
       canonical="https://www.accesstonorth.com/resources/b13-export-declaration-explained"
       outlinePoints={[
-        "When a B13 export declaration is required (over $2,000 CAD)",
+        "When a B13 export declaration is required (over CA$2,000)",
         "Filing through the Canadian Export Reporting System (CERS)",
         "Exemptions: US-bound goods and specific commodities",
         "Required information: HS code, value, destination, and consignee",

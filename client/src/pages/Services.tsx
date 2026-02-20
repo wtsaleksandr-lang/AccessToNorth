@@ -31,7 +31,7 @@ const serviceGroups = [
   {
     category: "Export",
     services: [
-      { title: "B13 Export Declaration", desc: "Canadian Export Declaration filing for goods leaving Canada (over $2,000 CAD).", icon: FileText, href: "/services/b13-export-declaration", cta: "b13_export" },
+      { title: "B13 Export Declaration", desc: "Canadian Export Declaration filing for goods leaving Canada (over CA$2,000).", icon: FileText, href: "/services/b13-export-declaration", cta: "b13_export" },
     ],
   },
   {

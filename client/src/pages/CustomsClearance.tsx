@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/accordion";
 import { motion } from "framer-motion";
 import { useCart } from "@/contexts/CartContext";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import {
   Shield,
   FileCheck,
@@ -42,7 +43,7 @@ const PACKAGES = [
     name: "Low Value Shipment (LVS)",
     price: 145,
     priceLabel: "$145",
-    subtitle: "For goods valued under $2,500 CAD",
+    subtitle: "For goods valued under CA$2,500",
     features: [
       "Electronic customs entry (EDI)",
       "Duty & GST calculation",
@@ -50,7 +51,7 @@ const PACKAGES = [
       "Release coordination",
       "Standard tariff treatment (MFN)",
     ],
-    bestFor: "Regular importers, low-risk goods under $2,500",
+    bestFor: "Regular importers, low-risk goods under CA$2,500",
     highlighted: false,
   },
   {
@@ -58,7 +59,7 @@ const PACKAGES = [
     name: "Commercial Import Clearance",
     price: 295,
     priceLabel: "$295",
-    subtitle: "For any goods valued over $2,500 CAD",
+    subtitle: "For any goods valued over CA$2,500",
     features: [
       "Full electronic customs entry",
       "Duty & tax calculation",
@@ -67,7 +68,7 @@ const PACKAGES = [
       "Standard tariff treatment",
       "Basic compliance screening",
     ],
-    bestFor: "All commercial shipments over $2,500",
+    bestFor: "All commercial shipments over CA$2,500",
     highlighted: false,
   },
   {
@@ -104,6 +105,7 @@ export default function CustomsClearance() {
   const [, setLocation] = useLocation();
   const packagesRef = useRef<HTMLDivElement>(null);
   const { addItem, setIsOpen, itemCount } = useCart();
+  const { formatPrice, isUSD } = useCurrency();
 
   const navigateToCalculator = () => {
     setLocation("/customs-calculator");
@@ -115,7 +117,7 @@ export default function CustomsClearance() {
     const metaDesc = document.querySelector('meta[name="description"]');
     const ogTitle = document.querySelector('meta[property="og:title"]');
     const ogDesc = document.querySelector('meta[property="og:description"]');
-    if (metaDesc) metaDesc.setAttribute("content", "Professional customs clearance coordination for Canadian imports. Transparent flat pricing: LVS from $145, Commercial Clearance $295, Compliance Review $395 CAD.");
+    if (metaDesc) metaDesc.setAttribute("content", "Professional customs clearance coordination for Canadian imports. Transparent flat pricing: LVS from CA$145, Commercial Clearance CA$295, Compliance Review CA$395.");
     if (ogTitle) ogTitle.setAttribute("content", "Canadian Customs Clearance & Import Compliance | AccessToNorth");
     if (ogDesc) ogDesc.setAttribute("content", "Structured, transparent customs clearance. No negotiated pricing, no manual quotes. Flat-rate packages for every shipment.");
     return () => {
@@ -350,14 +352,14 @@ export default function CustomsClearance() {
           <div className="flex items-center justify-center gap-6 text-sm text-slate-500 mb-10">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-              <span>Under $2,500 CAD</span>
+              <span>Under CA$2,500</span>
               <ArrowRight className="w-3 h-3" />
               <span className="font-medium text-slate-700">LVS</span>
             </div>
             <div className="w-px h-4 bg-slate-200"></div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-              <span>Over $2,500 CAD</span>
+              <span>Over CA$2,500</span>
               <ArrowRight className="w-3 h-3" />
               <span className="font-medium text-slate-700">Commercial</span>
             </div>
@@ -386,8 +388,7 @@ export default function CustomsClearance() {
                       )}
                     </div>
                     <div className="flex items-baseline gap-1.5">
-                      <span className="text-3xl font-bold text-slate-900">{pkg.priceLabel}</span>
-                      <span className="text-sm text-slate-500">CAD</span>
+                      <span className="text-3xl font-bold text-slate-900">{formatPrice(pkg.price)}</span>
                     </div>
                     <p className="text-sm text-slate-500 mt-2">{pkg.subtitle}</p>
                   </div>
@@ -448,7 +449,7 @@ export default function CustomsClearance() {
                   <span className="text-sm text-slate-700">{addon.name}</span>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
-                  <span className="text-sm font-bold text-slate-900 whitespace-nowrap">{addon.priceLabel} CAD</span>
+                  <span className="text-sm font-bold text-slate-900 whitespace-nowrap">{addon.id === "addon-b2-correction" ? "from " : ""}{formatPrice(addon.price)}</span>
                   <Button
                     size="sm"
                     variant="outline"

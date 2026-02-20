@@ -7,7 +7,7 @@ export default function CustomsClearanceCanada() {
       title="Canadian Customs Clearance"
       subtitle="End-to-end customs clearance for commercial imports into Canada. Flat-rate pricing, transparent process."
       metaTitle="Canadian Customs Clearance Services | AccessToNorth.com"
-      metaDescription="Professional customs clearance for Canadian imports. Flat-rate pricing from $145 CAD. LVS, commercial, and compliance review packages available."
+      metaDescription="Professional customs clearance for Canadian imports. Flat-rate pricing from CA$145. LVS, commercial, and compliance review packages available."
       canonical="https://www.accesstonorth.com/services/customs-clearance-canada"
       icon={Package}
       whatsIncluded={[
@@ -23,7 +23,7 @@ export default function CustomsClearanceCanada() {
         href: "/customs-calculator",
       }}
       ctaService="customs_clearance"
-      additionalInfo="We offer three flat-rate clearance packages: LVS ($145 CAD for shipments under $2,500), Commercial Import ($295 CAD for shipments over $2,500), and Clearance + Compliance Review ($395 CAD for full audit). Visit our Customs Clearance page for details."
+      additionalInfo="We offer three flat-rate clearance packages: LVS (CA$145 for shipments under CA$2,500), Commercial Import (CA$295 for shipments over CA$2,500), and Clearance + Compliance Review (CA$395 for full audit). Visit our Customs Clearance page for details."
     />
   );
 }

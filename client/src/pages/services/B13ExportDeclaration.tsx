@@ -5,9 +5,9 @@ export default function B13ExportDeclaration() {
   return (
     <ServiceDetailPage
       title="B13 Export Declaration"
-      subtitle="Canadian Export Declaration (B13) filing for goods leaving Canada. Required for shipments over $2,000 CAD."
+      subtitle="Canadian Export Declaration (B13) filing for goods leaving Canada. Required for shipments over CA$2,000."
       metaTitle="B13 Export Declaration Filing | AccessToNorth.com"
-      metaDescription="Professional B13 Canadian Export Declaration filing. Required for exports over $2,000 CAD. Accurate, timely submissions to CBSA."
+      metaDescription="Professional B13 Canadian Export Declaration filing. Required for exports over CA$2,000. Accurate, timely submissions to CBSA."
       canonical="https://www.accesstonorth.com/services/b13-export-declaration"
       icon={FileText}
       whatsIncluded={[
@@ -19,7 +19,7 @@ export default function B13ExportDeclaration() {
         "Post-filing confirmation and records retention",
       ]}
       ctaService="b13_export"
-      additionalInfo="Canadian law requires an export declaration for most goods valued over $2,000 CAD leaving Canada. Controlled goods, technology, and certain commodities may require export permits regardless of value."
+      additionalInfo="Canadian law requires an export declaration for most goods valued over CA$2,000 leaving Canada. Controlled goods, technology, and certain commodities may require export permits regardless of value."
     />
   );
 }

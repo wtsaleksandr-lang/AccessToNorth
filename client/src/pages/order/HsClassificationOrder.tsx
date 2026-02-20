@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { useToast } from "@/hooks/use-toast";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import {
   Check,
   CheckCircle2,
@@ -39,7 +40,7 @@ const DEEP_BLUE = "#0A2540";
 
 interface TierInfo {
   name: string;
-  price: string;
+  priceCAD: number;
   param: string;
   popular: boolean;
   hsCount: number;
@@ -51,7 +52,7 @@ interface TierInfo {
 const tiers: TierInfo[] = [
   {
     name: "Basic",
-    price: "$29",
+    priceCAD: 29,
     param: "basic",
     popular: false,
     hsCount: 1,
@@ -67,7 +68,7 @@ const tiers: TierInfo[] = [
   },
   {
     name: "Business",
-    price: "$99",
+    priceCAD: 99,
     param: "business",
     popular: true,
     hsCount: 10,
@@ -83,7 +84,7 @@ const tiers: TierInfo[] = [
   },
   {
     name: "Pro",
-    price: "$249",
+    priceCAD: 249,
     param: "pro",
     popular: false,
     hsCount: 50,
@@ -136,6 +137,7 @@ interface FormData {
 }
 
 export default function HsClassificationOrder() {
+  const { formatPrice } = useCurrency();
   const search = useSearch();
   const params = new URLSearchParams(search);
   const packageParam = params.get("package") || "";
@@ -435,7 +437,7 @@ export default function HsClassificationOrder() {
                             {isSelected && <Check className="w-3 h-3 text-white" />}
                           </div>
                         </div>
-                        <p className="text-2xl font-extrabold text-slate-900 mb-3">{tier.price}</p>
+                        <p className="text-2xl font-extrabold text-slate-900 mb-3">{formatPrice(tier.priceCAD)}</p>
                         <ul className="space-y-1.5">
                           {tier.features.map((f) => (
                             <li key={f} className="flex items-start gap-1.5 text-xs text-slate-600">
@@ -478,7 +480,7 @@ export default function HsClassificationOrder() {
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
                     <span className="text-sm font-medium text-blue-800">
-                      {selectedTierData.name} — {selectedTierData.price} (up to {selectedTierData.hsCount} HS code{selectedTierData.hsCount > 1 ? "s" : ""})
+                      {selectedTierData.name} — {formatPrice(selectedTierData.priceCAD)} (up to {selectedTierData.hsCount} HS code{selectedTierData.hsCount > 1 ? "s" : ""})
                     </span>
                   </div>
                   <button
@@ -802,7 +804,7 @@ export default function HsClassificationOrder() {
                     <div>
                       <p className="text-xs text-slate-500 mb-0.5">Package</p>
                       <p className="font-semibold text-slate-900">
-                        {selectedTierData?.name} — {selectedTierData?.price}
+                        {selectedTierData?.name} — {selectedTierData ? formatPrice(selectedTierData.priceCAD) : ""}
                       </p>
                       <p className="text-xs text-slate-500">
                         Up to {selectedTierData?.hsCount} HS code{(selectedTierData?.hsCount || 0) > 1 ? "s" : ""}

@@ -61,7 +61,7 @@ export function PricingCard({
         </CardHeader>
         <CardContent className="flex-1">
           <div className="mb-6">
-            <span className="text-4xl font-bold text-slate-900">${price}</span>
+            <span className="text-4xl font-bold text-slate-900">{price}</span>
             <span className="text-muted-foreground ml-2">/ one-time</span>
           </div>
           

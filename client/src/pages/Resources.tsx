@@ -8,7 +8,7 @@ import { ArrowRight, BookOpen } from "lucide-react";
 
 const articles = [
   { title: "How to Import Into Canada", href: "/resources/how-to-import-into-canada", desc: "Step-by-step guide covering business setup, CARM, customs clearance, and compliance." },
-  { title: "Customs Clearance Under $2,500", href: "/resources/customs-clearance-under-2500", desc: "LVS shipments explained — when you qualify and what documentation you need." },
+  { title: "Customs Clearance Under CA$2,500", href: "/resources/customs-clearance-under-2500", desc: "LVS shipments explained — when you qualify and what documentation you need." },
   { title: "What Is SIMA Duty?", href: "/resources/what-is-sima-duty", desc: "Anti-dumping and countervailing duties under the Special Import Measures Act." },
   { title: "What Is CARM?", href: "/resources/what-is-carm", desc: "The CBSA Assessment and Revenue Management system and what importers need to know." },
   { title: "HS Code vs. Tariff Treatment", href: "/resources/hs-code-vs-tariff-treatment", desc: "Understanding the difference between product classification and preferential tariff rates." },

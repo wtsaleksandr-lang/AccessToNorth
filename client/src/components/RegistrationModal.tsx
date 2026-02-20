@@ -13,6 +13,7 @@ import { Loader2, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 interface RegistrationModalProps {
   isOpen: boolean;
@@ -38,16 +39,16 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const packageLabels: Record<string, string> = {
-  bn: "Business Number ($99)",
-  gst_hst: "GST/HST Registration ($249)",
-  bundle_business_starter: "Business Starter Bundle ($299)",
-  non_resident_tax: "Non-Resident Tax Registration ($399)",
-  carm_portal: "CARM Portal Registration ($499)",
-  rpp_bond: "RPP / Bond Coordination ($395)",
-  b13_export: "B13 Export Declaration ($125)",
-  hs_classification: "HS Code Classification ($95)",
-  bundle_complete_importer: "Complete Importer Bundle ($1,500)",
+const packageData: Record<string, { label: string; priceCAD: number }> = {
+  bn: { label: "Business Number", priceCAD: 99 },
+  gst_hst: { label: "GST/HST Registration", priceCAD: 249 },
+  bundle_business_starter: { label: "Business Starter Bundle", priceCAD: 299 },
+  non_resident_tax: { label: "Non-Resident Tax Registration", priceCAD: 399 },
+  carm_portal: { label: "CARM Portal Registration", priceCAD: 499 },
+  rpp_bond: { label: "RPP / Bond Coordination", priceCAD: 395 },
+  b13_export: { label: "B13 Export Declaration", priceCAD: 125 },
+  hs_classification: { label: "HS Code Classification", priceCAD: 95 },
+  bundle_complete_importer: { label: "Complete Importer Bundle", priceCAD: 1500 },
 };
 
 
@@ -57,6 +58,7 @@ export function RegistrationModal({ isOpen, onClose, defaultPackage }: Registrat
   const [isRedirecting, setIsRedirecting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { formatPrice } = useCurrency();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -142,7 +144,7 @@ export function RegistrationModal({ isOpen, onClose, defaultPackage }: Registrat
           <DialogHeader className="mb-4">
             <DialogTitle data-testid="text-modal-title">Complete Your Application</DialogTitle>
             <DialogDescription>
-              Fill in your details below for the {packageLabels[defaultPackage] || defaultPackage} package.
+              Fill in your details below for the {packageData[defaultPackage] ? `${packageData[defaultPackage].label} (${formatPrice(packageData[defaultPackage].priceCAD)})` : defaultPackage} package.
             </DialogDescription>
           </DialogHeader>
 
@@ -242,15 +244,9 @@ export function RegistrationModal({ isOpen, onClose, defaultPackage }: Registrat
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="bn">Business Number ($99)</SelectItem>
-                          <SelectItem value="gst_hst">GST/HST Registration ($249)</SelectItem>
-                          <SelectItem value="bundle_business_starter">Business Starter Bundle ($299)</SelectItem>
-                          <SelectItem value="non_resident_tax">Non-Resident Tax Registration ($399)</SelectItem>
-                          <SelectItem value="hs_classification">HS Code Classification ($95)</SelectItem>
-                          <SelectItem value="b13_export">B13 Export Declaration ($125)</SelectItem>
-                          <SelectItem value="rpp_bond">RPP / Bond Coordination ($395)</SelectItem>
-                          <SelectItem value="carm_portal">CARM Portal Registration ($499)</SelectItem>
-                          <SelectItem value="bundle_complete_importer">Complete Importer Bundle ($1,500)</SelectItem>
+                          {Object.entries(packageData).map(([key, pkg]) => (
+                            <SelectItem key={key} value={key}>{pkg.label} ({formatPrice(pkg.priceCAD)})</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
