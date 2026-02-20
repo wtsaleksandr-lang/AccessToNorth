@@ -1524,7 +1524,7 @@ export default function ContainerCalculator() {
                           Bulk Actions ({selectedIds.size} items)
                         </span>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                         <div>
                           <Label className="text-[10px] text-slate-500 uppercase tracking-wide">Stackable</Label>
                           <div className="flex gap-1 mt-1">
@@ -1571,6 +1571,32 @@ export default function ContainerCalculator() {
                             <option value="normal">Normal</option>
                             <option value="last">Load Last</option>
                           </select>
+                        </div>
+                        <div>
+                          <Label className="text-[10px] text-slate-500 uppercase tracking-wide">Pallet</Label>
+                          <div className="flex gap-1 mt-1">
+                            <button
+                              onClick={() => { bulkUpdate("palletized", false); bulkUpdate("palletType", "none"); }}
+                              className="flex-1 px-1.5 py-1.5 text-[11px] font-medium rounded-md border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-400 transition-colors"
+                              data-testid="bulk-pallet-none"
+                            >
+                              None
+                            </button>
+                            <button
+                              onClick={() => { bulkUpdate("palletized", true); bulkUpdate("palletType", "us48x40"); }}
+                              className="flex-1 px-1.5 py-1.5 text-[11px] font-medium rounded-md border border-slate-200 bg-white hover:bg-teal-50 hover:border-teal-300 hover:text-teal-700 transition-colors"
+                              data-testid="bulk-pallet-us"
+                            >
+                              US
+                            </button>
+                            <button
+                              onClick={() => { bulkUpdate("palletized", true); bulkUpdate("palletType", "euro"); }}
+                              className="flex-1 px-1.5 py-1.5 text-[11px] font-medium rounded-md border border-slate-200 bg-white hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-700 transition-colors"
+                              data-testid="bulk-pallet-euro"
+                            >
+                              Euro
+                            </button>
+                          </div>
                         </div>
                         <div>
                           <Label className="text-[10px] text-slate-500 uppercase tracking-wide">Include</Label>
@@ -2929,7 +2955,13 @@ export default function ContainerCalculator() {
                               <span className="text-[8px] text-slate-400 uppercase block mb-0.5">Rotate</span>
                               <button
                                 onClick={() => setVisualPopup({ type: "rotation", itemId: item.id })}
-                                className="w-full h-6 rounded text-[10px] font-medium border border-slate-200 bg-white text-slate-600 hover:border-primary/50 transition-colors"
+                                className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
+                                  item.rotationMode === "all"
+                                    ? "bg-blue-50 border-blue-300 text-blue-700"
+                                    : item.rotationMode === "horizontal"
+                                    ? "bg-purple-50 border-purple-300 text-purple-700"
+                                    : "bg-slate-50 border-slate-300 text-slate-700"
+                                }`}
                                 data-testid={`select-rotation-${idx}`}
                               >
                                 {item.rotationMode === "all" ? "All" : item.rotationMode === "horizontal" ? "Horiz" : "Fixed"}
@@ -2942,7 +2974,7 @@ export default function ContainerCalculator() {
                                 className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
                                   item.loadPriority === "first" ? "bg-red-50 border-red-300 text-red-700"
                                     : item.loadPriority === "last" ? "bg-emerald-50 border-emerald-300 text-emerald-700"
-                                    : "border-slate-200 bg-white text-slate-600"
+                                    : "bg-blue-50 border-blue-300 text-blue-700"
                                 }`}
                                 data-testid={`select-priority-${idx}`}
                               >
