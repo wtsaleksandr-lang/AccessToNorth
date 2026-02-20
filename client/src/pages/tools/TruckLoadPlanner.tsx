@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
@@ -37,9 +37,56 @@ import {
   Layers,
   CircleDot,
   Star,
+  MapPin,
+  Navigation,
+  Clock,
+  Route,
+  Flag,
 } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
+import { Loader } from "@googlemaps/js-api-loader";
+
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+
+let googleMapsLoaderPromise: Promise<any> | null = null;
+function loadGoogleMaps(): Promise<any> {
+  if (googleMapsLoaderPromise) return googleMapsLoaderPromise;
+  const loader = new Loader({
+    apiKey: GOOGLE_MAPS_API_KEY,
+    version: "weekly",
+    libraries: ["places", "geometry"],
+  });
+  googleMapsLoaderPromise = (loader as any).load().then(() => (window as any).google);
+  return googleMapsLoaderPromise!;
+}
+
+interface Jurisdiction {
+  name: string;
+  country: string;
+  code: string;
+}
+
+const US_STATES: Record<string, string> = {
+  AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California",
+  CO: "Colorado", CT: "Connecticut", DE: "Delaware", FL: "Florida", GA: "Georgia",
+  HI: "Hawaii", ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa",
+  KS: "Kansas", KY: "Kentucky", LA: "Louisiana", ME: "Maine", MD: "Maryland",
+  MA: "Massachusetts", MI: "Michigan", MN: "Minnesota", MS: "Mississippi", MO: "Missouri",
+  MT: "Montana", NE: "Nebraska", NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey",
+  NM: "New Mexico", NY: "New York", NC: "North Carolina", ND: "North Dakota", OH: "Ohio",
+  OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island", SC: "South Carolina",
+  SD: "South Dakota", TN: "Tennessee", TX: "Texas", UT: "Utah", VT: "Vermont",
+  VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming",
+  DC: "District of Columbia",
+};
+
+const CA_PROVINCES: Record<string, string> = {
+  AB: "Alberta", BC: "British Columbia", MB: "Manitoba", NB: "New Brunswick",
+  NL: "Newfoundland and Labrador", NS: "Nova Scotia", NT: "Northwest Territories",
+  NU: "Nunavut", ON: "Ontario", PE: "Prince Edward Island", QC: "Quebec",
+  SK: "Saskatchewan", YT: "Yukon",
+};
 
 const IN_TO_CM = 2.54;
 const CM_TO_IN = 1 / IN_TO_CM;
@@ -532,6 +579,207 @@ export default function TruckLoadPlanner() {
     setPallets([defaultPallet()]);
     setBulk({ totalWeightLbs: 0, totalVolumeCuFt: 0, packagingType: "loose", description: "" });
   }, [defaultCarton, defaultPallet]);
+
+  // ─── Route Planner State ────────────────────────────────────────────
+  const [originText, setOriginText] = useState("");
+  const [destText, setDestText] = useState("");
+  const [originPlace, setOriginPlace] = useState<{ lat: number; lng: number; formatted: string } | null>(null);
+  const [destPlace, setDestPlace] = useState<{ lat: number; lng: number; formatted: string } | null>(null);
+  const [routeInfo, setRouteInfo] = useState<{ distanceText: string; durationText: string; distanceMeters: number; durationSeconds: number } | null>(null);
+  const [jurisdictions, setJurisdictions] = useState<Jurisdiction[]>([]);
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [routeError, setRouteError] = useState<string | null>(null);
+  const [gmapsReady, setGmapsReady] = useState(false);
+
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const directionsRendererRef = useRef<any>(null);
+  const originInputRef = useRef<HTMLInputElement>(null);
+  const destInputRef = useRef<HTMLInputElement>(null);
+  const originAutocompleteRef = useRef<any>(null);
+  const destAutocompleteRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!GOOGLE_MAPS_API_KEY) return;
+    loadGoogleMaps().then(() => {
+      setGmapsReady(true);
+    }).catch(() => {
+      setRouteError("Failed to load Google Maps. Please check API key.");
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!gmapsReady || !originInputRef.current || originAutocompleteRef.current) return;
+    const g = (window as any).google;
+    if (!g?.maps?.places) return;
+
+    originAutocompleteRef.current = new g.maps.places.Autocomplete(originInputRef.current, {
+      types: ["geocode"],
+      fields: ["geometry", "formatted_address"],
+    });
+    originAutocompleteRef.current.addListener("place_changed", () => {
+      const place = originAutocompleteRef.current.getPlace();
+      if (place?.geometry?.location) {
+        const loc = place.geometry.location;
+        setOriginPlace({ lat: loc.lat(), lng: loc.lng(), formatted: place.formatted_address || "" });
+        setOriginText(place.formatted_address || "");
+      }
+    });
+  }, [gmapsReady]);
+
+  useEffect(() => {
+    if (!gmapsReady || !destInputRef.current || destAutocompleteRef.current) return;
+    const g = (window as any).google;
+    if (!g?.maps?.places) return;
+
+    destAutocompleteRef.current = new g.maps.places.Autocomplete(destInputRef.current, {
+      types: ["geocode"],
+      fields: ["geometry", "formatted_address"],
+    });
+    destAutocompleteRef.current.addListener("place_changed", () => {
+      const place = destAutocompleteRef.current.getPlace();
+      if (place?.geometry?.location) {
+        const loc = place.geometry.location;
+        setDestPlace({ lat: loc.lat(), lng: loc.lng(), formatted: place.formatted_address || "" });
+        setDestText(place.formatted_address || "");
+      }
+    });
+  }, [gmapsReady]);
+
+  const extractJurisdictionsFromRoute = useCallback(async (route: any) => {
+    const g = (window as any).google;
+    if (!g?.maps?.Geocoder) return [];
+
+    const geocoder = new g.maps.Geocoder();
+    const path = g.maps.geometry.encoding.decodePath(route.overview_polyline);
+
+    const sampleCount = Math.min(path.length, 30);
+    const step = Math.max(1, Math.floor(path.length / sampleCount));
+    const sampled: { lat: number; lng: number }[] = [];
+    for (let i = 0; i < path.length; i += step) {
+      sampled.push({ lat: path[i].lat(), lng: path[i].lng() });
+    }
+    if (sampled.length > 0 && path.length > 1) {
+      const last = path[path.length - 1];
+      sampled.push({ lat: last.lat(), lng: last.lng() });
+    }
+
+    const orderedJurisdictions: Jurisdiction[] = [];
+    const seen = new Set<string>();
+
+    const batchSize = 5;
+    for (let b = 0; b < sampled.length; b += batchSize) {
+      const batch = sampled.slice(b, b + batchSize);
+      const promises = batch.map(pt =>
+        new Promise<Jurisdiction | null>((resolve) => {
+          geocoder.geocode({ location: pt }, (results: any[], status: string) => {
+            if (status === "OK" && results?.[0]) {
+              const components = results[0].address_components || [];
+              let stateCode = "";
+              let stateName = "";
+              let countryCode = "";
+              for (const comp of components) {
+                if (comp.types.includes("administrative_area_level_1")) {
+                  stateCode = comp.short_name;
+                  stateName = comp.long_name;
+                }
+                if (comp.types.includes("country")) {
+                  countryCode = comp.short_name;
+                }
+              }
+              if (stateCode && countryCode) {
+                resolve({
+                  name: stateName,
+                  country: countryCode === "US" ? "United States" : countryCode === "CA" ? "Canada" : countryCode,
+                  code: stateCode,
+                });
+              } else {
+                resolve(null);
+              }
+            } else {
+              resolve(null);
+            }
+          });
+        })
+      );
+      const batchResults = await Promise.all(promises);
+      for (const jr of batchResults) {
+        if (jr && !seen.has(jr.code)) {
+          seen.add(jr.code);
+          orderedJurisdictions.push(jr);
+        }
+      }
+    }
+
+    return orderedJurisdictions;
+  }, []);
+
+  const calculateRoute = useCallback(async () => {
+    if (!originPlace || !destPlace) return;
+    const g = (window as any).google;
+    if (!g?.maps) return;
+
+    setRouteLoading(true);
+    setRouteError(null);
+    setJurisdictions([]);
+    setRouteInfo(null);
+
+    try {
+      if (!mapInstanceRef.current && mapContainerRef.current) {
+        mapInstanceRef.current = new g.maps.Map(mapContainerRef.current, {
+          center: { lat: 43, lng: -90 },
+          zoom: 4,
+          disableDefaultUI: true,
+          zoomControl: true,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: true,
+        });
+      }
+
+      if (!directionsRendererRef.current) {
+        directionsRendererRef.current = new g.maps.DirectionsRenderer({
+          suppressMarkers: false,
+          polylineOptions: { strokeColor: "#3b82f6", strokeWeight: 5 },
+        });
+        directionsRendererRef.current.setMap(mapInstanceRef.current);
+      }
+
+      const directionsService = new g.maps.DirectionsService();
+      const result = await directionsService.route({
+        origin: { lat: originPlace.lat, lng: originPlace.lng },
+        destination: { lat: destPlace.lat, lng: destPlace.lng },
+        travelMode: g.maps.TravelMode.DRIVING,
+      });
+
+      directionsRendererRef.current.setDirections(result);
+
+      const leg = result.routes[0].legs[0];
+      setRouteInfo({
+        distanceText: leg.distance.text,
+        durationText: leg.duration.text,
+        distanceMeters: leg.distance.value,
+        durationSeconds: leg.duration.value,
+      });
+
+      const jurs = await extractJurisdictionsFromRoute(result.routes[0]);
+      setJurisdictions(jurs);
+    } catch (err: any) {
+      setRouteError(err?.message || "Failed to calculate route. Please check your addresses.");
+    } finally {
+      setRouteLoading(false);
+    }
+  }, [originPlace, destPlace, extractJurisdictionsFromRoute]);
+
+  useEffect(() => {
+    if (originPlace && destPlace) {
+      calculateRoute();
+    }
+  }, [originPlace, destPlace, calculateRoute]);
+
+  // TODO: Later we will add a jurisdiction rules dataset with standard weight limits per state/province
+  // TODO: Later we will add overweight detection + permit estimate feature using that dataset
+  // TODO: Later we will add permit fees per jurisdiction
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
@@ -1050,6 +1298,171 @@ export default function TruckLoadPlanner() {
               </div>
             </motion.div>
           )}
+
+          {/* ─── Route Planner Section ──────────────────────────────── */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="max-w-5xl mx-auto mt-10">
+            <Card className="border-slate-200">
+              <CardContent className="p-5">
+                <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2" data-testid="text-route-planner-title">
+                  <Route className="w-4 h-4 text-primary" />
+                  Route Planner
+                </h2>
+                <p className="text-xs text-slate-500 mb-4">
+                  Enter origin and destination to calculate route distance, driving time, and jurisdictions crossed.
+                </p>
+
+                {!GOOGLE_MAPS_API_KEY ? (
+                  <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
+                    <AlertTriangle className="w-4 h-4 inline mr-1" />
+                    Google Maps API key is not configured. Route planning is unavailable.
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                      <div>
+                        <Label className="text-xs text-slate-500 mb-1 flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-green-600" />
+                          Origin (A)
+                        </Label>
+                        <input
+                          ref={originInputRef}
+                          type="text"
+                          placeholder="Start typing an address..."
+                          value={originText}
+                          onChange={e => { setOriginText(e.target.value); setOriginPlace(null); }}
+                          className="w-full h-10 px-3 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                          data-testid="input-origin"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500 mb-1 flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-red-500" />
+                          Destination (B)
+                        </Label>
+                        <input
+                          ref={destInputRef}
+                          type="text"
+                          placeholder="Start typing an address..."
+                          value={destText}
+                          onChange={e => { setDestText(e.target.value); setDestPlace(null); }}
+                          className="w-full h-10 px-3 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                          data-testid="input-destination"
+                        />
+                      </div>
+                    </div>
+
+                    {routeLoading && (
+                      <div className="flex items-center gap-2 p-4 rounded-lg bg-blue-50 border border-blue-200 mb-4" data-testid="route-loading">
+                        <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+                        <span className="text-sm text-blue-700">Calculating route and detecting jurisdictions...</span>
+                      </div>
+                    )}
+
+                    {routeError && (
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200 mb-4 text-sm text-red-700" data-testid="route-error">
+                        <AlertTriangle className="w-4 h-4 shrink-0" />
+                        {routeError}
+                      </div>
+                    )}
+
+                    {routeInfo && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4" data-testid="route-summary">
+                        <StatCard icon={Navigation} label="Distance" value={routeInfo.distanceText} color="#3b82f6" />
+                        <StatCard icon={Clock} label="Drive Time" value={routeInfo.durationText} color="#8b5cf6" />
+                        <StatCard icon={Flag} label="Jurisdictions" value={String(jurisdictions.length)} color="#f59e0b" />
+                        <StatCard icon={Route} label="Route" value={`${originPlace?.formatted?.split(",")[0] || "A"} → ${destPlace?.formatted?.split(",")[0] || "B"}`} color="#22c55e" />
+                      </div>
+                    )}
+
+                    <div
+                      ref={mapContainerRef}
+                      className={`w-full rounded-xl border border-slate-200 overflow-hidden transition-all ${
+                        routeInfo ? "h-[300px] sm:h-[400px] mb-4" : "h-0 border-0"
+                      }`}
+                      data-testid="route-map"
+                    />
+
+                    {routeInfo && jurisdictions.length > 0 && (
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} data-testid="jurisdictions-section">
+                        <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                          <Flag className="w-3.5 h-3.5 text-primary" />
+                          Jurisdictions Crossed (in travel order)
+                        </h3>
+
+                        {/* Desktop table */}
+                        <div className="hidden sm:block overflow-x-auto rounded-xl border border-slate-200">
+                          <table className="w-full text-sm" data-testid="jurisdictions-table">
+                            <thead>
+                              <tr className="bg-slate-50 border-b border-slate-200">
+                                <th className="px-4 py-2.5 text-left font-semibold text-slate-700 w-8">#</th>
+                                <th className="px-4 py-2.5 text-left font-semibold text-slate-700">Jurisdiction</th>
+                                <th className="px-4 py-2.5 text-left font-semibold text-slate-700">Country</th>
+                                <th className="px-4 py-2.5 text-left font-semibold text-slate-700">Notes</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {jurisdictions.map((j, idx) => (
+                                <tr key={j.code} className="border-b border-slate-100 last:border-0" data-testid={`jurisdiction-row-${idx}`}>
+                                  <td className="px-4 py-2.5 text-slate-400 text-xs font-medium">{idx + 1}</td>
+                                  <td className="px-4 py-2.5 font-medium text-slate-900">
+                                    <div className="flex items-center gap-2">
+                                      <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-primary/10 text-primary text-[10px] font-bold shrink-0">
+                                        {j.code}
+                                      </span>
+                                      {j.name}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-2.5 text-slate-600">
+                                    <Badge variant="outline" className="text-[10px]">
+                                      {j.country === "Canada" ? "🇨🇦 Canada" : j.country === "United States" ? "🇺🇸 USA" : j.country}
+                                    </Badge>
+                                  </td>
+                                  <td className="px-4 py-2.5 text-slate-400 text-xs italic">
+                                    {/* TODO: Add weight limits and permit info from rules dataset */}
+                                    —
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Mobile cards */}
+                        <div className="sm:hidden space-y-2" data-testid="jurisdictions-cards">
+                          {jurisdictions.map((j, idx) => (
+                            <div key={j.code} className="p-3 rounded-lg border border-slate-200 bg-white" data-testid={`jurisdiction-card-${idx}`}>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
+                                    {idx + 1}
+                                  </span>
+                                  <div>
+                                    <p className="text-sm font-semibold text-slate-900">{j.name} ({j.code})</p>
+                                    <p className="text-[11px] text-slate-500">
+                                      {j.country === "Canada" ? "🇨🇦 Canada" : j.country === "United States" ? "🇺🇸 USA" : j.country}
+                                    </p>
+                                  </div>
+                                </div>
+                                <span className="text-[10px] text-slate-400 italic">
+                                  {/* TODO: Add weight limits and permit info from rules dataset */}
+                                  —
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <p className="mt-3 text-[11px] text-slate-400 italic">
+                          {/* TODO: Future: overweight detection + permit estimates will appear here */}
+                          Weight limits and permit requirements will be added in a future update.
+                        </p>
+                      </motion.div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
       </main>
 
