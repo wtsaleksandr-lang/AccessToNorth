@@ -713,7 +713,7 @@ export default function ContainerCalculator() {
     loadPriority: "normal",
   }), []);
 
-  const [cargoItems, setCargoItems] = useState<CargoItem[]>([defaultCargoItem(0)]);
+  const [cargoItems, setCargoItems] = useState<CargoItem[]>([defaultCargoItem(0), defaultCargoItem(1)]);
   const [multiResult, setMultiResult] = useState<MultiContainerResult | null>(null);
   const [calculating, setCalculating] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
@@ -955,7 +955,7 @@ export default function ContainerCalculator() {
 
   const handleReset = useCallback(() => {
     setMultiResult(null);
-    setCargoItems([defaultCargoItem(0)]);
+    setCargoItems([defaultCargoItem(0), defaultCargoItem(1)]);
     setSelectedIds(new Set());
     setExpandedIds(new Set());
   }, [defaultCargoItem]);
@@ -1331,11 +1331,26 @@ export default function ContainerCalculator() {
                     </div>
                   )}
 
-                  <div className="space-y-3">
+                  <div className="hidden sm:flex items-center gap-1.5 px-3 mb-1.5">
+                    <div className="w-4 shrink-0" />
+                    <div className="w-3 shrink-0" />
+                    <div className="flex-1 min-w-0 grid grid-cols-[1fr_52px_68px_68px_68px_68px] gap-1.5">
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Name</span>
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide text-center">Qty</span>
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide text-center">Wt ({weightUnit})</span>
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide text-center">L ({dimUnit})</span>
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide text-center">W ({dimUnit})</span>
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide text-center">H ({dimUnit})</span>
+                    </div>
+                    <div className="w-6 shrink-0" />
+                    <div className="w-4 shrink-0" />
+                  </div>
+
+                  <div className="space-y-1.5">
                     {cargoItems.map((item, idx) => (
                       <div
                         key={item.id}
-                        className={`border rounded-xl relative group transition-all ${
+                        className={`border rounded-lg relative group transition-all ${
                           !item.included
                             ? "border-slate-200/60 bg-slate-50/50 opacity-60"
                             : selectedIds.has(item.id)
@@ -1344,12 +1359,12 @@ export default function ContainerCalculator() {
                         }`}
                         data-testid={`cargo-item-${idx}`}
                       >
-                        <div className="p-4">
-                          <div className="flex items-start gap-2.5">
-                            {cargoItems.length > 1 && (
+                        <div className="px-2.5 py-2">
+                          <div className="flex items-center gap-1.5">
+                            {cargoItems.length > 1 ? (
                               <button
                                 onClick={() => toggleSelect(item.id)}
-                                className="mt-2 shrink-0 text-slate-400 hover:text-primary transition-colors"
+                                className="shrink-0 text-slate-400 hover:text-primary transition-colors"
                                 data-testid={`checkbox-cargo-${idx}`}
                               >
                                 {selectedIds.has(item.id) ? (
@@ -1358,66 +1373,44 @@ export default function ContainerCalculator() {
                                   <Square className="w-4 h-4" />
                                 )}
                               </button>
+                            ) : (
+                              <div className="w-4 shrink-0" />
                             )}
                             <div
-                              className="w-3.5 h-3.5 rounded-full mt-2.5 shrink-0 border border-white ring-1 ring-slate-200"
+                              className="w-3 h-3 rounded-full shrink-0"
                               style={{ backgroundColor: item.color }}
                             />
-                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-6 gap-3">
-                              <div className="sm:col-span-3">
-                                <Label className="text-xs text-slate-500">Name</Label>
-                                <Input
-                                  placeholder={`Cargo ${idx + 1}`}
-                                  value={item.name}
-                                  onChange={(e) => updateItem(item.id, "name", e.target.value)}
-                                  className="h-9 text-sm"
-                                  data-testid={`input-cargo-name-${idx}`}
-                                />
-                              </div>
-                              <div>
-                                <Label className="text-xs text-slate-500">Qty</Label>
-                                <Input
-                                  type="number"
-                                  min={1}
-                                  value={item.quantity || ""}
-                                  onChange={(e) =>
-                                    updateItem(item.id, "quantity", parseInt(e.target.value) || 0)
-                                  }
-                                  className="h-9 text-sm"
-                                  data-testid={`input-cargo-qty-${idx}`}
-                                />
-                              </div>
-                              <div>
-                                <Label className="text-xs text-slate-500">Weight ({weightUnit})</Label>
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  step="0.1"
-                                  value={toDisplayWeight(item.weight)}
-                                  onChange={(e) =>
-                                    updateItem(item.id, "weight", fromDisplayWeight(e.target.value))
-                                  }
-                                  className="h-9 text-sm"
-                                  data-testid={`input-cargo-weight-${idx}`}
-                                />
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1 mt-1">
-                              {cargoItems.length > 1 && (
-                                <button
-                                  onClick={() => removeItem(item.id)}
-                                  className="text-slate-400 hover:text-red-500 transition-colors p-0.5"
-                                  data-testid={`button-remove-cargo-${idx}`}
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="mt-3 ml-[calc(1rem+14px)] sm:ml-[calc(1rem+14px)] grid grid-cols-3 gap-3">
-                            <div>
-                              <Label className="text-xs text-slate-500">Length ({dimUnit})</Label>
+                            <div className="flex-1 min-w-0 grid grid-cols-2 sm:grid-cols-[1fr_52px_68px_68px_68px_68px] gap-1.5">
+                              <Input
+                                placeholder={`Cargo ${idx + 1}`}
+                                value={item.name}
+                                onChange={(e) => updateItem(item.id, "name", e.target.value)}
+                                className="h-7 text-xs min-w-0 col-span-1"
+                                data-testid={`input-cargo-name-${idx}`}
+                              />
+                              <Input
+                                type="number"
+                                min={1}
+                                value={item.quantity || ""}
+                                onChange={(e) =>
+                                  updateItem(item.id, "quantity", parseInt(e.target.value) || 0)
+                                }
+                                className="h-7 text-xs text-center px-1"
+                                placeholder="Qty"
+                                data-testid={`input-cargo-qty-${idx}`}
+                              />
+                              <Input
+                                type="number"
+                                min={0}
+                                step="0.1"
+                                value={toDisplayWeight(item.weight)}
+                                onChange={(e) =>
+                                  updateItem(item.id, "weight", fromDisplayWeight(e.target.value))
+                                }
+                                className="h-7 text-xs text-center px-1"
+                                placeholder={`Wt`}
+                                data-testid={`input-cargo-weight-${idx}`}
+                              />
                               <Input
                                 type="number"
                                 min={0}
@@ -1426,12 +1419,10 @@ export default function ContainerCalculator() {
                                 onChange={(e) =>
                                   updateItem(item.id, "length", fromDisplay(e.target.value))
                                 }
-                                className="h-9 text-sm"
+                                className="h-7 text-xs text-center px-1"
+                                placeholder="L"
                                 data-testid={`input-cargo-length-${idx}`}
                               />
-                            </div>
-                            <div>
-                              <Label className="text-xs text-slate-500">Width ({dimUnit})</Label>
                               <Input
                                 type="number"
                                 min={0}
@@ -1440,12 +1431,10 @@ export default function ContainerCalculator() {
                                 onChange={(e) =>
                                   updateItem(item.id, "width", fromDisplay(e.target.value))
                                 }
-                                className="h-9 text-sm"
+                                className="h-7 text-xs text-center px-1"
+                                placeholder="W"
                                 data-testid={`input-cargo-width-${idx}`}
                               />
-                            </div>
-                            <div>
-                              <Label className="text-xs text-slate-500">Height ({dimUnit})</Label>
                               <Input
                                 type="number"
                                 min={0}
@@ -1454,199 +1443,201 @@ export default function ContainerCalculator() {
                                 onChange={(e) =>
                                   updateItem(item.id, "height", fromDisplay(e.target.value))
                                 }
-                                className="h-9 text-sm"
+                                className="h-7 text-xs text-center px-1"
+                                placeholder="H"
                                 data-testid={`input-cargo-height-${idx}`}
                               />
                             </div>
-                          </div>
-
-                          <div className="mt-3 ml-[calc(1rem+14px)] sm:ml-[calc(1rem+14px)]">
                             <button
                               onClick={() => toggleExpanded(item.id)}
-                              className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-primary transition-colors"
+                              className={`shrink-0 p-1 rounded transition-colors ${
+                                expandedIds.has(item.id)
+                                  ? "text-primary bg-primary/10"
+                                  : "text-slate-400 hover:text-primary hover:bg-primary/5"
+                              }`}
+                              title="Advanced Options"
                               data-testid={`button-advanced-${idx}`}
                             >
-                              <ChevronDown
-                                className={`w-3.5 h-3.5 transition-transform ${
-                                  expandedIds.has(item.id) ? "rotate-180" : ""
-                                }`}
-                              />
-                              Advanced Options
-                              <div className="flex gap-1 ml-1">
-                                {!item.stackable && (
-                                  <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium">No Stack</span>
-                                )}
-                                {item.rotationMode !== "all" && (
-                                  <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-[10px] font-medium">
-                                    {item.rotationMode === "fixed" ? "Fixed" : "Horiz."}
-                                  </span>
-                                )}
-                                {item.loadPriority !== "normal" && (
-                                  <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 text-[10px] font-medium">
-                                    {item.loadPriority === "first" ? "1st" : "Last"}
-                                  </span>
-                                )}
-                                {item.palletized && (
-                                  <span className="px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-medium">Pallet</span>
-                                )}
-                                {!item.included && (
-                                  <span className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 text-[10px] font-medium">Excluded</span>
-                                )}
-                              </div>
+                              <Settings2 className="w-4 h-4" />
                             </button>
-
-                            {expandedIds.has(item.id) && (
-                              <div className="mt-3 p-3 rounded-lg bg-slate-50/80 border border-slate-100 space-y-3">
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                  <div>
-                                    <Label className="text-[10px] text-slate-400 uppercase tracking-wide mb-1.5 block">
-                                      Stackable
-                                    </Label>
-                                    <div className="flex rounded-lg border border-slate-200 overflow-hidden">
-                                      <button
-                                        onClick={() => updateItem(item.id, "stackable", true)}
-                                        className={`flex-1 px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
-                                          item.stackable
-                                            ? "bg-green-500 text-white"
-                                            : "bg-white text-slate-500 hover:bg-slate-50"
-                                        }`}
-                                        data-testid={`toggle-stackable-yes-${idx}`}
-                                      >
-                                        <Layers className="w-3 h-3 inline mr-1" />
-                                        Yes
-                                      </button>
-                                      <button
-                                        onClick={() => updateItem(item.id, "stackable", false)}
-                                        className={`flex-1 px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
-                                          !item.stackable
-                                            ? "bg-amber-500 text-white"
-                                            : "bg-white text-slate-500 hover:bg-slate-50"
-                                        }`}
-                                        data-testid={`toggle-stackable-no-${idx}`}
-                                      >
-                                        No
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  <div>
-                                    <Label className="text-[10px] text-slate-400 uppercase tracking-wide mb-1.5 block">
-                                      Rotation
-                                    </Label>
-                                    <select
-                                      value={item.rotationMode}
-                                      onChange={(e) => updateItem(item.id, "rotationMode", e.target.value as RotationMode)}
-                                      className="w-full h-[30px] px-2 text-[11px] font-medium rounded-lg border border-slate-200 bg-white hover:border-primary/50 transition-colors cursor-pointer"
-                                      data-testid={`select-rotation-${idx}`}
-                                    >
-                                      <option value="all">All axes</option>
-                                      <option value="horizontal">Horizontal only</option>
-                                      <option value="fixed">Fixed (upright)</option>
-                                    </select>
-                                  </div>
-
-                                  <div>
-                                    <Label className="text-[10px] text-slate-400 uppercase tracking-wide mb-1.5 block">
-                                      Load Sequence
-                                    </Label>
-                                    <select
-                                      value={item.loadPriority}
-                                      onChange={(e) => updateItem(item.id, "loadPriority", e.target.value as LoadPriority)}
-                                      className="w-full h-[30px] px-2 text-[11px] font-medium rounded-lg border border-slate-200 bg-white hover:border-primary/50 transition-colors cursor-pointer"
-                                      data-testid={`select-priority-${idx}`}
-                                    >
-                                      <option value="first">Load First (back)</option>
-                                      <option value="normal">Normal</option>
-                                      <option value="last">Load Last (door)</option>
-                                    </select>
-                                  </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <Label className="text-[10px] text-slate-400 uppercase tracking-wide mb-1.5 block">
-                                      Palletized
-                                    </Label>
-                                    <div className="flex rounded-lg border border-slate-200 overflow-hidden">
-                                      <button
-                                        onClick={() => {
-                                          updateItem(item.id, "palletized", true);
-                                          if (item.palletType === "none") updateItem(item.id, "palletType", "us48x40");
-                                        }}
-                                        className={`flex-1 px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
-                                          item.palletized
-                                            ? "bg-green-500 text-white"
-                                            : "bg-white text-slate-500 hover:bg-slate-50"
-                                        }`}
-                                        data-testid={`toggle-palletized-yes-${idx}`}
-                                      >
-                                        <Package className="w-3 h-3 inline mr-1" />
-                                        Yes
-                                      </button>
-                                      <button
-                                        onClick={() => {
-                                          updateItem(item.id, "palletized", false);
-                                          updateItem(item.id, "palletType", "none");
-                                        }}
-                                        className={`flex-1 px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
-                                          !item.palletized
-                                            ? "bg-slate-500 text-white"
-                                            : "bg-white text-slate-500 hover:bg-slate-50"
-                                        }`}
-                                        data-testid={`toggle-palletized-no-${idx}`}
-                                      >
-                                        No
-                                      </button>
-                                    </div>
-                                    {item.palletized && (
-                                      <select
-                                        value={item.palletType}
-                                        onChange={(e) => updateItem(item.id, "palletType", e.target.value as PalletType)}
-                                        className="mt-1.5 w-full h-[28px] px-2 text-[11px] font-medium rounded-md border border-slate-200 bg-white cursor-pointer"
-                                        data-testid={`select-pallet-type-${idx}`}
-                                      >
-                                        <option value="us48x40">US 48×40"</option>
-                                        <option value="euro">Euro 1200×800mm</option>
-                                        <option value="custom">Custom pallet</option>
-                                      </select>
-                                    )}
-                                  </div>
-
-                                  <div>
-                                    <Label className="text-[10px] text-slate-400 uppercase tracking-wide mb-1.5 block">
-                                      Include in Plan
-                                    </Label>
-                                    <div className="flex rounded-lg border border-slate-200 overflow-hidden">
-                                      <button
-                                        onClick={() => updateItem(item.id, "included", true)}
-                                        className={`flex-1 px-2.5 py-1.5 text-[11px] font-medium transition-colors flex items-center justify-center gap-1 ${
-                                          item.included
-                                            ? "bg-green-500 text-white"
-                                            : "bg-white text-slate-500 hover:bg-slate-50"
-                                        }`}
-                                        data-testid={`toggle-included-yes-${idx}`}
-                                      >
-                                        <Eye className="w-3 h-3" />
-                                        Yes
-                                      </button>
-                                      <button
-                                        onClick={() => updateItem(item.id, "included", false)}
-                                        className={`flex-1 px-2.5 py-1.5 text-[11px] font-medium transition-colors flex items-center justify-center gap-1 ${
-                                          !item.included
-                                            ? "bg-slate-500 text-white"
-                                            : "bg-white text-slate-500 hover:bg-slate-50"
-                                        }`}
-                                        data-testid={`toggle-included-no-${idx}`}
-                                      >
-                                        <EyeOff className="w-3 h-3" />
-                                        No
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
+                            {cargoItems.length > 1 ? (
+                              <button
+                                onClick={() => removeItem(item.id)}
+                                className="shrink-0 text-slate-300 hover:text-red-500 transition-colors p-0.5"
+                                data-testid={`button-remove-cargo-${idx}`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            ) : (
+                              <div className="w-4 shrink-0" />
                             )}
                           </div>
+
+                          {(!item.stackable || item.rotationMode !== "all" || item.loadPriority !== "normal" || item.palletized || !item.included) && !expandedIds.has(item.id) && (
+                            <div className="flex gap-1 mt-1.5 ml-[calc(1rem+14px)]">
+                              {!item.stackable && (
+                                <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[9px] font-medium leading-none">No Stack</span>
+                              )}
+                              {item.rotationMode !== "all" && (
+                                <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-[9px] font-medium leading-none">
+                                  {item.rotationMode === "fixed" ? "Fixed" : "Horiz."}
+                                </span>
+                              )}
+                              {item.loadPriority !== "normal" && (
+                                <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 text-[9px] font-medium leading-none">
+                                  {item.loadPriority === "first" ? "1st" : "Last"}
+                                </span>
+                              )}
+                              {item.palletized && (
+                                <span className="px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[9px] font-medium leading-none">Pallet</span>
+                              )}
+                              {!item.included && (
+                                <span className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 text-[9px] font-medium leading-none">Excluded</span>
+                              )}
+                            </div>
+                          )}
+
+                          {expandedIds.has(item.id) && (
+                            <div className="mt-2 p-2.5 rounded-lg bg-slate-50/80 border border-slate-100">
+                              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                                <div>
+                                  <Label className="text-[9px] text-slate-400 uppercase tracking-wide mb-1 block">
+                                    Stackable
+                                  </Label>
+                                  <div className="flex rounded-md border border-slate-200 overflow-hidden">
+                                    <button
+                                      onClick={() => updateItem(item.id, "stackable", true)}
+                                      className={`flex-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
+                                        item.stackable
+                                          ? "bg-green-500 text-white"
+                                          : "bg-white text-slate-500 hover:bg-slate-50"
+                                      }`}
+                                      data-testid={`toggle-stackable-yes-${idx}`}
+                                    >
+                                      Yes
+                                    </button>
+                                    <button
+                                      onClick={() => updateItem(item.id, "stackable", false)}
+                                      className={`flex-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
+                                        !item.stackable
+                                          ? "bg-amber-500 text-white"
+                                          : "bg-white text-slate-500 hover:bg-slate-50"
+                                      }`}
+                                      data-testid={`toggle-stackable-no-${idx}`}
+                                    >
+                                      No
+                                    </button>
+                                  </div>
+                                </div>
+                                <div>
+                                  <Label className="text-[9px] text-slate-400 uppercase tracking-wide mb-1 block">
+                                    Rotation
+                                  </Label>
+                                  <select
+                                    value={item.rotationMode}
+                                    onChange={(e) => updateItem(item.id, "rotationMode", e.target.value as RotationMode)}
+                                    className="w-full h-[26px] px-1.5 text-[10px] font-medium rounded-md border border-slate-200 bg-white hover:border-primary/50 transition-colors cursor-pointer"
+                                    data-testid={`select-rotation-${idx}`}
+                                  >
+                                    <option value="all">All axes</option>
+                                    <option value="horizontal">Horiz. only</option>
+                                    <option value="fixed">Fixed</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <Label className="text-[9px] text-slate-400 uppercase tracking-wide mb-1 block">
+                                    Priority
+                                  </Label>
+                                  <select
+                                    value={item.loadPriority}
+                                    onChange={(e) => updateItem(item.id, "loadPriority", e.target.value as LoadPriority)}
+                                    className="w-full h-[26px] px-1.5 text-[10px] font-medium rounded-md border border-slate-200 bg-white hover:border-primary/50 transition-colors cursor-pointer"
+                                    data-testid={`select-priority-${idx}`}
+                                  >
+                                    <option value="first">First</option>
+                                    <option value="normal">Normal</option>
+                                    <option value="last">Last</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <Label className="text-[9px] text-slate-400 uppercase tracking-wide mb-1 block">
+                                    Palletized
+                                  </Label>
+                                  <div className="flex rounded-md border border-slate-200 overflow-hidden">
+                                    <button
+                                      onClick={() => {
+                                        updateItem(item.id, "palletized", true);
+                                        if (item.palletType === "none") updateItem(item.id, "palletType", "us48x40");
+                                      }}
+                                      className={`flex-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
+                                        item.palletized
+                                          ? "bg-green-500 text-white"
+                                          : "bg-white text-slate-500 hover:bg-slate-50"
+                                      }`}
+                                      data-testid={`toggle-palletized-yes-${idx}`}
+                                    >
+                                      Yes
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        updateItem(item.id, "palletized", false);
+                                        updateItem(item.id, "palletType", "none");
+                                      }}
+                                      className={`flex-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
+                                        !item.palletized
+                                          ? "bg-slate-500 text-white"
+                                          : "bg-white text-slate-500 hover:bg-slate-50"
+                                      }`}
+                                      data-testid={`toggle-palletized-no-${idx}`}
+                                    >
+                                      No
+                                    </button>
+                                  </div>
+                                  {item.palletized && (
+                                    <select
+                                      value={item.palletType}
+                                      onChange={(e) => updateItem(item.id, "palletType", e.target.value as PalletType)}
+                                      className="mt-1 w-full h-[24px] px-1.5 text-[10px] font-medium rounded-md border border-slate-200 bg-white cursor-pointer"
+                                      data-testid={`select-pallet-type-${idx}`}
+                                    >
+                                      <option value="us48x40">US 48×40"</option>
+                                      <option value="euro">Euro 1200×800mm</option>
+                                      <option value="custom">Custom</option>
+                                    </select>
+                                  )}
+                                </div>
+                                <div>
+                                  <Label className="text-[9px] text-slate-400 uppercase tracking-wide mb-1 block">
+                                    Include
+                                  </Label>
+                                  <div className="flex rounded-md border border-slate-200 overflow-hidden">
+                                    <button
+                                      onClick={() => updateItem(item.id, "included", true)}
+                                      className={`flex-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
+                                        item.included
+                                          ? "bg-green-500 text-white"
+                                          : "bg-white text-slate-500 hover:bg-slate-50"
+                                      }`}
+                                      data-testid={`toggle-included-yes-${idx}`}
+                                    >
+                                      Yes
+                                    </button>
+                                    <button
+                                      onClick={() => updateItem(item.id, "included", false)}
+                                      className={`flex-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
+                                        !item.included
+                                          ? "bg-slate-500 text-white"
+                                          : "bg-white text-slate-500 hover:bg-slate-50"
+                                      }`}
+                                      data-testid={`toggle-included-no-${idx}`}
+                                    >
+                                      No
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
