@@ -719,7 +719,7 @@ export default function ContainerCalculator() {
   const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [visualPopup, setVisualPopup] = useState<{ type: "stackable" | "rotation"; itemId: string } | null>(null);
+  const [visualPopup, setVisualPopup] = useState<{ type: "stackable" | "rotation" | "palletized" | "priority"; itemId: string } | null>(null);
 
   const isMetric = unitSystem === "metric";
   const dimFactor = isMetric ? IN_TO_CM : 1;
@@ -1321,10 +1321,13 @@ export default function ContainerCalculator() {
 
                   {visualPopup && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setVisualPopup(null)} data-testid="visual-popup-overlay">
-                      <div className="bg-white rounded-xl shadow-2xl border border-slate-200 p-5 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()} data-testid="visual-popup">
+                      <div className={`bg-white rounded-xl shadow-2xl border border-slate-200 p-5 w-full mx-4 ${visualPopup.type === "palletized" ? "max-w-md" : "max-w-sm"}`} onClick={(e) => e.stopPropagation()} data-testid="visual-popup">
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="font-bold text-sm text-slate-900">
-                            {visualPopup.type === "stackable" ? "Stackable Options" : "Rotation Modes"}
+                            {visualPopup.type === "stackable" ? "Stackable Options"
+                              : visualPopup.type === "rotation" ? "Rotation Modes"
+                              : visualPopup.type === "palletized" ? "Pallet Options"
+                              : "Loading Sequence"}
                           </h3>
                           <button onClick={() => setVisualPopup(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-1" data-testid="button-close-popup">
                             <X className="w-4 h-4" />
@@ -1381,7 +1384,7 @@ export default function ContainerCalculator() {
                               </div>
                             </button>
                           </div>
-                        ) : (
+                        ) : visualPopup.type === "rotation" ? (
                           <div className="space-y-3">
                             {(() => {
                               const currentMode = cargoItems.find(i => i.id === visualPopup.itemId)?.rotationMode;
@@ -1445,6 +1448,239 @@ export default function ContainerCalculator() {
                                     <div className="text-left">
                                       <div className="text-xs font-semibold text-slate-700">Fixed</div>
                                       <div className="text-[10px] text-slate-500 mt-0.5">No rotation — exactly as entered</div>
+                                    </div>
+                                  </button>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        ) : visualPopup.type === "palletized" ? (
+                          <div className="space-y-3">
+                            {(() => {
+                              const currentItem = cargoItems.find(i => i.id === visualPopup.itemId);
+                              const isPalletized = currentItem?.palletized;
+                              const currentPalletType = currentItem?.palletType || "none";
+                              return (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      updateItem(visualPopup.itemId, "palletized", false);
+                                      updateItem(visualPopup.itemId, "palletType", "none");
+                                      setVisualPopup(null);
+                                    }}
+                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                      !isPalletized ? "border-slate-400 bg-slate-50" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
+                                    }`}
+                                    data-testid="popup-pallet-none"
+                                  >
+                                    <svg width="56" height="56" viewBox="0 0 56 56" className="shrink-0">
+                                      <rect x="10" y="14" width="36" height="28" rx="2" fill="#dbeafe" stroke="#3b82f6" strokeWidth="1.5" />
+                                      <text x="28" y="32" textAnchor="middle" fontSize="7" fill="#1d4ed8" fontWeight="600">BOX</text>
+                                      <line x1="10" y1="48" x2="46" y2="48" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3 2" />
+                                      <text x="28" y="54" textAnchor="middle" fontSize="5" fill="#94a3b8">FLOOR</text>
+                                    </svg>
+                                    <div className="text-left">
+                                      <div className="text-xs font-semibold text-slate-700">No Pallet</div>
+                                      <div className="text-[10px] text-slate-500 mt-0.5">Cargo placed directly on container floor</div>
+                                    </div>
+                                  </button>
+
+                                  <div className={`rounded-lg border-2 transition-all ${isPalletized && currentPalletType === "us48x40" ? "border-teal-400 bg-teal-50/50" : "border-slate-200"}`}>
+                                    <button
+                                      onClick={() => {
+                                        updateItem(visualPopup.itemId, "palletized", true);
+                                        updateItem(visualPopup.itemId, "palletType", "us48x40");
+                                        setVisualPopup(null);
+                                      }}
+                                      className="w-full flex items-center gap-3 p-3 rounded-t-lg hover:bg-teal-50/50 transition-all"
+                                      data-testid="popup-pallet-us48x40"
+                                    >
+                                      <svg width="56" height="56" viewBox="0 0 56 56" className="shrink-0">
+                                        <rect x="6" y="40" width="44" height="6" rx="1" fill="#99f6e4" stroke="#14b8a6" strokeWidth="1" />
+                                        <rect x="10" y="44" width="4" height="8" rx="0.5" fill="#5eead4" stroke="#14b8a6" strokeWidth="0.5" />
+                                        <rect x="24" y="44" width="4" height="8" rx="0.5" fill="#5eead4" stroke="#14b8a6" strokeWidth="0.5" />
+                                        <rect x="38" y="44" width="4" height="8" rx="0.5" fill="#5eead4" stroke="#14b8a6" strokeWidth="0.5" />
+                                        <rect x="10" y="12" width="32" height="26" rx="2" fill="#dbeafe" stroke="#3b82f6" strokeWidth="1.5" />
+                                        <text x="26" y="28" textAnchor="middle" fontSize="7" fill="#1d4ed8" fontWeight="600">BOX</text>
+                                      </svg>
+                                      <div className="text-left">
+                                        <div className="text-xs font-semibold text-teal-700">US Standard Pallet</div>
+                                        <div className="text-[10px] text-slate-500 mt-0.5">48 × 40 × 6 in — GMA standard, most common in North America</div>
+                                      </div>
+                                    </button>
+                                  </div>
+
+                                  <div className={`rounded-lg border-2 transition-all ${isPalletized && currentPalletType === "euro" ? "border-indigo-400 bg-indigo-50/50" : "border-slate-200"}`}>
+                                    <button
+                                      onClick={() => {
+                                        updateItem(visualPopup.itemId, "palletized", true);
+                                        updateItem(visualPopup.itemId, "palletType", "euro");
+                                        setVisualPopup(null);
+                                      }}
+                                      className="w-full flex items-center gap-3 p-3 rounded-t-lg hover:bg-indigo-50/50 transition-all"
+                                      data-testid="popup-pallet-euro"
+                                    >
+                                      <svg width="56" height="56" viewBox="0 0 56 56" className="shrink-0">
+                                        <rect x="8" y="40" width="40" height="6" rx="1" fill="#c7d2fe" stroke="#6366f1" strokeWidth="1" />
+                                        <rect x="12" y="44" width="4" height="8" rx="0.5" fill="#a5b4fc" stroke="#6366f1" strokeWidth="0.5" />
+                                        <rect x="26" y="44" width="4" height="8" rx="0.5" fill="#a5b4fc" stroke="#6366f1" strokeWidth="0.5" />
+                                        <rect x="40" y="44" width="4" height="8" rx="0.5" fill="#a5b4fc" stroke="#6366f1" strokeWidth="0.5" />
+                                        <rect x="12" y="14" width="30" height="24" rx="2" fill="#dbeafe" stroke="#3b82f6" strokeWidth="1.5" />
+                                        <text x="27" y="29" textAnchor="middle" fontSize="7" fill="#1d4ed8" fontWeight="600">BOX</text>
+                                      </svg>
+                                      <div className="text-left">
+                                        <div className="text-xs font-semibold text-indigo-700">Euro Pallet (EPAL)</div>
+                                        <div className="text-[10px] text-slate-500 mt-0.5">1200 × 800 × 144 mm — European standard pallet</div>
+                                      </div>
+                                    </button>
+                                  </div>
+
+                                  <div className={`rounded-lg border-2 transition-all ${isPalletized && currentPalletType === "custom" ? "border-orange-400 bg-orange-50/50" : "border-slate-200"}`}>
+                                    <button
+                                      onClick={() => {
+                                        updateItem(visualPopup.itemId, "palletized", true);
+                                        updateItem(visualPopup.itemId, "palletType", "custom");
+                                      }}
+                                      className="w-full flex items-center gap-3 p-3 hover:bg-orange-50/50 transition-all"
+                                      data-testid="popup-pallet-custom"
+                                    >
+                                      <svg width="56" height="56" viewBox="0 0 56 56" className="shrink-0">
+                                        <rect x="6" y="40" width="44" height="6" rx="1" fill="#fed7aa" stroke="#f97316" strokeWidth="1" strokeDasharray="4 2" />
+                                        <rect x="10" y="44" width="4" height="8" rx="0.5" fill="#fdba74" stroke="#f97316" strokeWidth="0.5" />
+                                        <rect x="24" y="44" width="4" height="8" rx="0.5" fill="#fdba74" stroke="#f97316" strokeWidth="0.5" />
+                                        <rect x="38" y="44" width="4" height="8" rx="0.5" fill="#fdba74" stroke="#f97316" strokeWidth="0.5" />
+                                        <rect x="10" y="12" width="32" height="26" rx="2" fill="#dbeafe" stroke="#3b82f6" strokeWidth="1.5" />
+                                        <text x="26" y="25" textAnchor="middle" fontSize="7" fill="#1d4ed8" fontWeight="600">BOX</text>
+                                        <text x="26" y="34" textAnchor="middle" fontSize="5" fill="#ea580c">? × ? × ?</text>
+                                      </svg>
+                                      <div className="text-left">
+                                        <div className="text-xs font-semibold text-orange-700">Custom Pallet Size</div>
+                                        <div className="text-[10px] text-slate-500 mt-0.5">Enter your own pallet dimensions below</div>
+                                      </div>
+                                    </button>
+                                    {isPalletized && currentPalletType === "custom" && (
+                                      <div className="px-3 pb-3 pt-1 border-t border-orange-200">
+                                        <div className="text-[10px] text-orange-600 font-medium mb-2">Custom pallet dimensions ({isMetric ? "cm" : "in"}):</div>
+                                        <div className="grid grid-cols-3 gap-2">
+                                          <div>
+                                            <label className="text-[9px] text-slate-400 uppercase">Length</label>
+                                            <input
+                                              type="number"
+                                              placeholder="L"
+                                              className="w-full h-7 px-2 text-xs rounded border border-orange-200 focus:border-orange-400 focus:ring-1 focus:ring-orange-200 outline-none"
+                                              data-testid="popup-pallet-custom-l"
+                                              onKeyDown={(e) => e.stopPropagation()}
+                                            />
+                                          </div>
+                                          <div>
+                                            <label className="text-[9px] text-slate-400 uppercase">Width</label>
+                                            <input
+                                              type="number"
+                                              placeholder="W"
+                                              className="w-full h-7 px-2 text-xs rounded border border-orange-200 focus:border-orange-400 focus:ring-1 focus:ring-orange-200 outline-none"
+                                              data-testid="popup-pallet-custom-w"
+                                            />
+                                          </div>
+                                          <div>
+                                            <label className="text-[9px] text-slate-400 uppercase">Height</label>
+                                            <input
+                                              type="number"
+                                              placeholder="H"
+                                              className="w-full h-7 px-2 text-xs rounded border border-orange-200 focus:border-orange-400 focus:ring-1 focus:ring-orange-200 outline-none"
+                                              data-testid="popup-pallet-custom-h"
+                                            />
+                                          </div>
+                                        </div>
+                                        <button
+                                          onClick={() => setVisualPopup(null)}
+                                          className="mt-2 w-full h-7 text-xs font-medium rounded bg-orange-500 text-white hover:bg-orange-600 transition-colors"
+                                          data-testid="popup-pallet-custom-apply"
+                                        >
+                                          Apply Custom Pallet
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {(() => {
+                              const currentPriority = cargoItems.find(i => i.id === visualPopup.itemId)?.loadPriority;
+                              return (
+                                <>
+                                  <button
+                                    onClick={() => { updateItem(visualPopup.itemId, "loadPriority", "first"); setVisualPopup(null); }}
+                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                      currentPriority === "first" ? "border-red-400 bg-red-50" : "border-slate-200 hover:border-red-300 hover:bg-red-50/50"
+                                    }`}
+                                    data-testid="popup-priority-first"
+                                  >
+                                    <svg width="56" height="56" viewBox="0 0 56 56" className="shrink-0">
+                                      <rect x="4" y="30" width="48" height="22" rx="3" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1" />
+                                      <text x="28" y="45" textAnchor="middle" fontSize="5" fill="#94a3b8" fontWeight="500">CONTAINER</text>
+                                      <rect x="8" y="34" width="12" height="14" rx="1.5" fill="#fecaca" stroke="#ef4444" strokeWidth="1.5" />
+                                      <text x="14" y="43" textAnchor="middle" fontSize="6" fill="#dc2626" fontWeight="700">1</text>
+                                      <rect x="22" y="34" width="12" height="14" rx="1.5" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1" />
+                                      <text x="28" y="43" textAnchor="middle" fontSize="6" fill="#94a3b8" fontWeight="500">2</text>
+                                      <rect x="36" y="34" width="12" height="14" rx="1.5" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1" />
+                                      <text x="42" y="43" textAnchor="middle" fontSize="6" fill="#94a3b8" fontWeight="500">3</text>
+                                      <path d="M14 28 L14 22" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
+                                      <path d="M10 24 L14 20 L18 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                    <div className="text-left">
+                                      <div className="text-xs font-semibold text-red-700">Load First</div>
+                                      <div className="text-[10px] text-slate-500 mt-0.5">Prioritized — loaded at the back of the container first</div>
+                                    </div>
+                                  </button>
+                                  <button
+                                    onClick={() => { updateItem(visualPopup.itemId, "loadPriority", "normal"); setVisualPopup(null); }}
+                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                      currentPriority === "normal" ? "border-blue-400 bg-blue-50" : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/50"
+                                    }`}
+                                    data-testid="popup-priority-normal"
+                                  >
+                                    <svg width="56" height="56" viewBox="0 0 56 56" className="shrink-0">
+                                      <rect x="4" y="30" width="48" height="22" rx="3" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1" />
+                                      <text x="28" y="45" textAnchor="middle" fontSize="5" fill="#94a3b8" fontWeight="500">CONTAINER</text>
+                                      <rect x="8" y="34" width="12" height="14" rx="1.5" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1" />
+                                      <text x="14" y="43" textAnchor="middle" fontSize="6" fill="#94a3b8" fontWeight="500">1</text>
+                                      <rect x="22" y="34" width="12" height="14" rx="1.5" fill="#dbeafe" stroke="#3b82f6" strokeWidth="1.5" />
+                                      <text x="28" y="43" textAnchor="middle" fontSize="6" fill="#2563eb" fontWeight="700">2</text>
+                                      <rect x="36" y="34" width="12" height="14" rx="1.5" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1" />
+                                      <text x="42" y="43" textAnchor="middle" fontSize="6" fill="#94a3b8" fontWeight="500">3</text>
+                                      <path d="M22 26 L34 26" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" />
+                                      <path d="M30 22 L34 26 L30 30" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                    <div className="text-left">
+                                      <div className="text-xs font-semibold text-blue-700">Normal Order</div>
+                                      <div className="text-[10px] text-slate-500 mt-0.5">Standard — loaded in default sequence, no special priority</div>
+                                    </div>
+                                  </button>
+                                  <button
+                                    onClick={() => { updateItem(visualPopup.itemId, "loadPriority", "last"); setVisualPopup(null); }}
+                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                      currentPriority === "last" ? "border-emerald-400 bg-emerald-50" : "border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/50"
+                                    }`}
+                                    data-testid="popup-priority-last"
+                                  >
+                                    <svg width="56" height="56" viewBox="0 0 56 56" className="shrink-0">
+                                      <rect x="4" y="30" width="48" height="22" rx="3" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1" />
+                                      <text x="28" y="45" textAnchor="middle" fontSize="5" fill="#94a3b8" fontWeight="500">CONTAINER</text>
+                                      <rect x="8" y="34" width="12" height="14" rx="1.5" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1" />
+                                      <text x="14" y="43" textAnchor="middle" fontSize="6" fill="#94a3b8" fontWeight="500">1</text>
+                                      <rect x="22" y="34" width="12" height="14" rx="1.5" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1" />
+                                      <text x="28" y="43" textAnchor="middle" fontSize="6" fill="#94a3b8" fontWeight="500">2</text>
+                                      <rect x="36" y="34" width="12" height="14" rx="1.5" fill="#d1fae5" stroke="#10b981" strokeWidth="1.5" />
+                                      <text x="42" y="43" textAnchor="middle" fontSize="6" fill="#059669" fontWeight="700">3</text>
+                                      <path d="M42 28 L42 22" stroke="#10b981" strokeWidth="2" strokeLinecap="round" />
+                                      <path d="M38 24 L42 28 L46 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                    <div className="text-left">
+                                      <div className="text-xs font-semibold text-emerald-700">Load Last</div>
+                                      <div className="text-[10px] text-slate-500 mt-0.5">Near door — loaded last for easy first access at destination</div>
                                     </div>
                                   </button>
                                 </>
@@ -1546,31 +1782,29 @@ export default function ContainerCalculator() {
                             </div>
                             <div>
                               <span className="text-[8px] text-slate-400 uppercase block mb-0.5">Priority</span>
-                              <select
-                                value={item.loadPriority}
-                                onChange={(e) => updateItem(item.id, "loadPriority", e.target.value as LoadPriority)}
-                                className="w-full h-6 px-0.5 text-[10px] font-medium rounded border border-slate-200 bg-white cursor-pointer"
+                              <button
+                                onClick={() => setVisualPopup({ type: "priority", itemId: item.id })}
+                                className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
+                                  item.loadPriority === "first" ? "bg-red-50 border-red-300 text-red-700"
+                                    : item.loadPriority === "last" ? "bg-emerald-50 border-emerald-300 text-emerald-700"
+                                    : "border-slate-200 bg-white text-slate-600"
+                                }`}
                                 data-testid={`select-priority-${idx}`}
                               >
-                                <option value="first">1st</option>
-                                <option value="normal">Norm</option>
-                                <option value="last">Last</option>
-                              </select>
+                                {item.loadPriority === "first" ? "1st" : item.loadPriority === "last" ? "Last" : "Norm"}
+                              </button>
                             </div>
                             <div>
                               <span className="text-[8px] text-slate-400 uppercase block mb-0.5">Pallet</span>
-                              <div className="flex rounded border border-slate-200 overflow-hidden h-6">
-                                <button
-                                  onClick={() => { updateItem(item.id, "palletized", true); if (item.palletType === "none") updateItem(item.id, "palletType", "us48x40"); }}
-                                  className={`flex-1 text-[10px] font-medium transition-colors ${item.palletized ? "bg-green-500 text-white" : "bg-white text-slate-400"}`}
-                                  data-testid={`toggle-palletized-yes-${idx}`}
-                                >Y</button>
-                                <button
-                                  onClick={() => { updateItem(item.id, "palletized", false); updateItem(item.id, "palletType", "none"); }}
-                                  className={`flex-1 text-[10px] font-medium transition-colors ${!item.palletized ? "bg-slate-500 text-white" : "bg-white text-slate-400"}`}
-                                  data-testid={`toggle-palletized-no-${idx}`}
-                                >N</button>
-                              </div>
+                              <button
+                                onClick={() => setVisualPopup({ type: "palletized", itemId: item.id })}
+                                className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
+                                  item.palletized ? "bg-teal-50 border-teal-300 text-teal-700" : "border-slate-200 bg-white text-slate-600"
+                                }`}
+                                data-testid={`toggle-palletized-yes-${idx}`}
+                              >
+                                {item.palletized ? (item.palletType === "euro" ? "Euro" : item.palletType === "custom" ? "Cust" : "US") : "None"}
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -1788,60 +2022,38 @@ export default function ContainerCalculator() {
                                 </button>
                               </td>
                               <td className="px-1 py-1.5">
-                                <select
-                                  value={item.loadPriority}
-                                  onChange={(e) => updateItem(item.id, "loadPriority", e.target.value as LoadPriority)}
-                                  className="w-full h-7 px-1 text-[10px] font-medium rounded-md border border-slate-200 bg-white hover:border-primary/50 transition-colors cursor-pointer"
+                                <button
+                                  onClick={() => setVisualPopup({ type: "priority", itemId: item.id })}
+                                  className={`w-full flex items-center justify-center gap-1 h-7 rounded-md border text-[10px] font-medium transition-colors cursor-pointer ${
+                                    item.loadPriority === "first"
+                                      ? "bg-red-50 border-red-300 text-red-700 hover:bg-red-100"
+                                      : item.loadPriority === "last"
+                                      ? "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
+                                      : "bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100"
+                                  }`}
                                   data-testid={`select-priority-${idx}`}
+                                  title="Click to change"
                                 >
-                                  <option value="first">First</option>
-                                  <option value="normal">Normal</option>
-                                  <option value="last">Last</option>
-                                </select>
+                                  {item.loadPriority === "first" ? "1st" : item.loadPriority === "last" ? "Last" : "Normal"}
+                                  <Eye className="w-2.5 h-2.5 opacity-50" />
+                                </button>
                               </td>
                               <td className="px-1 py-1.5">
-                                <div className="flex rounded-md border border-slate-200 overflow-hidden mb-0.5">
-                                  <button
-                                    onClick={() => {
-                                      updateItem(item.id, "palletized", true);
-                                      if (item.palletType === "none") updateItem(item.id, "palletType", "us48x40");
-                                    }}
-                                    className={`flex-1 px-1 py-1 text-[10px] font-medium transition-colors ${
-                                      item.palletized
-                                        ? "bg-green-500 text-white"
-                                        : "bg-white text-slate-400 hover:bg-slate-50"
-                                    }`}
-                                    data-testid={`toggle-palletized-yes-${idx}`}
-                                  >
-                                    Y
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      updateItem(item.id, "palletized", false);
-                                      updateItem(item.id, "palletType", "none");
-                                    }}
-                                    className={`flex-1 px-1 py-1 text-[10px] font-medium transition-colors ${
-                                      !item.palletized
-                                        ? "bg-slate-500 text-white"
-                                        : "bg-white text-slate-400 hover:bg-slate-50"
-                                    }`}
-                                    data-testid={`toggle-palletized-no-${idx}`}
-                                  >
-                                    N
-                                  </button>
-                                </div>
-                                {item.palletized && (
-                                  <select
-                                    value={item.palletType}
-                                    onChange={(e) => updateItem(item.id, "palletType", e.target.value as PalletType)}
-                                    className="w-full h-5 px-0.5 text-[9px] font-medium rounded border border-slate-200 bg-white cursor-pointer"
-                                    data-testid={`select-pallet-type-${idx}`}
-                                  >
-                                    <option value="us48x40">US 48×40"</option>
-                                    <option value="euro">Euro</option>
-                                    <option value="custom">Custom</option>
-                                  </select>
-                                )}
+                                <button
+                                  onClick={() => setVisualPopup({ type: "palletized", itemId: item.id })}
+                                  className={`w-full flex items-center justify-center gap-1 h-7 rounded-md border text-[10px] font-medium transition-colors cursor-pointer ${
+                                    item.palletized
+                                      ? "bg-teal-50 border-teal-300 text-teal-700 hover:bg-teal-100"
+                                      : "bg-slate-50 border-slate-300 text-slate-600 hover:bg-slate-100"
+                                  }`}
+                                  data-testid={`toggle-palletized-yes-${idx}`}
+                                  title="Click to change"
+                                >
+                                  {item.palletized
+                                    ? (item.palletType === "euro" ? "Euro" : item.palletType === "custom" ? "Custom" : "US 48×40")
+                                    : "None"}
+                                  <Eye className="w-2.5 h-2.5 opacity-50" />
+                                </button>
                               </td>
                               <td className="px-1 py-1.5 text-center">
                                 {cargoItems.length > 1 ? (
