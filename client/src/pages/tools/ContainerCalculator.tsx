@@ -696,6 +696,15 @@ export default function ContainerCalculator() {
     heightIn: 94.2,
     maxPayloadLbs: 62170,
   });
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkDefaults, setBulkDefaults] = useState({
+    stackable: true,
+    rotationMode: "all" as RotationMode,
+    loadPriority: "normal" as LoadPriority,
+    palletized: false,
+    palletType: "none" as PalletType,
+  });
+  const [tempBulk, setTempBulk] = useState({ ...bulkDefaults });
   const defaultCargoItem = useCallback((colorIdx: number): CargoItem => ({
     id: generateId(),
     name: "",
@@ -705,13 +714,13 @@ export default function ContainerCalculator() {
     weight: 0,
     quantity: 1,
     color: CARGO_COLORS[colorIdx % CARGO_COLORS.length],
-    stackable: true,
-    palletized: false,
-    palletType: "none",
-    rotationMode: "all",
+    stackable: bulkDefaults.stackable,
+    palletized: bulkDefaults.palletized,
+    palletType: bulkDefaults.palletType,
+    rotationMode: bulkDefaults.rotationMode,
     included: true,
-    loadPriority: "normal",
-  }), []);
+    loadPriority: bulkDefaults.loadPriority,
+  }), [bulkDefaults]);
 
   const [cargoItems, setCargoItems] = useState<CargoItem[]>([defaultCargoItem(0), defaultCargoItem(1)]);
   const [multiResult, setMultiResult] = useState<MultiContainerResult | null>(null);
@@ -1186,7 +1195,7 @@ export default function ContainerCalculator() {
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                       <Box className="w-4 h-4 text-primary" />
-                      Your Cargo List
+                      Packing List
                     </h2>
                     <div className="flex items-center gap-2">
                       <div className="flex rounded-lg border border-slate-200 overflow-hidden">
@@ -1216,12 +1225,13 @@ export default function ContainerCalculator() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={addItem}
-                        className="gap-1 h-7 text-xs"
-                        data-testid="button-add-cargo"
+                        onClick={() => { setTempBulk({ ...bulkDefaults }); setShowBulkModal(true); }}
+                        className="gap-1.5 h-7 text-xs"
+                        data-testid="button-bulk-edit"
+                        aria-label="Bulk Edit Settings"
                       >
-                        <Plus className="w-3.5 h-3.5" />
-                        Add Item
+                        <Settings2 className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Bulk Edit</span>
                       </Button>
                     </div>
                   </div>
@@ -1681,6 +1691,154 @@ export default function ContainerCalculator() {
                     </div>
                   )}
 
+                  {showBulkModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowBulkModal(false)} data-testid="bulk-modal-overlay">
+                      <div className="bg-white rounded-xl shadow-2xl border border-slate-200 p-5 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()} data-testid="bulk-modal">
+                        <div className="flex items-center justify-between mb-5">
+                          <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                            <Settings2 className="w-4 h-4 text-primary" />
+                            Bulk Cargo Settings
+                          </h3>
+                          <button onClick={() => setShowBulkModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-1" data-testid="bulk-modal-close" aria-label="Close">
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <p className="text-xs text-slate-500 mb-4">Changes will apply to all existing items and set defaults for new items.</p>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide block mb-2">Stacking</label>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setTempBulk(p => ({ ...p, stackable: true }))}
+                                className={`flex-1 flex items-center justify-center gap-2 p-2.5 rounded-lg border-2 text-xs font-medium transition-all ${
+                                  tempBulk.stackable ? "border-green-400 bg-green-50 text-green-700" : "border-slate-200 text-slate-600 hover:border-green-300"
+                                }`}
+                                data-testid="bulk-modal-stackable-yes"
+                              >
+                                <svg width="24" height="24" viewBox="0 0 56 56" className="shrink-0">
+                                  <rect x="8" y="30" width="40" height="18" rx="2" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1.5" />
+                                  <rect x="8" y="8" width="40" height="18" rx="2" fill="#bbf7d0" stroke="#22c55e" strokeWidth="1.5" />
+                                </svg>
+                                Stackable
+                              </button>
+                              <button
+                                onClick={() => setTempBulk(p => ({ ...p, stackable: false }))}
+                                className={`flex-1 flex items-center justify-center gap-2 p-2.5 rounded-lg border-2 text-xs font-medium transition-all ${
+                                  !tempBulk.stackable ? "border-amber-400 bg-amber-50 text-amber-700" : "border-slate-200 text-slate-600 hover:border-amber-300"
+                                }`}
+                                data-testid="bulk-modal-stackable-no"
+                              >
+                                <svg width="24" height="24" viewBox="0 0 56 56" className="shrink-0">
+                                  <rect x="8" y="20" width="40" height="28" rx="2" fill="#fef3c7" stroke="#f59e0b" strokeWidth="1.5" />
+                                  <line x1="14" y1="8" x2="42" y2="16" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" />
+                                  <line x1="42" y1="8" x2="14" y2="16" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" />
+                                </svg>
+                                Not Stackable
+                              </button>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide block mb-2">Rotation</label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {([
+                                { val: "all" as RotationMode, label: "All Axes", active: "border-blue-400 bg-blue-50 text-blue-700", hover: "hover:border-blue-300" },
+                                { val: "horizontal" as RotationMode, label: "Horizontal", active: "border-purple-400 bg-purple-50 text-purple-700", hover: "hover:border-purple-300" },
+                                { val: "fixed" as RotationMode, label: "Fixed", active: "border-slate-400 bg-slate-100 text-slate-700", hover: "hover:border-slate-300" },
+                              ] as const).map(opt => (
+                                <button
+                                  key={opt.val}
+                                  onClick={() => setTempBulk(p => ({ ...p, rotationMode: opt.val }))}
+                                  className={`p-2 rounded-lg border-2 text-[11px] font-medium transition-all ${
+                                    tempBulk.rotationMode === opt.val ? opt.active : `border-slate-200 text-slate-600 ${opt.hover}`
+                                  }`}
+                                  data-testid={`bulk-modal-rotation-${opt.val}`}
+                                >
+                                  {opt.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide block mb-2">Loading Sequence</label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {([
+                                { val: "first" as LoadPriority, label: "Load First", active: "border-red-400 bg-red-50 text-red-700", hover: "hover:border-red-300" },
+                                { val: "normal" as LoadPriority, label: "Normal", active: "border-blue-400 bg-blue-50 text-blue-700", hover: "hover:border-blue-300" },
+                                { val: "last" as LoadPriority, label: "Load Last", active: "border-emerald-400 bg-emerald-50 text-emerald-700", hover: "hover:border-emerald-300" },
+                              ] as const).map(opt => (
+                                <button
+                                  key={opt.val}
+                                  onClick={() => setTempBulk(p => ({ ...p, loadPriority: opt.val }))}
+                                  className={`p-2 rounded-lg border-2 text-[11px] font-medium transition-all ${
+                                    tempBulk.loadPriority === opt.val ? opt.active : `border-slate-200 text-slate-600 ${opt.hover}`
+                                  }`}
+                                  data-testid={`bulk-modal-priority-${opt.val}`}
+                                >
+                                  {opt.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide block mb-2">Pallet</label>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                              {([
+                                { val: "none" as PalletType, pal: false, label: "None", active: "border-slate-400 bg-slate-100 text-slate-700", hover: "hover:border-slate-300" },
+                                { val: "us48x40" as PalletType, pal: true, label: "US 48×40", active: "border-teal-400 bg-teal-50 text-teal-700", hover: "hover:border-teal-300" },
+                                { val: "euro" as PalletType, pal: true, label: "Euro", active: "border-indigo-400 bg-indigo-50 text-indigo-700", hover: "hover:border-indigo-300" },
+                                { val: "custom" as PalletType, pal: true, label: "Custom", active: "border-orange-400 bg-orange-50 text-orange-700", hover: "hover:border-orange-300" },
+                              ] as const).map(opt => (
+                                <button
+                                  key={opt.val}
+                                  onClick={() => setTempBulk(p => ({ ...p, palletized: opt.pal, palletType: opt.val }))}
+                                  className={`p-2 rounded-lg border-2 text-[11px] font-medium transition-all ${
+                                    (opt.val === "none" ? !tempBulk.palletized : tempBulk.palletized && tempBulk.palletType === opt.val)
+                                      ? opt.active : `border-slate-200 text-slate-600 ${opt.hover}`
+                                  }`}
+                                  data-testid={`bulk-modal-pallet-${opt.val}`}
+                                >
+                                  {opt.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3 pt-2 border-t border-slate-100">
+                            <Button
+                              onClick={() => {
+                                setBulkDefaults({ ...tempBulk });
+                                setCargoItems(prev => prev.map(item => ({
+                                  ...item,
+                                  stackable: tempBulk.stackable,
+                                  rotationMode: tempBulk.rotationMode,
+                                  loadPriority: tempBulk.loadPriority,
+                                  palletized: tempBulk.palletized,
+                                  palletType: tempBulk.palletType,
+                                })));
+                                setShowBulkModal(false);
+                                toast({ title: "Bulk settings applied", description: `Updated ${cargoItems.length} items` });
+                              }}
+                              className="flex-1"
+                              data-testid="bulk-modal-save"
+                            >
+                              Save & Apply to All
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => setShowBulkModal(false)}
+                              data-testid="bulk-modal-cancel"
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="sm:hidden space-y-2" data-testid="cargo-mobile-cards">
                     {cargoItems.map((item, idx) => {
                       const totalWt = item.weight * item.quantity;
@@ -2064,11 +2222,11 @@ export default function ContainerCalculator() {
                     </table>
                   </div>
 
-                  <div className="mt-5 flex gap-3">
+                  <div className="mt-5 space-y-2">
                     <Button
                       onClick={handleCalculate}
                       disabled={calculating}
-                      className="flex-1 gap-2"
+                      className="w-full gap-2"
                       data-testid="button-calculate"
                     >
                       {calculating ? (
@@ -2083,15 +2241,26 @@ export default function ContainerCalculator() {
                         </>
                       )}
                     </Button>
-                    <Button
-                      variant="outline"
-                      onClick={handleReset}
-                      className="gap-1"
-                      data-testid="button-reset"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                      Reset
-                    </Button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={addItem}
+                        className="gap-1.5"
+                        data-testid="button-add-cargo"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Cargo Item
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={handleReset}
+                        className="gap-1.5"
+                        data-testid="button-reset"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        Reset
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
