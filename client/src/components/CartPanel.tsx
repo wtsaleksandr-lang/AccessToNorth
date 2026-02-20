@@ -12,6 +12,12 @@ import { Badge } from "@/components/ui/badge";
 import { Minus, Plus, Trash2, ShoppingCart, ArrowRight } from "lucide-react";
 import { useCurrency } from "@/contexts/CurrencyContext";
 
+function categoryLabel(cat: string) {
+  if (cat === "package") return "Package";
+  if (cat === "addon") return "Add-on";
+  return "Service";
+}
+
 export function CartPanel() {
   const { items, isOpen, setIsOpen, removeItem, updateQuantity, subtotal, clearCart } = useCart();
   const [, setLocation] = useLocation();
@@ -19,8 +25,12 @@ export function CartPanel() {
 
   const handleCheckout = () => {
     setIsOpen(false);
-    setLocation("/canadian-customs-clearance/checkout");
+    setLocation("/checkout");
     window.scrollTo({ top: 0 });
+  };
+
+  const handleContinueShopping = () => {
+    setIsOpen(false);
   };
 
   return (
@@ -31,7 +41,7 @@ export function CartPanel() {
             <ShoppingCart className="w-5 h-5" />
             Your Cart
           </SheetTitle>
-          <SheetDescription>Customs clearance services</SheetDescription>
+          <SheetDescription>Review your selected services</SheetDescription>
         </SheetHeader>
 
         {items.length === 0 ? (
@@ -39,7 +49,7 @@ export function CartPanel() {
             <div className="text-center">
               <ShoppingCart className="w-12 h-12 text-slate-300 mx-auto mb-3" />
               <p className="text-sm text-slate-500" data-testid="text-cart-empty">Your cart is empty</p>
-              <p className="text-xs text-slate-400 mt-1">Add a clearance package or service to get started.</p>
+              <p className="text-xs text-slate-400 mt-1">Browse our services and add items to get started.</p>
             </div>
           </div>
         ) : (
@@ -58,9 +68,12 @@ export function CartPanel() {
                         variant="secondary"
                         className="no-default-hover-elevate no-default-active-elevate text-[10px] px-1.5 py-0"
                       >
-                        {item.category === "package" ? "Package" : "Add-on"}
+                        {categoryLabel(item.category)}
                       </Badge>
                     </div>
+                    {item.tier && (
+                      <p className="text-xs text-slate-500 mt-0.5">{item.tier}</p>
+                    )}
                     <p className="text-sm font-semibold text-slate-900 mt-1">
                       {formatPrice(item.price)}
                       {item.quantity > 1 && (
@@ -129,6 +142,14 @@ export function CartPanel() {
               >
                 Proceed to Checkout
                 <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full cursor-pointer"
+                onClick={handleContinueShopping}
+                data-testid="button-continue-shopping"
+              >
+                Continue Shopping
               </Button>
               <Button
                 variant="ghost"

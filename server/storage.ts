@@ -3,6 +3,7 @@ import {
   registrations, 
   contacts, 
   orders,
+  orderItems,
   uploads,
   messages,
   carmLeads,
@@ -24,8 +25,10 @@ import {
   type TariffCountry,
   type CustomsLead,
   type InsertCustomsLead,
+  type OrderItem,
+  type InsertOrderItem,
 } from "@shared/schema";
-import { eq, and, desc, ilike, or, sql } from "drizzle-orm";
+import { eq, and, desc, ilike, or, sql, lt, isNull, isNotNull } from "drizzle-orm";
 
 export interface IStorage {
   createRegistration(registration: InsertRegistration): Promise<Registration>;
@@ -51,6 +54,14 @@ export interface IStorage {
   getHsCodeByCode(code: string): Promise<HsCode | undefined>;
   getAllCountries(): Promise<TariffCountry[]>;
   createCustomsLead(lead: InsertCustomsLead): Promise<CustomsLead>;
+  createOrderItem(item: InsertOrderItem): Promise<OrderItem>;
+  getOrderItemsByOrderId(orderId: string): Promise<OrderItem[]>;
+  getOrderItemById(id: number): Promise<OrderItem | undefined>;
+  updateOrderItemIntake(id: number, intakeData: Record<string, any>): Promise<void>;
+  updateOrderItemStatus(id: number, status: string): Promise<void>;
+  getOrderBySecureToken(token: string): Promise<Order | undefined>;
+  getPendingDetailsItems(olderThan: Date): Promise<(OrderItem & { order: Order })[]>;
+  updateOrderItemReminder(id: number, field: 'reminder1SentAt' | 'reminder2SentAt' | 'onHoldAt'): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -336,6 +347,76 @@ export class DatabaseStorage implements IStorage {
       .values(insertLead)
       .returning();
     return lead;
+  }
+
+  async createOrderItem(item: InsertOrderItem): Promise<OrderItem> {
+    const [orderItem] = await db
+      .insert(orderItems)
+      .values(item)
+      .returning();
+    return orderItem;
+  }
+
+  async getOrderItemsByOrderId(orderId: string): Promise<OrderItem[]> {
+    return await db
+      .select()
+      .from(orderItems)
+      .where(eq(orderItems.orderId, orderId))
+      .orderBy(orderItems.id);
+  }
+
+  async getOrderItemById(id: number): Promise<OrderItem | undefined> {
+    const [item] = await db
+      .select()
+      .from(orderItems)
+      .where(eq(orderItems.id, id));
+    return item;
+  }
+
+  async updateOrderItemIntake(id: number, intakeData: Record<string, any>): Promise<void> {
+    await db
+      .update(orderItems)
+      .set({ intakeData, status: "Pending Review", completedAt: new Date() } as any)
+      .where(eq(orderItems.id, id));
+  }
+
+  async updateOrderItemStatus(id: number, status: string): Promise<void> {
+    await db
+      .update(orderItems)
+      .set({ status })
+      .where(eq(orderItems.id, id));
+  }
+
+  async getOrderBySecureToken(token: string): Promise<Order | undefined> {
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.secureToken, token));
+    return order;
+  }
+
+  async getPendingDetailsItems(olderThan: Date): Promise<(OrderItem & { order: Order })[]> {
+    const results = await db
+      .select({
+        orderItem: orderItems,
+        order: orders,
+      })
+      .from(orderItems)
+      .innerJoin(orders, eq(orderItems.orderId, orders.id))
+      .where(
+        and(
+          eq(orderItems.status, "Pending Details"),
+          lt(orderItems.createdAt, olderThan)
+        )
+      );
+    return results.map(r => ({ ...r.orderItem, order: r.order }));
+  }
+
+  async updateOrderItemReminder(id: number, field: 'reminder1SentAt' | 'reminder2SentAt' | 'onHoldAt'): Promise<void> {
+    await db
+      .update(orderItems)
+      .set({ [field]: new Date() } as any)
+      .where(eq(orderItems.id, id));
   }
 }
 

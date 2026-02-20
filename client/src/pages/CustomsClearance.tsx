@@ -137,7 +137,7 @@ export default function CustomsClearance() {
       id: pkg.id,
       name: pkg.name,
       price: pkg.price,
-      priceLabel: pkg.priceLabel,
+      serviceKey: pkg.id,
       category: "package",
     });
   };
@@ -147,7 +147,7 @@ export default function CustomsClearance() {
       id: addon.id,
       name: addon.name,
       price: addon.price,
-      priceLabel: addon.priceLabel,
+      serviceKey: addon.id,
       category: "addon",
     });
   };

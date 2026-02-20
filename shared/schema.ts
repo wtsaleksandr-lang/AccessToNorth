@@ -70,6 +70,8 @@ export const orders = pgTable("orders", {
   aiBrokerPackText: text("ai_broker_pack_text"),
   brokerPackPdfId: text("broker_pack_pdf_id"),
   brokerPackSentAt: timestamp("broker_pack_sent_at"),
+  secureToken: text("secure_token"),
+  secureTokenExpiresAt: timestamp("secure_token_expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -113,6 +115,23 @@ export const insertOrderSchema = createInsertSchema(orders).omit({
   updatedAt: true,
 });
 
+export const orderItems = pgTable("order_items", {
+  id: serial("id").primaryKey(),
+  orderId: text("order_id").notNull().references(() => orders.id),
+  serviceKey: text("service_key").notNull(),
+  serviceName: text("service_name").notNull(),
+  tier: text("tier"),
+  priceCAD: integer("price_cad").notNull(),
+  quantity: integer("quantity").notNull().default(1),
+  status: text("status").notNull().default("Pending Details"),
+  intakeData: jsonb("intake_data").$type<Record<string, any>>(),
+  completedAt: timestamp("completed_at"),
+  reminder1SentAt: timestamp("reminder_1_sent_at"),
+  reminder2SentAt: timestamp("reminder_2_sent_at"),
+  onHoldAt: timestamp("on_hold_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUploadSchema = createInsertSchema(uploads).omit({
   id: true,
   createdAt: true,
@@ -120,6 +139,15 @@ export const insertUploadSchema = createInsertSchema(uploads).omit({
 
 export const insertMessageSchema = createInsertSchema(messages).omit({
   id: true,
+  createdAt: true,
+});
+
+export const insertOrderItemSchema = createInsertSchema(orderItems).omit({
+  id: true,
+  completedAt: true,
+  reminder1SentAt: true,
+  reminder2SentAt: true,
+  onHoldAt: true,
   createdAt: true,
 });
 
@@ -133,6 +161,8 @@ export type Upload = typeof uploads.$inferSelect;
 export type InsertUpload = z.infer<typeof insertUploadSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type OrderItem = typeof orderItems.$inferSelect;
+export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
 
 export const carmLeads = pgTable("carm_leads", {
   id: serial("id").primaryKey(),

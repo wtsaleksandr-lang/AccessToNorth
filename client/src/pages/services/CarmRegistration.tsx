@@ -23,6 +23,7 @@ export default function CarmRegistration() {
         href: "/carm-security-calculator",
       }}
       ctaService="carm_portal"
+      priceCAD={499}
       additionalInfo="CARM is mandatory for all commercial importers in Canada. If you import goods, you need to be registered and compliant with the new system."
     />
   );

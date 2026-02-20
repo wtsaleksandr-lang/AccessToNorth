@@ -26,6 +26,8 @@ import CarmSecurityCalculator from "@/pages/CarmSecurityCalculator";
 import CustomsCalculator from "@/pages/CustomsCalculator";
 import CustomsClearance from "@/pages/CustomsClearance";
 import ClearanceCheckout from "@/pages/ClearanceCheckout";
+import Checkout from "@/pages/Checkout";
+import CompleteOrder from "@/pages/CompleteOrder";
 import BusinessNumberBN from "@/pages/services/BusinessNumberBN";
 import GstHstRegistration from "@/pages/services/GstHstRegistration";
 import CustomsClearanceCanada from "@/pages/services/CustomsClearanceCanada";
@@ -106,6 +108,8 @@ function Router() {
         <Route path="/customs-calculator" component={CustomsCalculator} />
         <Route path="/canadian-customs-clearance" component={CustomsClearance} />
         <Route path="/canadian-customs-clearance/checkout" component={ClearanceCheckout} />
+        <Route path="/checkout" component={Checkout} />
+        <Route path="/complete-order" component={CompleteOrder} />
         <Route component={NotFound} />
       </Switch>
     </>

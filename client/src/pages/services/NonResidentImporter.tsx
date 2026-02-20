@@ -24,6 +24,7 @@ export default function NonResidentImporter() {
         href: "/carm-security-calculator",
       }}
       ctaService="non_resident_tax"
+      priceCAD={399}
       additionalInfo="Non-resident businesses selling digital products, services, or physical goods into Canada may be required to register for GST/HST and obtain a Business Number. We specialize in guiding international businesses through this process."
     />
   );

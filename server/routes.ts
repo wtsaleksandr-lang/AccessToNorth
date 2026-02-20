@@ -1,10 +1,12 @@
 import type { Express } from "express";
 import type { Server } from "http";
+import crypto from "crypto";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { insertCarmLeadSchema } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
+import { sendEmail, buildCartOrderConfirmationEmail, buildCartInternalAlertEmail, buildReminderEmail, buildOnHoldEmail } from "./emailService";
 
 const FRONTEND_TO_STRIPE_KEY: Record<string, string> = {
   bn: "business-number",
@@ -246,5 +248,273 @@ export async function registerRoutes(
     res.json({ rate, base: "CAD", target: "USD" });
   });
 
+  const cartCheckoutSchema = z.object({
+    customerEmail: z.string().email("Valid email is required"),
+    customerName: z.string().min(1, "Name is required"),
+    items: z.array(z.object({
+      id: z.string(),
+      name: z.string(),
+      price: z.number().positive(),
+      serviceKey: z.string(),
+      tier: z.string().optional(),
+      category: z.string(),
+      quantity: z.number().int().positive(),
+    })).min(1, "Cart cannot be empty"),
+  });
+
+  app.post('/api/cart-checkout', async (req, res) => {
+    try {
+      const input = cartCheckoutSchema.parse(req.body);
+      const stripe = await getUncachableStripeClient();
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+      const lineItems = input.items.map(item => ({
+        price_data: {
+          currency: 'cad',
+          product_data: {
+            name: item.name,
+            metadata: { serviceKey: item.serviceKey, tier: item.tier || '' },
+          },
+          unit_amount: Math.round(item.price * 100),
+        },
+        quantity: item.quantity,
+      }));
+
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        payment_method_types: ['card'],
+        line_items: lineItems,
+        customer_email: input.customerEmail,
+        metadata: {
+          customerName: input.customerName,
+          cartItems: JSON.stringify(input.items.map(i => ({
+            id: i.id, name: i.name, price: i.price,
+            serviceKey: i.serviceKey, tier: i.tier,
+            category: i.category, quantity: i.quantity,
+          }))),
+        },
+        success_url: `${baseUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/checkout?cancelled=true`,
+      });
+
+      res.json({ url: session.url, sessionId: session.id });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      console.error('Error creating cart checkout session:', err);
+      res.status(500).json({ message: "Failed to create checkout session" });
+    }
+  });
+
+  app.post('/api/cart-checkout/complete', async (req, res) => {
+    try {
+      const { sessionId } = req.body;
+      if (!sessionId) {
+        return res.status(400).json({ message: "Session ID is required" });
+      }
+
+      const existing = await storage.getOrderByStripeSessionId(sessionId);
+      if (existing) {
+        const items = await storage.getOrderItemsByOrderId(existing.id);
+        return res.json({ orderId: existing.id, token: existing.secureToken, items });
+      }
+
+      const stripe = await getUncachableStripeClient();
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      if (session.payment_status !== 'paid') {
+        return res.status(400).json({ message: "Payment not completed" });
+      }
+
+      const customerEmail = session.customer_email || '';
+      const customerName = session.metadata?.customerName || '';
+      const cartItems = JSON.parse(session.metadata?.cartItems || '[]');
+
+      const orderId = `ATN-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+      const secureToken = crypto.randomBytes(32).toString('hex');
+      const tokenExpiry = new Date();
+      tokenExpiry.setDate(tokenExpiry.getDate() + 90);
+
+      const serviceNames = cartItems.map((i: any) => i.name).join(', ');
+
+      const order = await storage.createOrder({
+        id: orderId,
+        customerEmail,
+        customerName,
+        serviceType: serviceNames,
+        status: "Pending Details",
+        steps: [
+          { label: "Payment received", state: "done" },
+          { label: "Complete service details", state: "working" },
+          { label: "Under review", state: "upcoming" },
+          { label: "Completed", state: "upcoming" },
+        ],
+        stripeSessionId: sessionId,
+        secureToken,
+        secureTokenExpiresAt: tokenExpiry,
+      });
+
+      const orderItemsCreated = [];
+      for (const item of cartItems) {
+        const orderItem = await storage.createOrderItem({
+          orderId: order.id,
+          serviceKey: item.serviceKey,
+          serviceName: item.name,
+          tier: item.tier || null,
+          priceCAD: item.price,
+          quantity: item.quantity,
+          status: "Pending Details",
+        });
+        orderItemsCreated.push(orderItem);
+      }
+
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : "https://www.accesstonorth.com";
+      const completeUrl = `${baseUrl}/complete-order?token=${secureToken}`;
+
+      try {
+        const confirmEmail = buildCartOrderConfirmationEmail(orderId, customerName, cartItems, completeUrl);
+        confirmEmail.to = customerEmail;
+        await sendEmail(confirmEmail);
+
+        const alertEmail = buildCartInternalAlertEmail(orderId, customerEmail, customerName, cartItems, session.amount_total || 0);
+        await sendEmail(alertEmail);
+
+        await storage.updateOrderMetadata(orderId, {
+          confirmationEmailSentAt: new Date(),
+          internalEmailSentAt: new Date(),
+        });
+      } catch (emailErr) {
+        console.error('Error sending order emails:', emailErr);
+      }
+
+      res.json({ orderId: order.id, token: secureToken, items: orderItemsCreated });
+    } catch (err: any) {
+      console.error('Error completing cart checkout:', err);
+      res.status(500).json({ message: "Failed to process order" });
+    }
+  });
+
+  app.get('/api/orders/by-token/:token', async (req, res) => {
+    try {
+      const order = await storage.getOrderBySecureToken(req.params.token);
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      if (order.secureTokenExpiresAt && new Date() > new Date(order.secureTokenExpiresAt)) {
+        return res.status(410).json({ message: "This link has expired" });
+      }
+      const items = await storage.getOrderItemsByOrderId(order.id);
+      res.json({
+        id: order.id,
+        customerEmail: order.customerEmail,
+        customerName: order.customerName,
+        status: order.status,
+        items,
+        createdAt: order.createdAt,
+      });
+    } catch (err) {
+      console.error('Error fetching order by token:', err);
+      res.status(500).json({ message: "Failed to fetch order" });
+    }
+  });
+
+  app.patch('/api/order-items/:id/intake', async (req, res) => {
+    try {
+      const itemId = parseInt(req.params.id);
+      if (isNaN(itemId)) {
+        return res.status(400).json({ message: "Invalid item ID" });
+      }
+
+      const item = await storage.getOrderItemById(itemId);
+      if (!item) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+
+      const { token, intakeData } = req.body;
+      if (!token || !intakeData) {
+        return res.status(400).json({ message: "Token and intake data are required" });
+      }
+
+      const order = await storage.getOrderBySecureToken(token);
+      if (!order || order.id !== item.orderId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      await storage.updateOrderItemIntake(itemId, intakeData);
+
+      const allItems = await storage.getOrderItemsByOrderId(order.id);
+      const allComplete = allItems.every(i => i.status !== "Pending Details");
+      if (allComplete) {
+        await storage.updateOrderStatus(order.id, "Pending Review");
+        await storage.updateOrderSteps(order.id, [
+          { label: "Payment received", state: "done" },
+          { label: "Details submitted", state: "done" },
+          { label: "Under review", state: "working" },
+          { label: "Completed", state: "upcoming" },
+        ]);
+      }
+
+      res.json({ success: true, item: await storage.getOrderItemById(itemId) });
+    } catch (err) {
+      console.error('Error submitting intake:', err);
+      res.status(500).json({ message: "Failed to submit details" });
+    }
+  });
+
+  startReminderJob();
+
   return httpServer;
+}
+
+function startReminderJob() {
+  const INTERVAL = 60 * 60 * 1000;
+
+  async function checkReminders() {
+    try {
+      const now = new Date();
+      const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+      const pendingItems = await storage.getPendingDetailsItems(oneDayAgo);
+
+      for (const item of pendingItems) {
+        const created = new Date(item.createdAt!);
+        const baseUrl = process.env.REPLIT_DEV_DOMAIN
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+          : "https://www.accesstonorth.com";
+        const completeUrl = `${baseUrl}/complete-order?token=${item.order.secureToken}`;
+
+        if (created <= sevenDaysAgo && !item.onHoldAt) {
+          await storage.updateOrderItemReminder(item.id, 'onHoldAt');
+          await storage.updateOrderItemStatus(item.id, 'On Hold');
+          const email = buildOnHoldEmail(item.order.id, item.order.customerName || '', item.serviceName);
+          await sendEmail(email);
+          console.log(`[reminder] Order ${item.order.id} item "${item.serviceName}" marked On Hold`);
+        } else if (created <= threeDaysAgo && !item.reminder2SentAt && !item.onHoldAt) {
+          await storage.updateOrderItemReminder(item.id, 'reminder2SentAt');
+          const email = buildReminderEmail(item.order.id, item.order.customerName || '', item.order.customerEmail, item.serviceName, completeUrl, 2);
+          email.to = item.order.customerEmail;
+          await sendEmail(email);
+          console.log(`[reminder] Sent 2nd reminder for order ${item.order.id} item "${item.serviceName}"`);
+        } else if (created <= oneDayAgo && !item.reminder1SentAt && !item.reminder2SentAt && !item.onHoldAt) {
+          await storage.updateOrderItemReminder(item.id, 'reminder1SentAt');
+          const email = buildReminderEmail(item.order.id, item.order.customerName || '', item.order.customerEmail, item.serviceName, completeUrl, 1);
+          email.to = item.order.customerEmail;
+          await sendEmail(email);
+          console.log(`[reminder] Sent 1st reminder for order ${item.order.id} item "${item.serviceName}"`);
+        }
+      }
+    } catch (err) {
+      console.error('[reminder] Error checking reminders:', err);
+    }
+  }
+
+  setTimeout(() => {
+    checkReminders();
+    setInterval(checkReminders, INTERVAL);
+  }, 30000);
 }

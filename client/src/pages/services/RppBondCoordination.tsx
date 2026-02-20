@@ -23,6 +23,7 @@ export default function RppBondCoordination() {
         href: "/carm-security-calculator",
       }}
       ctaService="rpp_bond"
+      priceCAD={395}
       additionalInfo="The Release Prior to Payment (RPP) program allows importers to receive their goods before paying duties and taxes, improving cash flow. A surety bond is typically required to participate."
     />
   );

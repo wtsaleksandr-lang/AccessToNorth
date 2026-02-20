@@ -302,6 +302,140 @@ export function buildBrokerPackDeliveryEmail(
   };
 }
 
+export function buildCartOrderConfirmationEmail(
+  orderId: string,
+  customerName: string,
+  items: Array<{ name: string; price: number; quantity: number }>,
+  completeUrl: string
+): SendEmailParams {
+  const totalCAD = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const itemsHtml = items.map(i => `
+    <tr>
+      <td>${i.name}</td>
+      <td style="text-align:right">CA$${i.price.toFixed(2)}${i.quantity > 1 ? ` x${i.quantity}` : ''}</td>
+    </tr>`).join('');
+
+  const html = emailWrapper(`
+<div class="body">
+<h2>Thank You for Your Order!</h2>
+<p>Hi ${customerName || 'there'},</p>
+<p>Your payment has been received. Your order reference is <strong style="font-family:monospace;color:${BRAND_COLOR}">${orderId}</strong>.</p>
+
+<table class="detail-table">
+${itemsHtml}
+<tr style="border-top:2px solid ${BRAND_DARK}">
+  <td style="font-weight:700;color:${BRAND_DARK}">Total</td>
+  <td style="text-align:right;font-weight:700;color:${BRAND_DARK}">CA$${totalCAD.toFixed(2)}</td>
+</tr>
+</table>
+
+<div class="highlight-box">
+<p><strong>Next Step:</strong> Please complete the service details form so our team can begin processing your order. This typically takes 5-10 minutes.</p>
+</div>
+
+<p style="text-align:center;margin:24px 0">
+<a href="${completeUrl}" class="btn">Complete Service Details</a>
+</p>
+
+<p style="font-size:12px;color:#718096">This link is valid for 90 days. You can return to it at any time to complete or update your details.</p>
+</div>`);
+
+  return {
+    to: "",
+    subject: `Order Confirmed – ${orderId} | AccessToNorth.com`,
+    html,
+  };
+}
+
+export function buildCartInternalAlertEmail(
+  orderId: string,
+  customerEmail: string,
+  customerName: string,
+  items: Array<{ name: string; price: number; quantity: number }>,
+  amountCents: number
+): SendEmailParams {
+  const itemsList = items.map(i => `${i.name} (CA$${i.price.toFixed(2)}${i.quantity > 1 ? ` x${i.quantity}` : ''})`).join(', ');
+  const html = emailWrapper(`
+<div class="body">
+<h2>New Cart Order Received</h2>
+<table class="detail-table">
+<tr><td>Order ID</td><td style="font-family:monospace;color:${BRAND_COLOR}">${orderId}</td></tr>
+<tr><td>Customer</td><td>${customerName} (${customerEmail})</td></tr>
+<tr><td>Services</td><td>${itemsList}</td></tr>
+<tr><td>Total</td><td>CA$${(amountCents / 100).toFixed(2)}</td></tr>
+<tr><td>Status</td><td>Pending Details</td></tr>
+</table>
+<p>Customer has been sent a link to complete their intake forms.</p>
+</div>`);
+
+  return {
+    to: OPS_EMAIL,
+    subject: `[New Order] ${orderId} – ${customerName}`,
+    html,
+  };
+}
+
+export function buildReminderEmail(
+  orderId: string,
+  customerName: string,
+  customerEmail: string,
+  serviceName: string,
+  completeUrl: string,
+  reminderNumber: 1 | 2
+): SendEmailParams {
+  const urgency = reminderNumber === 2
+    ? "We noticed you haven't completed your service details yet. Please submit them soon so we can begin processing your order."
+    : "Just a friendly reminder to complete your service details so we can start working on your order.";
+
+  const html = emailWrapper(`
+<div class="body">
+<h2>Reminder: Complete Your Service Details</h2>
+<p>Hi ${customerName || 'there'},</p>
+<p>${urgency}</p>
+
+<table class="detail-table">
+<tr><td>Order</td><td style="font-family:monospace;color:${BRAND_COLOR}">${orderId}</td></tr>
+<tr><td>Service</td><td>${serviceName}</td></tr>
+</table>
+
+<p style="text-align:center;margin:24px 0">
+<a href="${completeUrl}" class="btn">Complete Details Now</a>
+</p>
+
+<p style="font-size:12px;color:#718096">If you need assistance, reply to this email or contact us at ${OPS_EMAIL}.</p>
+</div>`);
+
+  return {
+    to: customerEmail,
+    subject: `Reminder: Complete your order details – ${orderId}`,
+    html,
+  };
+}
+
+export function buildOnHoldEmail(
+  orderId: string,
+  customerName: string,
+  serviceName: string
+): SendEmailParams {
+  const html = emailWrapper(`
+<div class="body">
+<h2>Order Item Placed On Hold</h2>
+<table class="detail-table">
+<tr><td>Order ID</td><td style="font-family:monospace;color:${BRAND_COLOR}">${orderId}</td></tr>
+<tr><td>Service</td><td>${serviceName}</td></tr>
+<tr><td>Customer</td><td>${customerName}</td></tr>
+<tr><td>Reason</td><td>Intake form not completed after 7 days</td></tr>
+</table>
+<p>This item has been automatically marked as <strong>On Hold</strong>. Please reach out to the customer if needed.</p>
+</div>`);
+
+  return {
+    to: OPS_EMAIL,
+    subject: `[On Hold] ${orderId} – ${serviceName} – intake incomplete`,
+    html,
+  };
+}
+
 export function buildStatusUpdateEmail(
   orderId: string,
   newStatus: string,

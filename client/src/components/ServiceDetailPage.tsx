@@ -5,8 +5,11 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { usePageMeta } from "@/hooks/use-page-meta";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, ShoppingCart } from "lucide-react";
 import { type LucideIcon } from "lucide-react";
+import { useCart } from "@/contexts/CartContext";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface ServiceDetailProps {
   title: string;
@@ -18,6 +21,7 @@ interface ServiceDetailProps {
   whatsIncluded: string[];
   toolLink?: { label: string; href: string };
   ctaService: string;
+  priceCAD?: number;
   additionalInfo?: string;
 }
 
@@ -31,9 +35,26 @@ export function ServiceDetailPage({
   whatsIncluded,
   toolLink,
   ctaService,
+  priceCAD,
   additionalInfo,
 }: ServiceDetailProps) {
   usePageMeta({ title: metaTitle, description: metaDescription, canonical });
+  const { addItem, setIsOpen } = useCart();
+  const { formatPrice } = useCurrency();
+  const { toast } = useToast();
+
+  const handleAddToCart = () => {
+    addItem({
+      id: ctaService,
+      name: title,
+      price: priceCAD || 0,
+      serviceKey: ctaService,
+      category: "service",
+    });
+    toast({ title: `${title} added to cart` });
+  };
+
+  const isClearance = ctaService === "customs_clearance";
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
@@ -54,6 +75,11 @@ export function ServiceDetailPage({
                 {title}
               </h1>
               <p className="text-slate-600 mt-1">{subtitle}</p>
+              {priceCAD && (
+                <p className="text-lg font-bold text-primary mt-2" data-testid="text-service-price">
+                  {formatPrice(priceCAD)}
+                </p>
+              )}
             </div>
           </div>
 
@@ -90,12 +116,26 @@ export function ServiceDetailPage({
           )}
 
           <div className="flex flex-col sm:flex-row gap-3">
-            <Link href={ctaService === "customs_clearance" ? "/canadian-customs-clearance" : `/request?service=${ctaService}`}>
-              <Button size="lg" className="cursor-pointer w-full sm:w-auto" data-testid="button-request-service">
-                {ctaService === "customs_clearance" ? "View Clearance Packages" : "Request This Service"}
-                <ArrowRight className="w-5 h-5 ml-2" />
+            {isClearance ? (
+              <Link href="/canadian-customs-clearance">
+                <Button size="lg" className="cursor-pointer w-full sm:w-auto" data-testid="button-request-service">
+                  View Clearance Packages
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              </Link>
+            ) : priceCAD ? (
+              <Button size="lg" className="cursor-pointer w-full sm:w-auto" onClick={handleAddToCart} data-testid="button-add-to-cart">
+                <ShoppingCart className="w-5 h-5 mr-2" />
+                Add to Cart &mdash; {formatPrice(priceCAD)}
               </Button>
-            </Link>
+            ) : (
+              <Link href={`/request?service=${ctaService}`}>
+                <Button size="lg" className="cursor-pointer w-full sm:w-auto" data-testid="button-request-service">
+                  Request This Service
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              </Link>
+            )}
             <Link href="/contact">
               <Button size="lg" variant="outline" className="cursor-pointer w-full sm:w-auto" data-testid="button-contact-service">
                 Ask a Question

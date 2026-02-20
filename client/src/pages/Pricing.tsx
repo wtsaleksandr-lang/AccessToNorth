@@ -5,8 +5,10 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { usePageMeta } from "@/hooks/use-page-meta";
-import { ArrowRight, ChevronDown, Award, Check } from "lucide-react";
+import { ArrowRight, ChevronDown, Award, Check, ShoppingCart } from "lucide-react";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { useCart } from "@/contexts/CartContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface PricingItem {
   name: string;
@@ -83,6 +85,30 @@ const tabs = [
 export default function Pricing() {
   const [expandedSection, setExpandedSection] = useState<string>("business");
   const { formatPrice, isUSD } = useCurrency();
+  const { addItem, setIsOpen } = useCart();
+  const { toast } = useToast();
+
+  const handleAddToCart = (item: PricingItem) => {
+    addItem({
+      id: item.service,
+      name: item.name,
+      price: item.priceCAD,
+      serviceKey: item.service,
+      category: item.isBundle ? "package" : "service",
+    });
+    toast({ title: `${item.name} added to cart` });
+  };
+
+  const handleAddAddonToCart = (addon: typeof addons[0]) => {
+    addItem({
+      id: addon.key,
+      name: addon.name,
+      price: addon.priceCAD,
+      serviceKey: addon.key,
+      category: "addon",
+    });
+    toast({ title: `${addon.name} added to cart` });
+  };
 
   usePageMeta({
     title: "Pricing | AccessToNorth.com",
@@ -170,11 +196,23 @@ export default function Pricing() {
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
                             <span className="font-bold text-slate-900 text-sm">{formatPrice(item.priceCAD)}</span>
-                            <Link href={item.isClearance ? "/canadian-customs-clearance" : buildRequestUrl(item.service)}>
-                              <Button size="sm" className="cursor-pointer" data-testid={`button-select-${item.service}`}>
-                                {item.isClearance ? "View Packages" : "Select"}
+                            {item.isClearance ? (
+                              <Link href="/canadian-customs-clearance">
+                                <Button size="sm" className="cursor-pointer" data-testid={`button-select-${item.service}`}>
+                                  View Packages
+                                </Button>
+                              </Link>
+                            ) : (
+                              <Button
+                                size="sm"
+                                className="cursor-pointer"
+                                onClick={() => handleAddToCart(item)}
+                                data-testid={`button-add-${item.service}`}
+                              >
+                                <ShoppingCart className="w-3.5 h-3.5 mr-1" />
+                                Add to Cart
                               </Button>
-                            </Link>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -184,20 +222,25 @@ export default function Pricing() {
                     {(section.id === "clearance" || section.id === "importer") && (
                       <div className="mt-5 pt-4 border-t border-slate-200">
                         <h3 className="text-sm font-bold text-slate-700 mb-3">Add-ons</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
+                        <div className="space-y-1.5">
                           {addons.map((addon) => (
                             <div key={addon.key} className="flex items-center justify-between text-sm py-1.5" data-testid={`addon-${addon.key}`}>
                               <span className="text-slate-600">{addon.name}</span>
-                              <span className="font-medium text-slate-800 ml-2 shrink-0">{"pricePrefix" in addon && addon.pricePrefix ? addon.pricePrefix : ""}{formatPrice(addon.priceCAD)}</span>
+                              <div className="flex items-center gap-2 ml-2 shrink-0">
+                                <span className="font-medium text-slate-800">{"pricePrefix" in addon && addon.pricePrefix ? addon.pricePrefix : ""}{formatPrice(addon.priceCAD)}</span>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="cursor-pointer text-xs h-7"
+                                  onClick={() => handleAddAddonToCart(addon)}
+                                  data-testid={`button-add-addon-${addon.key}`}
+                                >
+                                  <ShoppingCart className="w-3 h-3 mr-1" />
+                                  Add
+                                </Button>
+                              </div>
                             </div>
                           ))}
-                        </div>
-                        <div className="mt-3">
-                          <Link href={section.id === "clearance" ? "/canadian-customs-clearance" : "/request"}>
-                            <Button variant="outline" size="sm" className="cursor-pointer text-xs" data-testid="button-request-addons">
-                              {section.id === "clearance" ? "View Clearance Packages" : "Request with Add-ons"} <ArrowRight className="w-3 h-3 ml-1" />
-                            </Button>
-                          </Link>
                         </div>
                       </div>
                     )}
