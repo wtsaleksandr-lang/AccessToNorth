@@ -30,6 +30,15 @@ import {
   X,
   Maximize2,
   Settings2,
+  Layers,
+  RotateCw,
+  Eye,
+  EyeOff,
+  ArrowUpDown,
+  ChevronDown,
+  CheckSquare,
+  Square,
+  Minus,
 } from "lucide-react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -93,6 +102,10 @@ const CONTAINER_PRESETS: ContainerSpec[] = [
   },
 ];
 
+type RotationMode = "all" | "horizontal" | "fixed";
+type LoadPriority = "first" | "normal" | "last";
+type PalletType = "none" | "us48x40" | "euro" | "custom";
+
 interface CargoItem {
   id: string;
   name: string;
@@ -103,7 +116,17 @@ interface CargoItem {
   quantity: number;
   color: string;
   stackable: boolean;
+  palletized: boolean;
+  palletType: PalletType;
+  rotationMode: RotationMode;
+  included: boolean;
+  loadPriority: LoadPriority;
 }
+
+const PALLET_DIMS: Record<string, { l: number; w: number; h: number; label: string }> = {
+  us48x40: { l: 48, w: 40, h: 6, label: "US 48×40\"" },
+  euro: { l: 47.2, w: 31.5, h: 5.7, label: "Euro 1200×800mm" },
+};
 
 interface PlacedBox {
   cargoId: string;
@@ -156,18 +179,38 @@ function sqInToSqFt(sqIn: number) {
   return sqIn / 144;
 }
 
+function getRotations(
+  bl: number, bw: number, bh: number, mode: RotationMode
+): [number, number, number, string][] {
+  if (mode === "fixed") {
+    return [[bl, bw, bh, "LWH"]];
+  }
+  if (mode === "horizontal") {
+    return [
+      [bl, bw, bh, "LWH"],
+      [bw, bl, bh, "WLH"],
+    ];
+  }
+  return [
+    [bl, bw, bh, "LWH"],
+    [bl, bh, bw, "LHW"],
+    [bw, bl, bh, "WLH"],
+    [bw, bh, bl, "WHL"],
+    [bh, bl, bw, "HLW"],
+    [bh, bw, bl, "HWL"],
+  ];
+}
+
 function packBoxes(
   items: CargoItem[],
   container: ContainerSpec,
-  unitSystem: "imperial" | "metric"
 ): LoadingResult {
   const cL = container.lengthIn;
   const cW = container.widthIn;
   const cH = container.heightIn;
   const maxPay = container.maxPayloadLbs;
 
-  const toInches = unitSystem === "metric" ? 0.393701 : 1;
-  const toLbs = unitSystem === "metric" ? 2.20462 : 1;
+  const includedItems = items.filter((i) => i.included);
 
   const allBoxes: {
     cargoId: string;
@@ -176,26 +219,45 @@ function packBoxes(
     dims: [number, number, number];
     weight: number;
     stackable: boolean;
+    rotationMode: RotationMode;
+    loadPriority: LoadPriority;
   }[] = [];
 
-  for (const item of items) {
+  for (const item of includedItems) {
+    let boxL = item.length;
+    let boxW = item.width;
+    let boxH = item.height;
+    let boxWeight = item.weight;
+
+    if (item.palletized && item.palletType !== "none" && item.palletType !== "custom") {
+      const pd = PALLET_DIMS[item.palletType];
+      if (pd) {
+        boxL = Math.max(boxL, pd.l);
+        boxW = Math.max(boxW, pd.w);
+        boxH = boxH + pd.h;
+        boxWeight = boxWeight + 40;
+      }
+    }
+
     for (let q = 0; q < item.quantity; q++) {
       allBoxes.push({
         cargoId: item.id,
         name: item.name || `Item ${items.indexOf(item) + 1}`,
         color: item.color,
-        dims: [
-          item.length * toInches,
-          item.width * toInches,
-          item.height * toInches,
-        ],
-        weight: item.weight * toLbs,
+        dims: [boxL, boxW, boxH],
+        weight: boxWeight,
         stackable: item.stackable,
+        rotationMode: item.rotationMode,
+        loadPriority: item.loadPriority,
       });
     }
   }
 
+  const priorityOrder: Record<LoadPriority, number> = { first: 0, normal: 1, last: 2 };
   allBoxes.sort((a, b) => {
+    const pa = priorityOrder[a.loadPriority];
+    const pb = priorityOrder[b.loadPriority];
+    if (pa !== pb) return pa - pb;
     const volA = a.dims[0] * a.dims[1] * a.dims[2];
     const volB = b.dims[0] * b.dims[1] * b.dims[2];
     return volB - volA;
@@ -211,20 +273,15 @@ function packBoxes(
 
   for (const box of allBoxes) {
     const [bl, bw, bh] = box.dims;
-    const rotations: [number, number, number, string][] = [
-      [bl, bw, bh, "LWH"],
-      [bl, bh, bw, "LHW"],
-      [bw, bl, bh, "WLH"],
-      [bw, bh, bl, "WHL"],
-      [bh, bl, bw, "HLW"],
-      [bh, bw, bl, "HWL"],
-    ];
+    const rotations = getRotations(bl, bw, bh, box.rotationMode);
 
     let bestFit: { spaceIdx: number; rotation: [number, number, number, string] } | null = null;
     let bestWaste = Infinity;
 
     for (let si = 0; si < spaces.length; si++) {
       const sp = spaces[si];
+      if (!box.stackable && sp.y > 0.1) continue;
+
       for (const rot of rotations) {
         const [rl, rw, rh] = rot;
         if (rl <= sp.l + 0.01 && rw <= sp.w + 0.01 && rh <= sp.h + 0.01) {
@@ -282,6 +339,7 @@ function packBoxes(
 
   const totalVolume = placed.reduce((s, p) => s + p.l * p.w * p.h, 0);
   const containerVolume = cL * cW * cH;
+  const totalPiecesAll = items.filter((i) => i.included).reduce((s, i) => s + i.quantity, 0);
 
   let maxX = 0, maxZ = 0;
   for (const p of placed) {
@@ -302,7 +360,7 @@ function packBoxes(
     floorArea: sqInToSqFt(floorArea),
     containerFloorArea: sqInToSqFt(cL * cW),
     piecesLoaded: placed.length,
-    piecesTotal: allBoxes.length,
+    piecesTotal: totalPiecesAll,
   };
 }
 
@@ -624,23 +682,30 @@ export default function ContainerCalculator() {
     heightIn: 94.2,
     maxPayloadLbs: 62170,
   });
-  const [cargoItems, setCargoItems] = useState<CargoItem[]>([
-    {
-      id: generateId(),
-      name: "",
-      length: 0,
-      width: 0,
-      height: 0,
-      weight: 0,
-      quantity: 1,
-      color: CARGO_COLORS[0],
-      stackable: true,
-    },
-  ]);
+  const defaultCargoItem = useCallback((colorIdx: number): CargoItem => ({
+    id: generateId(),
+    name: "",
+    length: 0,
+    width: 0,
+    height: 0,
+    weight: 0,
+    quantity: 1,
+    color: CARGO_COLORS[colorIdx % CARGO_COLORS.length],
+    stackable: true,
+    palletized: false,
+    palletType: "none",
+    rotationMode: "all",
+    included: true,
+    loadPriority: "normal",
+  }), []);
+
+  const [cargoItems, setCargoItems] = useState<CargoItem[]>([defaultCargoItem(0)]);
   const [result, setResult] = useState<LoadingResult | null>(null);
   const [calculating, setCalculating] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const isMetric = unitSystem === "metric";
   const dimFactor = isMetric ? IN_TO_CM : 1;
@@ -691,25 +756,22 @@ export default function ContainerCalculator() {
   }, [unitSystem]);
 
   const addItem = useCallback(() => {
-    const colorIdx = cargoItems.length % CARGO_COLORS.length;
-    setCargoItems((prev) => [
-      ...prev,
-      {
-        id: generateId(),
-        name: "",
-        length: 0,
-        width: 0,
-        height: 0,
-        weight: 0,
-        quantity: 1,
-        color: CARGO_COLORS[colorIdx],
-        stackable: true,
-      },
-    ]);
-  }, [cargoItems.length]);
+    const colorIdx = cargoItems.length;
+    setCargoItems((prev) => [...prev, defaultCargoItem(colorIdx)]);
+  }, [cargoItems.length, defaultCargoItem]);
 
   const removeItem = useCallback((id: string) => {
     setCargoItems((prev) => prev.filter((i) => i.id !== id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
   }, []);
 
   const updateItem = useCallback((id: string, field: keyof CargoItem, value: any) => {
@@ -720,12 +782,12 @@ export default function ContainerCalculator() {
 
   const handleCalculate = useCallback(() => {
     const validItems = cargoItems.filter(
-      (i) => i.length > 0 && i.width > 0 && i.height > 0 && i.quantity > 0
+      (i) => i.included && i.length > 0 && i.width > 0 && i.height > 0 && i.quantity > 0
     );
     if (validItems.length === 0) {
       toast({
         title: "No cargo entered",
-        description: "Please enter at least one cargo item with valid dimensions.",
+        description: "Please enter at least one included cargo item with valid dimensions.",
         variant: "destructive",
       });
       return;
@@ -733,35 +795,67 @@ export default function ContainerCalculator() {
 
     setCalculating(true);
     setTimeout(() => {
-      const res = packBoxes(validItems, container, "imperial");
-      setResult(res);
-      setCalculating(false);
+      try {
+        const res = packBoxes(validItems, container);
+        setResult(res);
+        setCalculating(false);
 
-      if (res.unplaced.length > 0) {
+        if (res.unplaced.length > 0) {
+          toast({
+            title: "Some items didn't fit",
+            description: `${res.unplaced.reduce((s, u) => s + u.qty, 0)} piece(s) could not fit in the container.`,
+          });
+        }
+      } catch (err) {
+        console.error("packBoxes error:", err);
+        setCalculating(false);
         toast({
-          title: "Some items didn't fit",
-          description: `${res.unplaced.reduce((s, u) => s + u.qty, 0)} piece(s) could not fit in the container.`,
+          title: "Calculation error",
+          description: "Something went wrong. Please check your inputs.",
+          variant: "destructive",
         });
       }
     }, 500);
   }, [cargoItems, container, toast]);
 
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) =>
+      prev.size === cargoItems.length
+        ? new Set()
+        : new Set(cargoItems.map((i) => i.id))
+    );
+  }, [cargoItems]);
+
+  const toggleExpanded = useCallback((id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const bulkUpdate = useCallback((field: keyof CargoItem, value: any) => {
+    setCargoItems((prev) =>
+      prev.map((item) =>
+        selectedIds.has(item.id) ? { ...item, [field]: value } : item
+      )
+    );
+  }, [selectedIds]);
+
   const handleReset = useCallback(() => {
     setResult(null);
-    setCargoItems([
-      {
-        id: generateId(),
-        name: "",
-        length: 0,
-        width: 0,
-        height: 0,
-        weight: 0,
-        quantity: 1,
-        color: CARGO_COLORS[0],
-        stackable: true,
-      },
-    ]);
-  }, []);
+    setCargoItems([defaultCargoItem(0)]);
+    setSelectedIds(new Set());
+    setExpandedIds(new Set());
+  }, [defaultCargoItem]);
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
@@ -1028,109 +1122,427 @@ export default function ContainerCalculator() {
                     </Button>
                   </div>
 
+                  {cargoItems.length > 1 && (
+                    <div className="flex items-center gap-2 mb-3 pb-3 border-b border-slate-100">
+                      <button
+                        onClick={toggleSelectAll}
+                        className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-primary transition-colors"
+                        data-testid="button-select-all"
+                      >
+                        {selectedIds.size === cargoItems.length ? (
+                          <CheckSquare className="w-3.5 h-3.5 text-primary" />
+                        ) : selectedIds.size > 0 ? (
+                          <Minus className="w-3.5 h-3.5 text-primary" />
+                        ) : (
+                          <Square className="w-3.5 h-3.5" />
+                        )}
+                        {selectedIds.size === cargoItems.length ? "Deselect All" : "Select All"}
+                      </button>
+                      {selectedIds.size > 0 && (
+                        <span className="text-xs text-slate-400">
+                          {selectedIds.size} selected
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {selectedIds.size > 0 && (
+                    <div
+                      className="mb-4 p-3 rounded-xl bg-primary/5 border border-primary/15"
+                      data-testid="bulk-actions-bar"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Settings2 className="w-3.5 h-3.5 text-primary" />
+                        <span className="text-xs font-semibold text-primary uppercase tracking-wide">
+                          Bulk Actions ({selectedIds.size} items)
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div>
+                          <Label className="text-[10px] text-slate-500 uppercase tracking-wide">Stackable</Label>
+                          <div className="flex gap-1 mt-1">
+                            <button
+                              onClick={() => bulkUpdate("stackable", true)}
+                              className="flex-1 px-2 py-1.5 text-[11px] font-medium rounded-md border border-slate-200 bg-white hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors"
+                              data-testid="bulk-stackable-yes"
+                            >
+                              Yes
+                            </button>
+                            <button
+                              onClick={() => bulkUpdate("stackable", false)}
+                              className="flex-1 px-2 py-1.5 text-[11px] font-medium rounded-md border border-slate-200 bg-white hover:bg-red-50 hover:border-red-300 hover:text-red-700 transition-colors"
+                              data-testid="bulk-stackable-no"
+                            >
+                              No
+                            </button>
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-[10px] text-slate-500 uppercase tracking-wide">Rotation</Label>
+                          <select
+                            onChange={(e) => bulkUpdate("rotationMode", e.target.value as RotationMode)}
+                            className="mt-1 w-full h-[30px] px-2 text-[11px] font-medium rounded-md border border-slate-200 bg-white hover:border-primary/50 transition-colors cursor-pointer"
+                            defaultValue=""
+                            data-testid="bulk-rotation"
+                          >
+                            <option value="" disabled>Set...</option>
+                            <option value="all">All axes</option>
+                            <option value="horizontal">Horiz. only</option>
+                            <option value="fixed">Fixed</option>
+                          </select>
+                        </div>
+                        <div>
+                          <Label className="text-[10px] text-slate-500 uppercase tracking-wide">Priority</Label>
+                          <select
+                            onChange={(e) => bulkUpdate("loadPriority", e.target.value as LoadPriority)}
+                            className="mt-1 w-full h-[30px] px-2 text-[11px] font-medium rounded-md border border-slate-200 bg-white hover:border-primary/50 transition-colors cursor-pointer"
+                            defaultValue=""
+                            data-testid="bulk-priority"
+                          >
+                            <option value="" disabled>Set...</option>
+                            <option value="first">Load First</option>
+                            <option value="normal">Normal</option>
+                            <option value="last">Load Last</option>
+                          </select>
+                        </div>
+                        <div>
+                          <Label className="text-[10px] text-slate-500 uppercase tracking-wide">Include</Label>
+                          <div className="flex gap-1 mt-1">
+                            <button
+                              onClick={() => bulkUpdate("included", true)}
+                              className="flex-1 px-2 py-1.5 text-[11px] font-medium rounded-md border border-slate-200 bg-white hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors"
+                              data-testid="bulk-include-yes"
+                            >
+                              Yes
+                            </button>
+                            <button
+                              onClick={() => bulkUpdate("included", false)}
+                              className="flex-1 px-2 py-1.5 text-[11px] font-medium rounded-md border border-slate-200 bg-white hover:bg-red-50 hover:border-red-300 hover:text-red-700 transition-colors"
+                              data-testid="bulk-include-no"
+                            >
+                              No
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-3">
                     {cargoItems.map((item, idx) => (
                       <div
                         key={item.id}
-                        className="border border-slate-200 rounded-xl p-4 relative group"
+                        className={`border rounded-xl relative group transition-all ${
+                          !item.included
+                            ? "border-slate-200/60 bg-slate-50/50 opacity-60"
+                            : selectedIds.has(item.id)
+                            ? "border-primary/30 bg-primary/[0.02] ring-1 ring-primary/10"
+                            : "border-slate-200"
+                        }`}
                         data-testid={`cargo-item-${idx}`}
                       >
-                        <div className="flex items-start gap-3">
-                          <div
-                            className="w-4 h-4 rounded-full mt-2 shrink-0 border border-white ring-1 ring-slate-200"
-                            style={{ backgroundColor: item.color }}
-                          />
-                          <div className="flex-1 grid grid-cols-1 sm:grid-cols-6 gap-3">
-                            <div className="sm:col-span-3">
-                              <Label className="text-xs text-slate-500">Name</Label>
-                              <Input
-                                placeholder={`Cargo ${idx + 1}`}
-                                value={item.name}
-                                onChange={(e) => updateItem(item.id, "name", e.target.value)}
-                                className="h-9 text-sm"
-                                data-testid={`input-cargo-name-${idx}`}
-                              />
+                        <div className="p-4">
+                          <div className="flex items-start gap-2.5">
+                            {cargoItems.length > 1 && (
+                              <button
+                                onClick={() => toggleSelect(item.id)}
+                                className="mt-2 shrink-0 text-slate-400 hover:text-primary transition-colors"
+                                data-testid={`checkbox-cargo-${idx}`}
+                              >
+                                {selectedIds.has(item.id) ? (
+                                  <CheckSquare className="w-4 h-4 text-primary" />
+                                ) : (
+                                  <Square className="w-4 h-4" />
+                                )}
+                              </button>
+                            )}
+                            <div
+                              className="w-3.5 h-3.5 rounded-full mt-2.5 shrink-0 border border-white ring-1 ring-slate-200"
+                              style={{ backgroundColor: item.color }}
+                            />
+                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-6 gap-3">
+                              <div className="sm:col-span-3">
+                                <Label className="text-xs text-slate-500">Name</Label>
+                                <Input
+                                  placeholder={`Cargo ${idx + 1}`}
+                                  value={item.name}
+                                  onChange={(e) => updateItem(item.id, "name", e.target.value)}
+                                  className="h-9 text-sm"
+                                  data-testid={`input-cargo-name-${idx}`}
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs text-slate-500">Qty</Label>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  value={item.quantity || ""}
+                                  onChange={(e) =>
+                                    updateItem(item.id, "quantity", parseInt(e.target.value) || 0)
+                                  }
+                                  className="h-9 text-sm"
+                                  data-testid={`input-cargo-qty-${idx}`}
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs text-slate-500">Weight ({weightUnit})</Label>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  step="0.1"
+                                  value={toDisplayWeight(item.weight)}
+                                  onChange={(e) =>
+                                    updateItem(item.id, "weight", fromDisplayWeight(e.target.value))
+                                  }
+                                  className="h-9 text-sm"
+                                  data-testid={`input-cargo-weight-${idx}`}
+                                />
+                              </div>
                             </div>
-                            <div>
-                              <Label className="text-xs text-slate-500">Qty</Label>
-                              <Input
-                                type="number"
-                                min={1}
-                                value={item.quantity || ""}
-                                onChange={(e) =>
-                                  updateItem(item.id, "quantity", parseInt(e.target.value) || 0)
-                                }
-                                className="h-9 text-sm"
-                                data-testid={`input-cargo-qty-${idx}`}
-                              />
+                            <div className="flex items-center gap-1 mt-1">
+                              {cargoItems.length > 1 && (
+                                <button
+                                  onClick={() => removeItem(item.id)}
+                                  className="text-slate-400 hover:text-red-500 transition-colors p-0.5"
+                                  data-testid={`button-remove-cargo-${idx}`}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                             </div>
+                          </div>
+
+                          <div className="mt-3 ml-[calc(1rem+14px)] sm:ml-[calc(1rem+14px)] grid grid-cols-3 gap-3">
                             <div>
-                              <Label className="text-xs text-slate-500">Weight ({weightUnit})</Label>
+                              <Label className="text-xs text-slate-500">Length ({dimUnit})</Label>
                               <Input
                                 type="number"
                                 min={0}
                                 step="0.1"
-                                value={toDisplayWeight(item.weight)}
+                                value={toDisplay(item.length)}
                                 onChange={(e) =>
-                                  updateItem(item.id, "weight", fromDisplayWeight(e.target.value))
+                                  updateItem(item.id, "length", fromDisplay(e.target.value))
                                 }
                                 className="h-9 text-sm"
-                                data-testid={`input-cargo-weight-${idx}`}
+                                data-testid={`input-cargo-length-${idx}`}
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-slate-500">Width ({dimUnit})</Label>
+                              <Input
+                                type="number"
+                                min={0}
+                                step="0.1"
+                                value={toDisplay(item.width)}
+                                onChange={(e) =>
+                                  updateItem(item.id, "width", fromDisplay(e.target.value))
+                                }
+                                className="h-9 text-sm"
+                                data-testid={`input-cargo-width-${idx}`}
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-slate-500">Height ({dimUnit})</Label>
+                              <Input
+                                type="number"
+                                min={0}
+                                step="0.1"
+                                value={toDisplay(item.height)}
+                                onChange={(e) =>
+                                  updateItem(item.id, "height", fromDisplay(e.target.value))
+                                }
+                                className="h-9 text-sm"
+                                data-testid={`input-cargo-height-${idx}`}
                               />
                             </div>
                           </div>
-                          {cargoItems.length > 1 && (
+
+                          <div className="mt-3 ml-[calc(1rem+14px)] sm:ml-[calc(1rem+14px)]">
                             <button
-                              onClick={() => removeItem(item.id)}
-                              className="text-slate-400 hover:text-red-500 transition-colors mt-1"
-                              data-testid={`button-remove-cargo-${idx}`}
+                              onClick={() => toggleExpanded(item.id)}
+                              className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-primary transition-colors"
+                              data-testid={`button-advanced-${idx}`}
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <ChevronDown
+                                className={`w-3.5 h-3.5 transition-transform ${
+                                  expandedIds.has(item.id) ? "rotate-180" : ""
+                                }`}
+                              />
+                              Advanced Options
+                              <div className="flex gap-1 ml-1">
+                                {!item.stackable && (
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium">No Stack</span>
+                                )}
+                                {item.rotationMode !== "all" && (
+                                  <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-[10px] font-medium">
+                                    {item.rotationMode === "fixed" ? "Fixed" : "Horiz."}
+                                  </span>
+                                )}
+                                {item.loadPriority !== "normal" && (
+                                  <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 text-[10px] font-medium">
+                                    {item.loadPriority === "first" ? "1st" : "Last"}
+                                  </span>
+                                )}
+                                {item.palletized && (
+                                  <span className="px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-medium">Pallet</span>
+                                )}
+                                {!item.included && (
+                                  <span className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 text-[10px] font-medium">Excluded</span>
+                                )}
+                              </div>
                             </button>
-                          )}
-                        </div>
-                        <div className="mt-3 ml-7 grid grid-cols-3 gap-3">
-                          <div>
-                            <Label className="text-xs text-slate-500">Length ({dimUnit})</Label>
-                            <Input
-                              type="number"
-                              min={0}
-                              step="0.1"
-                              value={toDisplay(item.length)}
-                              onChange={(e) =>
-                                updateItem(item.id, "length", fromDisplay(e.target.value))
-                              }
-                              className="h-9 text-sm"
-                              data-testid={`input-cargo-length-${idx}`}
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Width ({dimUnit})</Label>
-                            <Input
-                              type="number"
-                              min={0}
-                              step="0.1"
-                              value={toDisplay(item.width)}
-                              onChange={(e) =>
-                                updateItem(item.id, "width", fromDisplay(e.target.value))
-                              }
-                              className="h-9 text-sm"
-                              data-testid={`input-cargo-width-${idx}`}
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Height ({dimUnit})</Label>
-                            <Input
-                              type="number"
-                              min={0}
-                              step="0.1"
-                              value={toDisplay(item.height)}
-                              onChange={(e) =>
-                                updateItem(item.id, "height", fromDisplay(e.target.value))
-                              }
-                              className="h-9 text-sm"
-                              data-testid={`input-cargo-height-${idx}`}
-                            />
+
+                            {expandedIds.has(item.id) && (
+                              <div className="mt-3 p-3 rounded-lg bg-slate-50/80 border border-slate-100 space-y-3">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                  <div>
+                                    <Label className="text-[10px] text-slate-400 uppercase tracking-wide mb-1.5 block">
+                                      Stackable
+                                    </Label>
+                                    <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+                                      <button
+                                        onClick={() => updateItem(item.id, "stackable", true)}
+                                        className={`flex-1 px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+                                          item.stackable
+                                            ? "bg-green-500 text-white"
+                                            : "bg-white text-slate-500 hover:bg-slate-50"
+                                        }`}
+                                        data-testid={`toggle-stackable-yes-${idx}`}
+                                      >
+                                        <Layers className="w-3 h-3 inline mr-1" />
+                                        Yes
+                                      </button>
+                                      <button
+                                        onClick={() => updateItem(item.id, "stackable", false)}
+                                        className={`flex-1 px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+                                          !item.stackable
+                                            ? "bg-amber-500 text-white"
+                                            : "bg-white text-slate-500 hover:bg-slate-50"
+                                        }`}
+                                        data-testid={`toggle-stackable-no-${idx}`}
+                                      >
+                                        No
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <Label className="text-[10px] text-slate-400 uppercase tracking-wide mb-1.5 block">
+                                      Rotation
+                                    </Label>
+                                    <select
+                                      value={item.rotationMode}
+                                      onChange={(e) => updateItem(item.id, "rotationMode", e.target.value as RotationMode)}
+                                      className="w-full h-[30px] px-2 text-[11px] font-medium rounded-lg border border-slate-200 bg-white hover:border-primary/50 transition-colors cursor-pointer"
+                                      data-testid={`select-rotation-${idx}`}
+                                    >
+                                      <option value="all">All axes</option>
+                                      <option value="horizontal">Horizontal only</option>
+                                      <option value="fixed">Fixed (upright)</option>
+                                    </select>
+                                  </div>
+
+                                  <div>
+                                    <Label className="text-[10px] text-slate-400 uppercase tracking-wide mb-1.5 block">
+                                      Load Sequence
+                                    </Label>
+                                    <select
+                                      value={item.loadPriority}
+                                      onChange={(e) => updateItem(item.id, "loadPriority", e.target.value as LoadPriority)}
+                                      className="w-full h-[30px] px-2 text-[11px] font-medium rounded-lg border border-slate-200 bg-white hover:border-primary/50 transition-colors cursor-pointer"
+                                      data-testid={`select-priority-${idx}`}
+                                    >
+                                      <option value="first">Load First (back)</option>
+                                      <option value="normal">Normal</option>
+                                      <option value="last">Load Last (door)</option>
+                                    </select>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <Label className="text-[10px] text-slate-400 uppercase tracking-wide mb-1.5 block">
+                                      Palletized
+                                    </Label>
+                                    <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+                                      <button
+                                        onClick={() => {
+                                          updateItem(item.id, "palletized", true);
+                                          if (item.palletType === "none") updateItem(item.id, "palletType", "us48x40");
+                                        }}
+                                        className={`flex-1 px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+                                          item.palletized
+                                            ? "bg-green-500 text-white"
+                                            : "bg-white text-slate-500 hover:bg-slate-50"
+                                        }`}
+                                        data-testid={`toggle-palletized-yes-${idx}`}
+                                      >
+                                        <Package className="w-3 h-3 inline mr-1" />
+                                        Yes
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          updateItem(item.id, "palletized", false);
+                                          updateItem(item.id, "palletType", "none");
+                                        }}
+                                        className={`flex-1 px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+                                          !item.palletized
+                                            ? "bg-slate-500 text-white"
+                                            : "bg-white text-slate-500 hover:bg-slate-50"
+                                        }`}
+                                        data-testid={`toggle-palletized-no-${idx}`}
+                                      >
+                                        No
+                                      </button>
+                                    </div>
+                                    {item.palletized && (
+                                      <select
+                                        value={item.palletType}
+                                        onChange={(e) => updateItem(item.id, "palletType", e.target.value as PalletType)}
+                                        className="mt-1.5 w-full h-[28px] px-2 text-[11px] font-medium rounded-md border border-slate-200 bg-white cursor-pointer"
+                                        data-testid={`select-pallet-type-${idx}`}
+                                      >
+                                        <option value="us48x40">US 48×40"</option>
+                                        <option value="euro">Euro 1200×800mm</option>
+                                        <option value="custom">Custom pallet</option>
+                                      </select>
+                                    )}
+                                  </div>
+
+                                  <div>
+                                    <Label className="text-[10px] text-slate-400 uppercase tracking-wide mb-1.5 block">
+                                      Include in Plan
+                                    </Label>
+                                    <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+                                      <button
+                                        onClick={() => updateItem(item.id, "included", true)}
+                                        className={`flex-1 px-2.5 py-1.5 text-[11px] font-medium transition-colors flex items-center justify-center gap-1 ${
+                                          item.included
+                                            ? "bg-green-500 text-white"
+                                            : "bg-white text-slate-500 hover:bg-slate-50"
+                                        }`}
+                                        data-testid={`toggle-included-yes-${idx}`}
+                                      >
+                                        <Eye className="w-3 h-3" />
+                                        Yes
+                                      </button>
+                                      <button
+                                        onClick={() => updateItem(item.id, "included", false)}
+                                        className={`flex-1 px-2.5 py-1.5 text-[11px] font-medium transition-colors flex items-center justify-center gap-1 ${
+                                          !item.included
+                                            ? "bg-slate-500 text-white"
+                                            : "bg-white text-slate-500 hover:bg-slate-50"
+                                        }`}
+                                        data-testid={`toggle-included-no-${idx}`}
+                                      >
+                                        <EyeOff className="w-3 h-3" />
+                                        No
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1276,27 +1688,30 @@ export default function ContainerCalculator() {
                         <table className="w-full text-sm" data-testid="table-loading-details">
                           <thead>
                             <tr className="border-b border-slate-200">
-                              <th className="text-left py-2 pr-3 text-xs font-semibold text-slate-500 uppercase">
+                              <th className="text-left py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
                                 #
                               </th>
-                              <th className="text-left py-2 pr-3 text-xs font-semibold text-slate-500 uppercase">
+                              <th className="text-left py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
                                 Item
                               </th>
-                              <th className="text-right py-2 pr-3 text-xs font-semibold text-slate-500 uppercase">
+                              <th className="text-right py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
                                 L × W × H (in)
                               </th>
-                              <th className="text-right py-2 pr-3 text-xs font-semibold text-slate-500 uppercase">
-                                Weight (lbs)
+                              <th className="text-right py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
+                                Weight
+                              </th>
+                              <th className="text-center py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
+                                Rot.
                               </th>
                               <th className="text-right py-2 text-xs font-semibold text-slate-500 uppercase">
-                                Volume (ft³)
+                                ft³
                               </th>
                             </tr>
                           </thead>
                           <tbody>
                             {result.placed.map((p, i) => (
                               <tr key={i} className="border-b border-slate-100 last:border-0">
-                                <td className="py-2 pr-3">
+                                <td className="py-2 pr-2">
                                   <div
                                     className="w-5 h-5 rounded flex items-center justify-center text-white text-[10px] font-bold"
                                     style={{ backgroundColor: p.color }}
@@ -1304,16 +1719,19 @@ export default function ContainerCalculator() {
                                     {i + 1}
                                   </div>
                                 </td>
-                                <td className="py-2 pr-3 font-medium text-slate-900">
+                                <td className="py-2 pr-2 font-medium text-slate-900 text-xs">
                                   {p.cargoName}
                                 </td>
-                                <td className="py-2 pr-3 text-right text-slate-600">
+                                <td className="py-2 pr-2 text-right text-slate-600 text-xs">
                                   {p.l.toFixed(1)} × {p.w.toFixed(1)} × {p.h.toFixed(1)}
                                 </td>
-                                <td className="py-2 pr-3 text-right text-slate-600">
-                                  {p.weight.toFixed(1)}
+                                <td className="py-2 pr-2 text-right text-slate-600 text-xs">
+                                  {p.weight.toFixed(0)}
                                 </td>
-                                <td className="py-2 text-right text-slate-600">
+                                <td className="py-2 pr-2 text-center">
+                                  <span className="text-[10px] font-mono text-slate-400">{p.rotation}</span>
+                                </td>
+                                <td className="py-2 text-right text-slate-600 text-xs">
                                   {cuInToCuFt(p.l * p.w * p.h).toFixed(1)}
                                 </td>
                               </tr>
