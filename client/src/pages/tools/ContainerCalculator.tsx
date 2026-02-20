@@ -29,11 +29,28 @@ import {
   Mail,
   X,
   Maximize2,
+  Settings2,
 } from "lucide-react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const CONTAINER_TYPES = [
+const IN_TO_CM = 2.54;
+const CM_TO_IN = 1 / IN_TO_CM;
+const LB_TO_KG = 0.453592;
+const KG_TO_LB = 1 / LB_TO_KG;
+
+interface ContainerSpec {
+  id: string;
+  name: string;
+  lengthIn: number;
+  widthIn: number;
+  heightIn: number;
+  maxPayloadLbs: number;
+  volumeCuFt: number;
+  tare: number;
+}
+
+const CONTAINER_PRESETS: ContainerSpec[] = [
   {
     id: "20dc",
     name: "20' Standard (DC)",
@@ -141,7 +158,7 @@ function sqInToSqFt(sqIn: number) {
 
 function packBoxes(
   items: CargoItem[],
-  container: (typeof CONTAINER_TYPES)[0],
+  container: ContainerSpec,
   unitSystem: "imperial" | "metric"
 ): LoadingResult {
   const cL = container.lengthIn;
@@ -294,7 +311,7 @@ function ContainerViewer3D({
   container,
 }: {
   placed: PlacedBox[];
-  container: (typeof CONTAINER_TYPES)[0];
+  container: ContainerSpec;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [webglError, setWebglError] = useState(false);
@@ -601,6 +618,12 @@ export default function ContainerCalculator() {
   const { toast } = useToast();
   const [unitSystem, setUnitSystem] = useState<"imperial" | "metric">("imperial");
   const [containerId, setContainerId] = useState("20dc");
+  const [customContainer, setCustomContainer] = useState({
+    lengthIn: 232.2,
+    widthIn: 92.6,
+    heightIn: 94.2,
+    maxPayloadLbs: 62170,
+  });
   const [cargoItems, setCargoItems] = useState<CargoItem[]>([
     {
       id: generateId(),
@@ -619,9 +642,53 @@ export default function ContainerCalculator() {
   const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail] = useState("");
 
-  const container = CONTAINER_TYPES.find((c) => c.id === containerId)!;
-  const dimUnit = unitSystem === "imperial" ? "in" : "cm";
-  const weightUnit = unitSystem === "imperial" ? "lbs" : "kg";
+  const isMetric = unitSystem === "metric";
+  const dimFactor = isMetric ? IN_TO_CM : 1;
+  const weightFactor = isMetric ? LB_TO_KG : 1;
+  const dimUnit = isMetric ? "cm" : "in";
+  const weightUnit = isMetric ? "kg" : "lbs";
+
+  function toDisplay(valInches: number): string {
+    if (!valInches) return "";
+    const converted = valInches * dimFactor;
+    return parseFloat(converted.toFixed(2)).toString();
+  }
+  function toDisplayWeight(valLbs: number): string {
+    if (!valLbs) return "";
+    const converted = valLbs * weightFactor;
+    return parseFloat(converted.toFixed(2)).toString();
+  }
+  function fromDisplay(displayVal: string): number {
+    const v = parseFloat(displayVal) || 0;
+    return isMetric ? v * CM_TO_IN : v;
+  }
+  function fromDisplayWeight(displayVal: string): number {
+    const v = parseFloat(displayVal) || 0;
+    return isMetric ? v * KG_TO_LB : v;
+  }
+
+  const container: ContainerSpec = useMemo(() => {
+    if (containerId === "custom") {
+      const vol = cuInToCuFt(customContainer.lengthIn * customContainer.widthIn * customContainer.heightIn);
+      return {
+        id: "custom",
+        name: "Custom Container",
+        lengthIn: customContainer.lengthIn,
+        widthIn: customContainer.widthIn,
+        heightIn: customContainer.heightIn,
+        maxPayloadLbs: customContainer.maxPayloadLbs,
+        volumeCuFt: Math.round(vol),
+        tare: 0,
+      };
+    }
+    return CONTAINER_PRESETS.find((c) => c.id === containerId)!;
+  }, [containerId, customContainer]);
+
+  const handleUnitSwitch = useCallback((newUnit: "imperial" | "metric") => {
+    if (newUnit === unitSystem) return;
+    setUnitSystem(newUnit);
+    setResult(null);
+  }, [unitSystem]);
 
   const addItem = useCallback(() => {
     const colorIdx = cargoItems.length % CARGO_COLORS.length;
@@ -666,7 +733,7 @@ export default function ContainerCalculator() {
 
     setCalculating(true);
     setTimeout(() => {
-      const res = packBoxes(validItems, container, unitSystem);
+      const res = packBoxes(validItems, container, "imperial");
       setResult(res);
       setCalculating(false);
 
@@ -677,7 +744,7 @@ export default function ContainerCalculator() {
         });
       }
     }, 500);
-  }, [cargoItems, container, unitSystem, toast]);
+  }, [cargoItems, container, toast]);
 
   const handleReset = useCallback(() => {
     setResult(null);
@@ -733,7 +800,7 @@ export default function ContainerCalculator() {
                     Container Type
                   </h2>
                   <div className="grid grid-cols-2 gap-2">
-                    {CONTAINER_TYPES.map((ct) => (
+                    {CONTAINER_PRESETS.map((ct) => (
                       <button
                         key={ct.id}
                         onClick={() => {
@@ -755,7 +822,105 @@ export default function ContainerCalculator() {
                         </span>
                       </button>
                     ))}
+                    <button
+                      onClick={() => {
+                        setContainerId("custom");
+                        setResult(null);
+                      }}
+                      className={`text-left p-3 rounded-lg border text-sm transition-all col-span-2 ${
+                        containerId === "custom"
+                          ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                          : "border-slate-200 hover:border-slate-300"
+                      }`}
+                      data-testid="button-container-custom"
+                    >
+                      <span className="font-semibold text-slate-900 flex items-center gap-1.5">
+                        <Settings2 className="w-3.5 h-3.5 text-primary" />
+                        Custom Dimensions
+                      </span>
+                      <span className="text-xs text-slate-500 mt-1 block">
+                        Enter your own container size
+                      </span>
+                    </button>
                   </div>
+
+                  {containerId === "custom" && (
+                    <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/15 space-y-3">
+                      <h3 className="text-xs font-semibold text-primary uppercase tracking-wide">
+                        Custom Container Dimensions
+                      </h3>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <Label className="text-xs text-slate-500">Length ({dimUnit})</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            step="0.1"
+                            value={toDisplay(customContainer.lengthIn)}
+                            onChange={(e) =>
+                              setCustomContainer((p) => ({
+                                ...p,
+                                lengthIn: fromDisplay(e.target.value),
+                              }))
+                            }
+                            className="h-8 text-sm"
+                            data-testid="input-custom-length"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Width ({dimUnit})</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            step="0.1"
+                            value={toDisplay(customContainer.widthIn)}
+                            onChange={(e) =>
+                              setCustomContainer((p) => ({
+                                ...p,
+                                widthIn: fromDisplay(e.target.value),
+                              }))
+                            }
+                            className="h-8 text-sm"
+                            data-testid="input-custom-width"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Height ({dimUnit})</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            step="0.1"
+                            value={toDisplay(customContainer.heightIn)}
+                            onChange={(e) =>
+                              setCustomContainer((p) => ({
+                                ...p,
+                                heightIn: fromDisplay(e.target.value),
+                              }))
+                            }
+                            className="h-8 text-sm"
+                            data-testid="input-custom-height"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500">Max Payload ({weightUnit})</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          step="1"
+                          value={toDisplayWeight(customContainer.maxPayloadLbs)}
+                          onChange={(e) =>
+                            setCustomContainer((p) => ({
+                              ...p,
+                              maxPayloadLbs: fromDisplayWeight(e.target.value),
+                            }))
+                          }
+                          className="h-8 text-sm"
+                          data-testid="input-custom-payload"
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   <div className="mt-4 p-3 rounded-lg bg-slate-50 border border-slate-100">
                     <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
@@ -763,27 +928,41 @@ export default function ContainerCalculator() {
                     </h3>
                     <div className="grid grid-cols-3 gap-2 text-center text-xs">
                       <div>
-                        <p className="font-bold text-slate-900">{container.lengthIn}"</p>
+                        <p className="font-bold text-slate-900" data-testid="text-container-length">
+                          {isMetric
+                            ? `${(container.lengthIn * IN_TO_CM).toFixed(1)} cm`
+                            : `${parseFloat(container.lengthIn.toFixed(1))}"`}
+                        </p>
                         <p className="text-slate-500">Length</p>
                       </div>
                       <div>
-                        <p className="font-bold text-slate-900">{container.widthIn}"</p>
+                        <p className="font-bold text-slate-900" data-testid="text-container-width">
+                          {isMetric
+                            ? `${(container.widthIn * IN_TO_CM).toFixed(1)} cm`
+                            : `${parseFloat(container.widthIn.toFixed(1))}"`}
+                        </p>
                         <p className="text-slate-500">Width</p>
                       </div>
                       <div>
-                        <p className="font-bold text-slate-900">{container.heightIn}"</p>
+                        <p className="font-bold text-slate-900" data-testid="text-container-height">
+                          {isMetric
+                            ? `${(container.heightIn * IN_TO_CM).toFixed(1)} cm`
+                            : `${parseFloat(container.heightIn.toFixed(1))}"`}
+                        </p>
                         <p className="text-slate-500">Height</p>
                       </div>
                     </div>
                     <div className="mt-2 pt-2 border-t border-slate-200 grid grid-cols-2 gap-2 text-center text-xs">
                       <div>
-                        <p className="font-bold text-slate-900">
-                          {container.maxPayloadLbs.toLocaleString()} lbs
+                        <p className="font-bold text-slate-900" data-testid="text-container-payload">
+                          {isMetric
+                            ? `${Math.round(container.maxPayloadLbs * LB_TO_KG).toLocaleString()} kg`
+                            : `${container.maxPayloadLbs.toLocaleString()} lbs`}
                         </p>
                         <p className="text-slate-500">Max Payload</p>
                       </div>
                       <div>
-                        <p className="font-bold text-slate-900">
+                        <p className="font-bold text-slate-900" data-testid="text-container-volume">
                           {container.volumeCuFt.toLocaleString()} ft³
                         </p>
                         <p className="text-slate-500">Volume</p>
@@ -802,7 +981,7 @@ export default function ContainerCalculator() {
                     </h2>
                     <div className="flex rounded-lg border border-slate-200 overflow-hidden">
                       <button
-                        onClick={() => setUnitSystem("imperial")}
+                        onClick={() => handleUnitSwitch("imperial")}
                         className={`px-3 py-1.5 text-xs font-medium transition-colors ${
                           unitSystem === "imperial"
                             ? "bg-primary text-white"
@@ -813,7 +992,7 @@ export default function ContainerCalculator() {
                         in / lbs
                       </button>
                       <button
-                        onClick={() => setUnitSystem("metric")}
+                        onClick={() => handleUnitSwitch("metric")}
                         className={`px-3 py-1.5 text-xs font-medium transition-colors ${
                           unitSystem === "metric"
                             ? "bg-primary text-white"
@@ -891,9 +1070,9 @@ export default function ContainerCalculator() {
                                 type="number"
                                 min={0}
                                 step="0.1"
-                                value={item.weight || ""}
+                                value={toDisplayWeight(item.weight)}
                                 onChange={(e) =>
-                                  updateItem(item.id, "weight", parseFloat(e.target.value) || 0)
+                                  updateItem(item.id, "weight", fromDisplayWeight(e.target.value))
                                 }
                                 className="h-9 text-sm"
                                 data-testid={`input-cargo-weight-${idx}`}
@@ -917,9 +1096,9 @@ export default function ContainerCalculator() {
                               type="number"
                               min={0}
                               step="0.1"
-                              value={item.length || ""}
+                              value={toDisplay(item.length)}
                               onChange={(e) =>
-                                updateItem(item.id, "length", parseFloat(e.target.value) || 0)
+                                updateItem(item.id, "length", fromDisplay(e.target.value))
                               }
                               className="h-9 text-sm"
                               data-testid={`input-cargo-length-${idx}`}
@@ -931,9 +1110,9 @@ export default function ContainerCalculator() {
                               type="number"
                               min={0}
                               step="0.1"
-                              value={item.width || ""}
+                              value={toDisplay(item.width)}
                               onChange={(e) =>
-                                updateItem(item.id, "width", parseFloat(e.target.value) || 0)
+                                updateItem(item.id, "width", fromDisplay(e.target.value))
                               }
                               className="h-9 text-sm"
                               data-testid={`input-cargo-width-${idx}`}
@@ -945,9 +1124,9 @@ export default function ContainerCalculator() {
                               type="number"
                               min={0}
                               step="0.1"
-                              value={item.height || ""}
+                              value={toDisplay(item.height)}
                               onChange={(e) =>
-                                updateItem(item.id, "height", parseFloat(e.target.value) || 0)
+                                updateItem(item.id, "height", fromDisplay(e.target.value))
                               }
                               className="h-9 text-sm"
                               data-testid={`input-cargo-height-${idx}`}
