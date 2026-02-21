@@ -50,12 +50,13 @@ import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
 let googleMapsLoaderPromise: Promise<void> | null = null;
+let optionsSet = false;
 function loadGoogleMaps(): Promise<void> {
   if (googleMapsLoaderPromise) return googleMapsLoaderPromise;
-  setOptions({
-    apiKey: GOOGLE_MAPS_API_KEY,
-    version: "weekly",
-  });
+  if (!optionsSet) {
+    setOptions({ key: GOOGLE_MAPS_API_KEY, v: "weekly" });
+    optionsSet = true;
+  }
   googleMapsLoaderPromise = Promise.all([
     importLibrary("maps"),
     importLibrary("places"),
@@ -100,7 +101,7 @@ const SQFT_TO_SQM = 0.092903;
 
 type UnitSystem = "metric" | "imperial";
 type CargoMode = "cartons" | "pallets" | "bulk";
-type PlannerMode = "pro" | "beginner" | null;
+type PlannerMode = "pro" | "beginner";
 type PackagingType = "loose" | "bags" | "drums" | "other";
 
 interface TrailerSpec {
@@ -146,6 +147,9 @@ interface CartonItem {
   quantity: number;
   stackable: boolean;
   maxStackHeight: number;
+  allowRotation: boolean;
+  priority: number;
+  fragile: boolean;
 }
 
 interface PalletItem {
@@ -158,6 +162,9 @@ interface PalletItem {
   weightLbs: number;
   quantity: number;
   stackable: boolean;
+  allowRotation: boolean;
+  priority: number;
+  fragile: boolean;
 }
 
 interface BulkCargo {
@@ -225,7 +232,7 @@ export default function TruckLoadPlanner() {
 
   const { toast } = useToast();
 
-  const [mode, setMode] = useState<PlannerMode>(null);
+  const [mode, setMode] = useState<PlannerMode>("pro");
   const [unitSystem, setUnitSystem] = useState<UnitSystem>("imperial");
   const [cargoMode, setCargoMode] = useState<CargoMode>("cartons");
 
@@ -263,11 +270,11 @@ export default function TruckLoadPlanner() {
   const areaUnit = isMetric ? "m²" : "ft²";
 
   const defaultCarton = useCallback((): CartonItem => ({
-    id: genId(), name: "", lengthIn: 0, widthIn: 0, heightIn: 0, weightLbs: 0, quantity: 1, stackable: true, maxStackHeight: 0,
+    id: genId(), name: "", lengthIn: 0, widthIn: 0, heightIn: 0, weightLbs: 0, quantity: 1, stackable: true, maxStackHeight: 0, allowRotation: true, priority: 0, fragile: false,
   }), []);
 
   const defaultPallet = useCallback((): PalletItem => ({
-    id: genId(), name: "", palletType: "48x40", customL: 48, customW: 40, heightIn: 0, weightLbs: 0, quantity: 1, stackable: false,
+    id: genId(), name: "", palletType: "48x40", customL: 48, customW: 40, heightIn: 0, weightLbs: 0, quantity: 1, stackable: false, allowRotation: false, priority: 0, fragile: false,
   }), []);
 
   const [cartons, setCartons] = useState<CartonItem[]>([defaultCarton(), defaultCarton()]);
@@ -530,6 +537,9 @@ export default function TruckLoadPlanner() {
         quantity: item.quantity,
         stackable: true,
         maxStackHeight: 0,
+        allowRotation: true,
+        priority: 0,
+        fragile: false,
       }));
       setCartons(prev => [...prev, ...newItems]);
     } else if (cargoMode === "pallets") {
@@ -543,6 +553,9 @@ export default function TruckLoadPlanner() {
         weightLbs: isImportMetric ? item.weight * KG_TO_LB : item.weight,
         quantity: item.quantity,
         stackable: false,
+        allowRotation: false,
+        priority: 0,
+        fragile: false,
       }));
       setPallets(prev => [...prev, ...newItems]);
     }
@@ -807,7 +820,61 @@ export default function TruckLoadPlanner() {
       setRouteError("Please enter valid origin and destination addresses.");
       return;
     }
-  }, [originPlace, destPlace, originText, destText, geocodeAddress]);
+
+    const g = (window as any).google;
+    if (!g?.maps) return;
+
+    setRouteLoading(true);
+    setRouteError(null);
+    setJurisdictions([]);
+    setRouteInfo(null);
+
+    try {
+      if (!mapInstanceRef.current && mapContainerRef.current) {
+        mapInstanceRef.current = new g.maps.Map(mapContainerRef.current, {
+          center: { lat: 43, lng: -90 },
+          zoom: 4,
+          disableDefaultUI: true,
+          zoomControl: true,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: true,
+        });
+      }
+
+      if (!directionsRendererRef.current) {
+        directionsRendererRef.current = new g.maps.DirectionsRenderer({
+          suppressMarkers: false,
+          polylineOptions: { strokeColor: "#3b82f6", strokeWeight: 5 },
+        });
+        directionsRendererRef.current.setMap(mapInstanceRef.current);
+      }
+
+      const directionsService = new g.maps.DirectionsService();
+      const result = await directionsService.route({
+        origin: { lat: origin.lat, lng: origin.lng },
+        destination: { lat: dest.lat, lng: dest.lng },
+        travelMode: g.maps.TravelMode.DRIVING,
+      });
+
+      directionsRendererRef.current.setDirections(result);
+
+      const leg = result.routes[0].legs[0];
+      setRouteInfo({
+        distanceText: leg.distance.text,
+        durationText: leg.duration.text,
+        distanceMeters: leg.distance.value,
+        durationSeconds: leg.duration.value,
+      });
+
+      const jurs = await extractJurisdictionsFromRoute(result.routes[0]);
+      setJurisdictions(jurs);
+    } catch (err: any) {
+      setRouteError(err?.message || "Failed to calculate route. Please check your addresses.");
+    } finally {
+      setRouteLoading(false);
+    }
+  }, [originPlace, destPlace, originText, destText, geocodeAddress, extractJurisdictionsFromRoute]);
 
   useEffect(() => {
     if (originPlace && destPlace) {
@@ -833,43 +900,30 @@ export default function TruckLoadPlanner() {
             </p>
           </div>
 
-          {!mode ? (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl mx-auto">
-              <h2 className="text-lg font-bold text-center text-slate-900 mb-6" data-testid="text-choose-mode">Choose Your Mode</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <button
-                  onClick={() => setMode("pro")}
-                  className="p-6 rounded-xl border-2 border-slate-200 bg-white hover:border-primary hover:shadow-lg transition-all text-left group"
-                  data-testid="button-mode-pro"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                    <Truck className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <h3 className="font-bold text-slate-900 mb-1">I Have a Trailer</h3>
-                  <p className="text-sm text-slate-500">Select or customize your trailer, then check if your cargo fits.</p>
-                </button>
-                <button
-                  onClick={() => setMode("beginner")}
-                  className="p-6 rounded-xl border-2 border-slate-200 bg-white hover:border-primary hover:shadow-lg transition-all text-left group"
-                  data-testid="button-mode-beginner"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center mb-3 group-hover:bg-emerald-100 transition-colors">
-                    <Star className="w-6 h-6 text-emerald-600" />
-                  </div>
-                  <h3 className="font-bold text-slate-900 mb-1">Suggest Best Trailer</h3>
-                  <p className="text-sm text-slate-500">Enter your cargo and we'll recommend the top 3 trailers that fit.</p>
-                </button>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-              <div className="flex items-center justify-between mb-6 max-w-5xl mx-auto">
-                <button onClick={() => { setMode(null); setShowResults(false); setResults(null); }} className="flex items-center gap-1 text-sm text-slate-500 hover:text-primary transition-colors" data-testid="button-back-mode">
-                  <ArrowLeft className="w-4 h-4" /> Change Mode
-                </button>
-                <Badge variant="outline" className="text-xs">
-                  {mode === "pro" ? "Pro: I have a trailer" : "Beginner: Suggest best trailer"}
-                </Badge>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+              <div className="max-w-5xl mx-auto mb-5">
+                <div className="flex rounded-xl border border-slate-200 overflow-hidden bg-white" data-testid="mode-tabs">
+                  <button
+                    onClick={() => { setMode("pro"); setShowResults(false); setResults(null); }}
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors ${
+                      mode === "pro" ? "bg-primary text-white" : "bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                    data-testid="tab-mode-pro"
+                  >
+                    <Truck className="w-4 h-4" />
+                    I Have a Trailer
+                  </button>
+                  <button
+                    onClick={() => { setMode("beginner"); setShowResults(false); setResults(null); }}
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors ${
+                      mode === "beginner" ? "bg-primary text-white" : "bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                    data-testid="tab-mode-beginner"
+                  >
+                    <Star className="w-4 h-4" />
+                    Suggest Best Trailer
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 max-w-5xl mx-auto">
@@ -1025,7 +1079,7 @@ export default function TruckLoadPlanner() {
                                   </button>
                                 )}
                               </div>
-                              <div className="grid grid-cols-3 sm:grid-cols-7 gap-2">
+                              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-2">
                                 <div>
                                   <Label className="text-[9px] text-slate-400 uppercase">L ({dimUnit})</Label>
                                   <Input type="number" min={0} step="0.1" value={toDisplay(item.lengthIn)} onChange={e => updateCarton(item.id, "lengthIn", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-carton-l-${idx}`} />
@@ -1046,8 +1100,10 @@ export default function TruckLoadPlanner() {
                                   <Label className="text-[9px] text-slate-400 uppercase">Qty</Label>
                                   <Input type="number" min={1} value={item.quantity || ""} onChange={e => updateCarton(item.id, "quantity", parseInt(e.target.value) || 0)} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-carton-qty-${idx}`} />
                                 </div>
+                              </div>
+                              <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 pt-2 border-t border-slate-100">
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Stack</Label>
+                                  <Label className="text-[9px] text-slate-400 uppercase">Stackable</Label>
                                   <button
                                     onClick={() => updateCarton(item.id, "stackable", !item.stackable)}
                                     className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
@@ -1059,8 +1115,36 @@ export default function TruckLoadPlanner() {
                                   </button>
                                 </div>
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Max H</Label>
-                                  <Input type="number" min={0} step="1" placeholder="—" value={item.maxStackHeight > 0 ? toDisplay(item.maxStackHeight) : ""} onChange={e => updateCarton(item.id, "maxStackHeight", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-carton-maxh-${idx}`} />
+                                  <Label className="text-[9px] text-slate-400 uppercase">Max Stack H</Label>
+                                  <Input type="number" min={0} step="1" placeholder="--" value={item.maxStackHeight > 0 ? toDisplay(item.maxStackHeight) : ""} onChange={e => updateCarton(item.id, "maxStackHeight", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-carton-maxh-${idx}`} />
+                                </div>
+                                <div>
+                                  <Label className="text-[9px] text-slate-400 uppercase">Rotation</Label>
+                                  <button
+                                    onClick={() => updateCarton(item.id, "allowRotation", !item.allowRotation)}
+                                    className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
+                                      item.allowRotation ? "bg-blue-50 border-blue-300 text-blue-700" : "bg-slate-50 border-slate-300 text-slate-500"
+                                    }`}
+                                    data-testid={`toggle-carton-rotation-${idx}`}
+                                  >
+                                    {item.allowRotation ? "Allow" : "Fixed"}
+                                  </button>
+                                </div>
+                                <div>
+                                  <Label className="text-[9px] text-slate-400 uppercase">Priority</Label>
+                                  <Input type="number" min={0} max={99} step="1" placeholder="0" value={item.priority > 0 ? item.priority : ""} onChange={e => updateCarton(item.id, "priority", parseInt(e.target.value) || 0)} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-carton-priority-${idx}`} />
+                                </div>
+                                <div>
+                                  <Label className="text-[9px] text-slate-400 uppercase">Fragile</Label>
+                                  <button
+                                    onClick={() => updateCarton(item.id, "fragile", !item.fragile)}
+                                    className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
+                                      item.fragile ? "bg-red-50 border-red-300 text-red-700" : "bg-slate-50 border-slate-300 text-slate-500"
+                                    }`}
+                                    data-testid={`toggle-carton-fragile-${idx}`}
+                                  >
+                                    {item.fragile ? "Yes" : "No"}
+                                  </button>
                                 </div>
                               </div>
                             </div>
@@ -1083,7 +1167,7 @@ export default function TruckLoadPlanner() {
                                   </button>
                                 )}
                               </div>
-                              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-2">
                                 <div className="col-span-2 sm:col-span-1">
                                   <Label className="text-[9px] text-slate-400 uppercase">Pallet Type</Label>
                                   <select
@@ -1121,8 +1205,10 @@ export default function TruckLoadPlanner() {
                                   <Label className="text-[9px] text-slate-400 uppercase">Qty</Label>
                                   <Input type="number" min={1} value={item.quantity || ""} onChange={e => updatePallet(item.id, "quantity", parseInt(e.target.value) || 0)} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-pallet-qty-${idx}`} />
                                 </div>
+                              </div>
+                              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 pt-2 border-t border-slate-100">
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Stack</Label>
+                                  <Label className="text-[9px] text-slate-400 uppercase">Stackable</Label>
                                   <button
                                     onClick={() => updatePallet(item.id, "stackable", !item.stackable)}
                                     className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
@@ -1131,6 +1217,34 @@ export default function TruckLoadPlanner() {
                                     data-testid={`toggle-pallet-stack-${idx}`}
                                   >
                                     {item.stackable ? "Yes" : "No"}
+                                  </button>
+                                </div>
+                                <div>
+                                  <Label className="text-[9px] text-slate-400 uppercase">Rotation</Label>
+                                  <button
+                                    onClick={() => updatePallet(item.id, "allowRotation", !item.allowRotation)}
+                                    className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
+                                      item.allowRotation ? "bg-blue-50 border-blue-300 text-blue-700" : "bg-slate-50 border-slate-300 text-slate-500"
+                                    }`}
+                                    data-testid={`toggle-pallet-rotation-${idx}`}
+                                  >
+                                    {item.allowRotation ? "Allow" : "Fixed"}
+                                  </button>
+                                </div>
+                                <div>
+                                  <Label className="text-[9px] text-slate-400 uppercase">Priority</Label>
+                                  <Input type="number" min={0} max={99} step="1" placeholder="0" value={item.priority > 0 ? item.priority : ""} onChange={e => updatePallet(item.id, "priority", parseInt(e.target.value) || 0)} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-pallet-priority-${idx}`} />
+                                </div>
+                                <div>
+                                  <Label className="text-[9px] text-slate-400 uppercase">Fragile</Label>
+                                  <button
+                                    onClick={() => updatePallet(item.id, "fragile", !item.fragile)}
+                                    className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
+                                      item.fragile ? "bg-red-50 border-red-300 text-red-700" : "bg-slate-50 border-slate-300 text-slate-500"
+                                    }`}
+                                    data-testid={`toggle-pallet-fragile-${idx}`}
+                                  >
+                                    {item.fragile ? "Yes" : "No"}
                                   </button>
                                 </div>
                               </div>
@@ -1331,7 +1445,6 @@ export default function TruckLoadPlanner() {
                 </div>
               </div>
             </motion.div>
-          )}
 
           {/* ─── Route Planner Section ──────────────────────────────── */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="max-w-5xl mx-auto mt-10">
