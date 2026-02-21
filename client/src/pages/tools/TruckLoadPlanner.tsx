@@ -103,6 +103,7 @@ type UnitSystem = "metric" | "imperial";
 type CargoMode = "cartons" | "pallets" | "bulk";
 type PlannerMode = "pro" | "beginner";
 type PackagingType = "loose" | "bags" | "drums" | "other";
+type RotationMode = "all" | "horizontal" | "fixed";
 
 interface TrailerSpec {
   id: string;
@@ -147,9 +148,9 @@ interface CartonItem {
   quantity: number;
   stackable: boolean;
   maxStackHeight: number;
-  allowRotation: boolean;
+  rotation: RotationMode;
   priority: number;
-  fragile: boolean;
+  palletAssign: string;
 }
 
 interface PalletItem {
@@ -162,9 +163,8 @@ interface PalletItem {
   weightLbs: number;
   quantity: number;
   stackable: boolean;
-  allowRotation: boolean;
+  rotation: RotationMode;
   priority: number;
-  fragile: boolean;
 }
 
 interface BulkCargo {
@@ -269,13 +269,17 @@ export default function TruckLoadPlanner() {
   const volUnit = isMetric ? "m³" : "ft³";
   const areaUnit = isMetric ? "m²" : "ft²";
 
+  const [bulkSettingsOpen, setBulkSettingsOpen] = useState(false);
+  const [defaultStacking, setDefaultStacking] = useState<boolean>(true);
+  const [defaultRotation, setDefaultRotation] = useState<RotationMode>("all");
+
   const defaultCarton = useCallback((): CartonItem => ({
-    id: genId(), name: "", lengthIn: 0, widthIn: 0, heightIn: 0, weightLbs: 0, quantity: 1, stackable: true, maxStackHeight: 0, allowRotation: true, priority: 0, fragile: false,
-  }), []);
+    id: genId(), name: "", lengthIn: 0, widthIn: 0, heightIn: 0, weightLbs: 0, quantity: 1, stackable: defaultStacking, maxStackHeight: 0, rotation: defaultRotation, priority: 0, palletAssign: "none",
+  }), [defaultStacking, defaultRotation]);
 
   const defaultPallet = useCallback((): PalletItem => ({
-    id: genId(), name: "", palletType: "48x40", customL: 48, customW: 40, heightIn: 0, weightLbs: 0, quantity: 1, stackable: false, allowRotation: false, priority: 0, fragile: false,
-  }), []);
+    id: genId(), name: "", palletType: "48x40", customL: 48, customW: 40, heightIn: 0, weightLbs: 0, quantity: 1, stackable: defaultStacking, rotation: defaultRotation, priority: 0,
+  }), [defaultStacking, defaultRotation]);
 
   const [cartons, setCartons] = useState<CartonItem[]>([defaultCarton(), defaultCarton()]);
   const [pallets, setPallets] = useState<PalletItem[]>([defaultPallet()]);
@@ -535,11 +539,11 @@ export default function TruckLoadPlanner() {
         heightIn: isImportMetric ? item.height * CM_TO_IN : item.height,
         weightLbs: isImportMetric ? item.weight * KG_TO_LB : item.weight,
         quantity: item.quantity,
-        stackable: true,
+        stackable: defaultStacking,
         maxStackHeight: 0,
-        allowRotation: true,
+        rotation: defaultRotation,
         priority: 0,
-        fragile: false,
+        palletAssign: "none",
       }));
       setCartons(prev => [...prev, ...newItems]);
     } else if (cargoMode === "pallets") {
@@ -552,10 +556,9 @@ export default function TruckLoadPlanner() {
         heightIn: isImportMetric ? item.height * CM_TO_IN : item.height,
         weightLbs: isImportMetric ? item.weight * KG_TO_LB : item.weight,
         quantity: item.quantity,
-        stackable: false,
-        allowRotation: false,
+        stackable: defaultStacking,
+        rotation: defaultRotation,
         priority: 0,
-        fragile: false,
       }));
       setPallets(prev => [...prev, ...newItems]);
     }
@@ -1041,10 +1044,15 @@ export default function TruckLoadPlanner() {
                             <button onClick={() => setUnitSystem("metric")} className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${unitSystem === "metric" ? "bg-primary text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`} data-testid="button-unit-metric">cm/kg</button>
                           </div>
                           {cargoMode !== "bulk" && (
-                            <Button variant="outline" size="sm" onClick={openImportModal} className="gap-1.5 h-7 text-xs" data-testid="button-import">
-                              <FileUp className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline">Import</span>
-                            </Button>
+                            <>
+                              <Button variant="outline" size="sm" onClick={openImportModal} className="gap-1.5 h-7 text-xs" data-testid="button-import">
+                                <FileUp className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">Import</span>
+                              </Button>
+                              <Button variant="outline" size="sm" onClick={() => setBulkSettingsOpen(true)} className="h-7 w-7 p-0" data-testid="button-bulk-settings" title="Bulk Cargo Settings">
+                                <Settings2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </>
                           )}
                         </div>
                       </div>
@@ -1101,9 +1109,9 @@ export default function TruckLoadPlanner() {
                                   <Input type="number" min={1} value={item.quantity || ""} onChange={e => updateCarton(item.id, "quantity", parseInt(e.target.value) || 0)} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-carton-qty-${idx}`} />
                                 </div>
                               </div>
-                              <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 pt-2 border-t border-slate-100">
+                              <div className="grid grid-cols-5 gap-2 pt-2 border-t border-slate-100">
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Stackable</Label>
+                                  <Label className="text-[9px] text-slate-400 uppercase">Stack</Label>
                                   <button
                                     onClick={() => updateCarton(item.id, "stackable", !item.stackable)}
                                     className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
@@ -1111,40 +1119,52 @@ export default function TruckLoadPlanner() {
                                     }`}
                                     data-testid={`toggle-carton-stack-${idx}`}
                                   >
-                                    {item.stackable ? "Yes" : "No"}
+                                    {item.stackable ? "\u2713 Yes" : "No"}
                                   </button>
                                 </div>
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Max Stack H</Label>
-                                  <Input type="number" min={0} step="1" placeholder="--" value={item.maxStackHeight > 0 ? toDisplay(item.maxStackHeight) : ""} onChange={e => updateCarton(item.id, "maxStackHeight", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-carton-maxh-${idx}`} />
-                                </div>
-                                <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Rotation</Label>
+                                  <Label className="text-[9px] text-slate-400 uppercase">Rotate</Label>
                                   <button
-                                    onClick={() => updateCarton(item.id, "allowRotation", !item.allowRotation)}
+                                    onClick={() => {
+                                      const next: RotationMode = item.rotation === "all" ? "horizontal" : item.rotation === "horizontal" ? "fixed" : "all";
+                                      updateCarton(item.id, "rotation", next);
+                                    }}
                                     className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                      item.allowRotation ? "bg-blue-50 border-blue-300 text-blue-700" : "bg-slate-50 border-slate-300 text-slate-500"
+                                      item.rotation === "all" ? "bg-blue-50 border-blue-300 text-blue-700" : item.rotation === "horizontal" ? "bg-sky-50 border-sky-300 text-sky-700" : "bg-slate-50 border-slate-300 text-slate-500"
                                     }`}
                                     data-testid={`toggle-carton-rotation-${idx}`}
                                   >
-                                    {item.allowRotation ? "Allow" : "Fixed"}
+                                    {item.rotation === "all" ? "All" : item.rotation === "horizontal" ? "Horiz" : "Fixed"}
                                   </button>
                                 </div>
                                 <div>
                                   <Label className="text-[9px] text-slate-400 uppercase">Priority</Label>
-                                  <Input type="number" min={0} max={99} step="1" placeholder="0" value={item.priority > 0 ? item.priority : ""} onChange={e => updateCarton(item.id, "priority", parseInt(e.target.value) || 0)} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-carton-priority-${idx}`} />
+                                  <button
+                                    onClick={() => {
+                                      const next = item.priority === 0 ? 1 : item.priority === 1 ? 2 : 0;
+                                      updateCarton(item.id, "priority", next);
+                                    }}
+                                    className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
+                                      item.priority === 0 ? "bg-slate-50 border-slate-300 text-slate-600" : item.priority === 1 ? "bg-blue-50 border-blue-300 text-blue-700" : "bg-amber-50 border-amber-300 text-amber-700"
+                                    }`}
+                                    data-testid={`toggle-carton-priority-${idx}`}
+                                  >
+                                    {item.priority === 0 ? "Norm" : item.priority === 1 ? "High" : "Low"}
+                                  </button>
                                 </div>
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Fragile</Label>
-                                  <button
-                                    onClick={() => updateCarton(item.id, "fragile", !item.fragile)}
-                                    className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                      item.fragile ? "bg-red-50 border-red-300 text-red-700" : "bg-slate-50 border-slate-300 text-slate-500"
-                                    }`}
-                                    data-testid={`toggle-carton-fragile-${idx}`}
+                                  <Label className="text-[9px] text-slate-400 uppercase">Pallet</Label>
+                                  <select
+                                    value={item.palletAssign}
+                                    onChange={e => updateCarton(item.id, "palletAssign", e.target.value)}
+                                    className="w-full h-6 px-0.5 text-[10px] rounded border border-slate-200 bg-white"
+                                    data-testid={`select-carton-pallet-${idx}`}
                                   >
-                                    {item.fragile ? "Yes" : "No"}
-                                  </button>
+                                    <option value="none">None</option>
+                                    {Object.entries(PALLET_TYPES).filter(([k]) => k !== "custom").map(([k, v]) => (
+                                      <option key={k} value={k}>{v.label.split("(")[0].trim()}</option>
+                                    ))}
+                                  </select>
                                 </div>
                               </div>
                             </div>
@@ -1206,9 +1226,9 @@ export default function TruckLoadPlanner() {
                                   <Input type="number" min={1} value={item.quantity || ""} onChange={e => updatePallet(item.id, "quantity", parseInt(e.target.value) || 0)} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-pallet-qty-${idx}`} />
                                 </div>
                               </div>
-                              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 pt-2 border-t border-slate-100">
+                              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100">
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Stackable</Label>
+                                  <Label className="text-[9px] text-slate-400 uppercase">Stack</Label>
                                   <button
                                     onClick={() => updatePallet(item.id, "stackable", !item.stackable)}
                                     className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
@@ -1216,35 +1236,37 @@ export default function TruckLoadPlanner() {
                                     }`}
                                     data-testid={`toggle-pallet-stack-${idx}`}
                                   >
-                                    {item.stackable ? "Yes" : "No"}
+                                    {item.stackable ? "\u2713 Yes" : "No"}
                                   </button>
                                 </div>
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Rotation</Label>
+                                  <Label className="text-[9px] text-slate-400 uppercase">Rotate</Label>
                                   <button
-                                    onClick={() => updatePallet(item.id, "allowRotation", !item.allowRotation)}
+                                    onClick={() => {
+                                      const next: RotationMode = item.rotation === "all" ? "horizontal" : item.rotation === "horizontal" ? "fixed" : "all";
+                                      updatePallet(item.id, "rotation", next);
+                                    }}
                                     className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                      item.allowRotation ? "bg-blue-50 border-blue-300 text-blue-700" : "bg-slate-50 border-slate-300 text-slate-500"
+                                      item.rotation === "all" ? "bg-blue-50 border-blue-300 text-blue-700" : item.rotation === "horizontal" ? "bg-sky-50 border-sky-300 text-sky-700" : "bg-slate-50 border-slate-300 text-slate-500"
                                     }`}
                                     data-testid={`toggle-pallet-rotation-${idx}`}
                                   >
-                                    {item.allowRotation ? "Allow" : "Fixed"}
+                                    {item.rotation === "all" ? "All" : item.rotation === "horizontal" ? "Horiz" : "Fixed"}
                                   </button>
                                 </div>
                                 <div>
                                   <Label className="text-[9px] text-slate-400 uppercase">Priority</Label>
-                                  <Input type="number" min={0} max={99} step="1" placeholder="0" value={item.priority > 0 ? item.priority : ""} onChange={e => updatePallet(item.id, "priority", parseInt(e.target.value) || 0)} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-pallet-priority-${idx}`} />
-                                </div>
-                                <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Fragile</Label>
                                   <button
-                                    onClick={() => updatePallet(item.id, "fragile", !item.fragile)}
+                                    onClick={() => {
+                                      const next = item.priority === 0 ? 1 : item.priority === 1 ? 2 : 0;
+                                      updatePallet(item.id, "priority", next);
+                                    }}
                                     className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                      item.fragile ? "bg-red-50 border-red-300 text-red-700" : "bg-slate-50 border-slate-300 text-slate-500"
+                                      item.priority === 0 ? "bg-slate-50 border-slate-300 text-slate-600" : item.priority === 1 ? "bg-blue-50 border-blue-300 text-blue-700" : "bg-amber-50 border-amber-300 text-amber-700"
                                     }`}
-                                    data-testid={`toggle-pallet-fragile-${idx}`}
+                                    data-testid={`toggle-pallet-priority-${idx}`}
                                   >
-                                    {item.fragile ? "Yes" : "No"}
+                                    {item.priority === 0 ? "Norm" : item.priority === 1 ? "High" : "Low"}
                                   </button>
                                 </div>
                               </div>
@@ -1629,6 +1651,126 @@ export default function TruckLoadPlanner() {
           </motion.div>
         </div>
       </main>
+
+      {bulkSettingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setBulkSettingsOpen(false)} data-testid="bulk-settings-overlay">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-sm w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()} data-testid="bulk-settings-modal">
+            <div className="p-5">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                  <Settings2 className="w-4 h-4 text-primary" />
+                  Bulk Cargo Settings
+                </h3>
+                <button onClick={() => setBulkSettingsOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-1" data-testid="button-close-bulk-settings">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-500 mb-5">Changes will apply to all existing items and set defaults for new items.</p>
+
+              <div className="mb-5">
+                <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-3">Stacking</h4>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setDefaultStacking(true)}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors text-left ${
+                      defaultStacking ? "border-green-400 bg-green-50" : "border-slate-200 bg-white hover:border-slate-300"
+                    }`}
+                    data-testid="bulk-stack-yes"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
+                      <Layers className="w-4 h-4 text-green-700" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-900">Stackable</p>
+                      <p className="text-[10px] text-slate-500">Other items can be placed on top</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setDefaultStacking(false)}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors text-left ${
+                      !defaultStacking ? "border-amber-400 bg-amber-50" : "border-slate-200 bg-white hover:border-slate-300"
+                    }`}
+                    data-testid="bulk-stack-no"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                      <X className="w-4 h-4 text-amber-700" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-900">Not Stackable</p>
+                      <p className="text-[10px] text-slate-500">Nothing placed on top of this item</p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-5">
+                <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-3">Rotation</h4>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setDefaultRotation("all")}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors text-left ${
+                      defaultRotation === "all" ? "border-blue-400 bg-blue-50" : "border-slate-200 bg-white hover:border-slate-300"
+                    }`}
+                    data-testid="bulk-rotate-all"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                      <Box className="w-4 h-4 text-blue-700" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-900">All Axes</p>
+                      <p className="text-[10px] text-slate-500">Rotate freely in all directions</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setDefaultRotation("horizontal")}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors text-left ${
+                      defaultRotation === "horizontal" ? "border-sky-400 bg-sky-50" : "border-slate-200 bg-white hover:border-slate-300"
+                    }`}
+                    data-testid="bulk-rotate-horizontal"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-sky-100 flex items-center justify-center shrink-0">
+                      <Box className="w-4 h-4 text-sky-700" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-900">Horizontal Only</p>
+                      <p className="text-[10px] text-slate-500">Rotate on floor plane only (keeps upright)</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setDefaultRotation("fixed")}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors text-left ${
+                      defaultRotation === "fixed" ? "border-slate-400 bg-slate-50" : "border-slate-200 bg-white hover:border-slate-300"
+                    }`}
+                    data-testid="bulk-rotate-fixed"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-slate-200 flex items-center justify-center shrink-0">
+                      <Box className="w-4 h-4 text-slate-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-900">Fixed</p>
+                      <p className="text-[10px] text-slate-500">No rotation allowed</p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              <Button
+                onClick={() => {
+                  setCartons(prev => prev.map(c => ({ ...c, stackable: defaultStacking, rotation: defaultRotation })));
+                  setPallets(prev => prev.map(p => ({ ...p, stackable: defaultStacking, rotation: defaultRotation })));
+                  setBulkSettingsOpen(false);
+                  toast({ title: "Settings applied", description: "All cargo items have been updated." });
+                }}
+                className="w-full h-9 gap-2 font-semibold"
+                data-testid="button-apply-bulk-settings"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                Apply to All Items
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showImportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowImportModal(false)} data-testid="import-modal-overlay">
