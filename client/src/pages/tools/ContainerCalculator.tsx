@@ -431,7 +431,7 @@ function ContainerViewer3D({
     renderer.setSize(w, h);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     el.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
@@ -543,12 +543,72 @@ function ContainerViewer3D({
       const bZ = inToM(box.z);
 
       const boxGeo = new THREE.BoxGeometry(bL * 0.98, bH * 0.98, bW * 0.98);
+      const baseColor = new THREE.Color(box.color);
       const boxMat = new THREE.MeshStandardMaterial({
-        color: new THREE.Color(box.color),
+        color: baseColor,
         roughness: 0.4,
         metalness: 0.1,
       });
-      const boxMesh = new THREE.Mesh(boxGeo, boxMat);
+
+      runningPiece[box.cargoId] = (runningPiece[box.cargoId] || 0) + 1;
+      const pieceNo = runningPiece[box.cargoId];
+      const dimF = unitSystem === "metric" ? IN_TO_CM : 1;
+      const wtF = unitSystem === "metric" ? LB_TO_KG : 1;
+      const dimU = unitSystem === "metric" ? "cm" : "in";
+      const wtU = unitSystem === "metric" ? "kg" : "lb";
+
+      const labelCanvas = document.createElement("canvas");
+      const labelSize = 256;
+      labelCanvas.width = labelSize;
+      labelCanvas.height = labelSize;
+      const lctx = labelCanvas.getContext("2d")!;
+
+      const r = parseInt(box.color.slice(1, 3), 16);
+      const g = parseInt(box.color.slice(3, 5), 16);
+      const b = parseInt(box.color.slice(5, 7), 16);
+      lctx.fillStyle = `rgba(${Math.min(r + 40, 255)}, ${Math.min(g + 40, 255)}, ${Math.min(b + 40, 255)}, 1)`;
+      lctx.fillRect(0, 0, labelSize, labelSize);
+
+      lctx.fillStyle = "rgba(255,255,255,0.75)";
+      lctx.beginPath();
+      lctx.roundRect(12, 12, labelSize - 24, labelSize - 24, 10);
+      lctx.fill();
+
+      lctx.fillStyle = "#0f172a";
+      lctx.font = "bold 28px Inter, sans-serif";
+      lctx.textAlign = "center";
+      const itemName = (box.cargoName || "Box").length > 14
+        ? (box.cargoName || "Box").slice(0, 13) + "…"
+        : (box.cargoName || "Box");
+      lctx.fillText(`${itemName} #${pieceNo}`, labelSize / 2, 70);
+
+      lctx.fillStyle = "#334155";
+      lctx.font = "22px Inter, sans-serif";
+      lctx.fillText(`${(box.l * dimF).toFixed(0)}×${(box.w * dimF).toFixed(0)}×${(box.h * dimF).toFixed(0)} ${dimU}`, labelSize / 2, 115);
+
+      lctx.font = "20px Inter, sans-serif";
+      lctx.fillStyle = "#475569";
+      lctx.fillText(`${(box.weight * wtF).toFixed(0)} ${wtU}`, labelSize / 2, 155);
+
+      lctx.font = "18px Inter, sans-serif";
+      lctx.fillStyle = "#64748b";
+      lctx.fillText(box.stackable ? "Stackable" : "No stack", labelSize / 2, 190);
+
+      const labelTex = new THREE.CanvasTexture(labelCanvas);
+      labelTex.needsUpdate = true;
+      const topMat = new THREE.MeshStandardMaterial({
+        map: labelTex,
+        roughness: 0.5,
+        metalness: 0.05,
+      });
+
+      const materials = [
+        boxMat, boxMat,
+        topMat, boxMat,
+        boxMat, boxMat,
+      ];
+
+      const boxMesh = new THREE.Mesh(boxGeo, materials);
       boxMesh.position.set(bX + bL / 2, bY + bH / 2, bZ + bW / 2);
       boxMesh.castShadow = true;
       boxMesh.receiveShadow = true;
@@ -558,46 +618,12 @@ function ContainerViewer3D({
 
       const edgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(bL, bH, bW));
       const edgeMat = new THREE.LineBasicMaterial({
-        color: new THREE.Color(box.color).multiplyScalar(0.6),
+        color: baseColor.clone().multiplyScalar(0.6),
       });
       const edges = new THREE.LineSegments(edgeGeo, edgeMat);
       edges.position.copy(boxMesh.position);
       edges.userData = { linkedTo: idx };
       scene.add(edges);
-
-      const labelCanvas = document.createElement("canvas");
-      const labelW = 256;
-      const labelH = 96;
-      labelCanvas.width = labelW;
-      labelCanvas.height = labelH;
-      const lctx = labelCanvas.getContext("2d")!;
-      lctx.fillStyle = "rgba(255,255,255,0.82)";
-      lctx.beginPath();
-      lctx.roundRect(2, 2, labelW - 4, labelH - 4, 6);
-      lctx.fill();
-      lctx.fillStyle = "#1e293b";
-      runningPiece[box.cargoId] = (runningPiece[box.cargoId] || 0) + 1;
-      const pieceNo = runningPiece[box.cargoId];
-      const dimF = unitSystem === "metric" ? IN_TO_CM : 1;
-      const wtF = unitSystem === "metric" ? LB_TO_KG : 1;
-      const dimU = unitSystem === "metric" ? "cm" : "in";
-      const wtU = unitSystem === "metric" ? "kg" : "lb";
-      lctx.font = "bold 18px Inter, sans-serif";
-      lctx.fillText(`${box.cargoName || "Box"} #${pieceNo}`, 8, 22);
-      lctx.font = "14px Inter, sans-serif";
-      lctx.fillStyle = "#475569";
-      lctx.fillText(`${(box.l * dimF).toFixed(0)}×${(box.w * dimF).toFixed(0)}×${(box.h * dimF).toFixed(0)} ${dimU}`, 8, 42);
-      lctx.fillText(`${(box.weight * wtF).toFixed(0)} ${wtU}  |  ${box.stackable ? "Stack ✓" : "No stack"}`, 8, 60);
-      lctx.fillText(`Rot: ${box.rotation}`, 8, 78);
-      const labelTex = new THREE.CanvasTexture(labelCanvas);
-      labelTex.needsUpdate = true;
-      const spriteMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthTest: false });
-      const sprite = new THREE.Sprite(spriteMat);
-      const spriteScale = Math.max(bL, bW) * 0.8;
-      sprite.scale.set(spriteScale, spriteScale * (labelH / labelW), 1);
-      sprite.position.set(0, bH / 2 + spriteScale * 0.15, 0);
-      sprite.userData = { isLabel: true };
-      boxMesh.add(sprite);
     }
 
     function addAxisLabel(text: string, pos: THREE.Vector3) {
@@ -754,9 +780,6 @@ function ContainerViewer3D({
           <div ref={mountRef} className="absolute inset-0" />
         </div>
       )}
-      <p className="mt-1 text-[11px] text-slate-500">
-        Click and drag to rotate, scroll to zoom
-      </p>
     </div>
   );
 }
@@ -3514,7 +3537,6 @@ export default function ContainerCalculator() {
                               )}
                             </h2>
                             <div className="flex items-center gap-2">
-                              <p className="text-xs text-slate-500">Click and drag to rotate, scroll to zoom</p>
                               {ci === 0 && (
                                 <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={handleExportPDF} data-testid="button-export-pdf">
                                   <FileDown className="w-3.5 h-3.5" />
