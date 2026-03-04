@@ -1,0 +1,246 @@
+REPLIT — UPDATE REQUEST (AccessToNorth / Container Loading Calculator)
+Target file (single-file app): client/src/pages/tools/ContainerCalculator.tsx
+
+GOALS (high priority)
+A) Fix container “auto-upgrade” bug: user-selected container MUST stay fixed. No silent upgrades to 45’HC or anything else.
+B) Improve desktop layout (current UI is too narrow / looks mobile-first).
+C) Improve cargo input grid UX: no horizontal side-scroll on desktop; add per-row + / x controls; remove the big “+ Add cargo item” CTA.
+D) Improve 3D view: remove grey platform; add subtle grid background; add container dimension labels; add per-box labels/markings; show container doors.
+E) Add better “Loading / calculating…” animation overlay while packing runs.
+F) Improve “Loading Details” report: add columns (stackable yes/no etc), totals row (qty/weight/m3/cft), compact layout (tabs/accordion), reduce long scroll.
+
+========================================================
+A) FIX: NEVER AUTO-UPGRADE CONTAINER TYPE
+========================================================
+Current issue:
+When cargo doesn’t fit into the user-selected container (ex: 40’HC), the code upgrades to 45’HC and recalculates. This must stop.
+
+Implementation requirements:
+1) Remove / disable any loop that changes `currentContainer` to a larger container inside handleCalculate.
+2) Packing should attempt ONLY the user-selected `selectedContainer` (or `customContainer`).
+3) If not all boxes fit:
+   - Show a clear error message: “Does not fit in selected container.”
+   - Optionally compute a “Suggested container” in the background (for display only) BUT do NOT change the selected container and do NOT replace the result automatically.
+   - Provide a button “Try suggested container” that, when clicked, re-runs calculation using that suggested container (explicit user action).
+
+Concrete change:
+- Locate handleCalculate block where it uses UPGRADE_MAP or checks “upgrading container”.
+- Refactor:
+  - `currentContainer` must be set once from the user selection at start and never changed automatically.
+  - If unplaced boxes remain, set `fitStatus = "not_fit"` and store `suggestedContainerKey` (optional), and stop.
+
+UI changes:
+- In results panel: show a red warning banner if not fit.
+- If `suggestedContainerKey` exists: show “Suggested: 45’HC” + button “Recalculate with suggested”.
+
+========================================================
+B) DESKTOP LAYOUT: MAKE IT WIDER (NOT MOBILE-NARROW)
+========================================================
+Current behavior looks constrained (like max-width is too small and stacked layout persists on desktop).
+
+Requirements:
+- On desktop (>=1024px), use a two-column layout:
+  LEFT: Container Type selector (and custom container inputs)
+  RIGHT: Packing list input grid + controls
+- Use a wider container wrapper: e.g. `max-w-7xl` and sensible padding.
+- Ensure the input table doesn’t force horizontal scrolling on desktop.
+- On mobile, stack vertically.
+
+Concrete:
+- Find main page wrapper div and replace with:
+  - container: `w-full max-w-7xl mx-auto px-4 md:px-6`
+  - layout: `grid grid-cols-1 lg:grid-cols-12 gap-6`
+  - left panel: `lg:col-span-4`
+  - right panel: `lg:col-span-8`
+
+========================================================
+C) CARGO INPUT GRID UX (NO SIDE SCROLL ON DESKTOP)
+========================================================
+Problems:
+- Columns don’t fit and cause side scrolling.
+- Add/remove actions are not fast enough.
+
+Requirements:
+1) Replace “Add Cargo Item” CTA button flow with per-row controls:
+   - “+” adds a new row immediately below that row (or at end).
+   - “x” deletes that row.
+2) Keep one compact button row (Calculate / Reset / Import / Bulk Edit).
+3) On desktop:
+   - Fit columns by using better column widths, smaller padding, and allowing some columns to collapse into a “More” popover if needed.
+4) On mobile:
+   - Allow horizontal scroll (only on mobile), OR switch to a card-per-item layout.
+   - Do NOT force desktop to scroll.
+
+Suggested approach:
+- Desktop: table-like grid with CSS grid columns.
+- Mobile: “Cargo Item” cards with expandable advanced options.
+
+Data columns to include (keep, but compact):
+- Name
+- L, W, H
+- Qty
+- Weight/pc
+- Total weight (auto)
+- Volume (auto) in selected unit
+- Stackable (Yes/No)
+- Rotation mode (All / None / Limited)
+- Color (optional)
+
+Add:
+- A “Totals” row at bottom of list: total qty, total weight, total volume.
+
+========================================================
+D) 3D VIEW IMPROVEMENTS
+========================================================
+D1) Remove grey platform
+- In ContainerViewer3D, there is a floor mesh:
+  const floorGeo = new THREE.PlaneGeometry(...)
+  floorMat / floor mesh
+  scene.add(floor)
+Remove it entirely.
+
+D2) Add subtle grid background (not overlaying the 3D objects)
+- Add a GridHelper positioned slightly below container floor:
+  const grid = new THREE.GridHelper(size, divisions)
+  grid.position.y = -0.001
+  grid.material.opacity = 0.15
+  grid.material.transparent = true
+- Size should scale based on container length/width.
+- Divisions:
+  - If imperial: 1 ft major lines, optionally 6-inch minor lines.
+  - If metric: 0.5m major lines, optionally 0.1m minor lines.
+Keep it subtle.
+
+D3) Add container dimension labels (L/W/H)
+- Add unobtrusive labels:
+  - Top center: Length
+  - Side/top: Width
+  - Corner vertical: Height
+- Must respect unit toggle (imperial/metric).
+Implementation options:
+- Use CSS2DRenderer (preferred for readable labels).
+- Or use SpriteText.
+
+D4) Add per-box markings / data so users understand which cargo is which
+Requirements:
+- Each placed box should display:
+  - Cargo name (or ID)
+  - Dimensions (LxWxH)
+  - Weight
+- Must be readable and not too noisy:
+  - Show label on hover and/or when selected (default minimal).
+  - Always show a small ID tag (e.g., “C1”, “C2”) to reduce clutter.
+Implementation:
+- Add selection logic:
+  - Raycaster on click -> select box
+  - Show full label for selected box only
+  - Show small ID for others
+
+D5) Show container doors
+- Add a simple door frame/wire at the container “front” (door end).
+- Use thin lines or a simple plane outline.
+
+D6) Manual cargo editing (drag & drop) — MVP SPEC
+User request: move boxes with mouse including UP/DOWN, validate bounds and stacking rules.
+
+Answer: Yes, it can be valuable if done as an “Edit Layout” mode (not default). Do MVP first.
+
+MVP requirements:
+1) Add an “Edit Layout” toggle/button above 3D view (off by default).
+2) In Edit mode:
+   - Click a box to select.
+   - Use TransformControls in “translate” mode.
+   - Allow movement on X/Z freely; allow Y (up/down) as well.
+   - Enable snapping:
+     - Imperial: 1 inch snap (or 0.5 inch)
+     - Metric: 1 cm snap (or 5 mm)
+3) Validation:
+   - Bounds: if any part leaves container interior -> highlight the container wall in red AND highlight the box red.
+   - Collisions: if box intersects another -> highlight red and show warning.
+   - Stackable rule:
+     - If selected box is “non-stackable” and user places another box on top of it, OR places it on top of another non-stackable surface -> highlight red and show warning.
+4) Commit/Cancel:
+   - Buttons: “Apply changes” and “Cancel changes”.
+   - If invalid, disable Apply.
+
+Note: Keep this as client-side editing of the final placed array; do not rewrite the packing algorithm yet.
+
+========================================================
+E) LOADING / CALCULATING ANIMATION
+========================================================
+When packing runs, show a full overlay:
+- Title: “Calculating loading plan…”
+- Progress indicator (even if fake/estimated):
+  - Step text cycling: “Preparing items… / Packing… / Rendering…”
+- A simple animated container/boxes loader (CSS animation ok).
+- Ensure it blocks UI until done (or allow Cancel).
+
+========================================================
+F) “LOADING DETAILS” REPORT — ADD COLUMNS + TOTALS + COMPACT UI
+========================================================
+Current issues:
+- Too long and scroll-heavy.
+
+Requirements:
+1) Add columns:
+   - Stackable: Yes/No
+   - Rotation: mode
+   - Total weight (for that line)
+   - Total volume:
+     - show both m³ and ft³ OR show one based on unit toggle, plus secondary smaller value.
+2) Add totals row:
+   - total qty
+   - total weight
+   - total volume (m³ and ft³)
+3) Compact presentation:
+   - Use tabs or accordion:
+     - “Summary” tab: utilization cards (weight, volume, floor area)
+     - “Items” tab: compact table
+     - “3D View” tab: 3D viewer
+     - “Export” tab: PDF / Share link
+This removes long vertical scroll.
+
+========================================================
+G) PDF PACKING REPORT (BETTER THAN COMPETITOR)
+========================================================
+Add button: “Download PDF packing report”.
+
+PDF contents (minimum):
+1) Header: AccessToNorth branding + date/time
+2) Selected container spec (type, inner dims, payload)
+3) Summary metrics:
+   - pieces total
+   - total weight
+   - total volume
+   - utilization %
+4) Cargo list table with the columns from section F
+5) One or more screenshots of the 3D load plan:
+   - capture the WebGL canvas and embed image(s)
+   - if multiple containers: one page per container
+
+Implementation approach:
+- Use `jspdf` + `html2canvas` for tables/summary.
+- For 3D: `renderer.domElement.toDataURL()` to capture and insert into PDF.
+- Ensure PDF works in browser without server.
+
+========================================================
+H) VERIFY + API KEY NOTES (DON’T CHANGE IF ALREADY WORKING)
+========================================================
+Do not touch Google Maps key code in this file unless required by compilation.
+This prompt is primarily about container calculator UX + algorithm + 3D viewer.
+
+========================================================
+DELIVERABLES
+========================================================
+1) Implement all changes directly in:
+   client/src/pages/tools/ContainerCalculator.tsx
+2) Keep build green (no TS errors).
+3) Confirm with quick test cases:
+   - Select 40’HC, enter cargo that does NOT fit -> result must NOT upgrade to 45’HC automatically. Must show “does not fit”.
+   - Desktop view uses full width and two-column layout.
+   - Cargo table fits on desktop without horizontal scroll.
+   - 3D view: no grey platform; grid visible; labels visible; door visible.
+   - Edit Layout mode: up/down movement works; invalid placements highlight red; Apply disabled if invalid.
+   - PDF downloads and includes summary + cargo table + 3D image.
+
+Proceed with implementation now.

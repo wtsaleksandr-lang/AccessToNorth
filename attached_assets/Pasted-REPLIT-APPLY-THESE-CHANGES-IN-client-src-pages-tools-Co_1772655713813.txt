@@ -1,0 +1,322 @@
+REPLIT — APPLY THESE CHANGES IN:
+client/src/pages/tools/ContainerCalculator.tsx
+
+GOAL:
+Fix container “auto-upgrade” bug, improve desktop layout (no narrow/mobile look), improve 3D viewer (remove grey platform, add subtle grid, add better box markings + door hint), improve Loading Details table (add columns + totals + compact), and upgrade PDF report to branded + include plan image. Also remove any laggy “click item → show details below 3D” behavior if present.
+
+========================================================
+A) FIX #1 — DO NOT AUTO-UPGRADE CONTAINER TYPE
+========================================================
+Problem: user selects 40’HQ but algorithm upgrades to 45’HQ automatically if not fitting. This must NEVER happen. Container type must stay exactly as selected. If items don’t fit: show warning and (optionally) suggest “try larger container” BUT do not change selection automatically.
+
+In handleCalculate (you mentioned ~1073–1192; in this file it’s within the same function), FIND this block (or very similar):
+
+  if (res.unplaced.length > 0) {
+    if (!upgraded && selectedContainerId === "40HC") {
+      const nextId = UPGRADE_MAP[selectedContainerId as keyof typeof UPGRADE_MAP];
+      ...
+      setSelectedContainerId(nextId);
+      useContainer = CONTAINERS.find((c) => c.id === nextId) || useContainer;
+      upgraded = true;
+      continue;
+    }
+    // multi-container logic continues...
+  }
+
+REPLACE the entire “upgrade” attempt with a non-mutating warning and proceed to multi-container using the SAME selected container:
+
+--- REPLACE BLOCK WITH THIS (keep indentation consistent) ---
+
+  if (res.unplaced.length > 0) {
+    // IMPORTANT: do NOT auto-upgrade container type.
+    // If it doesn't fit, we will keep the selected container and (optionally) use multiple containers.
+    setWarning(
+      `Some items do not fit in the selected container (${useContainer.label}). ` +
+      `You can try a larger container or split into multiple containers.`
+    );
+  }
+
+Then ensure the code continues into the existing multi-container loop using `useContainer` as the originally selected container.
+
+Also: REMOVE any `setSelectedContainerId(nextId)` calls in handleCalculate (there must be none after this change).
+
+========================================================
+B) 3D VIEWER — REMOVE GREY PLATFORM, ADD SUBTLE GRID (NO OVERLAY), ADD DOOR HINT
+========================================================
+In ContainerViewer3D component, FIND where the “floor” is created. It currently looks like:
+
+  const floorGeo = new THREE.PlaneGeometry(cL * 2, cW * 2);
+  const floorMat = new THREE.MeshStandardMaterial({ color: "#f3f4f6" });
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(cL / 2, 0, cW / 2);
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+DELETE that floor entirely.
+
+REPLACE with a subtle grid helper that sits slightly below the container floor (so it doesn’t visually “cut” the container), and keep it subtle:
+
+--- INSERT IN SAME PLACE (after scene.add(containerBox) is fine) ---
+
+  // Subtle grid under the container (no solid platform)
+  const gridSize = Math.max(cL, cW) * 1.6;
+  const divisions = 40; // keep performance reasonable
+  const grid = new THREE.GridHelper(gridSize, divisions);
+  grid.position.set(cL / 2, -0.001, cW / 2);
+
+  // Make grid subtle
+  const gridMats = Array.isArray((grid as any).material) ? (grid as any).material : [(grid as any).material];
+  gridMats.forEach((m: any) => {
+    m.transparent = true;
+    m.opacity = 0.18;
+    m.depthWrite = false;
+  });
+
+  scene.add(grid);
+
+Door hint:
+At the “door end” of the container (x=0), add a simple door outline line. Add this right after containerBox is added:
+
+--- INSERT ---
+
+  // Door hint at x=0 end (simple outline)
+  const doorMat = new THREE.LineBasicMaterial({ color: 0x9ca3af, transparent: true, opacity: 0.6 });
+  const doorGeom = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(0, cH, 0),
+    new THREE.Vector3(0, cH, cW),
+    new THREE.Vector3(0, 0, cW),
+    new THREE.Vector3(0, 0, 0),
+  ]);
+  const doorOutline = new THREE.Line(doorGeom, doorMat);
+  scene.add(doorOutline);
+
+========================================================
+C) 3D VIEWER — REMOVE LAGGY “CLICK ITEM → DETAILS BELOW” FEATURE
+========================================================
+User says the “selected cargo item info under 3D viewer” is laggy and must be removed.
+Search in the page JSX (outside viewer) for any UI like:
+- “Selected item”
+- “Click a box”
+- a panel that updates on click
+- pointer/raycast events to set selected box
+
+If you find any state like `selectedPlacedBox` or `activeBox` etc:
+- Remove the click handlers from meshes
+- Remove the panel entirely
+- Remove any “Edit Layout: ON” toggle and “Drag boxes…” text (ONLY if present in this app; user does not want it unless we fully implement real editing)
+
+Result: 3D viewer becomes view-only, smooth.
+
+========================================================
+D) 3D VIEWER — IMPROVE BOX MARKINGS (BETTER THAN PIER2PIER)
+========================================================
+You already generate a CanvasTexture label per box. Improve it:
+- Make text higher contrast + readable
+- Include: Cargo name, Piece # (within that cargoId), L×W×H, Weight, Stackable Y/N, Rotation mode if relevant
+- Put label on TOP face and (optionally) one side face for readability
+- Keep subtle: don’t spam huge text on tiny boxes; scale font based on box size
+
+Implementation approach (minimal disruption):
+1) Build a `cargoMetaById` map in parent and pass into ContainerViewer3D as prop:
+   - stackable flag
+   - maybe color
+2) In viewer, when creating label texture, use meta.
+
+Steps:
+- Update ContainerViewer3D props to include:
+    cargoMetaById?: Record<string, { stackable?: boolean; color?: string; }>
+    pieceIndexByPlacedId?: Record<string, number>  // or compute on the fly
+
+- In parent (where you render viewer), build:
+
+  const cargoMetaById = useMemo(() => {
+    const m: Record<string, any> = {};
+    cargoItems.forEach(ci => { m[ci.id] = { stackable: ci.stackable, color: ci.color }; });
+    return m;
+  }, [cargoItems]);
+
+- Also compute piece numbers per cargoId in the CURRENT container’s placed list:
+
+  const pieceNumberByPlaced = useMemo(() => {
+    const counters: Record<string, number> = {};
+    const out: Record<string, number> = {};
+    (activePlaced || placed).forEach(p => {
+      counters[p.cargoId] = (counters[p.cargoId] || 0) + 1;
+      out[`${p.cargoId}-${p.x}-${p.y}-${p.z}`] = counters[p.cargoId]; // stable-ish key
+    });
+    return out;
+  }, [activePlaced, placed]);
+
+(If you already have a stable id on PlacedBox, use that instead of coordinate key.)
+
+- In viewer label generation, use:
+  const meta = cargoMetaById?.[box.cargoId];
+  const stackTxt = meta?.stackable ? "Stack: YES" : "Stack: NO";
+
+And draw lines:
+  `${box.cargoName} (#${pieceNo})`
+  `${Math.round(box.l)}×${Math.round(box.w)}×${Math.round(box.h)} ${unitLen}`
+  `Wt: ${Math.round(box.weight)} ${unitWt}`
+  `${stackTxt}`
+
+IMPORTANT: keep label background semi-transparent white with rounded rect, black text, small font.
+
+========================================================
+E) LOADING DETAILS TABLE — ADD COLUMNS + TOTALS + COMPACT VIEW (LESS SCROLL)
+========================================================
+In “Loading Details” table:
+Add columns:
+- Stackable (Yes/No)
+- Total Vol (m³ or ft³) per piece
+- Total Weight (already)
+- Also show a Totals row at bottom: Qty, Weight, Total m³, Total ft³ (both totals helpful)
+
+Also: compact layout:
+- On desktop: table should not force horizontal scroll (reduce padding, use smaller font, hide less-important columns behind a “More” expandable row)
+- On mobile: allow horizontal scroll for table only (not the entire page)
+
+Implementation details:
+- For each placed row, get stackable from cargoItems by cargoId.
+- Volume per piece:
+  - If units are inches/lb: compute ft³ = (L*W*H)/1728
+  - If cm/kg: compute m³ = (L*W*H)/1,000,000
+  - Show BOTH in row? (optional). At minimum show the currently selected unit system value, and totals show both.
+
+Add totals:
+  const totals = useMemo(() => {
+    const qty = activePlaced.length;
+    const weight = activePlaced.reduce((s,b)=>s+b.weight,0);
+    const volFt3 = activePlaced.reduce((s,b)=>s+(b.l*b.w*b.h)/1728,0); // if inches
+    const volM3  = activePlaced.reduce((s,b)=>s+(b.l*b.w*b.h)/1e6,0);   // if cm
+    return { qty, weight, volFt3, volM3 };
+  }, [activePlaced]);
+
+Render totals row at bottom of tbody with bold styling.
+
+========================================================
+F) FIX “NARROW / MOBILE-FIRST” DESKTOP LAYOUT
+========================================================
+On desktop, the calculator looks narrow/awkward. Fix:
+- Increase overall container max width to max-w-7xl (or 6xl) and center.
+- Use 2-column layout on desktop:
+  LEFT: Container type selector
+  RIGHT: Cargo grid
+- On mobile, stack vertically.
+
+Action:
+Find the top wrapper div for this page. It likely has something like `max-w-4xl` or a narrow container.
+Change to:
+  className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8"
+
+Then for the main top section:
+  className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+Container type card: lg:col-span-1
+Cargo grid card: lg:col-span-2
+
+Also fix cargo input grid causing side scroller:
+- Convert header+rows to CSS grid with responsive columns
+- Use `minmax(0, 1fr)` and reduce fixed widths
+- If you must scroll horizontally, limit it to the grid container: `overflow-x-auto` on that card only.
+
+Row actions requirement:
+- Add per-row “+” to duplicate/add a new line below (copy same row values except id)
+- Add per-row “×” to delete
+- Remove the big “+ Add Cargo Item” CTA button if this is implemented
+- Place remaining CTAs (Calculate / Reset) on one line
+
+========================================================
+G) PDF REPORT — BRAND IT + INCLUDE 3D PLAN IMAGE + BETTER TABLE
+========================================================
+Current PDF is ugly. Make it professional like (or better than) pier2pier:
+- Header with AccessToNorth logo (if logo asset exists) + title “Container Packing Report”
+- Summary block: container type, internal dims, payload, total pieces, total weight, utilization %
+- Include an image of the loading plan:
+  Use renderer snapshot: `renderer.domElement.toDataURL("image/png")`
+- Table: #, Item name, Piece #, L, W, H, Weight, Stackable, Rotation
+- Footer: generated timestamp + website
+
+Implementation plan:
+1) Add deps (if not installed):
+   - jspdf
+   - jspdf-autotable (optional, makes table clean)
+   - html2canvas (optional)
+   Prefer jsPDF + autoTable for clean tables.
+
+2) Expose snapshot from ContainerViewer3D:
+   - Add prop: `onSnapshotReady?: (fn: () => string | null) => void`
+   - After renderer created, call:
+        onSnapshotReady?.(() => renderer.domElement?.toDataURL("image/png") ?? null);
+
+3) In parent, store:
+   const snapshotRef = useRef<null | (() => string | null)>(null);
+
+   <ContainerViewer3D
+      ...
+      onSnapshotReady={(fn) => { snapshotRef.current = fn; }}
+   />
+
+4) PDF button in UI:
+   - Add top-right “PDF Report” button above 3D viewer.
+   - On click:
+     const img = snapshotRef.current?.();
+     build pdf with jsPDF
+     add logo if available:
+       - if there is a logo in `/public` or `client/src/assets`, load it as dataURL once.
+       - If no logo, use text header “AccessToNorth”.
+
+5) PDF layout:
+   - Page 1: header + summary + plan image
+   - Page 2: table (autoTable)
+
+If multi-container results exist, include each container as its own section/page.
+
+========================================================
+H) “CALCULATING…” ANIMATION / LOADING STATE
+========================================================
+Add a clean loading state when packing runs:
+- When user clicks Calculate:
+  show overlay or inline card:
+   - spinner
+   - “Calculating loading plan…”
+   - optional elapsed timer (mm:ss)
+Do NOT freeze UI. Use `requestAnimationFrame` or setTimeout(0) to allow render before heavy packing runs.
+
+Implementation:
+- state: `const [isCalculating, setIsCalculating] = useState(false);`
+- in handleCalculate:
+   setIsCalculating(true);
+   requestAnimationFrame(() => {
+     try { ...packing... } finally { setIsCalculating(false); }
+   });
+
+========================================================
+I) IMPORTANT — DO NOT ADD “LOAD STABILITY” FOR OCEAN CONTAINERS
+========================================================
+Do NOT add “load stability” feature for standard containers (user says not needed). Only keep core fit/volume/weight/payload/utilization logic.
+
+========================================================
+J) AFTER CHANGES — QUICK TEST CHECKLIST
+========================================================
+1) Select 40’HC. Enter cargo that doesn’t fit. Result must:
+   - NOT switch to 45’HC automatically
+   - show warning
+   - either show “doesn’t fit” or split into multiple 40’HC only (depending on existing multi-container option)
+2) Desktop layout:
+   - page uses full width nicely
+   - no page-wide horizontal scroll
+3) 3D viewer:
+   - no grey floor
+   - subtle grid visible behind/under container (not overlaying container)
+   - door outline visible
+   - box labels visible and readable
+   - no laggy “click box → details panel”
+4) PDF:
+   - has branding + image + table
+   - looks professional
+
+If anything blocks you (missing logo asset, missing package), implement with a fallback (text header instead of logo).
+
+DELIVERABLE:
+Commit changes directly in the same file. If you need to add a small helper file for logo dataURL or PDF helpers, do it, but keep changes minimal and clean.

@@ -399,13 +399,11 @@ function ContainerViewer3D({
   container,
   unitSystem,
   onUpdatePlaced,
-  onHoverBox,
 }: {
   placed: PlacedBox[];
   container: ContainerSpec;
   unitSystem: "imperial" | "metric";
   onUpdatePlaced?: (nextPlaced: PlacedBox[]) => void;
-  onHoverBox?: (box: PlacedBox | null, index: number | null) => void;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [webglError, setWebglError] = useState(false);
@@ -537,6 +535,7 @@ function ContainerViewer3D({
     scene.add(doorCenterLine);
 
     const cargoMeshes: THREE.Mesh[] = [];
+    const runningPiece: Record<string, number> = {};
     for (let idx = 0; idx < placed.length; idx++) {
       const box = placed[idx];
       const bL = inToM(box.l);
@@ -568,6 +567,40 @@ function ContainerViewer3D({
       edges.position.copy(boxMesh.position);
       edges.userData = { linkedTo: idx };
       scene.add(edges);
+
+      const labelCanvas = document.createElement("canvas");
+      const labelW = 256;
+      const labelH = 96;
+      labelCanvas.width = labelW;
+      labelCanvas.height = labelH;
+      const lctx = labelCanvas.getContext("2d")!;
+      lctx.fillStyle = "rgba(255,255,255,0.82)";
+      lctx.beginPath();
+      lctx.roundRect(2, 2, labelW - 4, labelH - 4, 6);
+      lctx.fill();
+      lctx.fillStyle = "#1e293b";
+      runningPiece[box.cargoId] = (runningPiece[box.cargoId] || 0) + 1;
+      const pieceNo = runningPiece[box.cargoId];
+      const dimF = unitSystem === "metric" ? IN_TO_CM : 1;
+      const wtF = unitSystem === "metric" ? LB_TO_KG : 1;
+      const dimU = unitSystem === "metric" ? "cm" : "in";
+      const wtU = unitSystem === "metric" ? "kg" : "lb";
+      lctx.font = "bold 18px Inter, sans-serif";
+      lctx.fillText(`${box.cargoName || "Box"} #${pieceNo}`, 8, 22);
+      lctx.font = "14px Inter, sans-serif";
+      lctx.fillStyle = "#475569";
+      lctx.fillText(`${(box.l * dimF).toFixed(0)}×${(box.w * dimF).toFixed(0)}×${(box.h * dimF).toFixed(0)} ${dimU}`, 8, 42);
+      lctx.fillText(`${(box.weight * wtF).toFixed(0)} ${wtU}  |  ${box.stackable ? "Stack ✓" : "No stack"}`, 8, 60);
+      lctx.fillText(`Rot: ${box.rotation}`, 8, 78);
+      const labelTex = new THREE.CanvasTexture(labelCanvas);
+      labelTex.needsUpdate = true;
+      const spriteMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthTest: false });
+      const sprite = new THREE.Sprite(spriteMat);
+      const spriteScale = Math.max(bL, bW) * 0.8;
+      sprite.scale.set(spriteScale, spriteScale * (labelH / labelW), 1);
+      sprite.position.set(0, bH / 2 + spriteScale * 0.15, 0);
+      sprite.userData = { isLabel: true };
+      boxMesh.add(sprite);
     }
 
     const raycaster = new THREE.Raycaster();
@@ -599,70 +632,35 @@ function ContainerViewer3D({
       renderer.domElement.setPointerCapture(ev.pointerId);
     };
 
-    let lastHoveredIdx = -1;
-    let lastHoveredMesh: THREE.Mesh | null = null;
-
     const onPointerMove = (ev: PointerEvent) => {
+      if (!editMode || !dragging || !selectedMesh) return;
       getPointer(ev);
-      if (editMode && dragging && selectedMesh) {
-        raycaster.setFromCamera(pointer, camera);
-        const pt = new THREE.Vector3();
-        if (!raycaster.ray.intersectPlane(dragPlane, pt)) return;
-        const target = pt.sub(dragOffset);
-        const { placedIndex, l, w } = selectedMesh.userData as { placedIndex: number; l: number; w: number };
-        const clampedX = Math.min(Math.max(target.x, l / 2), cL - l / 2);
-        const clampedZ = Math.min(Math.max(target.z, w / 2), cW - w / 2);
-        const clamped = Math.abs(clampedX - target.x) > 0.001 || Math.abs(clampedZ - target.z) > 0.001;
-        selectedMesh.position.x = clampedX;
-        selectedMesh.position.z = clampedZ;
-        const linkedEdge = scene.children.find(
-          (c) => c instanceof THREE.LineSegments && c.userData?.linkedTo === placedIndex
-        );
-        if (linkedEdge) {
-          linkedEdge.position.x = clampedX;
-          linkedEdge.position.z = clampedZ;
-        }
-        const mat = selectedMesh.material as THREE.MeshStandardMaterial;
-        if (clamped) {
-          mat.emissive = new THREE.Color(0xef4444);
-          mat.emissiveIntensity = 0.6;
-          setEditWarning("Out of container bounds (clamped).");
-        } else {
-          mat.emissive = new THREE.Color(0x000000);
-          mat.emissiveIntensity = 0.0;
-          setEditWarning(null);
-        }
-        return;
-      }
       raycaster.setFromCamera(pointer, camera);
-      const hits = raycaster.intersectObjects(cargoMeshes, false);
-      if (hits.length > 0) {
-        const mesh = hits[0].object as THREE.Mesh;
-        const idx = mesh.userData.placedIndex as number;
-        if (idx !== lastHoveredIdx) {
-          if (lastHoveredMesh && !dragging) {
-            const m = lastHoveredMesh.material as THREE.MeshStandardMaterial;
-            m.emissive = new THREE.Color(0x000000);
-            m.emissiveIntensity = 0.0;
-          }
-          const mat = mesh.material as THREE.MeshStandardMaterial;
-          mat.emissive = new THREE.Color(0xffffff);
-          mat.emissiveIntensity = 0.15;
-          lastHoveredIdx = idx;
-          lastHoveredMesh = mesh;
-          renderer.domElement.style.cursor = "pointer";
-          if (onHoverBox && placed[idx]) onHoverBox(placed[idx], idx);
-        }
+      const pt = new THREE.Vector3();
+      if (!raycaster.ray.intersectPlane(dragPlane, pt)) return;
+      const target = pt.sub(dragOffset);
+      const { placedIndex, l, w } = selectedMesh.userData as { placedIndex: number; l: number; w: number };
+      const clampedX = Math.min(Math.max(target.x, l / 2), cL - l / 2);
+      const clampedZ = Math.min(Math.max(target.z, w / 2), cW - w / 2);
+      const clamped = Math.abs(clampedX - target.x) > 0.001 || Math.abs(clampedZ - target.z) > 0.001;
+      selectedMesh.position.x = clampedX;
+      selectedMesh.position.z = clampedZ;
+      const linkedEdge = scene.children.find(
+        (c) => c instanceof THREE.LineSegments && c.userData?.linkedTo === placedIndex
+      );
+      if (linkedEdge) {
+        linkedEdge.position.x = clampedX;
+        linkedEdge.position.z = clampedZ;
+      }
+      const mat = selectedMesh.material as THREE.MeshStandardMaterial;
+      if (clamped) {
+        mat.emissive = new THREE.Color(0xef4444);
+        mat.emissiveIntensity = 0.6;
+        setEditWarning("Out of container bounds (clamped).");
       } else {
-        if (lastHoveredMesh && !dragging) {
-          const m = lastHoveredMesh.material as THREE.MeshStandardMaterial;
-          m.emissive = new THREE.Color(0x000000);
-          m.emissiveIntensity = 0.0;
-        }
-        lastHoveredIdx = -1;
-        lastHoveredMesh = null;
-        renderer.domElement.style.cursor = "";
-        if (onHoverBox) onHoverBox(null, null);
+        mat.emissive = new THREE.Color(0x000000);
+        mat.emissiveIntensity = 0.0;
+        setEditWarning(null);
       }
     };
 
@@ -696,18 +694,7 @@ function ContainerViewer3D({
     };
 
     const onPointerCancel = (ev: PointerEvent) => cancelDrag(ev);
-    const onPointerLeave = () => {
-      cancelDrag();
-      if (lastHoveredMesh) {
-        const m = lastHoveredMesh.material as THREE.MeshStandardMaterial;
-        m.emissive = new THREE.Color(0x000000);
-        m.emissiveIntensity = 0.0;
-      }
-      lastHoveredIdx = -1;
-      lastHoveredMesh = null;
-      renderer.domElement.style.cursor = "";
-      if (onHoverBox) onHoverBox(null, null);
-    };
+    const onPointerLeave = () => cancelDrag();
 
     renderer.domElement.addEventListener("pointerdown", onPointerDown);
     renderer.domElement.addEventListener("pointermove", onPointerMove);
@@ -804,7 +791,7 @@ function ContainerViewer3D({
         el.removeChild(renderer.domElement);
       }
     };
-  }, [placed, container, unitSystem, editMode, onUpdatePlaced, onHoverBox]);
+  }, [placed, container, unitSystem, editMode, onUpdatePlaced]);
 
   const fmt = (inches: number) => {
     if (unitSystem === "metric") return `${(inches * IN_TO_CM).toFixed(1)} cm`;
@@ -962,7 +949,6 @@ export default function ContainerCalculator() {
   const [email, setEmail] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [visualPopup, setVisualPopup] = useState<{ type: "stackable" | "rotation" | "palletized" | "priority"; itemId: string } | null>(null);
-  const [hoveredBox, setHoveredBox] = useState<{ box: PlacedBox; index: number; containerIdx: number } | null>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
 
   const [showImportModal, setShowImportModal] = useState(false);
@@ -1029,6 +1015,18 @@ export default function ContainerCalculator() {
     const colorIdx = cargoItems.length;
     setCargoItems((prev) => [...prev, defaultCargoItem(colorIdx)]);
   }, [cargoItems.length, defaultCargoItem]);
+
+  const duplicateItem = useCallback((id: string) => {
+    setCargoItems((prev) => {
+      const idx = prev.findIndex((i) => i.id === id);
+      if (idx === -1) return prev;
+      const src = prev[idx];
+      const copy: CargoItem = { ...src, id: generateId(), name: src.name ? `${src.name} (copy)` : "", color: CARGO_COLORS[(prev.length) % CARGO_COLORS.length] };
+      const next = [...prev];
+      next.splice(idx + 1, 0, copy);
+      return next;
+    });
+  }, []);
 
   const removeItem = useCallback((id: string) => {
     setCargoItems((prev) => prev.filter((i) => i.id !== id));
@@ -3589,18 +3587,29 @@ export default function ContainerCalculator() {
                                   <Eye className="w-2.5 h-2.5 opacity-50" />
                                 </button>
                               </td>
-                              <td className="px-1 py-1.5 text-center">
-                                {cargoItems.length > 1 ? (
+                              <td className="px-1 py-1.5">
+                                <div className="flex items-center gap-0.5 justify-center">
                                   <button
-                                    onClick={() => removeItem(item.id)}
-                                    className="text-slate-300 hover:text-red-500 transition-colors p-0.5"
-                                    data-testid={`button-remove-cargo-${idx}`}
+                                    onClick={() => duplicateItem(item.id)}
+                                    className="text-slate-300 hover:text-primary transition-colors p-0.5"
+                                    data-testid={`button-duplicate-cargo-${idx}`}
+                                    title="Duplicate row"
                                   >
-                                    <X className="w-3.5 h-3.5" />
+                                    <Plus className="w-3.5 h-3.5" />
                                   </button>
-                                ) : (
-                                  <div className="w-4" />
-                                )}
+                                  {cargoItems.length > 1 ? (
+                                    <button
+                                      onClick={() => removeItem(item.id)}
+                                      className="text-slate-300 hover:text-red-500 transition-colors p-0.5"
+                                      data-testid={`button-remove-cargo-${idx}`}
+                                      title="Remove row"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  ) : (
+                                    <div className="w-4" />
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           );
@@ -3770,35 +3779,8 @@ export default function ContainerCalculator() {
                                     return next;
                                   });
                                 }}
-                                onHoverBox={(box, index) => {
-                                  if (box && index !== null) {
-                                    setHoveredBox({ box, index, containerIdx: ci });
-                                  } else {
-                                    setHoveredBox(null);
-                                  }
-                                }}
                               />
                             </div>
-                            {hoveredBox && hoveredBox.containerIdx === ci && (
-                              <div className="mt-2 p-3 bg-white border border-slate-200 rounded-lg shadow-sm text-xs" data-testid="hovered-box-info">
-                                <div className="flex items-center gap-2 mb-1.5">
-                                  <div className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: hoveredBox.box.color }} />
-                                  <span className="font-semibold text-slate-900">{hoveredBox.box.cargoName}</span>
-                                  <span className="text-slate-400 ml-auto">#{hoveredBox.index + 1}</span>
-                                </div>
-                                <div className="grid grid-cols-3 gap-x-4 gap-y-0.5 text-slate-600">
-                                  <span>L: <span className="font-medium text-slate-800">{unitSystem === "metric" ? (hoveredBox.box.l * IN_TO_CM).toFixed(1) + " cm" : hoveredBox.box.l.toFixed(1) + "\""}</span></span>
-                                  <span>W: <span className="font-medium text-slate-800">{unitSystem === "metric" ? (hoveredBox.box.w * IN_TO_CM).toFixed(1) + " cm" : hoveredBox.box.w.toFixed(1) + "\""}</span></span>
-                                  <span>H: <span className="font-medium text-slate-800">{unitSystem === "metric" ? (hoveredBox.box.h * IN_TO_CM).toFixed(1) + " cm" : hoveredBox.box.h.toFixed(1) + "\""}</span></span>
-                                  <span>X: <span className="font-medium text-slate-800">{unitSystem === "metric" ? (hoveredBox.box.x * IN_TO_CM).toFixed(1) : hoveredBox.box.x.toFixed(1)}</span></span>
-                                  <span>Y: <span className="font-medium text-slate-800">{unitSystem === "metric" ? (hoveredBox.box.y * IN_TO_CM).toFixed(1) : hoveredBox.box.y.toFixed(1)}</span></span>
-                                  <span>Z: <span className="font-medium text-slate-800">{unitSystem === "metric" ? (hoveredBox.box.z * IN_TO_CM).toFixed(1) : hoveredBox.box.z.toFixed(1)}</span></span>
-                                  <span>Wt: <span className="font-medium text-slate-800">{unitSystem === "metric" ? (hoveredBox.box.weight * LB_TO_KG).toFixed(1) + " kg" : hoveredBox.box.weight.toFixed(1) + " lbs"}</span></span>
-                                  <span>Stack: <span className="font-medium text-slate-800">{hoveredBox.box.stackable ? "Yes" : "No"}</span></span>
-                                  <span>Rot: <span className="font-medium text-slate-800">{hoveredBox.box.rotation}</span></span>
-                                </div>
-                              </div>
-                            )}
                           </CardContent>
                         </Card>
 
