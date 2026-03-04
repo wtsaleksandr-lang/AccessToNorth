@@ -59,9 +59,19 @@ Preferred communication style: Simple, everyday language.
 - **OpenAI**: Used for AI-powered features in the admin panel, such as drafting HS classification reports, generating order summaries, client updates, missing document identification, next steps, import readiness snapshots, and broker handoff packs.
 
 ### Key NPM Dependencies
-- **Frontend**: React, wouter, @tanstack/react-query, framer-motion, react-hook-form, zod, shadcn/ui, tailwindcss, lucide-react.
+- **Frontend**: React, wouter, @tanstack/react-query, framer-motion, react-hook-form, zod, shadcn/ui, tailwindcss, lucide-react, three, jspdf, html2canvas.
 - **Backend**: Express 5, drizzle-orm, drizzle-zod, pg, connect-pg-simple, zod, stripe, stripe-replit-sync, jsonwebtoken, cookie-parser, multer.
 - **Build**: Vite, esbuild, tsx, drizzle-kit.
+
+### Container Loading Calculator Features
+- **3D Visualization**: Three.js-powered viewer with GridHelper floor, wireframe container, door visualization, and dimension labels
+- **Edit Mode**: Drag-to-move cargo boxes on floor plane (X/Z) with bounds clamping and red highlight when out of bounds
+- **Hover Info Panel**: Hover over boxes in 3D view to see dimensions, position, weight, stackable/rotation info (scoped per container)
+- **Suggestion Banner**: When cargo doesn't fit, an amber banner suggests trying a larger container (no auto-upgrade)
+- **PDF Export**: Generate packing report PDF with container details, 3D screenshot, and loading details table
+- **Enhanced Loading Table**: Compact rows with position column (X,Y,Z), stackable column, and footer totals row
+- **Calculating Overlay**: Full-screen overlay animation during calculation
+- **Desktop Layout**: Wider 12-column grid (5+7 split) for better use of screen space
 
 ### Email/Form Handling
 - **Email Provider**: Resend via Replit connector.

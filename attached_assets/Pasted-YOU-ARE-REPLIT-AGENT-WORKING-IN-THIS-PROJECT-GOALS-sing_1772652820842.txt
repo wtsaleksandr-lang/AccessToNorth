@@ -1,0 +1,285 @@
+YOU ARE REPLIT AGENT WORKING IN THIS PROJECT.
+
+GOALS (single file, do not split unless absolutely necessary):
+File: client/src/pages/tools/ContainerCalculator.tsx
+
+Implement the following improvements:
+
+========================================
+A) BUG FIX: STOP AUTO-UPGRADING CONTAINER TYPE
+========================================
+Problem:
+If user selects 40’ HQ, and cargo doesn’t fit, the app auto-switches calculation to 45’ HQ. This must NOT happen.
+Container type used for packing must always remain the one user selected.
+
+Required behavior:
+1) Packing must always run with the selectedContainerSpec.
+2) If items don’t fit, show an error banner + suggestion (e.g., “Try 45’ HQ or split into multiple containers”), but DO NOT change container type.
+3) Multi-container logic can still exist, but it must use the same selected container type (e.g., 2x 40HQ), unless user manually changes the container selection.
+
+Implementation steps:
+1) Locate the upgrade map and “try upgrades” loop. It currently exists around:
+  - UPGRADE_MAP definition
+  - handleCalculate: it loops currentSpecKey through UPGRADE_MAP and sets an upgrade message.
+
+2) Remove/disable the upgrade loop entirely and replace with:
+  - packBoxes(cargo, selectedContainer)
+  - if not all items fit: produce a “doesn’t fit in selected container” message; DO NOT mutate container spec.
+  - keep multi-container attempt optional, but only with the same container spec.
+
+Concrete FIND/REPLACE #1 (disable upgrade map usage):
+FIND this constant:
+  const UPGRADE_MAP: Record<ContainerPresetKey, ContainerPresetKey | null> = {
+    "20dc": "20hc",
+    "20hc": "40dc",
+    "40dc": "40hc",
+    "40hc": "45hc",
+    "45hc": null,
+  };
+
+REPLACE it with:
+  // NOTE: We intentionally do NOT auto-upgrade container types.
+  // Users must explicitly select equipment. We only suggest alternatives.
+  const UPGRADE_SUGGESTIONS: Record<ContainerPresetKey, ContainerPresetKey | null> = {
+    "20dc": "20hc",
+    "20hc": "40dc",
+    "40dc": "40hc",
+    "40hc": "45hc",
+    "45hc": null,
+  };
+
+Concrete FIND/REPLACE #2 (replace the “upgrade loop” in handleCalculate):
+In handleCalculate, find the section that looks like:
+  // Try packing with upgrades if needed...
+  // while (...) { ... currentSpecKey = UPGRADE_MAP[currentSpecKey] ... }
+  // setUpgradeMessage(...)
+
+Replace that whole “upgrade until it fits” logic with:
+- Always use selectedContainerSpecKey (or derived selected container spec).
+- If not fit, set a warning message with suggestion from UPGRADE_SUGGESTIONS but do not apply it.
+
+Pseudo-logic to implement in handleCalculate (write real TS):
+  setCalculating(true)
+  clear previous results/messages
+  const selectedKey = containerPresetKey (whatever state already drives selection)
+  const selectedSpec = CONTAINER_PRESETS[selectedKey] or the computed custom spec
+  let remainingItems = expanded list of items (respect quantity)
+  let containers: MultiContainerResult["containers"] = []
+  let iteration = 0
+  const maxContainers = 10 (or existing limit)
+
+  while remainingItems not empty and iteration < maxContainers:
+     const pack = packBoxes(remainingItems, selectedSpec, units, ...existing args)
+     containers.push({ container: selectedSpec, placed: pack.placed, ... })
+     remainingItems = pack.unplaced
+     iteration++
+
+     if pack.placed.length === 0: break (avoid infinite loop)
+
+  if remainingItems still not empty:
+     - set an error banner: “Does not fit in selected container size.”
+     - also suggest: next = UPGRADE_SUGGESTIONS[selectedKey]; if next exists show “Suggestion: try {next label}” (but do not switch)
+     - keep partial results if any containers had placements, but clearly indicate “Remaining items not packed”.
+
+  setMultiResult({ containers, ... })
+
+Make sure the UI copy that currently says “Automatically upgraded …” is replaced with “Suggestion: …” (no auto-change).
+
+========================================
+B) DESKTOP LAYOUT: NOT NARROW ON PC
+========================================
+Issue:
+UI looks “mobile-first narrow” on desktop. Make it use width better like a pro tool.
+
+Requirements:
+- On lg+ screens: use a 2-column layout:
+  Left column: container selection + cargo list/table + calculate button
+  Right column: 3D visualization + summary cards + loading details (compact)
+- On mobile: keep stacked layout.
+
+Implementation:
+1) Find the main wrapper around the tool content (currently max-w-6xl exists but internal sections likely constrain).
+2) Create a responsive grid wrapper around the core sections:
+   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+     <div className="lg:col-span-5"> ...inputs... </div>
+     <div className="lg:col-span-7"> ...3D + results... </div>
+   </div>
+
+3) Keep step header/nav, but don’t force all content into a narrow centered column.
+
+========================================
+C) 3D VIEW: REMOVE GREY PLATFORM + ADD SUBTLE GRID BACKGROUND
+========================================
+Issue:
+The grey “floor plane” looks bad.
+Replace it with a subtle grid behind/under the container.
+
+In ContainerViewer3D:
+- Remove the floor mesh created with PlaneGeometry.
+- Add THREE.GridHelper.
+- The grid must NOT block visibility; keep it subtle.
+- It must not “overlay” the 3D objects; it should sit slightly below container floor (small negative Y) to avoid z-fighting.
+
+Concrete change:
+Locate code similar to:
+  const floorGeo = new THREE.PlaneGeometry(...)
+  const floorMat = new THREE.MeshStandardMaterial(...)
+  const floor = new THREE.Mesh(floorGeo, floorMat)
+  floor.rotation.x = -Math.PI / 2
+  floor.position.y = -0.1
+  scene.add(floor)
+
+Replace with:
+  const gridSize = Math.max(cL * 1.2, cW * 1.8);
+  const gridDivisions = 40; // enough for subtle squares
+  const grid = new THREE.GridHelper(gridSize, gridDivisions, 0x9ca3af, 0xe5e7eb);
+  grid.position.y = -0.02;
+  // Make it subtle:
+  (grid.material as THREE.Material).transparent = true;
+  (grid.material as any).opacity = 0.35;
+  scene.add(grid);
+
+Note: GridHelper uses world units; we don’t need true “1cm squares” accuracy right now. The goal is a subtle reference grid.
+
+========================================
+D) 3D VIEW: SHOW CONTAINER DIMENSIONS + DOORS
+========================================
+Add subtle dimension labels:
+- Length label top/center (X direction)
+- Width label top/center (Z direction)
+- Height label side/corner (Y direction)
+
+Rules:
+- Must display in imperial or metric based on user selection (units state).
+- Avoid hardcoding “in”. Use:
+   imperial: inches (or feet+in optional)
+   metric: cm (or mm/m consistent with rest of tool)
+
+Implementation approach (fast):
+- Add a small overlay in the 3D panel (HTML absolutely positioned) that reads container dimensions from props and formats them.
+- Do NOT bake text into 3D geometry yet (cheaper and clearer).
+
+Add container doors visualization:
+- At the “door end” of the container, draw a rectangular outline/frame in a different line color and optionally a center split line.
+- Keep it subtle but visible.
+
+In 3D:
+- Add a line rectangle at x = cL/2 (or whichever end is the door end in your coordinate system).
+- Add a center vertical line to imply 2 doors.
+
+========================================
+E) 3D ITEMS: IDENTIFY EACH BOX CLEARLY (BETTER THAN PIER2PIER)
+========================================
+Requirement:
+Users must understand which box is which in the 3D view.
+
+Low-cost approach (do now):
+1) Enable “hover” + “click to select” on boxes using Raycaster.
+2) When a box is hovered or selected:
+   - Outline it (edges) or brighten emissive slightly
+   - Show a small info panel to the right/under the 3D viewer with:
+       Cargo name
+       Dimensions (in selected units)
+       Weight
+       Qty (if relevant)
+       Stackable yes/no
+       Rotation mode
+3) Optional: show a small numeric label (1,2,3...) as a Sprite above each box. If too complex, skip sprite labels and rely on hover panel.
+
+Implement at least hover/click + info panel.
+
+========================================
+F) PDF PACKING REPORT EXPORT (BETTER THAN PIER2PIER)
+========================================
+Add “Download PDF packing report” button (like example) but better:
+PDF pages:
+Page 1:
+- Title: “Container Packing Report”
+- Date/time
+- Selected container type + internal dims
+- Totals: total pieces, total weight, total CBM/CFT, utilization % (volume + payload)
+- Screenshot image of 3D view (canvas capture)
+- Short legend: item colors or item list count
+
+Page 2+:
+- Loading details table (compact):
+   Columns: Item #, Cargo name, Qty, L, W, H, Weight/pc, Stackable (Y/N), Rotation, Palletized (Y/N), Priority
+- Add totals row.
+
+Implementation:
+- Use html2canvas to capture the 3D canvas container element.
+- Use jspdf to generate PDF and add the captured image + table text.
+
+Dependencies:
+- Add `jspdf` and `html2canvas` to package if missing.
+
+========================================
+G) “CALCULATING” LOADING ANIMATION / WAIT SCREEN
+========================================
+When user clicks “Calculate Loading Plan”:
+- Set calculating=true
+- Show a centered overlay card with:
+   - “Calculating loading plan…”
+   - A simple animated graphic (CSS) of small boxes moving into a container outline
+   - Optional progress text like “Placing items…” (no need real progress yet)
+- Ensure it works on desktop + mobile
+- Hide overlay when calculation is finished or fails.
+
+You already have `calculating` state. Use it.
+
+========================================
+H) LOADING DETAILS TABLE IMPROVEMENTS (COMPACT + TOTALS + NEW COLUMNS)
+========================================
+Current issues:
+- Too long/scroll-heavy.
+Need:
+- Add columns: Stackable (Y/N), Rotation, Palletized, Priority (if not present)
+- Add totals row:
+   Total Qty, Total Weight, Total CBM, Total CFT
+
+UX:
+- Make it compact:
+   - Use a scroll container with a fixed height on desktop (e.g. max-h-[420px] overflow-auto)
+   - Keep header sticky
+- Do not make the entire page super long.
+
+========================================
+I) MANUAL EDIT MODE (BETA) - OPTIONAL / PHASED
+========================================
+User asked for grab/drop including vertical (up/down) movement and warnings.
+This is expensive. Implement a “Manual Edit (Beta)” toggle if feasible quickly:
+- When enabled:
+  - Allow selecting a box and using TransformControls to move it (X/Z and Y too).
+  - On change, validate:
+     1) Out of bounds => highlight red + show warning
+     2) Collision with other boxes => highlight red + warning
+     3) Stack rule: if a box is marked stackable=false, do not allow another box to rest on top overlapping its footprint => highlight red + warning
+  - Provide “Reset layout” to revert to algorithm placements.
+If this will blow up complexity/time, implement only:
+  - selection + info panel now
+  - and leave Manual Edit as TODO with a visible “Coming soon” note.
+
+========================================
+DELIVERABLES
+========================================
+1) Container selection no longer auto-upgrades. Only suggestions.
+2) Desktop layout looks wide and professional.
+3) 3D viewer has subtle grid (no grey floor), door outline, dimension labels (unit-aware).
+4) Box identification via hover/click panel (at minimum).
+5) PDF export works.
+6) Calculating overlay animation works.
+7) Loading details table includes new columns + totals + compact scrolling.
+
+IMPORTANT:
+- Keep container calculator and algorithm client-side in this same file.
+- Don’t introduce backend.
+- Don’t break mobile.
+- Keep performance reasonable.
+
+After implementing, test:
+- Select 40HQ, enter a box that does NOT fit. Confirm it does NOT switch to 45HQ.
+- Confirm suggestion message appears.
+- Confirm PDF downloads.
+- Confirm overlay shows while calculating.
+- Confirm 3D grid replaces grey floor.
+- Confirm desktop uses 2-column layout.

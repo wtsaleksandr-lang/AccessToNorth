@@ -44,6 +44,8 @@ import {
   FileImage,
   Sparkles,
   Table,
+  FileDown,
+  MousePointerClick,
 } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -397,11 +399,13 @@ function ContainerViewer3D({
   container,
   unitSystem,
   onUpdatePlaced,
+  onHoverBox,
 }: {
   placed: PlacedBox[];
   container: ContainerSpec;
   unitSystem: "imperial" | "metric";
   onUpdatePlaced?: (nextPlaced: PlacedBox[]) => void;
+  onHoverBox?: (box: PlacedBox | null, index: number | null) => void;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [webglError, setWebglError] = useState(false);
@@ -490,18 +494,6 @@ function ContainerViewer3D({
     containerWire.position.set(cL / 2, cH / 2, cW / 2);
     scene.add(containerWire);
 
-    const containerFloorGeo = new THREE.PlaneGeometry(cL, cW);
-    const containerFloorMat = new THREE.MeshStandardMaterial({
-      color: 0x94a3b8,
-      roughness: 0.5,
-      transparent: true,
-      opacity: 0.3,
-    });
-    const containerFloor = new THREE.Mesh(containerFloorGeo, containerFloorMat);
-    containerFloor.rotation.x = -Math.PI / 2;
-    containerFloor.position.set(cL / 2, 0.001, cW / 2);
-    scene.add(containerFloor);
-
     const wallMat = new THREE.MeshStandardMaterial({
       color: 0xcbd5e1,
       transparent: true,
@@ -521,6 +513,28 @@ function ContainerViewer3D({
     const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(cL, cH), wallMat);
     rightWall.position.set(cL / 2, cH / 2, cW);
     scene.add(rightWall);
+
+    const doorLineMat = new THREE.LineBasicMaterial({ color: 0x64748b, linewidth: 2 });
+    const doorX = cL;
+    const doorInset = 0.005;
+    const doorFramePts = [
+      new THREE.Vector3(doorX + doorInset, 0, 0),
+      new THREE.Vector3(doorX + doorInset, cH, 0),
+      new THREE.Vector3(doorX + doorInset, cH, cW),
+      new THREE.Vector3(doorX + doorInset, 0, cW),
+      new THREE.Vector3(doorX + doorInset, 0, 0),
+    ];
+    const doorFrameGeo = new THREE.BufferGeometry().setFromPoints(doorFramePts);
+    scene.add(new THREE.Line(doorFrameGeo, doorLineMat));
+    const doorCenterPts = [
+      new THREE.Vector3(doorX + doorInset, 0, cW / 2),
+      new THREE.Vector3(doorX + doorInset, cH, cW / 2),
+    ];
+    const doorCenterGeo = new THREE.BufferGeometry().setFromPoints(doorCenterPts);
+    const doorDashedMat = new THREE.LineDashedMaterial({ color: 0x94a3b8, dashSize: cH * 0.04, gapSize: cH * 0.02 });
+    const doorCenterLine = new THREE.Line(doorCenterGeo, doorDashedMat);
+    doorCenterLine.computeLineDistances();
+    scene.add(doorCenterLine);
 
     const cargoMeshes: THREE.Mesh[] = [];
     for (let idx = 0; idx < placed.length; idx++) {
@@ -585,35 +599,70 @@ function ContainerViewer3D({
       renderer.domElement.setPointerCapture(ev.pointerId);
     };
 
+    let lastHoveredIdx = -1;
+    let lastHoveredMesh: THREE.Mesh | null = null;
+
     const onPointerMove = (ev: PointerEvent) => {
-      if (!editMode || !dragging || !selectedMesh) return;
       getPointer(ev);
-      raycaster.setFromCamera(pointer, camera);
-      const pt = new THREE.Vector3();
-      if (!raycaster.ray.intersectPlane(dragPlane, pt)) return;
-      const target = pt.sub(dragOffset);
-      const { placedIndex, l, w } = selectedMesh.userData as { placedIndex: number; l: number; w: number };
-      const clampedX = Math.min(Math.max(target.x, l / 2), cL - l / 2);
-      const clampedZ = Math.min(Math.max(target.z, w / 2), cW - w / 2);
-      const clamped = Math.abs(clampedX - target.x) > 0.001 || Math.abs(clampedZ - target.z) > 0.001;
-      selectedMesh.position.x = clampedX;
-      selectedMesh.position.z = clampedZ;
-      const linkedEdge = scene.children.find(
-        (c) => c instanceof THREE.LineSegments && c.userData?.linkedTo === placedIndex
-      );
-      if (linkedEdge) {
-        linkedEdge.position.x = clampedX;
-        linkedEdge.position.z = clampedZ;
+      if (editMode && dragging && selectedMesh) {
+        raycaster.setFromCamera(pointer, camera);
+        const pt = new THREE.Vector3();
+        if (!raycaster.ray.intersectPlane(dragPlane, pt)) return;
+        const target = pt.sub(dragOffset);
+        const { placedIndex, l, w } = selectedMesh.userData as { placedIndex: number; l: number; w: number };
+        const clampedX = Math.min(Math.max(target.x, l / 2), cL - l / 2);
+        const clampedZ = Math.min(Math.max(target.z, w / 2), cW - w / 2);
+        const clamped = Math.abs(clampedX - target.x) > 0.001 || Math.abs(clampedZ - target.z) > 0.001;
+        selectedMesh.position.x = clampedX;
+        selectedMesh.position.z = clampedZ;
+        const linkedEdge = scene.children.find(
+          (c) => c instanceof THREE.LineSegments && c.userData?.linkedTo === placedIndex
+        );
+        if (linkedEdge) {
+          linkedEdge.position.x = clampedX;
+          linkedEdge.position.z = clampedZ;
+        }
+        const mat = selectedMesh.material as THREE.MeshStandardMaterial;
+        if (clamped) {
+          mat.emissive = new THREE.Color(0xef4444);
+          mat.emissiveIntensity = 0.6;
+          setEditWarning("Out of container bounds (clamped).");
+        } else {
+          mat.emissive = new THREE.Color(0x000000);
+          mat.emissiveIntensity = 0.0;
+          setEditWarning(null);
+        }
+        return;
       }
-      const mat = selectedMesh.material as THREE.MeshStandardMaterial;
-      if (clamped) {
-        mat.emissive = new THREE.Color(0xef4444);
-        mat.emissiveIntensity = 0.6;
-        setEditWarning("Out of container bounds (clamped).");
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObjects(cargoMeshes, false);
+      if (hits.length > 0) {
+        const mesh = hits[0].object as THREE.Mesh;
+        const idx = mesh.userData.placedIndex as number;
+        if (idx !== lastHoveredIdx) {
+          if (lastHoveredMesh && !dragging) {
+            const m = lastHoveredMesh.material as THREE.MeshStandardMaterial;
+            m.emissive = new THREE.Color(0x000000);
+            m.emissiveIntensity = 0.0;
+          }
+          const mat = mesh.material as THREE.MeshStandardMaterial;
+          mat.emissive = new THREE.Color(0xffffff);
+          mat.emissiveIntensity = 0.15;
+          lastHoveredIdx = idx;
+          lastHoveredMesh = mesh;
+          renderer.domElement.style.cursor = "pointer";
+          if (onHoverBox && placed[idx]) onHoverBox(placed[idx], idx);
+        }
       } else {
-        mat.emissive = new THREE.Color(0x000000);
-        mat.emissiveIntensity = 0.0;
-        setEditWarning(null);
+        if (lastHoveredMesh && !dragging) {
+          const m = lastHoveredMesh.material as THREE.MeshStandardMaterial;
+          m.emissive = new THREE.Color(0x000000);
+          m.emissiveIntensity = 0.0;
+        }
+        lastHoveredIdx = -1;
+        lastHoveredMesh = null;
+        renderer.domElement.style.cursor = "";
+        if (onHoverBox) onHoverBox(null, null);
       }
     };
 
@@ -647,7 +696,18 @@ function ContainerViewer3D({
     };
 
     const onPointerCancel = (ev: PointerEvent) => cancelDrag(ev);
-    const onPointerLeave = () => cancelDrag();
+    const onPointerLeave = () => {
+      cancelDrag();
+      if (lastHoveredMesh) {
+        const m = lastHoveredMesh.material as THREE.MeshStandardMaterial;
+        m.emissive = new THREE.Color(0x000000);
+        m.emissiveIntensity = 0.0;
+      }
+      lastHoveredIdx = -1;
+      lastHoveredMesh = null;
+      renderer.domElement.style.cursor = "";
+      if (onHoverBox) onHoverBox(null, null);
+    };
 
     renderer.domElement.addEventListener("pointerdown", onPointerDown);
     renderer.domElement.addEventListener("pointermove", onPointerMove);
@@ -744,22 +804,7 @@ function ContainerViewer3D({
         el.removeChild(renderer.domElement);
       }
     };
-  }, [placed, container, unitSystem, editMode, onUpdatePlaced]);
-
-  if (webglError) {
-    return (
-      <div
-        className="w-full h-[300px] rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-center p-6"
-        data-testid="container-3d-viewer"
-      >
-        <Box className="w-12 h-12 text-slate-400 mb-3" />
-        <p className="text-sm font-medium text-slate-700 mb-1">3D Preview Unavailable</p>
-        <p className="text-xs text-slate-500">
-          Your browser does not support WebGL. The loading plan details are shown below.
-        </p>
-      </div>
-    );
-  }
+  }, [placed, container, unitSystem, editMode, onUpdatePlaced, onHoverBox]);
 
   const fmt = (inches: number) => {
     if (unitSystem === "metric") return `${(inches * IN_TO_CM).toFixed(1)} cm`;
@@ -767,34 +812,43 @@ function ContainerViewer3D({
   };
 
   return (
-    <div className="relative w-full h-[400px] md:h-[500px] rounded-xl overflow-hidden border border-slate-200 bg-slate-50" data-testid="container-3d-viewer">
-      <div ref={mountRef} className="absolute inset-0" />
-      <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2 pointer-events-none">
-        <div className="pointer-events-auto flex items-center gap-2">
-          <Button size="sm" variant={editMode ? "default" : "outline"} onClick={() => { setEditWarning(null); setEditMode((v) => !v); }} data-testid="button-toggle-edit-mode">
+    <div>
+      <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant={editMode ? "default" : "outline"} onClick={() => { setEditWarning(null); setEditMode((v) => !v); }} data-testid="button-toggle-edit-mode" disabled={webglError}>
             {editMode ? "Edit Layout: ON" : "Edit Layout"}
           </Button>
           {editWarning && (
-            <div className="text-xs text-red-700 bg-white/80 border border-red-200 rounded-md px-2 py-1">
+            <span className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-md px-2 py-1">
               {editWarning}
-            </div>
+            </span>
           )}
         </div>
-        <div className="pointer-events-none flex flex-col items-end gap-1">
-          <div className="text-xs text-slate-600 bg-white/70 border border-slate-200 rounded-md px-2 py-1">
-            Length: <span className="font-semibold">{fmt(container.lengthIn)}</span>
-          </div>
-          <div className="text-xs text-slate-600 bg-white/70 border border-slate-200 rounded-md px-2 py-1">
-            Width: <span className="font-semibold">{fmt(container.widthIn)}</span>
-          </div>
-          <div className="text-xs text-slate-600 bg-white/70 border border-slate-200 rounded-md px-2 py-1">
-            Height: <span className="font-semibold">{fmt(container.heightIn)}</span>
-          </div>
+        <div className="flex items-center gap-2 text-xs text-slate-600">
+          <span className="bg-slate-100 border border-slate-200 rounded px-2 py-0.5">L: <span className="font-semibold">{fmt(container.lengthIn)}</span></span>
+          <span className="bg-slate-100 border border-slate-200 rounded px-2 py-0.5">W: <span className="font-semibold">{fmt(container.widthIn)}</span></span>
+          <span className="bg-slate-100 border border-slate-200 rounded px-2 py-0.5">H: <span className="font-semibold">{fmt(container.heightIn)}</span></span>
         </div>
       </div>
-      <div className="absolute bottom-3 left-3 text-[11px] text-slate-500 bg-white/60 border border-slate-200 rounded-md px-2 py-1">
+      {webglError ? (
+        <div
+          className="w-full h-[300px] rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-center p-6"
+          data-testid="container-3d-viewer"
+        >
+          <Box className="w-12 h-12 text-slate-400 mb-3" />
+          <p className="text-sm font-medium text-slate-700 mb-1">3D Preview Unavailable</p>
+          <p className="text-xs text-slate-500">
+            Your browser does not support WebGL. The loading plan details are shown below.
+          </p>
+        </div>
+      ) : (
+        <div className="relative w-full h-[400px] md:h-[500px] rounded-xl overflow-hidden border border-slate-200 bg-slate-50" data-testid="container-3d-viewer">
+          <div ref={mountRef} className="absolute inset-0" />
+        </div>
+      )}
+      <p className="mt-1 text-[11px] text-slate-500">
         {editMode ? "Drag boxes to reposition (floor plane)" : "Click and drag to rotate, scroll to zoom"}
-      </div>
+      </p>
     </div>
   );
 }
@@ -908,6 +962,8 @@ export default function ContainerCalculator() {
   const [email, setEmail] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [visualPopup, setVisualPopup] = useState<{ type: "stackable" | "rotation" | "palletized" | "priority"; itemId: string } | null>(null);
+  const [hoveredBox, setHoveredBox] = useState<{ box: PlacedBox; index: number; containerIdx: number } | null>(null);
+  const viewerRef = useRef<HTMLDivElement>(null);
 
   const [showImportModal, setShowImportModal] = useState(false);
   const [importStep, setImportStep] = useState<"upload" | "mapping" | "preview">("upload");
@@ -1374,8 +1430,146 @@ export default function ContainerCalculator() {
     setSelectedIds(new Set());
   }, [defaultCargoItem]);
 
+  const handleExportPDF = useCallback(async () => {
+    if (!multiResult || multiResult.containers.length === 0) return;
+    toast({ title: "Generating PDF...", description: "Please wait while we create your report." });
+    try {
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import("jspdf"),
+        import("html2canvas"),
+      ]);
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pw = 210;
+      const margin = 15;
+      const contentW = pw - margin * 2;
+      let y = margin;
+
+      pdf.setFontSize(18);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Container Packing Report", margin, y);
+      y += 8;
+      pdf.setFontSize(9);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(`Generated: ${new Date().toLocaleString()}`, margin, y);
+      y += 8;
+
+      const cr = multiResult.containers[0];
+      const cSpec = cr.container;
+      const cRes = cr.result;
+      pdf.setFontSize(11);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(`Container: ${cSpec.name}`, margin, y);
+      y += 5;
+      pdf.setFontSize(9);
+      pdf.setFont("helvetica", "normal");
+      const fmtDim = (v: number) => isMetric ? `${(v * IN_TO_CM).toFixed(0)} cm` : `${v.toFixed(1)}"`;
+      const fmtWt = (v: number) => isMetric ? `${Math.round(v * LB_TO_KG).toLocaleString()} kg` : `${v.toLocaleString()} lbs`;
+      pdf.text(`Internal: ${fmtDim(cSpec.lengthIn)} × ${fmtDim(cSpec.widthIn)} × ${fmtDim(cSpec.heightIn)}   |   Payload: ${fmtWt(cSpec.maxPayloadLbs)}`, margin, y);
+      y += 6;
+      pdf.text(`Pieces: ${cRes.piecesLoaded} / ${cRes.piecesTotal}   |   Weight: ${fmtWt(cRes.totalWeight)}   |   Vol: ${cRes.volumeUtil.toFixed(1)}%   |   Wt: ${cRes.weightUtil.toFixed(1)}%`, margin, y);
+      y += 4;
+      if (multiResult.totalContainers > 1) {
+        pdf.text(`Total containers: ${multiResult.totalContainers}`, margin, y);
+        y += 4;
+      }
+      y += 4;
+
+      const canvas3d = viewerRef.current?.querySelector("canvas");
+      if (canvas3d) {
+        try {
+          const imgData = canvas3d.toDataURL("image/png");
+          const imgW = contentW;
+          const imgH = (canvas3d.height / canvas3d.width) * imgW;
+          if (y + imgH > 280) { pdf.addPage(); y = margin; }
+          pdf.addImage(imgData, "PNG", margin, y, imgW, Math.min(imgH, 100));
+          y += Math.min(imgH, 100) + 6;
+        } catch {}
+      }
+
+      for (let ci = 0; ci < multiResult.containers.length; ci++) {
+        const cont = multiResult.containers[ci];
+        const res = cont.result;
+        if (ci > 0) { pdf.addPage(); y = margin; }
+        if (multiResult.totalContainers > 1) {
+          pdf.setFontSize(11);
+          pdf.setFont("helvetica", "bold");
+          pdf.text(cont.label, margin, y);
+          y += 6;
+        }
+
+        pdf.setFontSize(8);
+        pdf.setFont("helvetica", "bold");
+        const cols = ["#", "Item", "L", "W", "H", isMetric ? "kg" : "lbs", "Stack", "Rot.", isMetric ? "m³" : "ft³"];
+        const colX = [margin, margin + 8, margin + 55, margin + 72, margin + 89, margin + 106, margin + 126, margin + 142, margin + 158];
+        cols.forEach((c, i) => pdf.text(c, colX[i], y));
+        y += 4;
+        pdf.setDrawColor(200);
+        pdf.line(margin, y, margin + contentW, y);
+        y += 3;
+
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(7);
+        let totalWt = 0;
+        let totalVol = 0;
+        for (let i = 0; i < res.placed.length; i++) {
+          if (y > 275) { pdf.addPage(); y = margin; }
+          const p = res.placed[i];
+          const dimF = isMetric ? IN_TO_CM : 1;
+          const wtF = isMetric ? LB_TO_KG : 1;
+          const volVal = isMetric
+            ? (p.l * IN_TO_CM * p.w * IN_TO_CM * p.h * IN_TO_CM / 1000000)
+            : cuInToCuFt(p.l * p.w * p.h);
+          totalWt += p.weight * wtF;
+          totalVol += volVal;
+          const row = [
+            `${i + 1}`,
+            p.cargoName.substring(0, 20),
+            (p.l * dimF).toFixed(1),
+            (p.w * dimF).toFixed(1),
+            (p.h * dimF).toFixed(1),
+            (p.weight * wtF).toFixed(0),
+            p.stackable ? "Y" : "N",
+            p.rotation,
+            volVal.toFixed(isMetric ? 3 : 1),
+          ];
+          row.forEach((c, j) => pdf.text(c, colX[j], y));
+          y += 3.5;
+        }
+        y += 1;
+        pdf.setDrawColor(200);
+        pdf.line(margin, y, margin + contentW, y);
+        y += 3;
+        pdf.setFont("helvetica", "bold");
+        pdf.text(`Total: ${res.placed.length} pcs`, colX[0], y);
+        pdf.text(totalWt.toFixed(0), colX[5], y);
+        pdf.text(totalVol.toFixed(isMetric ? 3 : 1), colX[8], y);
+      }
+
+      pdf.save(`packing-report-${new Date().toISOString().slice(0, 10)}.pdf`);
+      toast({ title: "PDF Downloaded", description: "Your packing report has been saved." });
+    } catch (err) {
+      console.error("PDF export error:", err);
+      toast({ title: "PDF Export Failed", description: "Could not generate the report.", variant: "destructive" });
+    }
+  }, [multiResult, isMetric, toast]);
+
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
+      {calculating && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm" data-testid="calculating-overlay">
+          <div className="bg-white rounded-2xl shadow-2xl px-10 py-8 flex flex-col items-center gap-4 max-w-xs">
+            <div className="relative w-16 h-16">
+              <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
+              <div className="absolute inset-0 rounded-full border-4 border-t-primary animate-spin" />
+              <Package className="absolute inset-0 m-auto w-7 h-7 text-primary" />
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-slate-900 text-sm">Calculating optimal layout...</p>
+              <p className="text-xs text-slate-500 mt-1">Packing your cargo into the container</p>
+            </div>
+          </div>
+        </div>
+      )}
       <Navbar />
       <main className="flex-1 pt-28 pb-16">
         <div className="container mx-auto px-4 md:px-6">
@@ -1402,8 +1596,8 @@ export default function ContainerCalculator() {
             </p>
           </div>
 
-          <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1 space-y-5">
+          <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-5 space-y-5">
               <Card className="border-slate-200">
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between mb-4">
@@ -1608,7 +1802,7 @@ export default function ContainerCalculator() {
               </Card>
             </div>
 
-            <div className="lg:col-span-2 space-y-5">
+            <div className="lg:col-span-7 space-y-5">
               <Card className="border-slate-200">
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between mb-4">
@@ -3549,25 +3743,62 @@ export default function ContainerCalculator() {
                                 </span>
                               )}
                             </h2>
-                            <p className="text-xs text-slate-500">Click and drag to rotate, scroll to zoom</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs text-slate-500">Click and drag to rotate, scroll to zoom</p>
+                              {ci === 0 && (
+                                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={handleExportPDF} data-testid="button-export-pdf">
+                                  <FileDown className="w-3.5 h-3.5" />
+                                  PDF Report
+                                </Button>
+                              )}
+                            </div>
                           </div>
                           <CardContent className="p-4">
-                            <ContainerViewer3D
-                              placed={cResult.placed}
-                              container={cr.container}
-                              unitSystem={unitSystem}
-                              onUpdatePlaced={(nextPlaced) => {
-                                setMultiResult((prev) => {
-                                  if (!prev) return prev;
-                                  const next = { ...prev, containers: prev.containers.map((c) => ({ ...c })) };
-                                  next.containers[ci] = {
-                                    ...next.containers[ci],
-                                    result: { ...next.containers[ci].result, placed: nextPlaced },
-                                  };
-                                  return next;
-                                });
-                              }}
-                            />
+                            <div ref={ci === 0 ? viewerRef : undefined}>
+                              <ContainerViewer3D
+                                placed={cResult.placed}
+                                container={cr.container}
+                                unitSystem={unitSystem}
+                                onUpdatePlaced={(nextPlaced) => {
+                                  setMultiResult((prev) => {
+                                    if (!prev) return prev;
+                                    const next = { ...prev, containers: prev.containers.map((c) => ({ ...c })) };
+                                    next.containers[ci] = {
+                                      ...next.containers[ci],
+                                      result: { ...next.containers[ci].result, placed: nextPlaced },
+                                    };
+                                    return next;
+                                  });
+                                }}
+                                onHoverBox={(box, index) => {
+                                  if (box && index !== null) {
+                                    setHoveredBox({ box, index, containerIdx: ci });
+                                  } else {
+                                    setHoveredBox(null);
+                                  }
+                                }}
+                              />
+                            </div>
+                            {hoveredBox && hoveredBox.containerIdx === ci && (
+                              <div className="mt-2 p-3 bg-white border border-slate-200 rounded-lg shadow-sm text-xs" data-testid="hovered-box-info">
+                                <div className="flex items-center gap-2 mb-1.5">
+                                  <div className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: hoveredBox.box.color }} />
+                                  <span className="font-semibold text-slate-900">{hoveredBox.box.cargoName}</span>
+                                  <span className="text-slate-400 ml-auto">#{hoveredBox.index + 1}</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-x-4 gap-y-0.5 text-slate-600">
+                                  <span>L: <span className="font-medium text-slate-800">{unitSystem === "metric" ? (hoveredBox.box.l * IN_TO_CM).toFixed(1) + " cm" : hoveredBox.box.l.toFixed(1) + "\""}</span></span>
+                                  <span>W: <span className="font-medium text-slate-800">{unitSystem === "metric" ? (hoveredBox.box.w * IN_TO_CM).toFixed(1) + " cm" : hoveredBox.box.w.toFixed(1) + "\""}</span></span>
+                                  <span>H: <span className="font-medium text-slate-800">{unitSystem === "metric" ? (hoveredBox.box.h * IN_TO_CM).toFixed(1) + " cm" : hoveredBox.box.h.toFixed(1) + "\""}</span></span>
+                                  <span>X: <span className="font-medium text-slate-800">{unitSystem === "metric" ? (hoveredBox.box.x * IN_TO_CM).toFixed(1) : hoveredBox.box.x.toFixed(1)}</span></span>
+                                  <span>Y: <span className="font-medium text-slate-800">{unitSystem === "metric" ? (hoveredBox.box.y * IN_TO_CM).toFixed(1) : hoveredBox.box.y.toFixed(1)}</span></span>
+                                  <span>Z: <span className="font-medium text-slate-800">{unitSystem === "metric" ? (hoveredBox.box.z * IN_TO_CM).toFixed(1) : hoveredBox.box.z.toFixed(1)}</span></span>
+                                  <span>Wt: <span className="font-medium text-slate-800">{unitSystem === "metric" ? (hoveredBox.box.weight * LB_TO_KG).toFixed(1) + " kg" : hoveredBox.box.weight.toFixed(1) + " lbs"}</span></span>
+                                  <span>Stack: <span className="font-medium text-slate-800">{hoveredBox.box.stackable ? "Yes" : "No"}</span></span>
+                                  <span>Rot: <span className="font-medium text-slate-800">{hoveredBox.box.rotation}</span></span>
+                                </div>
+                              </div>
+                            )}
                           </CardContent>
                         </Card>
 
@@ -3642,61 +3873,65 @@ export default function ContainerCalculator() {
                               )}
                             </h2>
                             <div className="overflow-x-auto">
-                              <table className="w-full text-sm" data-testid={`table-loading-details-${ci}`}>
+                              <table className="w-full text-xs" data-testid={`table-loading-details-${ci}`}>
                                 <thead>
                                   <tr className="border-b border-slate-200">
-                                    <th className="text-left py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
-                                      #
-                                    </th>
-                                    <th className="text-left py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
-                                      Item
-                                    </th>
-                                    <th className="text-right py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
-                                      L × W × H ({dimUnit})
-                                    </th>
-                                    <th className="text-right py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
-                                      {weightUnit}
-                                    </th>
-                                    <th className="text-center py-2 pr-2 text-xs font-semibold text-slate-500 uppercase">
-                                      Rot.
-                                    </th>
-                                    <th className="text-right py-2 text-xs font-semibold text-slate-500 uppercase">
-                                      {isMetric ? "m³" : "ft³"}
-                                    </th>
+                                    <th className="text-left py-1.5 pr-1 font-semibold text-slate-500 uppercase" style={{ fontSize: "10px" }}>#</th>
+                                    <th className="text-left py-1.5 pr-1 font-semibold text-slate-500 uppercase" style={{ fontSize: "10px" }}>Item</th>
+                                    <th className="text-right py-1.5 pr-1 font-semibold text-slate-500 uppercase" style={{ fontSize: "10px" }}>L×W×H ({dimUnit})</th>
+                                    <th className="text-right py-1.5 pr-1 font-semibold text-slate-500 uppercase" style={{ fontSize: "10px" }}>Pos (X,Y,Z)</th>
+                                    <th className="text-right py-1.5 pr-1 font-semibold text-slate-500 uppercase" style={{ fontSize: "10px" }}>{weightUnit}</th>
+                                    <th className="text-center py-1.5 pr-1 font-semibold text-slate-500 uppercase" style={{ fontSize: "10px" }}>Stack</th>
+                                    <th className="text-center py-1.5 pr-1 font-semibold text-slate-500 uppercase" style={{ fontSize: "10px" }}>Rot.</th>
+                                    <th className="text-right py-1.5 font-semibold text-slate-500 uppercase" style={{ fontSize: "10px" }}>{isMetric ? "m³" : "ft³"}</th>
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {cResult.placed.map((p, i) => (
-                                    <tr key={i} className="border-b border-slate-100 last:border-0">
-                                      <td className="py-2 pr-2">
-                                        <div
-                                          className="w-5 h-5 rounded flex items-center justify-center text-white text-[10px] font-bold"
-                                          style={{ backgroundColor: p.color }}
-                                        >
-                                          {i + 1}
-                                        </div>
-                                      </td>
-                                      <td className="py-2 pr-2 font-medium text-slate-900 text-xs">
-                                        {p.cargoName}
-                                      </td>
-                                      <td className="py-2 pr-2 text-right text-slate-600 text-xs">
-                                        {(p.l * dimFactor).toFixed(1)} × {(p.w * dimFactor).toFixed(1)} × {(p.h * dimFactor).toFixed(1)}
-                                      </td>
-                                      <td className="py-2 pr-2 text-right text-slate-600 text-xs">
-                                        {(p.weight * weightFactor).toFixed(0)}
-                                      </td>
-                                      <td className="py-2 pr-2 text-center">
-                                        <span className="text-[10px] font-mono text-slate-400">{p.rotation}</span>
-                                      </td>
-                                      <td className="py-2 text-right text-slate-600 text-xs">
-                                        {isMetric
-                                          ? (p.l * IN_TO_CM * p.w * IN_TO_CM * p.h * IN_TO_CM / 1000000).toFixed(3)
-                                          : cuInToCuFt(p.l * p.w * p.h).toFixed(1)
-                                        }
-                                      </td>
-                                    </tr>
-                                  ))}
+                                  {cResult.placed.map((p, i) => {
+                                    const volVal = isMetric
+                                      ? (p.l * IN_TO_CM * p.w * IN_TO_CM * p.h * IN_TO_CM / 1000000)
+                                      : cuInToCuFt(p.l * p.w * p.h);
+                                    return (
+                                      <tr key={i} className="border-b border-slate-100 last:border-0">
+                                        <td className="py-1 pr-1">
+                                          <div className="w-4 h-4 rounded flex items-center justify-center text-white font-bold" style={{ backgroundColor: p.color, fontSize: "9px" }}>
+                                            {i + 1}
+                                          </div>
+                                        </td>
+                                        <td className="py-1 pr-1 font-medium text-slate-900 truncate max-w-[100px]">{p.cargoName}</td>
+                                        <td className="py-1 pr-1 text-right text-slate-600 whitespace-nowrap">
+                                          {(p.l * dimFactor).toFixed(1)}×{(p.w * dimFactor).toFixed(1)}×{(p.h * dimFactor).toFixed(1)}
+                                        </td>
+                                        <td className="py-1 pr-1 text-right text-slate-500 font-mono whitespace-nowrap" style={{ fontSize: "10px" }}>
+                                          {(p.x * dimFactor).toFixed(0)},{(p.y * dimFactor).toFixed(0)},{(p.z * dimFactor).toFixed(0)}
+                                        </td>
+                                        <td className="py-1 pr-1 text-right text-slate-600">{(p.weight * weightFactor).toFixed(0)}</td>
+                                        <td className="py-1 pr-1 text-center text-slate-500">{p.stackable ? "Y" : "N"}</td>
+                                        <td className="py-1 pr-1 text-center">
+                                          <span className="font-mono text-slate-400" style={{ fontSize: "10px" }}>{p.rotation}</span>
+                                        </td>
+                                        <td className="py-1 text-right text-slate-600">{volVal.toFixed(isMetric ? 3 : 1)}</td>
+                                      </tr>
+                                    );
+                                  })}
                                 </tbody>
+                                <tfoot>
+                                  <tr className="border-t-2 border-slate-300">
+                                    <td colSpan={4} className="py-1.5 pr-1 font-bold text-slate-800">
+                                      Total: {cResult.placed.length} pcs
+                                    </td>
+                                    <td className="py-1.5 pr-1 text-right font-bold text-slate-800">
+                                      {(cResult.placed.reduce((s, p) => s + p.weight, 0) * weightFactor).toFixed(0)}
+                                    </td>
+                                    <td colSpan={2}></td>
+                                    <td className="py-1.5 text-right font-bold text-slate-800">
+                                      {isMetric
+                                        ? (cResult.placed.reduce((s, p) => s + p.l * IN_TO_CM * p.w * IN_TO_CM * p.h * IN_TO_CM / 1000000, 0)).toFixed(3)
+                                        : cuInToCuFt(cResult.placed.reduce((s, p) => s + p.l * p.w * p.h, 0)).toFixed(1)
+                                      }
+                                    </td>
+                                  </tr>
+                                </tfoot>
                               </table>
                             </div>
                           </CardContent>
