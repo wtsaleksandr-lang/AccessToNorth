@@ -65,8 +65,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Container Loading Calculator Features
 - **3D Visualization**: Three.js-powered viewer with GridHelper floor, wireframe container, door visualization, and dimension labels
-- **3D Box Labels**: CanvasTexture sprite labels floating above each box showing name, dimensions, weight, stackable status, and rotation (labels follow boxes during edit-mode drag)
-- **Edit Mode**: Drag-to-move cargo boxes on floor plane (X/Z) with bounds clamping and red highlight when out of bounds
+- **3D Box Labels**: CanvasTexture sprite labels floating above each box showing name, dimensions, weight, stackable status, and rotation
 - **Suggestion Banner**: When cargo doesn't fit, an amber banner suggests trying a larger container (no auto-upgrade)
 - **Per-Row Actions**: Duplicate (+) and delete (×) buttons on each cargo table row; duplicateItem creates a copy with "(copy)" suffix inserted below the source row
 - **PDF Export**: Generate packing report PDF with container details, 3D screenshot, and loading details table

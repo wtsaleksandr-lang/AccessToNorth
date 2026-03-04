@@ -46,7 +46,6 @@ import {
   Table,
   FileDown,
   MousePointerClick,
-  Move,
 } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -399,23 +398,13 @@ function ContainerViewer3D({
   placed,
   container,
   unitSystem,
-  onUpdatePlaced,
 }: {
   placed: PlacedBox[];
   container: ContainerSpec;
   unitSystem: "imperial" | "metric";
-  onUpdatePlaced?: (updated: PlacedBox[]) => void;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [webglError, setWebglError] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [editWarning, setEditWarning] = useState("");
-  const editModeRef = useRef(false);
-  useEffect(() => { editModeRef.current = editMode; }, [editMode]);
-  const onUpdatePlacedRef = useRef(onUpdatePlaced);
-  useEffect(() => { onUpdatePlacedRef.current = onUpdatePlaced; }, [onUpdatePlaced]);
-  const placedRef = useRef(placed);
-  useEffect(() => { placedRef.current = placed; }, [placed]);
   const sceneRef = useRef<{
     renderer: THREE.WebGLRenderer;
     scene: THREE.Scene;
@@ -645,103 +634,6 @@ function ContainerViewer3D({
       new THREE.Vector3(-0.3, cH / 2, -0.2)
     );
 
-    const raycaster = new THREE.Raycaster();
-    const pointer = new THREE.Vector2();
-    const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-    let dragTarget: THREE.Mesh | null = null;
-    let dragOffset = new THREE.Vector3();
-    let originalColor: THREE.Color | null = null;
-
-    const getPointer = (e: PointerEvent) => {
-      const rect = renderer.domElement.getBoundingClientRect();
-      pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-    };
-
-    const onPointerDown = (e: PointerEvent) => {
-      if (!editModeRef.current) return;
-      getPointer(e);
-      raycaster.setFromCamera(pointer, camera);
-      const hits = raycaster.intersectObjects(cargoMeshes);
-      if (hits.length > 0) {
-        dragTarget = hits[0].object as THREE.Mesh;
-        controls.enabled = false;
-        const intersectPt = new THREE.Vector3();
-        floorPlane.constant = -dragTarget.position.y;
-        raycaster.ray.intersectPlane(floorPlane, intersectPt);
-        dragOffset.copy(dragTarget.position).sub(intersectPt);
-        originalColor = (dragTarget.material as THREE.MeshStandardMaterial).color.clone();
-      }
-    };
-
-    const onPointerMove = (e: PointerEvent) => {
-      if (!dragTarget || !editModeRef.current) return;
-      getPointer(e);
-      raycaster.setFromCamera(pointer, camera);
-      const intersectPt = new THREE.Vector3();
-      floorPlane.constant = -dragTarget.position.y;
-      if (!raycaster.ray.intersectPlane(floorPlane, intersectPt)) return;
-
-      const newPos = intersectPt.add(dragOffset);
-      const ud = dragTarget.userData;
-      const halfL = ud.l / 2;
-      const halfW = ud.w / 2;
-
-      const wouldBeOutOfBounds =
-        newPos.x - halfL < -0.01 || newPos.x + halfL > cL + 0.01 ||
-        newPos.z - halfW < -0.01 || newPos.z + halfW > cW + 0.01;
-
-      newPos.x = Math.max(halfL, Math.min(cL - halfL, newPos.x));
-      newPos.z = Math.max(halfW, Math.min(cW - halfW, newPos.z));
-      dragTarget.position.x = newPos.x;
-      dragTarget.position.z = newPos.z;
-      const mat = dragTarget.material as THREE.MeshStandardMaterial;
-      if (wouldBeOutOfBounds) {
-        mat.emissive.set(0xff0000);
-        mat.emissiveIntensity = 0.4;
-      } else {
-        mat.emissive.set(0x000000);
-        mat.emissiveIntensity = 0;
-      }
-
-      const linkedEdge = scene.children.find(
-        (c) => c.userData.linkedTo === dragTarget!.userData.placedIndex
-      );
-      if (linkedEdge) {
-        linkedEdge.position.x = dragTarget.position.x;
-        linkedEdge.position.z = dragTarget.position.z;
-      }
-    };
-
-    const onPointerUp = () => {
-      if (!dragTarget || !editModeRef.current) return;
-      const mat = dragTarget.material as THREE.MeshStandardMaterial;
-      mat.emissive.set(0x000000);
-      mat.emissiveIntensity = 0;
-      controls.enabled = true;
-
-      if (onUpdatePlacedRef.current) {
-        const idx = dragTarget.userData.placedIndex;
-        const mToIn = 1 / 0.0254;
-        const updated = placedRef.current.map((p, i) => {
-          if (i !== idx) return p;
-          return {
-            ...p,
-            x: (dragTarget!.position.x - dragTarget!.userData.l / 2) * mToIn,
-            z: (dragTarget!.position.z - dragTarget!.userData.w / 2) * mToIn,
-          };
-        });
-        onUpdatePlacedRef.current(updated);
-      }
-
-      dragTarget = null;
-      originalColor = null;
-    };
-
-    renderer.domElement.addEventListener("pointerdown", onPointerDown);
-    renderer.domElement.addEventListener("pointermove", onPointerMove);
-    renderer.domElement.addEventListener("pointerup", onPointerUp);
-
     let animId = 0;
     function animate() {
       animId = requestAnimationFrame(animate);
@@ -763,9 +655,6 @@ function ContainerViewer3D({
     window.addEventListener("resize", handleResize);
 
     return () => {
-      renderer.domElement.removeEventListener("pointerdown", onPointerDown);
-      renderer.domElement.removeEventListener("pointermove", onPointerMove);
-      renderer.domElement.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("resize", handleResize);
       cancelAnimationFrame(animId);
       controls.dispose();
@@ -803,27 +692,7 @@ function ContainerViewer3D({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-        <div className="flex items-center gap-2">
-          {onUpdatePlaced && (
-            <Button
-              size="sm"
-              variant={editMode ? "default" : "outline"}
-              className="h-7 text-xs gap-1"
-              onClick={() => {
-                setEditMode(!editMode);
-                setEditWarning(editMode ? "" : "Drag boxes to reposition them on the floor plane");
-              }}
-              data-testid="button-edit-layout"
-            >
-              <Move className="w-3.5 h-3.5" />
-              {editMode ? "Exit Edit" : "Edit Layout"}
-            </Button>
-          )}
-          {editWarning && (
-            <span className="text-xs text-amber-600">{editWarning}</span>
-          )}
-        </div>
+      <div className="flex items-center justify-end mb-2 gap-2 flex-wrap">
         <div className="flex items-center gap-2 text-xs text-slate-600">
           <span className="bg-slate-100 border border-slate-200 rounded px-2 py-0.5">L: <span className="font-semibold">{fmt(container.lengthIn)}</span></span>
           <span className="bg-slate-100 border border-slate-200 rounded px-2 py-0.5">W: <span className="font-semibold">{fmt(container.widthIn)}</span></span>
@@ -847,7 +716,7 @@ function ContainerViewer3D({
         </div>
       )}
       <p className="mt-1 text-[11px] text-slate-500">
-        {editMode ? "Click and drag boxes to reposition • Scroll to zoom" : "Click and drag to rotate, scroll to zoom"}
+        Click and drag to rotate, scroll to zoom
       </p>
     </div>
   );
@@ -3744,17 +3613,6 @@ export default function ContainerCalculator() {
                                 placed={cResult.placed}
                                 container={cr.container}
                                 unitSystem={unitSystem}
-                                onUpdatePlaced={(updated) => {
-                                  if (!multiResult) return;
-                                  setMultiResult({
-                                    ...multiResult,
-                                    containers: multiResult.containers.map((c, idx) =>
-                                      idx === ci
-                                        ? { ...c, result: { ...c.result, placed: updated } }
-                                        : c
-                                    ),
-                                  });
-                                }}
                               />
                             </div>
                           </CardContent>
