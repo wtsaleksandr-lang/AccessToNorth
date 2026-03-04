@@ -179,9 +179,6 @@ interface MultiContainerResult {
     label: string;
   }[];
   totalContainers: number;
-  upgraded: boolean;
-  upgradeFrom?: string;
-  upgradeTo?: string;
   totalPiecesAll: number;
   totalPiecesLoaded: number;
 }
@@ -1204,12 +1201,6 @@ export default function ContainerCalculator() {
     URL.revokeObjectURL(url);
   }, []);
 
-  const UPGRADE_MAP: Record<string, string> = {
-    "20dc": "40dc",
-    "40dc": "40hc",
-    "40hc": "45hc",
-  };
-
   const handleCalculate = useCallback(() => {
     const validItems = cargoItems.filter(
       (i) => i.included && i.length > 0 && i.width > 0 && i.height > 0 && i.quantity > 0
@@ -1228,13 +1219,16 @@ export default function ContainerCalculator() {
       try {
         const totalPiecesAll = validItems.reduce((s, i) => s + i.quantity, 0);
 
-        let useContainer = container;
+        const useContainer = container;
 
-        let res = packBoxes(validItems, useContainer);
+        const res = packBoxes(validItems, useContainer);
 
         if (containerId !== "custom" && res.unplaced.length > 0) {
-          const nextId = UPGRADE_MAP[containerId] || null;
-          setSuggestedContainerId(nextId);
+          const currentIdx = CONTAINER_PRESETS.findIndex((c) => c.id === containerId);
+          const nextPreset = currentIdx >= 0 && currentIdx < CONTAINER_PRESETS.length - 1
+            ? CONTAINER_PRESETS[currentIdx + 1]
+            : null;
+          setSuggestedContainerId(nextPreset ? nextPreset.id : null);
         } else {
           setSuggestedContainerId(null);
         }
@@ -1243,9 +1237,6 @@ export default function ContainerCalculator() {
           setMultiResult({
             containers: [{ container: useContainer, result: res, label: `1 × ${useContainer.name}` }],
             totalContainers: 1,
-            upgraded: false,
-            upgradeFrom: undefined,
-            upgradeTo: undefined,
             totalPiecesAll,
             totalPiecesLoaded: res.piecesLoaded,
           });
@@ -1289,9 +1280,6 @@ export default function ContainerCalculator() {
           setMultiResult({
             containers: allContainers,
             totalContainers: allContainers.length,
-            upgraded: false,
-            upgradeFrom: undefined,
-            upgradeTo: undefined,
             totalPiecesAll,
             totalPiecesLoaded: totalLoaded,
           });

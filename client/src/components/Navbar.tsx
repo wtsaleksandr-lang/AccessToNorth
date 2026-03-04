@@ -1,42 +1,54 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X, ShieldCheck, ChevronDown, ShoppingCart } from "lucide-react";
+import {
+  Menu, X, ShieldCheck, ChevronDown, ShoppingCart,
+  Briefcase, Receipt, Globe, FileLock, PackageCheck,
+  FileUp, ScanSearch, ClipboardCheck, LayoutGrid,
+  Search, Calculator, Lock, Truck, MapPin, Wrench,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useCart } from "@/contexts/CartContext";
+import type { LucideIcon } from "lucide-react";
 
 interface NavbarProps {
   darkHero?: boolean;
 }
 
-const serviceLinks = [
-  { name: "All Services", href: "/services" },
-  { name: "Business Number (BN)", href: "/services/business-number-bn" },
-  { name: "GST/HST Registration", href: "/services/gst-hst-registration" },
-  { name: "Non-Resident Importer", href: "/services/non-resident-importer-canada" },
-  { name: "CARM Registration", href: "/services/carm-registration-canada" },
-  { name: "RPP / Bond Coordination", href: "/services/rpp-bond-coordination" },
-  { name: "Customs Clearance", href: "/services/customs-clearance-canada" },
-  { name: "B13 Export Declaration", href: "/services/b13-export-declaration" },
-  { name: "HS Code Classification", href: "/services/hs-code-classification-canada" },
-  { name: "Import Compliance Review", href: "/services/import-compliance-review" },
+interface MegaLink {
+  name: string;
+  href: string;
+  icon?: LucideIcon;
+  desc?: string;
+  comingSoon?: boolean;
+}
+
+const serviceLinks: MegaLink[] = [
+  { name: "All Services", href: "/services", icon: LayoutGrid, desc: "Browse our full service catalogue" },
+  { name: "Business Number (BN)", href: "/services/business-number-bn", icon: Briefcase, desc: "Register a CRA business number" },
+  { name: "GST/HST Registration", href: "/services/gst-hst-registration", icon: Receipt, desc: "Get your GST/HST account set up" },
+  { name: "Non-Resident Importer", href: "/services/non-resident-importer-canada", icon: Globe, desc: "Import as a non-resident of Canada" },
+  { name: "CARM Registration", href: "/services/carm-registration-canada", icon: ShieldCheck, desc: "Register on the CARM Client Portal" },
+  { name: "RPP / Bond Coordination", href: "/services/rpp-bond-coordination", icon: FileLock, desc: "Release Prior to Payment setup" },
+  { name: "Customs Clearance", href: "/services/customs-clearance-canada", icon: PackageCheck, desc: "Clear your goods through CBSA" },
+  { name: "B13 Export Declaration", href: "/services/b13-export-declaration", icon: FileUp, desc: "File your export declarations" },
+  { name: "HS Code Classification", href: "/services/hs-code-classification-canada", icon: ScanSearch, desc: "Get accurate tariff classification" },
+  { name: "Import Compliance Review", href: "/services/import-compliance-review", icon: ClipboardCheck, desc: "Audit your import compliance" },
 ];
 
-const toolLinks = [
-  { name: "All Tools", href: "/tools" },
-  { name: "HS Code Finder", href: "/tools/hs-code-finder" },
-  { name: "Customs Duty & Tax Calculator", href: "/customs-calculator" },
-  { name: "CARM Security Calculator", href: "/carm-security-calculator" },
-  { name: "Freight Quote", href: "/tools/freight-quote", comingSoon: true },
-  { name: "Tracking", href: "/tools/shipment-tracking", comingSoon: true },
+const toolLinks: MegaLink[] = [
+  { name: "All Tools", href: "/tools", icon: Wrench, desc: "Free tools for importers & exporters" },
+  { name: "HS Code Finder", href: "/tools/hs-code-finder", icon: Search, desc: "Search tariff codes by keyword" },
+  { name: "Customs Duty & Tax Calculator", href: "/customs-calculator", icon: Calculator, desc: "Estimate duties & taxes on imports" },
+  { name: "CARM Security Calculator", href: "/carm-security-calculator", icon: Lock, desc: "Calculate your RPP security amount" },
+  { name: "Freight Quote", href: "/tools/freight-quote", icon: Truck, desc: "Get a shipping rate estimate", comingSoon: true },
+  { name: "Tracking", href: "/tools/shipment-tracking", icon: MapPin, desc: "Track your shipments in real time", comingSoon: true },
 ];
 
 function CurrencyToggle({ light }: { light?: boolean }) {
   const { currency, setCurrency } = useCurrency();
-  const base = light
-    ? "text-xs font-semibold px-2 py-1 rounded-md transition-colors cursor-pointer"
-    : "text-xs font-semibold px-2 py-1 rounded-md transition-colors cursor-pointer";
+  const base = "text-xs font-semibold px-2 py-1 rounded-md transition-colors cursor-pointer";
   const activeLight = light ? "bg-white/20 text-white" : "bg-primary/10 text-primary";
   const inactiveLight = light ? "text-white/50 hover:text-white/80" : "text-slate-400 hover:text-slate-600";
   return (
@@ -107,61 +119,85 @@ export function Navbar({ darkHero = false }: NavbarProps) {
 
   const textClass = useLight ? "text-white/80 hover:text-white" : "text-slate-600 hover:text-primary";
 
-  const renderDropdown = (name: string, links: typeof serviceLinks | typeof toolLinks) => (
-    <div
-      className="static"
-      onMouseEnter={() => handleDropdownEnter(name)}
-      onMouseLeave={handleDropdownLeave}
-    >
-      <button
-        className={`flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors cursor-pointer rounded-md ${textClass}`}
-        onClick={() => navigate(links[0].href)}
-        data-testid={`nav-link-${name}`}
+  const renderMegaDropdown = (name: string, links: MegaLink[]) => {
+    const allLink = links[0];
+    const items = links.slice(1);
+    return (
+      <div
+        className="static"
+        onMouseEnter={() => handleDropdownEnter(name)}
+        onMouseLeave={handleDropdownLeave}
       >
-        {name.charAt(0).toUpperCase() + name.slice(1)}
-        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${activeDropdown === name ? "rotate-180" : ""}`} />
-      </button>
-      <AnimatePresence>
-        {activeDropdown === name && (
-          <motion.div
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4 }}
-            transition={{ duration: 0.15 }}
-            className="absolute left-0 right-0 top-full mt-0 z-50"
-            onMouseEnter={() => handleDropdownEnter(name)}
-            onMouseLeave={handleDropdownLeave}
-          >
-            <div className="container mx-auto px-4 md:px-6">
-              <div className="bg-white rounded-b-xl shadow-xl border border-t-0 border-slate-100 p-5">
-                <div className="grid grid-cols-3 gap-1">
-                  {links.map((link, i) => (
-                    <button
-                      key={link.href}
-                      onClick={() => navigate(link.href)}
-                      className={`text-left px-4 py-3 text-sm cursor-pointer transition-all rounded-lg flex items-center gap-2 ${
-                        i === 0
-                          ? "font-semibold text-primary bg-primary/5 hover:bg-primary/10 hover:shadow-sm col-span-3 mb-1"
-                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 hover:shadow-sm"
-                      }`}
-                      data-testid={`nav-dropdown-${link.name.toLowerCase().replace(/\s+/g, "-")}`}
-                    >
-                      <span className="flex-1">{link.name}</span>
-                      {"comingSoon" in link && link.comingSoon && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 font-medium">Soon</span>
-                      )}
-                    </button>
-                  ))}
+        <button
+          className={`flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors cursor-pointer rounded-md ${textClass}`}
+          onClick={() => navigate(allLink.href)}
+          data-testid={`nav-link-${name}`}
+        >
+          {name.charAt(0).toUpperCase() + name.slice(1)}
+          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${activeDropdown === name ? "rotate-180" : ""}`} />
+        </button>
+        <AnimatePresence>
+          {activeDropdown === name && (
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.15 }}
+              className="absolute left-0 right-0 top-full mt-0 z-50"
+              onMouseEnter={() => handleDropdownEnter(name)}
+              onMouseLeave={handleDropdownLeave}
+            >
+              <div className="container mx-auto px-4 md:px-6">
+                <div className="bg-white rounded-b-xl shadow-xl border border-t-0 border-slate-100 p-5">
+                  <button
+                    onClick={() => navigate(allLink.href)}
+                    className="w-full text-left px-4 py-3 text-sm cursor-pointer transition-all rounded-lg flex items-center gap-3 font-semibold text-primary bg-primary/5 hover:bg-primary/10 hover:shadow-sm mb-3"
+                    data-testid={`nav-dropdown-${allLink.name.toLowerCase().replace(/\s+/g, "-")}`}
+                  >
+                    {allLink.icon && <allLink.icon className="w-4 h-4 text-primary shrink-0" />}
+                    <span>{allLink.name}</span>
+                    {allLink.desc && <span className="ml-auto text-xs font-normal text-slate-400">{allLink.desc}</span>}
+                  </button>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {items.map((link) => {
+                      const Icon = link.icon;
+                      return (
+                        <button
+                          key={link.href}
+                          onClick={() => navigate(link.href)}
+                          className="text-left px-4 py-3 text-sm cursor-pointer transition-all rounded-lg flex items-start gap-3 border border-transparent hover:border-slate-200 hover:bg-slate-50 hover:shadow-sm group"
+                          data-testid={`nav-dropdown-${link.name.toLowerCase().replace(/\s+/g, "-")}`}
+                        >
+                          {Icon && (
+                            <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary/5 group-hover:bg-primary/10 flex items-center justify-center shrink-0 transition-colors">
+                              <Icon className="w-4 h-4 text-primary/70 group-hover:text-primary transition-colors" />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <span className="font-medium text-slate-700 group-hover:text-slate-900 flex items-center gap-2">
+                              {link.name}
+                              {link.comingSoon && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 font-medium leading-none">Soon</span>
+                              )}
+                            </span>
+                            {link.desc && (
+                              <span className="text-xs text-slate-400 group-hover:text-slate-500 mt-0.5 block leading-snug">{link.desc}</span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
 
-  const renderMobileAccordion = (name: string, links: typeof serviceLinks | typeof toolLinks) => (
+  const renderMobileAccordion = (name: string, links: MegaLink[]) => (
     <>
       <button
         onClick={() => setMobileExpanded(mobileExpanded === name ? null : name)}
@@ -179,19 +215,23 @@ export function Navbar({ darkHero = false }: NavbarProps) {
             exit={{ opacity: 0, height: 0 }}
             className="pl-4 space-y-0.5 overflow-hidden"
           >
-            {links.map((link) => (
-              <button
-                key={link.href}
-                onClick={() => navigate(link.href)}
-                className="w-full text-left py-2.5 px-3 text-sm text-slate-600 hover:text-primary cursor-pointer rounded-md hover:bg-slate-50 flex items-center gap-2"
-                data-testid={`mobile-nav-${link.name.toLowerCase().replace(/\s+/g, "-")}`}
-              >
-                <span className="flex-1">{link.name}</span>
-                {"comingSoon" in link && link.comingSoon && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 font-medium">Soon</span>
-                )}
-              </button>
-            ))}
+            {links.map((link) => {
+              const Icon = link.icon;
+              return (
+                <button
+                  key={link.href}
+                  onClick={() => navigate(link.href)}
+                  className="w-full text-left py-2.5 px-3 text-sm text-slate-600 hover:text-primary cursor-pointer rounded-md hover:bg-slate-50 flex items-center gap-2"
+                  data-testid={`mobile-nav-${link.name.toLowerCase().replace(/\s+/g, "-")}`}
+                >
+                  {Icon && <Icon className="w-4 h-4 text-slate-400 shrink-0" />}
+                  <span className="flex-1">{link.name}</span>
+                  {link.comingSoon && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 font-medium">Soon</span>
+                  )}
+                </button>
+              );
+            })}
           </motion.div>
         )}
       </AnimatePresence>
@@ -219,10 +259,9 @@ export function Navbar({ darkHero = false }: NavbarProps) {
             </span>
           </Link>
 
-          {/* Desktop Nav */}
           <div className="hidden lg:flex items-center gap-1">
-            {renderDropdown("services", serviceLinks)}
-            {renderDropdown("tools", toolLinks)}
+            {renderMegaDropdown("services", serviceLinks)}
+            {renderMegaDropdown("tools", toolLinks)}
 
             <button className={`px-3 py-2 text-sm font-medium transition-colors cursor-pointer rounded-md ${textClass}`} onClick={() => navigate("/pricing")} data-testid="nav-link-pricing">Pricing</button>
             <button className={`px-3 py-2 text-sm font-medium transition-colors cursor-pointer rounded-md ${textClass}`} onClick={() => navigate("/resources")} data-testid="nav-link-resources">Resources</button>
@@ -266,7 +305,6 @@ export function Navbar({ darkHero = false }: NavbarProps) {
             </div>
           </div>
 
-          {/* Mobile toggle */}
           <div className="lg:hidden flex items-center gap-1">
             {itemCount > 0 && (
               <button
@@ -293,7 +331,6 @@ export function Navbar({ darkHero = false }: NavbarProps) {
         </div>
       </div>
 
-      {/* Mobile Menu */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
