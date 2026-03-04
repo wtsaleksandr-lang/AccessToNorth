@@ -152,6 +152,7 @@ interface PlacedBox {
   h: number;
   weight: number;
   rotation: string;
+  stackable: boolean;
 }
 
 interface LoadingResult {
@@ -338,6 +339,7 @@ function packBoxes(
         h: rh,
         weight: box.weight,
         rotation: rotLabel,
+        stackable: box.stackable,
       });
 
       totalWeight += box.weight;
@@ -393,12 +395,18 @@ function packBoxes(
 function ContainerViewer3D({
   placed,
   container,
+  unitSystem,
+  onUpdatePlaced,
 }: {
   placed: PlacedBox[];
   container: ContainerSpec;
+  unitSystem: "imperial" | "metric";
+  onUpdatePlaced?: (nextPlaced: PlacedBox[]) => void;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [webglError, setWebglError] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editWarning, setEditWarning] = useState<string | null>(null);
   const sceneRef = useRef<{
     renderer: THREE.WebGLRenderer;
     scene: THREE.Scene;
@@ -459,13 +467,20 @@ function ContainerViewer3D({
     fillLight.position.set(-cL, cH, -cW);
     scene.add(fillLight);
 
-    const floorGeo = new THREE.PlaneGeometry(cL * 4, cW * 4);
-    const floorMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.8 });
-    const floor = new THREE.Mesh(floorGeo, floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.set(cL / 2, -0.005, cW / 2);
-    floor.receiveShadow = true;
-    scene.add(floor);
+    const gridSize = Math.max(cL, cW) * 2;
+    const gridDivisions = 120;
+    const grid = new THREE.GridHelper(gridSize, gridDivisions, 0xcbd5e1, 0xe2e8f0);
+    grid.position.set(cL / 2, -0.01, cW / 2);
+    if (Array.isArray(grid.material)) {
+      grid.material.forEach((m) => {
+        (m as THREE.LineBasicMaterial).transparent = true;
+        (m as THREE.LineBasicMaterial).opacity = 0.25;
+      });
+    } else {
+      (grid.material as THREE.LineBasicMaterial).transparent = true;
+      (grid.material as THREE.LineBasicMaterial).opacity = 0.25;
+    }
+    scene.add(grid);
 
     const containerEdges = new THREE.EdgesGeometry(new THREE.BoxGeometry(cL, cH, cW));
     const containerWire = new THREE.LineSegments(
@@ -507,7 +522,9 @@ function ContainerViewer3D({
     rightWall.position.set(cL / 2, cH / 2, cW);
     scene.add(rightWall);
 
-    for (const box of placed) {
+    const cargoMeshes: THREE.Mesh[] = [];
+    for (let idx = 0; idx < placed.length; idx++) {
+      const box = placed[idx];
       const bL = inToM(box.l);
       const bW = inToM(box.w);
       const bH = inToM(box.h);
@@ -525,7 +542,9 @@ function ContainerViewer3D({
       boxMesh.position.set(bX + bL / 2, bY + bH / 2, bZ + bW / 2);
       boxMesh.castShadow = true;
       boxMesh.receiveShadow = true;
+      boxMesh.userData = { placedIndex: idx, l: bL, w: bW, h: bH, origL: box.l, origW: box.w };
       scene.add(boxMesh);
+      cargoMeshes.push(boxMesh);
 
       const edgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(bL, bH, bW));
       const edgeMat = new THREE.LineBasicMaterial({
@@ -533,8 +552,108 @@ function ContainerViewer3D({
       });
       const edges = new THREE.LineSegments(edgeGeo, edgeMat);
       edges.position.copy(boxMesh.position);
+      edges.userData = { linkedTo: idx };
       scene.add(edges);
     }
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    let dragging = false;
+    let selectedMesh: THREE.Mesh | null = null;
+    let dragOffset = new THREE.Vector3();
+
+    const getPointer = (ev: PointerEvent) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -(((ev.clientY - rect.top) / rect.height) * 2 - 1);
+    };
+
+    const onPointerDown = (ev: PointerEvent) => {
+      if (!editMode) return;
+      getPointer(ev);
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObjects(cargoMeshes, false);
+      if (hits.length === 0) return;
+      selectedMesh = hits[0].object as THREE.Mesh;
+      dragging = true;
+      controls.enabled = false;
+      dragPlane.constant = -selectedMesh.position.y;
+      const pt = new THREE.Vector3();
+      raycaster.ray.intersectPlane(dragPlane, pt);
+      dragOffset.copy(pt).sub(selectedMesh.position);
+      renderer.domElement.setPointerCapture(ev.pointerId);
+    };
+
+    const onPointerMove = (ev: PointerEvent) => {
+      if (!editMode || !dragging || !selectedMesh) return;
+      getPointer(ev);
+      raycaster.setFromCamera(pointer, camera);
+      const pt = new THREE.Vector3();
+      if (!raycaster.ray.intersectPlane(dragPlane, pt)) return;
+      const target = pt.sub(dragOffset);
+      const { placedIndex, l, w } = selectedMesh.userData as { placedIndex: number; l: number; w: number };
+      const clampedX = Math.min(Math.max(target.x, l / 2), cL - l / 2);
+      const clampedZ = Math.min(Math.max(target.z, w / 2), cW - w / 2);
+      const clamped = Math.abs(clampedX - target.x) > 0.001 || Math.abs(clampedZ - target.z) > 0.001;
+      selectedMesh.position.x = clampedX;
+      selectedMesh.position.z = clampedZ;
+      const linkedEdge = scene.children.find(
+        (c) => c instanceof THREE.LineSegments && c.userData?.linkedTo === placedIndex
+      );
+      if (linkedEdge) {
+        linkedEdge.position.x = clampedX;
+        linkedEdge.position.z = clampedZ;
+      }
+      const mat = selectedMesh.material as THREE.MeshStandardMaterial;
+      if (clamped) {
+        mat.emissive = new THREE.Color(0xef4444);
+        mat.emissiveIntensity = 0.6;
+        setEditWarning("Out of container bounds (clamped).");
+      } else {
+        mat.emissive = new THREE.Color(0x000000);
+        mat.emissiveIntensity = 0.0;
+        setEditWarning(null);
+      }
+    };
+
+    const commitDrag = () => {
+      if (dragging && selectedMesh && onUpdatePlaced) {
+        const { placedIndex, l, w } = selectedMesh.userData as { placedIndex: number; l: number; w: number };
+        const newXin = (selectedMesh.position.x - l / 2) / 0.0254;
+        const newZin = (selectedMesh.position.z - w / 2) / 0.0254;
+        const next = placed.map((p, idx) => {
+          if (idx !== placedIndex) return p;
+          return { ...p, x: Math.max(0, newXin), z: Math.max(0, newZin) };
+        });
+        onUpdatePlaced(next);
+      }
+    };
+
+    const cancelDrag = (ev?: PointerEvent) => {
+      if (dragging) commitDrag();
+      dragging = false;
+      selectedMesh = null;
+      controls.enabled = true;
+      setEditWarning(null);
+      if (ev) {
+        try { renderer.domElement.releasePointerCapture(ev.pointerId); } catch {}
+      }
+    };
+
+    const onPointerUp = (ev: PointerEvent) => {
+      if (!editMode) return;
+      cancelDrag(ev);
+    };
+
+    const onPointerCancel = (ev: PointerEvent) => cancelDrag(ev);
+    const onPointerLeave = () => cancelDrag();
+
+    renderer.domElement.addEventListener("pointerdown", onPointerDown);
+    renderer.domElement.addEventListener("pointermove", onPointerMove);
+    renderer.domElement.addEventListener("pointerup", onPointerUp);
+    renderer.domElement.addEventListener("pointercancel", onPointerCancel);
+    renderer.domElement.addEventListener("pointerleave", onPointerLeave);
 
     function addAxisLabel(text: string, pos: THREE.Vector3) {
       const canvas = document.createElement("canvas");
@@ -553,16 +672,21 @@ function ContainerViewer3D({
       scene.add(sprite);
     }
 
+    const fmtLabel = (inches: number) =>
+      unitSystem === "metric"
+        ? `${(inches * 2.54).toFixed(0)} cm`
+        : `${inches.toFixed(1)}"`;
+
     addAxisLabel(
-      `${container.lengthIn.toFixed(1)}"`,
+      fmtLabel(container.lengthIn),
       new THREE.Vector3(cL / 2, -0.15, -0.2)
     );
     addAxisLabel(
-      `${container.widthIn.toFixed(1)}"`,
+      fmtLabel(container.widthIn),
       new THREE.Vector3(-0.3, -0.15, cW / 2)
     );
     addAxisLabel(
-      `${container.heightIn.toFixed(1)}"`,
+      fmtLabel(container.heightIn),
       new THREE.Vector3(-0.3, cH / 2, -0.2)
     );
 
@@ -588,6 +712,11 @@ function ContainerViewer3D({
 
     return () => {
       window.removeEventListener("resize", handleResize);
+      renderer.domElement.removeEventListener("pointerdown", onPointerDown);
+      renderer.domElement.removeEventListener("pointermove", onPointerMove);
+      renderer.domElement.removeEventListener("pointerup", onPointerUp);
+      renderer.domElement.removeEventListener("pointercancel", onPointerCancel);
+      renderer.domElement.removeEventListener("pointerleave", onPointerLeave);
       cancelAnimationFrame(animId);
       controls.dispose();
       scene.traverse((obj) => {
@@ -615,7 +744,7 @@ function ContainerViewer3D({
         el.removeChild(renderer.domElement);
       }
     };
-  }, [placed, container]);
+  }, [placed, container, unitSystem, editMode, onUpdatePlaced]);
 
   if (webglError) {
     return (
@@ -632,12 +761,41 @@ function ContainerViewer3D({
     );
   }
 
+  const fmt = (inches: number) => {
+    if (unitSystem === "metric") return `${(inches * IN_TO_CM).toFixed(1)} cm`;
+    return `${inches.toFixed(1)} in`;
+  };
+
   return (
-    <div
-      ref={mountRef}
-      className="w-full h-[400px] md:h-[500px] rounded-xl overflow-hidden border border-slate-200 bg-slate-50"
-      data-testid="container-3d-viewer"
-    />
+    <div className="relative w-full h-[400px] md:h-[500px] rounded-xl overflow-hidden border border-slate-200 bg-slate-50" data-testid="container-3d-viewer">
+      <div ref={mountRef} className="absolute inset-0" />
+      <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2 pointer-events-none">
+        <div className="pointer-events-auto flex items-center gap-2">
+          <Button size="sm" variant={editMode ? "default" : "outline"} onClick={() => { setEditWarning(null); setEditMode((v) => !v); }} data-testid="button-toggle-edit-mode">
+            {editMode ? "Edit Layout: ON" : "Edit Layout"}
+          </Button>
+          {editWarning && (
+            <div className="text-xs text-red-700 bg-white/80 border border-red-200 rounded-md px-2 py-1">
+              {editWarning}
+            </div>
+          )}
+        </div>
+        <div className="pointer-events-none flex flex-col items-end gap-1">
+          <div className="text-xs text-slate-600 bg-white/70 border border-slate-200 rounded-md px-2 py-1">
+            Length: <span className="font-semibold">{fmt(container.lengthIn)}</span>
+          </div>
+          <div className="text-xs text-slate-600 bg-white/70 border border-slate-200 rounded-md px-2 py-1">
+            Width: <span className="font-semibold">{fmt(container.widthIn)}</span>
+          </div>
+          <div className="text-xs text-slate-600 bg-white/70 border border-slate-200 rounded-md px-2 py-1">
+            Height: <span className="font-semibold">{fmt(container.heightIn)}</span>
+          </div>
+        </div>
+      </div>
+      <div className="absolute bottom-3 left-3 text-[11px] text-slate-500 bg-white/60 border border-slate-200 rounded-md px-2 py-1">
+        {editMode ? "Drag boxes to reposition (floor plane)" : "Click and drag to rotate, scroll to zoom"}
+      </div>
+    </div>
   );
 }
 
@@ -701,6 +859,8 @@ export default function ContainerCalculator() {
 
   const { toast } = useToast();
   const [unitSystem, setUnitSystem] = useState<"imperial" | "metric">("imperial");
+  const [suggestedContainerId, setSuggestedContainerId] = useState<string | null>(null);
+  const [pendingRecalc, setPendingRecalc] = useState(false);
   const [containerId, setContainerId] = useState("20dc");
   const [customContainer, setCustomContainer] = useState({
     lengthIn: 232.2,
@@ -1089,37 +1249,23 @@ export default function ContainerCalculator() {
         const totalPiecesAll = validItems.reduce((s, i) => s + i.quantity, 0);
 
         let useContainer = container;
-        let upgraded = false;
-        let upgradeFrom = "";
-        let upgradeTo = "";
 
         let res = packBoxes(validItems, useContainer);
 
-        if (res.unplaced.length > 0 && containerId !== "custom") {
-          let nextId = UPGRADE_MAP[containerId];
-          while (nextId && res.unplaced.length > 0) {
-            const nextContainer = CONTAINER_PRESETS.find((c) => c.id === nextId)!;
-            const tryRes = packBoxes(validItems, nextContainer);
-            if (tryRes.unplaced.length < res.unplaced.length || tryRes.piecesLoaded > res.piecesLoaded) {
-              if (!upgraded) {
-                upgradeFrom = useContainer.name;
-              }
-              useContainer = nextContainer;
-              res = tryRes;
-              upgraded = true;
-              upgradeTo = nextContainer.name;
-            }
-            nextId = UPGRADE_MAP[nextId] || "";
-          }
+        if (containerId !== "custom" && res.unplaced.length > 0) {
+          const nextId = UPGRADE_MAP[containerId] || null;
+          setSuggestedContainerId(nextId);
+        } else {
+          setSuggestedContainerId(null);
         }
 
         if (res.unplaced.length === 0) {
           setMultiResult({
             containers: [{ container: useContainer, result: res, label: `1 × ${useContainer.name}` }],
             totalContainers: 1,
-            upgraded,
-            upgradeFrom: upgraded ? upgradeFrom : undefined,
-            upgradeTo: upgraded ? upgradeTo : undefined,
+            upgraded: false,
+            upgradeFrom: undefined,
+            upgradeTo: undefined,
             totalPiecesAll,
             totalPiecesLoaded: res.piecesLoaded,
           });
@@ -1163,9 +1309,9 @@ export default function ContainerCalculator() {
           setMultiResult({
             containers: allContainers,
             totalContainers: allContainers.length,
-            upgraded,
-            upgradeFrom: upgraded ? upgradeFrom : undefined,
-            upgradeTo: upgraded ? upgradeTo : undefined,
+            upgraded: false,
+            upgradeFrom: undefined,
+            upgradeTo: undefined,
             totalPiecesAll,
             totalPiecesLoaded: totalLoaded,
           });
@@ -1190,6 +1336,13 @@ export default function ContainerCalculator() {
       }
     }, 500);
   }, [cargoItems, container, containerId, toast]);
+
+  useEffect(() => {
+    if (pendingRecalc) {
+      setPendingRecalc(false);
+      handleCalculate();
+    }
+  }, [pendingRecalc, handleCalculate]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -3313,17 +3466,30 @@ export default function ContainerCalculator() {
                   className="space-y-5"
                   data-testid="results-section"
                 >
-                  {multiResult.upgraded && (
-                    <div className="p-4 rounded-lg bg-blue-50 border border-blue-200 flex items-start gap-3" data-testid="notice-upgrade">
-                      <Info className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
-                      <div className="text-sm">
-                        <p className="font-semibold text-blue-900">
-                          Container automatically upgraded
+                  {suggestedContainerId && multiResult.totalPiecesLoaded < multiResult.totalPiecesAll && (
+                    <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-3" data-testid="notice-does-not-fit">
+                      <AlertTriangle className="w-5 h-5 text-amber-700 mt-0.5 shrink-0" />
+                      <div className="text-sm flex-1">
+                        <p className="font-semibold text-amber-900">Some cargo does not fit in the selected container</p>
+                        <p className="text-amber-800 mt-1">
+                          We kept your selected container type. You can try a larger container to see if it reduces leftovers or number of containers.
                         </p>
-                        <p className="text-blue-800 mt-1">
-                          Your cargo didn't fit in a {multiResult.upgradeFrom}. We upgraded to a{" "}
-                          <strong>{multiResult.upgradeTo}</strong> to accommodate all items.
-                        </p>
+                        <div className="mt-3">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            data-testid="button-try-larger-container"
+                            onClick={() => {
+                              const next = CONTAINER_PRESETS.find((c) => c.id === suggestedContainerId);
+                              if (!next) return;
+                              setContainerId(next.id);
+                              setSuggestedContainerId(null);
+                              setPendingRecalc(true);
+                            }}
+                          >
+                            Try {CONTAINER_PRESETS.find((c) => c.id === suggestedContainerId)?.name ?? "larger container"}
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -3349,7 +3515,7 @@ export default function ContainerCalculator() {
                     </div>
                   )}
 
-                  {multiResult.totalContainers === 1 && !multiResult.upgraded && multiResult.containers[0].result.unplaced.length === 0 && (
+                  {multiResult.totalContainers === 1 && multiResult.containers[0].result.unplaced.length === 0 && (
                     <div className="p-4 rounded-lg bg-green-50 border border-green-200 flex items-start gap-3" data-testid="notice-all-fit">
                       <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
                       <p className="text-sm font-semibold text-green-800">
@@ -3386,7 +3552,22 @@ export default function ContainerCalculator() {
                             <p className="text-xs text-slate-500">Click and drag to rotate, scroll to zoom</p>
                           </div>
                           <CardContent className="p-4">
-                            <ContainerViewer3D placed={cResult.placed} container={cr.container} />
+                            <ContainerViewer3D
+                              placed={cResult.placed}
+                              container={cr.container}
+                              unitSystem={unitSystem}
+                              onUpdatePlaced={(nextPlaced) => {
+                                setMultiResult((prev) => {
+                                  if (!prev) return prev;
+                                  const next = { ...prev, containers: prev.containers.map((c) => ({ ...c })) };
+                                  next.containers[ci] = {
+                                    ...next.containers[ci],
+                                    result: { ...next.containers[ci].result, placed: nextPlaced },
+                                  };
+                                  return next;
+                                });
+                              }}
+                            />
                           </CardContent>
                         </Card>
 
