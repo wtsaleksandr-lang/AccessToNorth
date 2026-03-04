@@ -544,11 +544,6 @@ function ContainerViewer3D({
 
       const boxGeo = new THREE.BoxGeometry(bL * 0.98, bH * 0.98, bW * 0.98);
       const baseColor = new THREE.Color(box.color);
-      const boxMat = new THREE.MeshStandardMaterial({
-        color: baseColor,
-        roughness: 0.4,
-        metalness: 0.1,
-      });
 
       runningPiece[box.cargoId] = (runningPiece[box.cargoId] || 0) + 1;
       const pieceNo = runningPiece[box.cargoId];
@@ -557,55 +552,65 @@ function ContainerViewer3D({
       const dimU = unitSystem === "metric" ? "cm" : "in";
       const wtU = unitSystem === "metric" ? "kg" : "lb";
 
-      const labelCanvas = document.createElement("canvas");
-      const labelSize = 256;
-      labelCanvas.width = labelSize;
-      labelCanvas.height = labelSize;
-      const lctx = labelCanvas.getContext("2d")!;
-
-      const r = parseInt(box.color.slice(1, 3), 16);
-      const g = parseInt(box.color.slice(3, 5), 16);
-      const b = parseInt(box.color.slice(5, 7), 16);
-      lctx.fillStyle = `rgba(${Math.min(r + 40, 255)}, ${Math.min(g + 40, 255)}, ${Math.min(b + 40, 255)}, 1)`;
-      lctx.fillRect(0, 0, labelSize, labelSize);
-
-      lctx.fillStyle = "rgba(255,255,255,0.75)";
-      lctx.beginPath();
-      lctx.roundRect(12, 12, labelSize - 24, labelSize - 24, 10);
-      lctx.fill();
-
-      lctx.fillStyle = "#0f172a";
-      lctx.font = "bold 28px Inter, sans-serif";
-      lctx.textAlign = "center";
-      const itemName = (box.cargoName || "Box").length > 14
-        ? (box.cargoName || "Box").slice(0, 13) + "…"
+      const itemName = (box.cargoName || "Box").length > 16
+        ? (box.cargoName || "Box").slice(0, 15) + "…"
         : (box.cargoName || "Box");
-      lctx.fillText(`${itemName} #${pieceNo}`, labelSize / 2, 70);
+      const line1 = `${itemName} #${pieceNo}`;
+      const line2 = `${(box.l * dimF).toFixed(0)}×${(box.w * dimF).toFixed(0)}×${(box.h * dimF).toFixed(0)} ${dimU}`;
+      const line3 = `${(box.weight * wtF).toFixed(0)} ${wtU}`;
 
-      lctx.fillStyle = "#334155";
-      lctx.font = "22px Inter, sans-serif";
-      lctx.fillText(`${(box.l * dimF).toFixed(0)}×${(box.w * dimF).toFixed(0)}×${(box.h * dimF).toFixed(0)} ${dimU}`, labelSize / 2, 115);
+      function makeFaceLabel(faceW: number, faceH: number): THREE.CanvasTexture {
+        const cw = 256;
+        const ch = Math.round(256 * (faceH / faceW)) || 256;
+        const c = document.createElement("canvas");
+        c.width = cw;
+        c.height = ch;
+        const ctx = c.getContext("2d")!;
 
-      lctx.font = "20px Inter, sans-serif";
-      lctx.fillStyle = "#475569";
-      lctx.fillText(`${(box.weight * wtF).toFixed(0)} ${wtU}`, labelSize / 2, 155);
+        ctx.clearRect(0, 0, cw, ch);
 
-      lctx.font = "18px Inter, sans-serif";
-      lctx.fillStyle = "#64748b";
-      lctx.fillText(box.stackable ? "Stackable" : "No stack", labelSize / 2, 190);
+        const fontSize = Math.max(16, Math.min(28, Math.round(ch * 0.18)));
+        const subSize = Math.max(12, Math.round(fontSize * 0.72));
+        const cy = ch / 2;
+        ctx.textAlign = "center";
 
-      const labelTex = new THREE.CanvasTexture(labelCanvas);
-      labelTex.needsUpdate = true;
-      const topMat = new THREE.MeshStandardMaterial({
-        map: labelTex,
-        roughness: 0.5,
-        metalness: 0.05,
-      });
+        ctx.shadowColor = "rgba(0,0,0,0.85)";
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `bold ${fontSize}px Inter, Arial, sans-serif`;
+        ctx.fillText(line1, cw / 2, cy - subSize * 0.6);
+
+        ctx.font = `${subSize}px Inter, Arial, sans-serif`;
+        ctx.fillStyle = "rgba(255,255,255,0.92)";
+        ctx.fillText(line2, cw / 2, cy + fontSize * 0.5);
+        ctx.fillText(line3, cw / 2, cy + fontSize * 0.5 + subSize * 1.15);
+
+        const tex = new THREE.CanvasTexture(c);
+        tex.needsUpdate = true;
+        return tex;
+      }
+
+      const texLR = makeFaceLabel(bW, bH);
+      const texTB = makeFaceLabel(bL, bW);
+      const texFB = makeFaceLabel(bL, bH);
+
+      function faceMat(tex: THREE.CanvasTexture) {
+        return new THREE.MeshStandardMaterial({
+          map: tex,
+          color: baseColor,
+          roughness: 0.4,
+          metalness: 0.1,
+          transparent: true,
+        });
+      }
 
       const materials = [
-        boxMat, boxMat,
-        topMat, boxMat,
-        boxMat, boxMat,
+        faceMat(texLR), faceMat(texLR),
+        faceMat(texTB), faceMat(texTB),
+        faceMat(texFB), faceMat(texFB),
       ];
 
       const boxMesh = new THREE.Mesh(boxGeo, materials);
