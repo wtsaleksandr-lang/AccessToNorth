@@ -109,7 +109,7 @@ export function Navbar({ darkHero = false }: NavbarProps) {
 
   const renderDropdown = (name: string, links: typeof serviceLinks | typeof toolLinks) => (
     <div
-      className="relative"
+      className="static"
       onMouseEnter={() => handleDropdownEnter(name)}
       onMouseLeave={handleDropdownLeave}
     >
@@ -128,27 +128,33 @@ export function Navbar({ darkHero = false }: NavbarProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 4 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 mt-1 w-64 bg-white rounded-lg shadow-xl border border-slate-100 py-2 z-50"
+            className="absolute left-0 right-0 top-full mt-0 z-50"
             onMouseEnter={() => handleDropdownEnter(name)}
             onMouseLeave={handleDropdownLeave}
           >
-            {links.map((link, i) => (
-              <button
-                key={link.href}
-                onClick={() => navigate(link.href)}
-                className={`w-full text-left px-4 py-2.5 text-sm cursor-pointer transition-colors flex items-center gap-2 ${
-                  i === 0
-                    ? "font-semibold text-primary hover:bg-primary/5 border-b border-slate-100 mb-1"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                }`}
-                data-testid={`nav-dropdown-${link.name.toLowerCase().replace(/\s+/g, "-")}`}
-              >
-                <span className="flex-1">{link.name}</span>
-                {"comingSoon" in link && link.comingSoon && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 font-medium">Soon</span>
-                )}
-              </button>
-            ))}
+            <div className="container mx-auto px-4 md:px-6">
+              <div className="bg-white rounded-b-xl shadow-xl border border-t-0 border-slate-100 p-5">
+                <div className="grid grid-cols-3 gap-1">
+                  {links.map((link, i) => (
+                    <button
+                      key={link.href}
+                      onClick={() => navigate(link.href)}
+                      className={`text-left px-4 py-3 text-sm cursor-pointer transition-all rounded-lg flex items-center gap-2 ${
+                        i === 0
+                          ? "font-semibold text-primary bg-primary/5 hover:bg-primary/10 hover:shadow-sm col-span-3 mb-1"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 hover:shadow-sm"
+                      }`}
+                      data-testid={`nav-dropdown-${link.name.toLowerCase().replace(/\s+/g, "-")}`}
+                    >
+                      <span className="flex-1">{link.name}</span>
+                      {"comingSoon" in link && link.comingSoon && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 font-medium">Soon</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

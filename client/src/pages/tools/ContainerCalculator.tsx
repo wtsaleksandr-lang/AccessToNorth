@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
@@ -46,6 +46,7 @@ import {
   Table,
   FileDown,
   MousePointerClick,
+  Move,
 } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -398,13 +399,23 @@ function ContainerViewer3D({
   placed,
   container,
   unitSystem,
+  onUpdatePlaced,
 }: {
   placed: PlacedBox[];
   container: ContainerSpec;
   unitSystem: "imperial" | "metric";
+  onUpdatePlaced?: (updated: PlacedBox[]) => void;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [webglError, setWebglError] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editWarning, setEditWarning] = useState("");
+  const editModeRef = useRef(false);
+  useEffect(() => { editModeRef.current = editMode; }, [editMode]);
+  const onUpdatePlacedRef = useRef(onUpdatePlaced);
+  useEffect(() => { onUpdatePlacedRef.current = onUpdatePlaced; }, [onUpdatePlaced]);
+  const placedRef = useRef(placed);
+  useEffect(() => { placedRef.current = placed; }, [placed]);
   const sceneRef = useRef<{
     renderer: THREE.WebGLRenderer;
     scene: THREE.Scene;
@@ -634,6 +645,103 @@ function ContainerViewer3D({
       new THREE.Vector3(-0.3, cH / 2, -0.2)
     );
 
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    let dragTarget: THREE.Mesh | null = null;
+    let dragOffset = new THREE.Vector3();
+    let originalColor: THREE.Color | null = null;
+
+    const getPointer = (e: PointerEvent) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    };
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (!editModeRef.current) return;
+      getPointer(e);
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObjects(cargoMeshes);
+      if (hits.length > 0) {
+        dragTarget = hits[0].object as THREE.Mesh;
+        controls.enabled = false;
+        const intersectPt = new THREE.Vector3();
+        floorPlane.constant = -dragTarget.position.y;
+        raycaster.ray.intersectPlane(floorPlane, intersectPt);
+        dragOffset.copy(dragTarget.position).sub(intersectPt);
+        originalColor = (dragTarget.material as THREE.MeshStandardMaterial).color.clone();
+      }
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!dragTarget || !editModeRef.current) return;
+      getPointer(e);
+      raycaster.setFromCamera(pointer, camera);
+      const intersectPt = new THREE.Vector3();
+      floorPlane.constant = -dragTarget.position.y;
+      if (!raycaster.ray.intersectPlane(floorPlane, intersectPt)) return;
+
+      const newPos = intersectPt.add(dragOffset);
+      const ud = dragTarget.userData;
+      const halfL = ud.l / 2;
+      const halfW = ud.w / 2;
+
+      const wouldBeOutOfBounds =
+        newPos.x - halfL < -0.01 || newPos.x + halfL > cL + 0.01 ||
+        newPos.z - halfW < -0.01 || newPos.z + halfW > cW + 0.01;
+
+      newPos.x = Math.max(halfL, Math.min(cL - halfL, newPos.x));
+      newPos.z = Math.max(halfW, Math.min(cW - halfW, newPos.z));
+      dragTarget.position.x = newPos.x;
+      dragTarget.position.z = newPos.z;
+      const mat = dragTarget.material as THREE.MeshStandardMaterial;
+      if (wouldBeOutOfBounds) {
+        mat.emissive.set(0xff0000);
+        mat.emissiveIntensity = 0.4;
+      } else {
+        mat.emissive.set(0x000000);
+        mat.emissiveIntensity = 0;
+      }
+
+      const linkedEdge = scene.children.find(
+        (c) => c.userData.linkedTo === dragTarget!.userData.placedIndex
+      );
+      if (linkedEdge) {
+        linkedEdge.position.x = dragTarget.position.x;
+        linkedEdge.position.z = dragTarget.position.z;
+      }
+    };
+
+    const onPointerUp = () => {
+      if (!dragTarget || !editModeRef.current) return;
+      const mat = dragTarget.material as THREE.MeshStandardMaterial;
+      mat.emissive.set(0x000000);
+      mat.emissiveIntensity = 0;
+      controls.enabled = true;
+
+      if (onUpdatePlacedRef.current) {
+        const idx = dragTarget.userData.placedIndex;
+        const mToIn = 1 / 0.0254;
+        const updated = placedRef.current.map((p, i) => {
+          if (i !== idx) return p;
+          return {
+            ...p,
+            x: (dragTarget!.position.x - dragTarget!.userData.l / 2) * mToIn,
+            z: (dragTarget!.position.z - dragTarget!.userData.w / 2) * mToIn,
+          };
+        });
+        onUpdatePlacedRef.current(updated);
+      }
+
+      dragTarget = null;
+      originalColor = null;
+    };
+
+    renderer.domElement.addEventListener("pointerdown", onPointerDown);
+    renderer.domElement.addEventListener("pointermove", onPointerMove);
+    renderer.domElement.addEventListener("pointerup", onPointerUp);
+
     let animId = 0;
     function animate() {
       animId = requestAnimationFrame(animate);
@@ -655,6 +763,9 @@ function ContainerViewer3D({
     window.addEventListener("resize", handleResize);
 
     return () => {
+      renderer.domElement.removeEventListener("pointerdown", onPointerDown);
+      renderer.domElement.removeEventListener("pointermove", onPointerMove);
+      renderer.domElement.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("resize", handleResize);
       cancelAnimationFrame(animId);
       controls.dispose();
@@ -692,7 +803,27 @@ function ContainerViewer3D({
 
   return (
     <div>
-      <div className="flex items-center justify-end mb-2 gap-2 flex-wrap">
+      <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          {onUpdatePlaced && (
+            <Button
+              size="sm"
+              variant={editMode ? "default" : "outline"}
+              className="h-7 text-xs gap-1"
+              onClick={() => {
+                setEditMode(!editMode);
+                setEditWarning(editMode ? "" : "Drag boxes to reposition them on the floor plane");
+              }}
+              data-testid="button-edit-layout"
+            >
+              <Move className="w-3.5 h-3.5" />
+              {editMode ? "Exit Edit" : "Edit Layout"}
+            </Button>
+          )}
+          {editWarning && (
+            <span className="text-xs text-amber-600">{editWarning}</span>
+          )}
+        </div>
         <div className="flex items-center gap-2 text-xs text-slate-600">
           <span className="bg-slate-100 border border-slate-200 rounded px-2 py-0.5">L: <span className="font-semibold">{fmt(container.lengthIn)}</span></span>
           <span className="bg-slate-100 border border-slate-200 rounded px-2 py-0.5">W: <span className="font-semibold">{fmt(container.widthIn)}</span></span>
@@ -716,7 +847,7 @@ function ContainerViewer3D({
         </div>
       )}
       <p className="mt-1 text-[11px] text-slate-500">
-        Click and drag to rotate, scroll to zoom
+        {editMode ? "Click and drag boxes to reposition • Scroll to zoom" : "Click and drag to rotate, scroll to zoom"}
       </p>
     </div>
   );
@@ -828,6 +959,7 @@ export default function ContainerCalculator() {
   const [multiResult, setMultiResult] = useState<MultiContainerResult | null>(null);
   const [calculating, setCalculating] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [email, setEmail] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [visualPopup, setVisualPopup] = useState<{ type: "stackable" | "rotation" | "palletized" | "priority"; itemId: string } | null>(null);
@@ -1323,36 +1455,46 @@ export default function ContainerCalculator() {
       const margin = 15;
       const contentW = pw - margin * 2;
       let y = margin;
+      const fmtDim = (v: number) => isMetric ? `${(v * IN_TO_CM).toFixed(0)} cm` : `${v.toFixed(1)}"`;
+      const fmtWt = (v: number) => isMetric ? `${Math.round(v * LB_TO_KG).toLocaleString()} kg` : `${v.toLocaleString()} lbs`;
 
-      pdf.setFontSize(18);
+      pdf.setFillColor(15, 23, 42);
+      pdf.rect(0, 0, pw, 32, "F");
+      pdf.setFontSize(16);
       pdf.setFont("helvetica", "bold");
-      pdf.text("Container Packing Report", margin, y);
-      y += 8;
+      pdf.setTextColor(255, 255, 255);
+      pdf.text("AccessToNorth.com", margin, 14);
       pdf.setFontSize(9);
       pdf.setFont("helvetica", "normal");
-      pdf.text(`Generated: ${new Date().toLocaleString()}`, margin, y);
-      y += 8;
+      pdf.setTextColor(148, 163, 184);
+      pdf.text("Container Packing Report", margin, 22);
+      pdf.text(`Generated: ${new Date().toLocaleString()}`, pw - margin, 22, { align: "right" });
+      y = 40;
+      pdf.setTextColor(0, 0, 0);
 
       const cr = multiResult.containers[0];
       const cSpec = cr.container;
       const cRes = cr.result;
+
+      pdf.setFillColor(241, 245, 249);
+      pdf.roundedRect(margin, y, contentW, 24, 2, 2, "F");
       pdf.setFontSize(11);
       pdf.setFont("helvetica", "bold");
-      pdf.text(`Container: ${cSpec.name}`, margin, y);
-      y += 5;
-      pdf.setFontSize(9);
+      pdf.setTextColor(15, 23, 42);
+      pdf.text(`Container: ${cSpec.name}`, margin + 4, y + 7);
+      pdf.setFontSize(8);
       pdf.setFont("helvetica", "normal");
-      const fmtDim = (v: number) => isMetric ? `${(v * IN_TO_CM).toFixed(0)} cm` : `${v.toFixed(1)}"`;
-      const fmtWt = (v: number) => isMetric ? `${Math.round(v * LB_TO_KG).toLocaleString()} kg` : `${v.toLocaleString()} lbs`;
-      pdf.text(`Internal: ${fmtDim(cSpec.lengthIn)} × ${fmtDim(cSpec.widthIn)} × ${fmtDim(cSpec.heightIn)}   |   Payload: ${fmtWt(cSpec.maxPayloadLbs)}`, margin, y);
-      y += 6;
-      pdf.text(`Pieces: ${cRes.piecesLoaded} / ${cRes.piecesTotal}   |   Weight: ${fmtWt(cRes.totalWeight)}   |   Vol: ${cRes.volumeUtil.toFixed(1)}%   |   Wt: ${cRes.weightUtil.toFixed(1)}%`, margin, y);
-      y += 4;
+      pdf.setTextColor(71, 85, 105);
+      pdf.text(`Internal: ${fmtDim(cSpec.lengthIn)} × ${fmtDim(cSpec.widthIn)} × ${fmtDim(cSpec.heightIn)}   |   Max Payload: ${fmtWt(cSpec.maxPayloadLbs)}`, margin + 4, y + 14);
+      pdf.text(`Pieces: ${cRes.piecesLoaded}/${cRes.piecesTotal}   |   Weight: ${fmtWt(cRes.totalWeight)}   |   Vol Used: ${cRes.volumeUtil.toFixed(1)}%   |   Wt Used: ${cRes.weightUtil.toFixed(1)}%`, margin + 4, y + 20);
+      y += 30;
+
       if (multiResult.totalContainers > 1) {
-        pdf.text(`Total containers: ${multiResult.totalContainers}`, margin, y);
-        y += 4;
+        pdf.setFontSize(9);
+        pdf.setTextColor(180, 83, 9);
+        pdf.text(`Multiple containers required: ${multiResult.totalContainers} total`, margin, y);
+        y += 6;
       }
-      y += 4;
 
       const canvas3d = viewerRef.current?.querySelector("canvas");
       if (canvas3d) {
@@ -1360,39 +1502,49 @@ export default function ContainerCalculator() {
           const imgData = canvas3d.toDataURL("image/png");
           const imgW = contentW;
           const imgH = (canvas3d.height / canvas3d.width) * imgW;
-          if (y + imgH > 280) { pdf.addPage(); y = margin; }
-          pdf.addImage(imgData, "PNG", margin, y, imgW, Math.min(imgH, 100));
-          y += Math.min(imgH, 100) + 6;
+          const clampedH = Math.min(imgH, 105);
+          if (y + clampedH > 280) { pdf.addPage(); y = margin; }
+          pdf.setDrawColor(226, 232, 240);
+          pdf.roundedRect(margin, y, imgW, clampedH, 2, 2, "S");
+          pdf.addImage(imgData, "PNG", margin + 0.5, y + 0.5, imgW - 1, clampedH - 1);
+          y += clampedH + 6;
         } catch {}
       }
 
+      pdf.setTextColor(0, 0, 0);
       for (let ci = 0; ci < multiResult.containers.length; ci++) {
         const cont = multiResult.containers[ci];
         const res = cont.result;
         if (ci > 0) { pdf.addPage(); y = margin; }
         if (multiResult.totalContainers > 1) {
-          pdf.setFontSize(11);
+          pdf.setFontSize(10);
           pdf.setFont("helvetica", "bold");
+          pdf.setTextColor(15, 23, 42);
           pdf.text(cont.label, margin, y);
           y += 6;
         }
 
-        pdf.setFontSize(8);
+        pdf.setFillColor(241, 245, 249);
+        pdf.rect(margin, y - 1, contentW, 5, "F");
+        pdf.setFontSize(7.5);
         pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(71, 85, 105);
         const cols = ["#", "Item", "L", "W", "H", isMetric ? "kg" : "lbs", "Stack", "Rot.", isMetric ? "m³" : "ft³"];
-        const colX = [margin, margin + 8, margin + 55, margin + 72, margin + 89, margin + 106, margin + 126, margin + 142, margin + 158];
-        cols.forEach((c, i) => pdf.text(c, colX[i], y));
-        y += 4;
-        pdf.setDrawColor(200);
-        pdf.line(margin, y, margin + contentW, y);
-        y += 3;
+        const colX = [margin + 1, margin + 8, margin + 58, margin + 74, margin + 90, margin + 106, margin + 124, margin + 140, margin + 158];
+        cols.forEach((c, i) => pdf.text(c, colX[i], y + 3));
+        y += 7;
 
         pdf.setFont("helvetica", "normal");
         pdf.setFontSize(7);
+        pdf.setTextColor(30, 41, 59);
         let totalWt = 0;
         let totalVol = 0;
         for (let i = 0; i < res.placed.length; i++) {
           if (y > 275) { pdf.addPage(); y = margin; }
+          if (i % 2 === 0) {
+            pdf.setFillColor(248, 250, 252);
+            pdf.rect(margin, y - 2.5, contentW, 3.5, "F");
+          }
           const p = res.placed[i];
           const dimF = isMetric ? IN_TO_CM : 1;
           const wtF = isMetric ? LB_TO_KG : 1;
@@ -1403,7 +1555,7 @@ export default function ContainerCalculator() {
           totalVol += volVal;
           const row = [
             `${i + 1}`,
-            p.cargoName.substring(0, 20),
+            p.cargoName.substring(0, 22),
             (p.l * dimF).toFixed(1),
             (p.w * dimF).toFixed(1),
             (p.h * dimF).toFixed(1),
@@ -1412,17 +1564,29 @@ export default function ContainerCalculator() {
             p.rotation,
             volVal.toFixed(isMetric ? 3 : 1),
           ];
+          pdf.setTextColor(30, 41, 59);
           row.forEach((c, j) => pdf.text(c, colX[j], y));
           y += 3.5;
         }
         y += 1;
-        pdf.setDrawColor(200);
+        pdf.setDrawColor(148, 163, 184);
         pdf.line(margin, y, margin + contentW, y);
-        y += 3;
+        y += 3.5;
         pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(15, 23, 42);
         pdf.text(`Total: ${res.placed.length} pcs`, colX[0], y);
         pdf.text(totalWt.toFixed(0), colX[5], y);
         pdf.text(totalVol.toFixed(isMetric ? 3 : 1), colX[8], y);
+      }
+
+      const pageCount = pdf.getNumberOfPages();
+      for (let p = 1; p <= pageCount; p++) {
+        pdf.setPage(p);
+        pdf.setFontSize(7);
+        pdf.setFont("helvetica", "normal");
+        pdf.setTextColor(148, 163, 184);
+        pdf.text("AccessToNorth.com — Container Packing Report", margin, 292);
+        pdf.text(`Page ${p} of ${pageCount}`, pw - margin, 292, { align: "right" });
       }
 
       pdf.save(`packing-report-${new Date().toISOString().slice(0, 10)}.pdf`);
@@ -3279,16 +3443,6 @@ export default function ContainerCalculator() {
                       </thead>
                       <tbody>
                         {cargoItems.map((item, idx) => {
-                          const displayWt = toDisplayWeight(item.weight);
-                          const totalWt = item.weight * item.quantity;
-                          const displayTotalWt = unitSystem === "metric"
-                            ? (totalWt * LB_TO_KG).toFixed(1)
-                            : totalWt.toFixed(1);
-                          const volIn3 = item.length * item.width * item.height * item.quantity;
-                          const displayVol = unitSystem === "imperial"
-                            ? (volIn3 / 1728).toFixed(2)
-                            : (volIn3 * 0.000016387064).toFixed(4);
-
                           return (
                             <tr
                               key={item.id}
@@ -3301,8 +3455,8 @@ export default function ContainerCalculator() {
                               }`}
                               data-testid={`cargo-item-${idx}`}
                             >
-                              <td className="px-1.5 py-1.5">
-                                <div className="flex items-center gap-1">
+                              <td className="px-0.5 py-1">
+                                <div className="flex items-center gap-0.5">
                                   <button
                                     onClick={() => toggleSelect(item.id)}
                                     className="shrink-0 text-slate-400 hover:text-primary transition-colors"
@@ -3315,12 +3469,12 @@ export default function ContainerCalculator() {
                                     )}
                                   </button>
                                   <div
-                                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                                    className="w-2 h-2 rounded-full shrink-0"
                                     style={{ backgroundColor: item.color }}
                                   />
                                 </div>
                               </td>
-                              <td className="px-1 py-1.5">
+                              <td className="px-0.5 py-1">
                                 <Input
                                   placeholder={`Cargo ${idx + 1}`}
                                   value={item.name}
@@ -3329,65 +3483,55 @@ export default function ContainerCalculator() {
                                   data-testid={`input-cargo-name-${idx}`}
                                 />
                               </td>
-                              <td className="px-1 py-1.5">
+                              <td className="px-0.5 py-1">
                                 <Input
                                   type="number" min={0} step="0.1"
                                   value={toDisplay(item.length)}
                                   onChange={(e) => updateItem(item.id, "length", fromDisplay(e.target.value))}
-                                  className="h-7 text-xs text-center px-1"
+                                  className="h-7 text-xs text-center px-0.5"
                                   data-testid={`input-cargo-length-${idx}`}
                                 />
                               </td>
-                              <td className="px-1 py-1.5">
+                              <td className="px-0.5 py-1">
                                 <Input
                                   type="number" min={0} step="0.1"
                                   value={toDisplay(item.width)}
                                   onChange={(e) => updateItem(item.id, "width", fromDisplay(e.target.value))}
-                                  className="h-7 text-xs text-center px-1"
+                                  className="h-7 text-xs text-center px-0.5"
                                   data-testid={`input-cargo-width-${idx}`}
                                 />
                               </td>
-                              <td className="px-1 py-1.5">
+                              <td className="px-0.5 py-1">
                                 <Input
                                   type="number" min={0} step="0.1"
                                   value={toDisplay(item.height)}
                                   onChange={(e) => updateItem(item.id, "height", fromDisplay(e.target.value))}
-                                  className="h-7 text-xs text-center px-1"
+                                  className="h-7 text-xs text-center px-0.5"
                                   data-testid={`input-cargo-height-${idx}`}
                                 />
                               </td>
-                              <td className="px-1 py-1.5">
+                              <td className="px-0.5 py-1">
                                 <Input
                                   type="number" min={1}
                                   value={item.quantity || ""}
                                   onChange={(e) => updateItem(item.id, "quantity", parseInt(e.target.value) || 0)}
-                                  className="h-7 text-xs text-center px-1"
+                                  className="h-7 text-xs text-center px-0.5"
                                   data-testid={`input-cargo-qty-${idx}`}
                                 />
                               </td>
-                              <td className="px-1 py-1.5">
+                              <td className="px-0.5 py-1">
                                 <Input
                                   type="number" min={0} step="0.1"
                                   value={toDisplayWeight(item.weight)}
                                   onChange={(e) => updateItem(item.id, "weight", fromDisplayWeight(e.target.value))}
-                                  className="h-7 text-xs text-center px-1"
+                                  className="h-7 text-xs text-center px-0.5"
                                   data-testid={`input-cargo-weight-${idx}`}
                                 />
                               </td>
-                              <td className="px-1 py-1.5 text-center">
-                                <span className="text-[11px] text-slate-500 font-medium" data-testid={`text-wtotal-${idx}`}>
-                                  {item.weight > 0 && item.quantity > 0 ? displayTotalWt : "—"}
-                                </span>
-                              </td>
-                              <td className="px-1 py-1.5 text-center">
-                                <span className="text-[11px] text-slate-500 font-medium" data-testid={`text-volume-${idx}`}>
-                                  {item.length > 0 && item.width > 0 && item.height > 0 && item.quantity > 0 ? displayVol : "—"}
-                                </span>
-                              </td>
-                              <td className="px-1 py-1.5">
+                              <td className="px-0.5 py-1">
                                 <button
                                   onClick={() => setVisualPopup({ type: "stackable", itemId: item.id })}
-                                  className={`w-full flex items-center justify-center gap-1 h-7 rounded-md border text-[10px] font-medium transition-colors cursor-pointer ${
+                                  className={`w-full flex items-center justify-center h-7 rounded-md border text-[10px] font-medium transition-colors cursor-pointer ${
                                     item.stackable
                                       ? "bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
                                       : "bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100"
@@ -3395,14 +3539,13 @@ export default function ContainerCalculator() {
                                   data-testid={`toggle-stackable-yes-${idx}`}
                                   title="Click to change"
                                 >
-                                  {item.stackable ? "✓ Yes" : "✗ No"}
-                                  <Eye className="w-2.5 h-2.5 opacity-50" />
+                                  {item.stackable ? "✓" : "✗"}
                                 </button>
                               </td>
-                              <td className="px-1 py-1.5">
+                              <td className="px-0.5 py-1">
                                 <button
                                   onClick={() => setVisualPopup({ type: "rotation", itemId: item.id })}
-                                  className={`w-full flex items-center justify-center gap-1 h-7 rounded-md border text-[10px] font-medium transition-colors cursor-pointer ${
+                                  className={`w-full flex items-center justify-center h-7 rounded-md border text-[10px] font-medium transition-colors cursor-pointer ${
                                     item.rotationMode === "all"
                                       ? "bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100"
                                       : item.rotationMode === "horizontal"
@@ -3412,14 +3555,13 @@ export default function ContainerCalculator() {
                                   data-testid={`select-rotation-${idx}`}
                                   title="Click to change"
                                 >
-                                  {item.rotationMode === "all" ? "All" : item.rotationMode === "horizontal" ? "Horiz." : "Fixed"}
-                                  <Eye className="w-2.5 h-2.5 opacity-50" />
+                                  {item.rotationMode === "all" ? "All" : item.rotationMode === "horizontal" ? "Horiz" : "Fixed"}
                                 </button>
                               </td>
-                              <td className="px-1 py-1.5">
+                              <td className="px-0.5 py-1">
                                 <button
                                   onClick={() => setVisualPopup({ type: "priority", itemId: item.id })}
-                                  className={`w-full flex items-center justify-center gap-1 h-7 rounded-md border text-[10px] font-medium transition-colors cursor-pointer ${
+                                  className={`w-full flex items-center justify-center h-7 rounded-md border text-[10px] font-medium transition-colors cursor-pointer ${
                                     item.loadPriority === "first"
                                       ? "bg-red-50 border-red-300 text-red-700 hover:bg-red-100"
                                       : item.loadPriority === "last"
@@ -3429,29 +3571,11 @@ export default function ContainerCalculator() {
                                   data-testid={`select-priority-${idx}`}
                                   title="Click to change"
                                 >
-                                  {item.loadPriority === "first" ? "1st" : item.loadPriority === "last" ? "Last" : "Normal"}
-                                  <Eye className="w-2.5 h-2.5 opacity-50" />
+                                  {item.loadPriority === "first" ? "1st" : item.loadPriority === "last" ? "Last" : "Norm"}
                                 </button>
                               </td>
-                              <td className="px-1 py-1.5">
-                                <button
-                                  onClick={() => setVisualPopup({ type: "palletized", itemId: item.id })}
-                                  className={`w-full flex items-center justify-center gap-1 h-7 rounded-md border text-[10px] font-medium transition-colors cursor-pointer ${
-                                    item.palletized
-                                      ? "bg-teal-50 border-teal-300 text-teal-700 hover:bg-teal-100"
-                                      : "bg-slate-50 border-slate-300 text-slate-600 hover:bg-slate-100"
-                                  }`}
-                                  data-testid={`toggle-palletized-yes-${idx}`}
-                                  title="Click to change"
-                                >
-                                  {item.palletized
-                                    ? (item.palletType === "euro" ? "Euro" : item.palletType === "custom" ? "Custom" : "US 48×40")
-                                    : "None"}
-                                  <Eye className="w-2.5 h-2.5 opacity-50" />
-                                </button>
-                              </td>
-                              <td className="px-1 py-1.5">
-                                <div className="flex items-center gap-0.5 justify-center">
+                              <td className="px-0.5 py-1">
+                                <div className="flex items-center gap-0 justify-center">
                                   <button
                                     onClick={() => duplicateItem(item.id)}
                                     className="text-slate-300 hover:text-primary transition-colors p-0.5"
@@ -3481,11 +3605,11 @@ export default function ContainerCalculator() {
                     </table>
                   </div>
 
-                  <div className="mt-5 space-y-2">
+                  <div className="mt-5 flex gap-2">
                     <Button
                       onClick={handleCalculate}
                       disabled={calculating}
-                      className="w-full gap-2"
+                      className="flex-1 gap-2"
                       data-testid="button-calculate"
                     >
                       {calculating ? (
@@ -3500,26 +3624,15 @@ export default function ContainerCalculator() {
                         </>
                       )}
                     </Button>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={addItem}
-                        className="gap-1.5"
-                        data-testid="button-add-cargo"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Add Cargo Item
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={handleReset}
-                        className="gap-1.5"
-                        data-testid="button-reset"
-                      >
-                        <RotateCcw className="w-4 h-4" />
-                        Reset
-                      </Button>
-                    </div>
+                    <Button
+                      variant="secondary"
+                      onClick={handleReset}
+                      className="gap-1.5"
+                      data-testid="button-reset"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      Reset
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -3631,6 +3744,17 @@ export default function ContainerCalculator() {
                                 placed={cResult.placed}
                                 container={cr.container}
                                 unitSystem={unitSystem}
+                                onUpdatePlaced={(updated) => {
+                                  if (!multiResult) return;
+                                  setMultiResult({
+                                    ...multiResult,
+                                    containers: multiResult.containers.map((c, idx) =>
+                                      idx === ci
+                                        ? { ...c, result: { ...c.result, placed: updated } }
+                                        : c
+                                    ),
+                                  });
+                                }}
                               />
                             </div>
                           </CardContent>
@@ -3721,33 +3845,75 @@ export default function ContainerCalculator() {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {cResult.placed.map((p, i) => {
-                                    const volVal = isMetric
-                                      ? (p.l * IN_TO_CM * p.w * IN_TO_CM * p.h * IN_TO_CM / 1000000)
-                                      : cuInToCuFt(p.l * p.w * p.h);
-                                    return (
-                                      <tr key={i} className="border-b border-slate-100 last:border-0">
-                                        <td className="py-1 pr-1">
-                                          <div className="w-4 h-4 rounded flex items-center justify-center text-white font-bold" style={{ backgroundColor: p.color, fontSize: "9px" }}>
-                                            {i + 1}
-                                          </div>
-                                        </td>
-                                        <td className="py-1 pr-1 font-medium text-slate-900 truncate max-w-[100px]">{p.cargoName}</td>
-                                        <td className="py-1 pr-1 text-right text-slate-600 whitespace-nowrap">
-                                          {(p.l * dimFactor).toFixed(1)}×{(p.w * dimFactor).toFixed(1)}×{(p.h * dimFactor).toFixed(1)}
-                                        </td>
-                                        <td className="py-1 pr-1 text-right text-slate-500 font-mono whitespace-nowrap" style={{ fontSize: "10px" }}>
-                                          {(p.x * dimFactor).toFixed(0)},{(p.y * dimFactor).toFixed(0)},{(p.z * dimFactor).toFixed(0)}
-                                        </td>
-                                        <td className="py-1 pr-1 text-right text-slate-600">{(p.weight * weightFactor).toFixed(0)}</td>
-                                        <td className="py-1 pr-1 text-center text-slate-500">{p.stackable ? "Y" : "N"}</td>
-                                        <td className="py-1 pr-1 text-center">
-                                          <span className="font-mono text-slate-400" style={{ fontSize: "10px" }}>{p.rotation}</span>
-                                        </td>
-                                        <td className="py-1 text-right text-slate-600">{volVal.toFixed(isMetric ? 3 : 1)}</td>
-                                      </tr>
-                                    );
-                                  })}
+                                  {(() => {
+                                    const groups: Record<string, { items: typeof cResult.placed; color: string }> = {};
+                                    cResult.placed.forEach((p) => {
+                                      if (!groups[p.cargoName]) groups[p.cargoName] = { items: [], color: p.color };
+                                      groups[p.cargoName].items.push(p);
+                                    });
+                                    let globalIdx = 0;
+                                    return Object.entries(groups).map(([name, group]) => {
+                                      const groupKey = `${ci}-${name}`;
+                                      const isOpen = expandedGroups.has(groupKey);
+                                      const groupWt = group.items.reduce((s, p) => s + p.weight * weightFactor, 0);
+                                      const groupVol = group.items.reduce((s, p) => {
+                                        return s + (isMetric ? p.l * IN_TO_CM * p.w * IN_TO_CM * p.h * IN_TO_CM / 1000000 : cuInToCuFt(p.l * p.w * p.h));
+                                      }, 0);
+                                      const startIdx = globalIdx;
+                                      globalIdx += group.items.length;
+                                      return (
+                                        <Fragment key={groupKey}>
+                                          <tr
+                                            className="border-b border-slate-200 bg-slate-50/80 cursor-pointer hover:bg-slate-100 transition-colors"
+                                            onClick={() => setExpandedGroups((prev) => {
+                                              const next = new Set(prev);
+                                              next.has(groupKey) ? next.delete(groupKey) : next.add(groupKey);
+                                              return next;
+                                            })}
+                                            data-testid={`group-header-${ci}-${name}`}
+                                          >
+                                            <td className="py-1.5 pr-1">
+                                              <div className="w-4 h-4 rounded flex items-center justify-center text-white font-bold" style={{ backgroundColor: group.color, fontSize: "9px" }}>
+                                                <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                                              </div>
+                                            </td>
+                                            <td className="py-1.5 pr-1 font-semibold text-slate-800">{name}</td>
+                                            <td className="py-1.5 pr-1 text-right text-slate-500">{group.items.length} pcs</td>
+                                            <td className="py-1.5 pr-1"></td>
+                                            <td className="py-1.5 pr-1 text-right text-slate-600 font-medium">{groupWt.toFixed(0)}</td>
+                                            <td className="py-1.5 pr-1 text-center text-slate-500">{group.items[0].stackable ? "Y" : "N"}</td>
+                                            <td className="py-1.5 pr-1"></td>
+                                            <td className="py-1.5 text-right text-slate-600 font-medium">{groupVol.toFixed(isMetric ? 3 : 1)}</td>
+                                          </tr>
+                                          {isOpen && group.items.map((p, gi) => {
+                                            const volVal = isMetric
+                                              ? (p.l * IN_TO_CM * p.w * IN_TO_CM * p.h * IN_TO_CM / 1000000)
+                                              : cuInToCuFt(p.l * p.w * p.h);
+                                            return (
+                                              <tr key={`${groupKey}-${gi}`} className="border-b border-slate-100 last:border-0">
+                                                <td className="py-1 pr-1 pl-2">
+                                                  <span className="text-slate-400 font-mono" style={{ fontSize: "9px" }}>{startIdx + gi + 1}</span>
+                                                </td>
+                                                <td className="py-1 pr-1 text-slate-600 pl-2">#{gi + 1}</td>
+                                                <td className="py-1 pr-1 text-right text-slate-600 whitespace-nowrap">
+                                                  {(p.l * dimFactor).toFixed(1)}×{(p.w * dimFactor).toFixed(1)}×{(p.h * dimFactor).toFixed(1)}
+                                                </td>
+                                                <td className="py-1 pr-1 text-right text-slate-500 font-mono whitespace-nowrap" style={{ fontSize: "10px" }}>
+                                                  {(p.x * dimFactor).toFixed(0)},{(p.y * dimFactor).toFixed(0)},{(p.z * dimFactor).toFixed(0)}
+                                                </td>
+                                                <td className="py-1 pr-1 text-right text-slate-600">{(p.weight * weightFactor).toFixed(0)}</td>
+                                                <td className="py-1 pr-1 text-center text-slate-500">{p.stackable ? "Y" : "N"}</td>
+                                                <td className="py-1 pr-1 text-center">
+                                                  <span className="font-mono text-slate-400" style={{ fontSize: "10px" }}>{p.rotation}</span>
+                                                </td>
+                                                <td className="py-1 text-right text-slate-600">{volVal.toFixed(isMetric ? 3 : 1)}</td>
+                                              </tr>
+                                            );
+                                          })}
+                                        </Fragment>
+                                      );
+                                    });
+                                  })()}
                                 </tbody>
                                 <tfoot>
                                   <tr className="border-t-2 border-slate-300">
