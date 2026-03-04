@@ -1,0 +1,290 @@
+REPLIT AGENT — APPLY THESE CHANGES (DO NOT RE-DESIGN THE WHOLE APP; TARGETED FIXES ONLY)
+
+Project context:
+- Primary file for the container calculator (algorithm + UI + 3D viewer) is:
+  client/src/pages/tools/ContainerCalculator.tsx
+- The current bug + UI issues are all inside this file.
+- Goal: fix correctness first (container selection must be respected), then UX (no horizontal scroll, remove laggy 3D “edit layout” stuff), then improve labeling + PDF.
+
+========================================================
+A) CRITICAL BUG FIX — CONTAINER TYPE MUST NOT AUTO-UPGRADE
+========================================================
+Problem:
+- User selects 40’ HQ, but when cargo doesn’t fit, the app “upgrades” to 45’ HQ and reports/visualizes that.
+- This must NOT happen. The selected container must always remain the one used for packing/calculation.
+- If items don’t fit, show a clear message + optional “Try bigger container” suggestion button, but DO NOT silently switch containers.
+
+Where it happens:
+- In handleCalculate() there’s an “upgrade loop” using UPGRADE_MAP that mutates useContainer.
+- I saw logic like:
+  - nextId = UPGRADE_MAP[containerId]
+  - while (...) { tryRes = packBoxes(... nextContainer) ... useContainer = nextContainer ... upgraded=true ... }
+
+Required change:
+1) Remove/disable automatic upgrade behavior by default.
+2) Keep “suggestion” logic only as a recommendation UI message:
+   - Keep the original result from the user-selected container.
+   - If unplaced.length > 0, compute a suggested container (optional) BUT DO NOT apply it.
+3) Update the UI message:
+   - Instead of “automatically upgraded”, show:
+     “Some items don’t fit in 40' HQ. Suggested: 45' HQ (click to try).”
+   - Provide a button: “Try suggested container”
+     - This button re-runs calculation with that suggested container and ONLY then updates selection (explicit user action).
+
+Implementation steps:
+- In handleCalculate:
+  - Always set `useContainer` = selected container (or custom).
+  - Run `res = packBoxes(validItems, useContainer)`
+  - If res.unplaced.length > 0:
+    - Compute `suggestedContainer` by iterating upgrade map (same loop), but store ONLY the best suggestion in a variable.
+    - Do not overwrite useContainer/res automatically.
+  - Store into state:
+    - `fitStatus: "fit" | "not_fit"`
+    - `suggestedContainer?: ContainerSpec`
+    - `unplacedItems?: Item[]`
+- Add a small UI panel under “Calculate Loading Plan” results:
+  - If not_fit:
+    - Show red/amber alert with count of unplaced items and suggested container name.
+    - Button: “Try {suggestedContainer.name}”
+      - On click: setSelectedContainerId(suggestedContainer.id) AND run calculate again (or call calculate with forced container).
+
+Acceptance criteria:
+- If user selects 40’ HQ, result header and 3D viewer MUST still say 40’ HQ even if it doesn’t fit.
+- No “automatic upgraded” wording.
+- Only changes container if user clicks the explicit “Try suggested container” button.
+
+========================================================
+B) REMOVE “EDIT LAYOUT” FEATURE (FOR NOW) + REMOVE LAGGY SELECTED-ITEM PANEL
+========================================================
+Problems:
+- “Edit Layout: ON” + “Drag boxes…” text exists, but the interaction is laggy/bad.
+- Clicking boxes to populate details under the viewer is also laggy and ugly.
+- We will REMOVE this entire interaction for now (cheaper + cleaner).
+
+Required changes in ContainerViewer3D section:
+1) Remove:
+   - Edit Layout toggle/button
+   - “Drag boxes to reposition…” helper text
+   - Click-to-select logic and the details panel under the viewer
+2) Keep only:
+   - OrbitControls (rotate/zoom/pan)
+   - A clean 3D visualization
+   - A top-right “PDF Report” button
+   - Container dimension chips (L/W/H) are OK.
+
+Implementation hints:
+- Search for selected item state (selectedBox / selectedItem) and raycaster onClick handlers.
+- Remove that state + handlers completely.
+- Ensure it still renders fast with many boxes.
+
+Acceptance criteria:
+- No “Edit Layout” button.
+- No details panel below viewer that changes on click.
+- Viewer interaction is only rotate/zoom/pan.
+
+========================================================
+C) 3D VIEWER VISUAL CLEANUP (REMOVE GREY PLATFORM, ADD SUBTLE GRID)
+========================================================
+Problems:
+- Grey floor/platform looks cheap.
+- Background looks empty/grey.
+
+Required change:
+- Remove the solid grey platform plane (or set it fully transparent).
+- Replace with a subtle grid that DOES NOT overlay the boxes:
+  - Use THREE.GridHelper on the floor plane.
+  - Low opacity / light color.
+  - Grid units must follow current unit mode:
+    - If imperial: grid = 1 inch major lines, optional 1/4 inch minor lines (if too heavy, do only 1 inch).
+    - If metric: grid = 1 cm major lines (if too dense, use 5 cm).
+  - Keep it subtle so boxes remain clear.
+
+Implementation approach:
+- If you currently have a PlaneGeometry floor mesh: delete it or make it invisible.
+- Add:
+  - const grid = new THREE.GridHelper(width, divisions, majorColor, minorColor)
+  - grid.material.transparent = true
+  - grid.material.opacity = 0.15 (tune)
+  - rotate grid to lie flat
+  - position at y = 0 (or container floor)
+
+Acceptance criteria:
+- No big grey slab.
+- Subtle grid visible behind container, not “on top of” boxes.
+
+========================================================
+D) 3D BOX LABELING (MAKE IT LIKE PIER2PIER BUT BETTER)
+========================================================
+Problem:
+- Current labels are small white rectangles and hard to read.
+- Users need to identify which box is which in the 3D view.
+
+Goal:
+- Each box must show readable marking on at least the visible face(s):
+  - Cargo name / ref (e.g., “Cargo 1” or user-entered name)
+  - Dimensions (L×W×H) in current units
+  - Weight (per piece)
+  - Optional: “#n” sequence number
+- This must be performant.
+
+Implementation options (pick the most practical):
+Option 1 (recommended): Use THREE.Sprite with canvas-text texture
+- Create a helper that makes a canvas, draws text lines, makes a texture, applies to SpriteMaterial.
+- Attach 1 sprite per box, positioned near the top-front of the box.
+- Always face camera (sprites do).
+- This avoids heavy CSS2D and keeps it simple.
+
+Option 2: CSS2DRenderer overlay
+- More DOM, can be heavier. Only use if sprite text looks bad.
+
+Also add container doors indicator:
+- At the door end, draw door frame lines (simple line segments) or a slightly different color outline.
+
+Acceptance criteria:
+- Labels are readable without clicking anything.
+- Labels follow imperial/metric toggle.
+- No lag spikes when orbiting with many boxes (use memoization; don’t recreate textures every frame).
+
+========================================================
+E) CARGO INPUT GRID — REMOVE HORIZONTAL SCROLL + ADD INLINE + / X CONTROLS
+========================================================
+Problems:
+- Your “Packing List” row input area overflows and causes a horizontal scroll.
+- The “+ Add Cargo Item” button can be removed if we support per-row add/delete.
+
+Required UX changes:
+1) Make the cargo list responsive:
+   - Desktop: show all columns without horizontal scroll.
+   - Mobile: collapse less-important columns into a row “Details” accordion (or stack fields vertically).
+2) Add per-row controls:
+   - “+” button at end of row to duplicate/add a new row quickly
+   - “x” button to delete row
+   - Remove the big “+ Add Cargo Item” CTA button (or keep only on mobile if needed).
+3) Keep two CTAs in one line under the grid:
+   - [Calculate Loading Plan] (primary)
+   - [Reset] (secondary)
+   - Place them in one row, equal height, responsive.
+
+Implementation hints:
+- Replace the current table layout with CSS grid per row:
+  - Use `grid-template-columns` on desktop.
+  - Use `@media` to switch to stacked layout on small screens.
+- Ensure inputs have min-width: 0 and containers have overflow hidden, so no sideways scroll.
+
+Acceptance criteria:
+- No horizontal scroll on desktop.
+- Rows can be added/deleted with + / x.
+- CTAs are in one clean row.
+
+========================================================
+F) LOADING DETAILS REPORT TABLE — ADD COLUMNS + ADD TOTALS + MAKE IT COMPACT
+========================================================
+Current need:
+- Add columns: stackable yes/no
+- Add totals: qty / weight / m3 / cft
+- Make it less “endless scroll”.
+
+Required changes:
+1) Add columns to the “Loading Details” table:
+   - Stackable (Yes/No)
+   - Weight per piece + Total weight
+   - Volume per piece + Total volume (show in both m3 and cft if you can, or show based on units toggle)
+2) Add a totals row at top (or bottom) for:
+   - Total pieces
+   - Total weight
+   - Total volume
+3) Make it compact:
+   - Use pagination or collapsible groups per cargo name:
+     - Group rows by cargo type (Cargo 1, Cargo 2...)
+     - Each group collapsible
+   - Default: show groups collapsed with summary line.
+
+Acceptance criteria:
+- Table has stackable column.
+- Totals visible without scrolling to the bottom.
+- Table is not a huge wall of rows by default.
+
+========================================================
+G) PDF REPORT — MUST LOOK PROFESSIONAL (LOGO + PLAN IMAGE + SUMMARY)
+========================================================
+Problem:
+- Current PDF looks “cheap” and missing branding and visuals.
+
+Goal:
+- PDF report should include:
+  - AccessToNorth logo + title
+  - Date/time
+  - Selected container (NOT upgraded unless user chose)
+  - Summary metrics (pieces loaded, unplaced count, weight used, volume used)
+  - A screenshot/image of the 3D plan (at least 1 view)
+  - A compact table of cargo lines (grouped)
+  - If multiple containers, add a page per container.
+
+Implementation approach:
+1) Add a small logo asset:
+   - If project already has a logo in /public, use it.
+   - Otherwise use text logo “AccessToNorth.com” in the PDF header for now.
+2) Capture plan image:
+   - Use renderer.domElement.toDataURL("image/png")
+   - Ensure a render call happens before capture.
+3) Use jsPDF + autoTable (if already used) with proper margins and typography.
+
+Acceptance criteria:
+- PDF includes branding header.
+- PDF includes an image of the container plan.
+- PDF looks like a real report, not raw table dump.
+
+========================================================
+H) LOADING/WAIT ANIMATION DURING CALCULATION
+========================================================
+Goal:
+- When calculation runs (especially large item sets), show a clean animation:
+  - Spinner + “Calculating loading plan…”
+  - Optional: simple animated progress bar (indeterminate)
+  - Optional: small looping “moving boxes” placeholder (not required)
+
+Acceptance criteria:
+- User never stares at a frozen UI; they always see “working…” state.
+
+========================================================
+I) HEADER DROPDOWN MENUS — FULL-WIDTH MEGA MENU FEEL
+========================================================
+Problem:
+- Current dropdown is narrow per menu item.
+
+Goal:
+- Dropdown container should match the header width (or max container width of the header area).
+- Menu items evenly distributed in columns, not just stacked list.
+- Each item has hover state with subtle shadow.
+
+Implementation hints:
+- Find header/nav component (likely in client/src/components/** maybe MarketingLayout / Header).
+- Change dropdown to:
+  - position: absolute; left aligned to header container
+  - width: same as header container (use `w-full` inside a max-w wrapper)
+  - contents grid: `grid-cols-2` or `grid-cols-3` on desktop
+- Add:
+  - hover:bg + hover:shadow-sm + transition
+
+Acceptance criteria:
+- Dropdown looks like one wide container aligned to header.
+- Items distributed in columns.
+- Hover looks premium.
+
+========================================================
+DELIVERY INSTRUCTIONS
+========================================================
+1) Implement A first (container selection bug). Commit.
+2) Implement B+C next (remove edit layout + cleanup viewer). Commit.
+3) Implement D (box labeling). Commit.
+4) Implement E+F (input grid + details table). Commit.
+5) Implement G+H (PDF + loading animation). Commit.
+6) Implement I (header dropdown). Commit.
+
+After each commit, quickly test:
+- Select 40’ HC, input oversized cargo, verify it does NOT auto-upgrade.
+- Check desktop: no horizontal scroll in packing list.
+- 3D viewer: no edit layout, labels readable.
+- PDF exports with logo/title + image.
+
+If you need any asset (logo), ask me which file in /public to use or create a simple text header as fallback.

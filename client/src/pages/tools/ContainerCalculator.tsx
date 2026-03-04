@@ -398,17 +398,13 @@ function ContainerViewer3D({
   placed,
   container,
   unitSystem,
-  onUpdatePlaced,
 }: {
   placed: PlacedBox[];
   container: ContainerSpec;
   unitSystem: "imperial" | "metric";
-  onUpdatePlaced?: (nextPlaced: PlacedBox[]) => void;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [webglError, setWebglError] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [editWarning, setEditWarning] = useState<string | null>(null);
   const sceneRef = useRef<{
     renderer: THREE.WebGLRenderer;
     scene: THREE.Scene;
@@ -603,105 +599,6 @@ function ContainerViewer3D({
       boxMesh.add(sprite);
     }
 
-    const raycaster = new THREE.Raycaster();
-    const pointer = new THREE.Vector2();
-    const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-    let dragging = false;
-    let selectedMesh: THREE.Mesh | null = null;
-    let dragOffset = new THREE.Vector3();
-
-    const getPointer = (ev: PointerEvent) => {
-      const rect = renderer.domElement.getBoundingClientRect();
-      pointer.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
-      pointer.y = -(((ev.clientY - rect.top) / rect.height) * 2 - 1);
-    };
-
-    const onPointerDown = (ev: PointerEvent) => {
-      if (!editMode) return;
-      getPointer(ev);
-      raycaster.setFromCamera(pointer, camera);
-      const hits = raycaster.intersectObjects(cargoMeshes, false);
-      if (hits.length === 0) return;
-      selectedMesh = hits[0].object as THREE.Mesh;
-      dragging = true;
-      controls.enabled = false;
-      dragPlane.constant = -selectedMesh.position.y;
-      const pt = new THREE.Vector3();
-      raycaster.ray.intersectPlane(dragPlane, pt);
-      dragOffset.copy(pt).sub(selectedMesh.position);
-      renderer.domElement.setPointerCapture(ev.pointerId);
-    };
-
-    const onPointerMove = (ev: PointerEvent) => {
-      if (!editMode || !dragging || !selectedMesh) return;
-      getPointer(ev);
-      raycaster.setFromCamera(pointer, camera);
-      const pt = new THREE.Vector3();
-      if (!raycaster.ray.intersectPlane(dragPlane, pt)) return;
-      const target = pt.sub(dragOffset);
-      const { placedIndex, l, w } = selectedMesh.userData as { placedIndex: number; l: number; w: number };
-      const clampedX = Math.min(Math.max(target.x, l / 2), cL - l / 2);
-      const clampedZ = Math.min(Math.max(target.z, w / 2), cW - w / 2);
-      const clamped = Math.abs(clampedX - target.x) > 0.001 || Math.abs(clampedZ - target.z) > 0.001;
-      selectedMesh.position.x = clampedX;
-      selectedMesh.position.z = clampedZ;
-      const linkedEdge = scene.children.find(
-        (c) => c instanceof THREE.LineSegments && c.userData?.linkedTo === placedIndex
-      );
-      if (linkedEdge) {
-        linkedEdge.position.x = clampedX;
-        linkedEdge.position.z = clampedZ;
-      }
-      const mat = selectedMesh.material as THREE.MeshStandardMaterial;
-      if (clamped) {
-        mat.emissive = new THREE.Color(0xef4444);
-        mat.emissiveIntensity = 0.6;
-        setEditWarning("Out of container bounds (clamped).");
-      } else {
-        mat.emissive = new THREE.Color(0x000000);
-        mat.emissiveIntensity = 0.0;
-        setEditWarning(null);
-      }
-    };
-
-    const commitDrag = () => {
-      if (dragging && selectedMesh && onUpdatePlaced) {
-        const { placedIndex, l, w } = selectedMesh.userData as { placedIndex: number; l: number; w: number };
-        const newXin = (selectedMesh.position.x - l / 2) / 0.0254;
-        const newZin = (selectedMesh.position.z - w / 2) / 0.0254;
-        const next = placed.map((p, idx) => {
-          if (idx !== placedIndex) return p;
-          return { ...p, x: Math.max(0, newXin), z: Math.max(0, newZin) };
-        });
-        onUpdatePlaced(next);
-      }
-    };
-
-    const cancelDrag = (ev?: PointerEvent) => {
-      if (dragging) commitDrag();
-      dragging = false;
-      selectedMesh = null;
-      controls.enabled = true;
-      setEditWarning(null);
-      if (ev) {
-        try { renderer.domElement.releasePointerCapture(ev.pointerId); } catch {}
-      }
-    };
-
-    const onPointerUp = (ev: PointerEvent) => {
-      if (!editMode) return;
-      cancelDrag(ev);
-    };
-
-    const onPointerCancel = (ev: PointerEvent) => cancelDrag(ev);
-    const onPointerLeave = () => cancelDrag();
-
-    renderer.domElement.addEventListener("pointerdown", onPointerDown);
-    renderer.domElement.addEventListener("pointermove", onPointerMove);
-    renderer.domElement.addEventListener("pointerup", onPointerUp);
-    renderer.domElement.addEventListener("pointercancel", onPointerCancel);
-    renderer.domElement.addEventListener("pointerleave", onPointerLeave);
-
     function addAxisLabel(text: string, pos: THREE.Vector3) {
       const canvas = document.createElement("canvas");
       canvas.width = 256;
@@ -759,11 +656,6 @@ function ContainerViewer3D({
 
     return () => {
       window.removeEventListener("resize", handleResize);
-      renderer.domElement.removeEventListener("pointerdown", onPointerDown);
-      renderer.domElement.removeEventListener("pointermove", onPointerMove);
-      renderer.domElement.removeEventListener("pointerup", onPointerUp);
-      renderer.domElement.removeEventListener("pointercancel", onPointerCancel);
-      renderer.domElement.removeEventListener("pointerleave", onPointerLeave);
       cancelAnimationFrame(animId);
       controls.dispose();
       scene.traverse((obj) => {
@@ -791,7 +683,7 @@ function ContainerViewer3D({
         el.removeChild(renderer.domElement);
       }
     };
-  }, [placed, container, unitSystem, editMode, onUpdatePlaced]);
+  }, [placed, container, unitSystem]);
 
   const fmt = (inches: number) => {
     if (unitSystem === "metric") return `${(inches * IN_TO_CM).toFixed(1)} cm`;
@@ -800,17 +692,7 @@ function ContainerViewer3D({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant={editMode ? "default" : "outline"} onClick={() => { setEditWarning(null); setEditMode((v) => !v); }} data-testid="button-toggle-edit-mode" disabled={webglError}>
-            {editMode ? "Edit Layout: ON" : "Edit Layout"}
-          </Button>
-          {editWarning && (
-            <span className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-md px-2 py-1">
-              {editWarning}
-            </span>
-          )}
-        </div>
+      <div className="flex items-center justify-end mb-2 gap-2 flex-wrap">
         <div className="flex items-center gap-2 text-xs text-slate-600">
           <span className="bg-slate-100 border border-slate-200 rounded px-2 py-0.5">L: <span className="font-semibold">{fmt(container.lengthIn)}</span></span>
           <span className="bg-slate-100 border border-slate-200 rounded px-2 py-0.5">W: <span className="font-semibold">{fmt(container.widthIn)}</span></span>
@@ -834,7 +716,7 @@ function ContainerViewer3D({
         </div>
       )}
       <p className="mt-1 text-[11px] text-slate-500">
-        {editMode ? "Drag boxes to reposition (floor plane)" : "Click and drag to rotate, scroll to zoom"}
+        Click and drag to rotate, scroll to zoom
       </p>
     </div>
   );
@@ -3344,11 +3226,11 @@ export default function ContainerCalculator() {
                     })}
                   </div>
 
-                  <div className="hidden sm:block overflow-x-auto -mx-5 px-5" data-testid="cargo-table-scroll">
-                    <table className="w-full border-collapse min-w-[920px]" data-testid="cargo-table">
+                  <div className="hidden sm:block -mx-5 px-5" data-testid="cargo-table-scroll">
+                    <table className="w-full border-collapse table-fixed" data-testid="cargo-table">
                       <thead>
                         <tr className="border-b border-slate-200">
-                          <th className="px-1.5 py-2 text-left w-[32px]">
+                          <th className="px-0.5 py-2 text-left" style={{ width: 28 }}>
                             <button
                               onClick={toggleSelectAll}
                               className="text-slate-400 hover:text-primary transition-colors"
@@ -3356,61 +3238,42 @@ export default function ContainerCalculator() {
                               title={selectedIds.size === cargoItems.length ? "Deselect All" : "Select All"}
                             >
                               {selectedIds.size === cargoItems.length && cargoItems.length > 0 ? (
-                                <CheckSquare className="w-4 h-4 text-primary" />
+                                <CheckSquare className="w-3.5 h-3.5 text-primary" />
                               ) : selectedIds.size > 0 ? (
-                                <Minus className="w-4 h-4 text-primary" />
+                                <Minus className="w-3.5 h-3.5 text-primary" />
                               ) : (
-                                <Square className="w-4 h-4" />
+                                <Square className="w-3.5 h-3.5" />
                               )}
                             </button>
                           </th>
-                          <th className="px-1 py-2 text-left min-w-[100px]">
+                          <th className="px-0.5 py-2 text-left">
                             <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Name</span>
                           </th>
-                          <th className="px-1 py-2 text-center w-[58px]">
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">L<span className="text-slate-300 ml-0.5">({dimUnit})</span></span>
+                          <th className="px-0.5 py-2 text-center" style={{ width: 52 }}>
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">L</span>
                           </th>
-                          <th className="px-1 py-2 text-center w-[58px]">
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">W<span className="text-slate-300 ml-0.5">({dimUnit})</span></span>
+                          <th className="px-0.5 py-2 text-center" style={{ width: 52 }}>
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">W</span>
                           </th>
-                          <th className="px-1 py-2 text-center w-[58px]">
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">H<span className="text-slate-300 ml-0.5">({dimUnit})</span></span>
+                          <th className="px-0.5 py-2 text-center" style={{ width: 52 }}>
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">H</span>
                           </th>
-                          <th className="px-1 py-2 text-center w-[48px]">
+                          <th className="px-0.5 py-2 text-center" style={{ width: 40 }}>
                             <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Qty</span>
                           </th>
-                          <th className="px-1 py-2 text-center w-[62px]">
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">W/pcs<span className="text-slate-300 ml-0.5">({weightUnit})</span></span>
+                          <th className="px-0.5 py-2 text-center" style={{ width: 56 }}>
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{weightUnit}</span>
                           </th>
-                          <th className="px-1 py-2 text-center w-[62px]">
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">W/total</span>
-                          </th>
-                          <th className="px-1 py-2 text-center w-[62px]">
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Vol<span className="text-slate-300 ml-0.5">({unitSystem === "imperial" ? "ft³" : "m³"})</span></span>
-                          </th>
-                          <th className="px-1 py-2 text-center w-[68px]">
+                          <th className="px-0.5 py-2 text-center" style={{ width: 52 }}>
                             <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Stack</div>
-                            <button
-                              onClick={() => {
-                                const allStackable = cargoItems.every(i => i.stackable);
-                                cargoItems.forEach(i => updateItem(i.id, "stackable", !allStackable));
-                              }}
-                              className="text-[8px] text-slate-300 hover:text-primary transition-colors"
-                              data-testid="button-toggle-all-stackable"
-                            >
-                              {cargoItems.every(i => i.stackable) ? "all ✓" : "toggle all"}
-                            </button>
                           </th>
-                          <th className="px-1 py-2 text-center w-[78px]">
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Rotation</span>
+                          <th className="px-0.5 py-2 text-center" style={{ width: 62 }}>
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Rot.</span>
                           </th>
-                          <th className="px-1 py-2 text-center w-[72px]">
+                          <th className="px-0.5 py-2 text-center" style={{ width: 60 }}>
                             <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Priority</span>
                           </th>
-                          <th className="px-1 py-2 text-center w-[78px]">
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Pallet</span>
-                          </th>
-                          <th className="px-1 py-2 text-center w-[30px]">
+                          <th className="px-0.5 py-2 text-center" style={{ width: 50 }}>
                           </th>
                         </tr>
                       </thead>
@@ -3768,17 +3631,6 @@ export default function ContainerCalculator() {
                                 placed={cResult.placed}
                                 container={cr.container}
                                 unitSystem={unitSystem}
-                                onUpdatePlaced={(nextPlaced) => {
-                                  setMultiResult((prev) => {
-                                    if (!prev) return prev;
-                                    const next = { ...prev, containers: prev.containers.map((c) => ({ ...c })) };
-                                    next.containers[ci] = {
-                                      ...next.containers[ci],
-                                      result: { ...next.containers[ci].result, placed: nextPlaced },
-                                    };
-                                    return next;
-                                  });
-                                }}
                               />
                             </div>
                           </CardContent>
