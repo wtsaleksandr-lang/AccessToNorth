@@ -567,15 +567,16 @@ function ContainerViewer3D({
         c.height = ch;
         const ctx = c.getContext("2d")!;
 
-        ctx.clearRect(0, 0, cw, ch);
+        ctx.fillStyle = box.color;
+        ctx.fillRect(0, 0, cw, ch);
 
         const fontSize = Math.max(16, Math.min(28, Math.round(ch * 0.18)));
         const subSize = Math.max(12, Math.round(fontSize * 0.72));
         const cy = ch / 2;
         ctx.textAlign = "center";
 
-        ctx.shadowColor = "rgba(0,0,0,0.85)";
-        ctx.shadowBlur = 4;
+        ctx.shadowColor = "rgba(0,0,0,0.9)";
+        ctx.shadowBlur = 5;
         ctx.shadowOffsetX = 1;
         ctx.shadowOffsetY = 1;
 
@@ -600,10 +601,8 @@ function ContainerViewer3D({
       function faceMat(tex: THREE.CanvasTexture) {
         return new THREE.MeshStandardMaterial({
           map: tex,
-          color: baseColor,
           roughness: 0.4,
           metalness: 0.1,
-          transparent: true,
         });
       }
 
