@@ -575,17 +575,16 @@ function ContainerViewer3D({
         const cy = ch / 2;
         ctx.textAlign = "center";
 
-        ctx.shadowColor = "rgba(0,0,0,0.9)";
-        ctx.shadowBlur = 5;
-        ctx.shadowOffsetX = 1;
-        ctx.shadowOffsetY = 1;
+        ctx.shadowColor = "#000000";
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
 
         ctx.fillStyle = "#ffffff";
         ctx.font = `bold ${fontSize}px Inter, Arial, sans-serif`;
         ctx.fillText(line1, cw / 2, cy - subSize * 0.6);
 
         ctx.font = `${subSize}px Inter, Arial, sans-serif`;
-        ctx.fillStyle = "rgba(255,255,255,0.92)";
         ctx.fillText(line2, cw / 2, cy + fontSize * 0.5);
         ctx.fillText(line3, cw / 2, cy + fontSize * 0.5 + subSize * 1.15);
 
@@ -599,10 +598,8 @@ function ContainerViewer3D({
       const texFB = makeFaceLabel(bL, bH);
 
       function faceMat(tex: THREE.CanvasTexture) {
-        return new THREE.MeshStandardMaterial({
+        return new THREE.MeshBasicMaterial({
           map: tex,
-          roughness: 0.4,
-          metalness: 0.1,
         });
       }
 
