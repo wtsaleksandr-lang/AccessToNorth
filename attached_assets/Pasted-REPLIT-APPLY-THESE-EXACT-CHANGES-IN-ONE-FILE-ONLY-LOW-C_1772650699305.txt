@@ -1,0 +1,472 @@
+REPLIT — APPLY THESE EXACT CHANGES IN ONE FILE ONLY (LOW-CREDIT PATCH)
+FILE: client/src/pages/tools/ContainerCalculator.tsx
+
+========================================================
+CHANGE 1 — FIX AUTO-UPGRADE (NEVER SWITCH CONTAINER TYPE)
+========================================================
+
+A) ADD STATE: suggestedContainerId
+
+FIND (exact):
+const [unitSystem, setUnitSystem] = useState<"imperial" | "metric">("imperial");
+
+REPLACE WITH:
+const [unitSystem, setUnitSystem] = useState<"imperial" | "metric">("imperial");
+const [suggestedContainerId, setSuggestedContainerId] = useState<string | null>(null);
+
+B) REMOVE AUTO-UPGRADE LOOP IN handleCalculate()
+
+FIND (exact block starting here):
+let useContainer = container;
+let upgraded = false;
+let upgradeFrom = "";
+let upgradeTo = "";
+
+let res = packBoxes(validItems, useContainer);
+
+if (res.unplaced.length > 0 && containerId !== "custom") {
+  let nextId = UPGRADE_MAP[containerId];
+  while (nextId && res.unplaced.length > 0) {
+    const nextContainer = CONTAINER_PRESETS.find((c) => c.id === nextId)!;
+    const tryRes = packBoxes(validItems, nextContainer);
+    if (tryRes.unplaced.length < res.unplaced.length || tryRes.piecesLoaded > res.piecesLoaded) {
+      if (!upgraded) {
+        upgradeFrom = useContainer.name;
+      }
+      useContainer = nextContainer;
+      res = tryRes;
+      upgraded = true;
+      upgradeTo = nextContainer.name;
+    }
+    nextId = UPGRADE_MAP[nextId] || "";
+  }
+}
+
+REPLACE WITH:
+let useContainer = container;
+
+// Always respect the user's selected container.
+// No automatic upgrades. If items don't fit, we suggest a larger container as an optional CTA.
+let res = packBoxes(validItems, useContainer);
+
+if (containerId !== "custom" && res.unplaced.length > 0) {
+  const nextId = UPGRADE_MAP[containerId] || null;
+  setSuggestedContainerId(nextId);
+} else {
+  setSuggestedContainerId(null);
+}
+
+C) ENSURE multiResult always shows upgraded=false (no upgradeFrom/to)
+
+In BOTH setMultiResult calls inside handleCalculate (there are 2),
+FIND:
+upgraded,
+upgradeFrom: upgraded ? upgradeFrom : undefined,
+upgradeTo: upgraded ? upgradeTo : undefined,
+
+REPLACE WITH:
+upgraded: false,
+upgradeFrom: undefined,
+upgradeTo: undefined,
+
+D) REMOVE “Container automatically upgraded” NOTICE UI (keep your app clean)
+
+FIND the UI block that contains:
+Container automatically upgraded
+
+Delete that whole conditional block:
+{multiResult.upgraded && ( ... )}
+
+(or leave it but it will never show because upgraded is always false now)
+
+E) ADD “Doesn’t fit” BANNER + “Try larger container” BUTTON
+
+Find the section near results where notices are shown (right after the old upgrade notice is ideal).
+Add this block ABOVE the multi-container amber notice:
+
+INSERT:
+{suggestedContainerId && multiResult && multiResult.totalPiecesLoaded < multiResult.totalPiecesAll && (
+  <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-3" data-testid="notice-does-not-fit">
+    <AlertTriangle className="w-5 h-5 text-amber-700 mt-0.5 shrink-0" />
+    <div className="text-sm flex-1">
+      <p className="font-semibold text-amber-900">Some cargo does not fit in the selected container</p>
+      <p className="text-amber-800 mt-1">
+        We kept your selected container type. You can try a larger container to see if it reduces leftovers or number of containers.
+      </p>
+      <div className="mt-3">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            const next = CONTAINER_PRESETS.find((c) => c.id === suggestedContainerId);
+            if (!next) return;
+            setContainerId(next.id);
+            // If you have custom container logic, only switch presets when not custom:
+            if (next.id !== "custom") {
+              setCustomContainer(null);
+              setContainer(next);
+            }
+            // re-run calc
+            setTimeout(() => handleCalculate(), 0);
+          }}
+        >
+          Try {CONTAINER_PRESETS.find((c) => c.id === suggestedContainerId)?.name ?? "larger container"}
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
+
+IMPORTANT:
+- This assumes setContainer/setCustomContainer exist in this component (they do in this file).
+- If TypeScript complains about setCustomContainer, keep only setContainerId + setContainer.
+
+========================================================
+CHANGE 2 — REMOVE GREY PLATFORM + ADD SUBTLE GRID
+========================================================
+
+In ContainerViewer3D scene setup, FIND:
+const floorGeo = new THREE.PlaneGeometry(cL * 4, cW * 4);
+const floorMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.8 });
+const floor = new THREE.Mesh(floorGeo, floorMat);
+floor.rotation.x = -Math.PI / 2;
+floor.position.set(cL / 2, -0.005, cW / 2);
+floor.receiveShadow = true;
+scene.add(floor);
+
+REPLACE WITH:
+// Subtle grid (no solid platform)
+const gridSize = Math.max(cL, cW) * 2;
+const gridDivisions = 120; // keep light for performance
+const grid = new THREE.GridHelper(gridSize, gridDivisions, 0xcbd5e1, 0xe2e8f0);
+grid.position.set(cL / 2, -0.01, cW / 2);
+if (Array.isArray(grid.material)) {
+  grid.material.forEach((m) => {
+    (m as THREE.LineBasicMaterial).transparent = true;
+    (m as THREE.LineBasicMaterial).opacity = 0.25;
+  });
+} else {
+  (grid.material as THREE.LineBasicMaterial).transparent = true;
+  (grid.material as THREE.LineBasicMaterial).opacity = 0.25;
+}
+scene.add(grid);
+
+========================================================
+CHANGE 3 — BASIC “EDIT LAYOUT” DRAG IN 3D (X/Z PLANE)
+(partial v1: drag on floor only, with bounds clamp + red highlight)
+========================================================
+
+A) Update PlacedBox type to store stackable (needed for later stacking rules)
+FIND interface PlacedBox:
+interface PlacedBox {
+  cargoId: string;
+  cargoName: string;
+  color: string;
+  x: number;
+  y: number;
+  z: number;
+  l: number;
+  w: number;
+  h: number;
+  weight: number;
+  rotation: string;
+}
+
+REPLACE WITH:
+interface PlacedBox {
+  cargoId: string;
+  cargoName: string;
+  color: string;
+  x: number;
+  y: number;
+  z: number;
+  l: number;
+  w: number;
+  h: number;
+  weight: number;
+  rotation: string;
+  stackable: boolean;
+}
+
+B) Ensure packBoxes includes stackable when placing
+FIND placed.push block:
+placed.push({
+  cargoId: box.cargoId,
+  cargoName: box.name,
+  color: box.color,
+  x: sp.x,
+  y: sp.y,
+  z: sp.z,
+  l: rl,
+  w: rw,
+  h: rh,
+  weight: box.weight,
+  rotation: rotLabel,
+});
+
+REPLACE WITH:
+placed.push({
+  cargoId: box.cargoId,
+  cargoName: box.name,
+  color: box.color,
+  x: sp.x,
+  y: sp.y,
+  z: sp.z,
+  l: rl,
+  w: rw,
+  h: rh,
+  weight: box.weight,
+  rotation: rotLabel,
+  stackable: box.stackable,
+});
+
+C) Update ContainerViewer3D signature to accept unitSystem and an edit callback
+FIND:
+function ContainerViewer3D({
+  placed,
+  container,
+}: {
+  placed: PlacedBox[];
+  container: ContainerSpec;
+}) {
+
+REPLACE WITH:
+function ContainerViewer3D({
+  placed,
+  container,
+  unitSystem,
+  onUpdatePlaced,
+}: {
+  placed: PlacedBox[];
+  container: ContainerSpec;
+  unitSystem: "imperial" | "metric";
+  onUpdatePlaced?: (nextPlaced: PlacedBox[]) => void;
+}) {
+
+D) Inside ContainerViewer3D, add edit mode state + warning state (near webglError)
+FIND:
+const [webglError, setWebglError] = useState(false);
+
+REPLACE WITH:
+const [webglError, setWebglError] = useState(false);
+const [editMode, setEditMode] = useState(false);
+const [editWarning, setEditWarning] = useState<string | null>(null);
+
+E) In the Three.js setup (inside useEffect where scene/camera/renderer created),
+after cargo meshes are created, add raycasting drag logic (X/Z plane only).
+You MUST keep this minimal.
+
+1) Create these helpers near scene init (after renderer/controls exist):
+- raycaster, pointer, dragPlane, selected mesh, dragOffset
+
+Add inside the useEffect AFTER renderer/controls created:
+
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+let dragging = false;
+let selected: THREE.Mesh | null = null;
+let dragOffset = new THREE.Vector3();
+
+2) When you create each cargo mesh, set userData with placed index + dims:
+mesh.userData = { placedIndex: idx, l: p.l, w: p.w, h: p.h };
+
+3) Add pointer handlers on renderer.domElement that only work when editMode=true:
+- pointerdown: pick cargo mesh
+- pointermove: move in X/Z, clamp to bounds, set warnings
+- pointerup: commit update via onUpdatePlaced (if provided)
+
+IMPORTANT: clamp rules:
+x in [0, cL - l], z in [0, cW - w], y unchanged
+
+Also highlight invalid:
+- If clamping happened (meaning user tried outside), set mesh emissive red and set editWarning.
+- Otherwise clear.
+
+Implementation snippet to insert inside the useEffect, after meshes exist:
+(If you need a place: put it right before the animate() function starts.)
+
+const getPointer = (ev: PointerEvent) => {
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -(((ev.clientY - rect.top) / rect.height) * 2 - 1);
+};
+
+const onPointerDown = (ev: PointerEvent) => {
+  if (!editMode) return;
+  getPointer(ev);
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(scene.children, true);
+  const hit = hits.find((h) => (h.object as any).isMesh && (h.object as THREE.Mesh).userData?.placedIndex != null);
+  if (!hit) return;
+  selected = hit.object as THREE.Mesh;
+  dragging = true;
+
+  // horizontal plane at current Y
+  dragPlane.constant = -selected.position.y;
+  const pt = new THREE.Vector3();
+  raycaster.ray.intersectPlane(dragPlane, pt);
+  dragOffset.copy(pt).sub(selected.position);
+
+  renderer.domElement.setPointerCapture(ev.pointerId);
+};
+
+const onPointerMove = (ev: PointerEvent) => {
+  if (!editMode || !dragging || !selected) return;
+  getPointer(ev);
+  raycaster.setFromCamera(pointer, camera);
+  const pt = new THREE.Vector3();
+  if (!raycaster.ray.intersectPlane(dragPlane, pt)) return;
+
+  const target = pt.sub(dragOffset);
+
+  const { placedIndex, l, w } = selected.userData as { placedIndex: number; l: number; w: number };
+
+  let newX = target.x;
+  let newZ = target.z;
+
+  const clampedX = Math.min(Math.max(newX, 0), cL - l);
+  const clampedZ = Math.min(Math.max(newZ, 0), cW - w);
+
+  const clamped = clampedX !== newX || clampedZ !== newZ;
+
+  selected.position.x = clampedX;
+  selected.position.z = clampedZ;
+
+  // visual invalid cue
+  const mat = selected.material as THREE.MeshStandardMaterial;
+  if (clamped) {
+    mat.emissive = new THREE.Color(0xef4444);
+    mat.emissiveIntensity = 0.6;
+    setEditWarning("Out of container bounds (clamped).");
+  } else {
+    mat.emissive = new THREE.Color(0x000000);
+    mat.emissiveIntensity = 0.0;
+    setEditWarning(null);
+  }
+
+  // live update placed array for UI (optional)
+  if (onUpdatePlaced) {
+    const next = placed.map((p, idx) => {
+      if (idx !== placedIndex) return p;
+      return { ...p, x: clampedX, z: clampedZ };
+    });
+    onUpdatePlaced(next);
+  }
+};
+
+const onPointerUp = (ev: PointerEvent) => {
+  if (!editMode) return;
+  dragging = false;
+  selected = null;
+  try {
+    renderer.domElement.releasePointerCapture(ev.pointerId);
+  } catch {}
+};
+
+renderer.domElement.addEventListener("pointerdown", onPointerDown);
+renderer.domElement.addEventListener("pointermove", onPointerMove);
+renderer.domElement.addEventListener("pointerup", onPointerUp);
+
+And ensure cleanup in the effect return:
+renderer.domElement.removeEventListener("pointerdown", onPointerDown);
+renderer.domElement.removeEventListener("pointermove", onPointerMove);
+renderer.domElement.removeEventListener("pointerup", onPointerUp);
+
+========================================================
+CHANGE 4 — DIMENSION LABELS + CLEANER 3D WRAPPER
+========================================================
+
+A) Replace ContainerViewer3D return block with overlay UI.
+
+FIND current return block:
+return (
+  <div
+    ref={mountRef}
+    className="w-full h-[400px] md:h-[500px] rounded-xl overflow-hidden border border-slate-200 bg-slate-50"
+  data-testid="container-3d-viewer"
+  />
+);
+
+REPLACE WITH:
+const fmt = (inches: number) => {
+  if (unitSystem === "metric") return `${(inches * IN_TO_CM).toFixed(1)} cm`;
+  return `${inches.toFixed(1)} in`;
+};
+
+return (
+  <div className="relative w-full h-[400px] md:h-[500px] rounded-xl overflow-hidden border border-slate-200 bg-slate-50" data-testid="container-3d-viewer">
+    <div ref={mountRef} className="absolute inset-0" />
+
+    {/* Top overlay controls */}
+    <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2 pointer-events-none">
+      <div className="pointer-events-auto flex items-center gap-2">
+        <Button size="sm" variant={editMode ? "default" : "outline"} onClick={() => { setEditWarning(null); setEditMode((v) => !v); }}>
+          {editMode ? "Edit Layout: ON" : "Edit Layout"}
+        </Button>
+        {editWarning && (
+          <div className="text-xs text-red-700 bg-white/80 border border-red-200 rounded-md px-2 py-1">
+            {editWarning}
+          </div>
+        )}
+      </div>
+
+      {/* Dimension badges */}
+      <div className="pointer-events-none flex flex-col items-end gap-1">
+        <div className="text-xs text-slate-600 bg-white/70 border border-slate-200 rounded-md px-2 py-1">
+          Length: <span className="font-semibold">{fmt(container.lengthIn)}</span>
+        </div>
+        <div className="text-xs text-slate-600 bg-white/70 border border-slate-200 rounded-md px-2 py-1">
+          Width: <span className="font-semibold">{fmt(container.widthIn)}</span>
+        </div>
+        <div className="text-xs text-slate-600 bg-white/70 border border-slate-200 rounded-md px-2 py-1">
+          Height: <span className="font-semibold">{fmt(container.heightIn)}</span>
+        </div>
+      </div>
+    </div>
+
+    {/* Subtle center labels (optional) */}
+    <div className="absolute bottom-3 left-3 text-[11px] text-slate-500 bg-white/60 border border-slate-200 rounded-md px-2 py-1">
+      Drag boxes in Edit mode. (v1: floor move only)
+    </div>
+  </div>
+);
+
+========================================================
+FINAL WIRING — PASS unitSystem + onUpdatePlaced FROM MAIN PAGE
+========================================================
+
+Find where ContainerViewer3D is used in the main results UI.
+It will look like:
+<ContainerViewer3D placed={...} container={...} />
+
+Update it to:
+<ContainerViewer3D
+  placed={...}
+  container={...}
+  unitSystem={unitSystem}
+  onUpdatePlaced={(nextPlaced) => {
+    // Persist edits into the currently displayed container result
+    setMultiResult((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, containers: prev.containers.map((c, idx) => ({ ...c })) };
+      // Update the FIRST container being viewed if you only show one viewer at a time.
+      // If you have a selectedContainerIndex state, use it instead.
+      const targetIndex = 0;
+      next.containers[targetIndex] = {
+        ...next.containers[targetIndex],
+        result: { ...next.containers[targetIndex].result, placed: nextPlaced },
+      };
+      return next;
+    });
+  }}
+/>
+
+If the viewer is per-container (inside a map loop), then use that loop index instead of 0.
+
+DONE.
+- No external deps
+- No container auto-upgrade
+- Grid replaces platform
+- Dimension labels follow unit selection
+- Edit mode allows drag with bounds clamp + warning

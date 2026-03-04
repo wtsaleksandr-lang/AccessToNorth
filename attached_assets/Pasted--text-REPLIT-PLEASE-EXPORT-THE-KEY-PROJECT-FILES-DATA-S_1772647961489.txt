@@ -1,0 +1,65 @@
+```text
+REPLIT — PLEASE EXPORT THE KEY PROJECT FILES + DATA STRUCTURES SO WE CAN APPLY SURGICAL, LOW-CREDIT EDITS
+
+Goal:
+I (Replit) will provide the current source code + schemas + sample inputs/outputs so Alex can get precise FIND/REPLACE code instructions without burning credits.
+
+Please provide (copy/paste full file contents + file paths):
+
+1) TOOL PAGES (UI)
+- The main page/component for:
+  a) Duty/Tax Calculator
+  b) HS Code Finder
+  c) Truck Load Planner (including Route step, if already added)
+  d) Cart/Checkout pages (cart drawer + checkout + post-payment complete-order flow)
+
+2) CORE LOGIC (CALCULATIONS)
+- Files/functions that calculate:
+  a) Duty/tax result
+  b) HS search/suggestions logic (matching, confidence scoring)
+  c) Container load calculator logic (packing/utilization)
+  d) Truck load calculator logic (if separate)
+  e) Any unit toggles (metric/imperial) logic
+
+3) CART + PRICING
+- The cart store/provider (Context/Zustand/Redux/etc)
+- Currency toggle logic (CAD/USD display + conversion if implemented)
+- Product/service catalog config (prices, IDs, SKUs, tiers)
+
+4) ORDER FLOW (PAYMENT + POST-PAYMENT INTAKE)
+- Stripe integration files (checkout creation, webhook handler)
+- Order models / DB schema definitions
+- Complete-order page logic (service-specific intake forms)
+- Email sending integration (Resend) files/config + templates
+
+5) DATA FILES / DB SEEDS
+- Any JSON/CSV seed data used by tools:
+  - HS codes dataset (or reference to DB table + query code)
+  - Any rules tables used by duty/tax
+  - Container/trailer dimension presets (if any)
+  - Any jurisdiction datasets (if started)
+
+6) TYPES + SAMPLE PAYLOADS
+- TypeScript interfaces/types (or schemas) for:
+  - Cargo item input
+  - Calculation result output
+  - Order object
+  - Cart line item
+- Provide ONE real sample of:
+  - Duty/tax input JSON and output JSON
+  - HS search query and response JSON
+  - Container load input and output JSON
+  - (If exists) truck route response JSON
+
+7) BUG/LOG CONTEXT
+- If there are known issues, paste:
+  - Console error messages
+  - Steps to reproduce
+  - Any failing API responses
+
+Format requirements:
+- For each file: show the exact file path as a header line, then the full contents.
+- For datasets: show file path + first ~30 lines + schema/columns, and state total rows.
+
+This is ONLY for exporting code/data. Do not modify anything yet.
+```
