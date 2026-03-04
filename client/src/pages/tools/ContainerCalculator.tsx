@@ -394,14 +394,18 @@ function packBoxes(
   };
 }
 
+export type SnapshotExportFn = () => { iso: string; top: string; sideA: string; front: string } | null;
+
 function ContainerViewer3D({
   placed,
   container,
   unitSystem,
+  onReadyExport,
 }: {
   placed: PlacedBox[];
   container: ContainerSpec;
   unitSystem: "imperial" | "metric";
+  onReadyExport?: (fn: SnapshotExportFn) => void;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [webglError, setWebglError] = useState(false);
@@ -644,6 +648,44 @@ function ContainerViewer3D({
 
     sceneRef.current = { renderer, scene, camera, controls, animId };
 
+    if (onReadyExport) {
+      const exportSnapshots: SnapshotExportFn = () => {
+        const s = sceneRef.current;
+        if (!s) return null;
+        const { renderer: r, scene: sc, camera: cam, controls: ctrl } = s;
+
+        const savedPos = cam.position.clone();
+        const savedTarget = ctrl.target.clone();
+
+        const centerX = cL / 2;
+        const centerY = cH / 3;
+        const centerZ = cW / 2;
+
+        const capture = (px: number, py: number, pz: number) => {
+          cam.position.set(px, py, pz);
+          cam.lookAt(centerX, centerY, centerZ);
+          cam.updateProjectionMatrix();
+          r.render(sc, cam);
+          return r.domElement.toDataURL("image/png");
+        };
+
+        const iso = capture(cL * 1.5, cH * 1.8, cW * 2.5);
+        const top = capture(centerX, Math.max(cL, cW) * 2.5, centerZ + 0.01);
+        const sideA = capture(cL * 2.5, cH * 0.8, centerZ);
+        const front = capture(centerX, cH * 0.8, cW * 3);
+
+        cam.position.copy(savedPos);
+        ctrl.target.copy(savedTarget);
+        cam.lookAt(savedTarget.x, savedTarget.y, savedTarget.z);
+        cam.updateProjectionMatrix();
+        ctrl.update();
+        r.render(sc, cam);
+
+        return { iso, top, sideA, front };
+      };
+      onReadyExport(exportSnapshots);
+    }
+
     const handleResize = () => {
       if (!mountRef.current) return;
       const nw = mountRef.current.clientWidth;
@@ -833,6 +875,7 @@ export default function ContainerCalculator() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [visualPopup, setVisualPopup] = useState<{ type: "stackable" | "rotation" | "palletized" | "priority"; itemId: string } | null>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
+  const [snapshotExportFn, setSnapshotExportFn] = useState<SnapshotExportFn | null>(null);
 
   const [showImportModal, setShowImportModal] = useState(false);
   const [importStep, setImportStep] = useState<"upload" | "mapping" | "preview">("upload");
@@ -1315,156 +1358,41 @@ export default function ContainerCalculator() {
     if (!multiResult || multiResult.containers.length === 0) return;
     toast({ title: "Generating PDF...", description: "Please wait while we create your report." });
     try {
-      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
-        import("jspdf"),
-        import("html2canvas"),
-      ]);
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pw = 210;
-      const margin = 15;
-      const contentW = pw - margin * 2;
-      let y = margin;
-      const fmtDim = (v: number) => isMetric ? `${(v * IN_TO_CM).toFixed(0)} cm` : `${v.toFixed(1)}"`;
-      const fmtWt = (v: number) => isMetric ? `${Math.round(v * LB_TO_KG).toLocaleString()} kg` : `${v.toLocaleString()} lbs`;
+      const { generatePackingReportBlob, buildCargoSummaryRows } = await import(
+        "./container-pdf/ContainerPackingReportPDF"
+      );
 
-      pdf.setFillColor(15, 23, 42);
-      pdf.rect(0, 0, pw, 32, "F");
-      pdf.setFontSize(16);
-      pdf.setFont("helvetica", "bold");
-      pdf.setTextColor(255, 255, 255);
-      pdf.text("AccessToNorth.com", margin, 14);
-      pdf.setFontSize(9);
-      pdf.setFont("helvetica", "normal");
-      pdf.setTextColor(148, 163, 184);
-      pdf.text("Container Packing Report", margin, 22);
-      pdf.text(`Generated: ${new Date().toLocaleString()}`, pw - margin, 22, { align: "right" });
-      y = 40;
-      pdf.setTextColor(0, 0, 0);
+      let images = { iso: "", top: "", sideA: "", front: "" };
+      if (snapshotExportFn) {
+        const snaps = snapshotExportFn();
+        if (snaps) images = snaps;
+      }
 
       const cr = multiResult.containers[0];
-      const cSpec = cr.container;
-      const cRes = cr.result;
+      const cargoRows = buildCargoSummaryRows(cargoItems);
 
-      pdf.setFillColor(241, 245, 249);
-      pdf.roundedRect(margin, y, contentW, 24, 2, 2, "F");
-      pdf.setFontSize(11);
-      pdf.setFont("helvetica", "bold");
-      pdf.setTextColor(15, 23, 42);
-      pdf.text(`Container: ${cSpec.name}`, margin + 4, y + 7);
-      pdf.setFontSize(8);
-      pdf.setFont("helvetica", "normal");
-      pdf.setTextColor(71, 85, 105);
-      pdf.text(`Internal: ${fmtDim(cSpec.lengthIn)} × ${fmtDim(cSpec.widthIn)} × ${fmtDim(cSpec.heightIn)}   |   Max Payload: ${fmtWt(cSpec.maxPayloadLbs)}`, margin + 4, y + 14);
-      pdf.text(`Pieces: ${cRes.piecesLoaded}/${cRes.piecesTotal}   |   Weight: ${fmtWt(cRes.totalWeight)}   |   Vol Used: ${cRes.volumeUtil.toFixed(1)}%   |   Wt Used: ${cRes.weightUtil.toFixed(1)}%`, margin + 4, y + 20);
-      y += 30;
+      const blob = await generatePackingReportBlob({
+        containerSpec: cr.container,
+        cargoRows,
+        result: cr.result,
+        totalContainers: multiResult.totalContainers,
+        unitSystem,
+        images,
+      });
 
-      if (multiResult.totalContainers > 1) {
-        pdf.setFontSize(9);
-        pdf.setTextColor(180, 83, 9);
-        pdf.text(`Multiple containers required: ${multiResult.totalContainers} total`, margin, y);
-        y += 6;
-      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `AccessToNorth_PackingReport_${new Date().toISOString().slice(0, 10)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
 
-      const canvas3d = viewerRef.current?.querySelector("canvas");
-      if (canvas3d) {
-        try {
-          const imgData = canvas3d.toDataURL("image/png");
-          const imgW = contentW;
-          const imgH = (canvas3d.height / canvas3d.width) * imgW;
-          const clampedH = Math.min(imgH, 105);
-          if (y + clampedH > 280) { pdf.addPage(); y = margin; }
-          pdf.setDrawColor(226, 232, 240);
-          pdf.roundedRect(margin, y, imgW, clampedH, 2, 2, "S");
-          pdf.addImage(imgData, "PNG", margin + 0.5, y + 0.5, imgW - 1, clampedH - 1);
-          y += clampedH + 6;
-        } catch {}
-      }
-
-      pdf.setTextColor(0, 0, 0);
-      for (let ci = 0; ci < multiResult.containers.length; ci++) {
-        const cont = multiResult.containers[ci];
-        const res = cont.result;
-        if (ci > 0) { pdf.addPage(); y = margin; }
-        if (multiResult.totalContainers > 1) {
-          pdf.setFontSize(10);
-          pdf.setFont("helvetica", "bold");
-          pdf.setTextColor(15, 23, 42);
-          pdf.text(cont.label, margin, y);
-          y += 6;
-        }
-
-        pdf.setFillColor(241, 245, 249);
-        pdf.rect(margin, y - 1, contentW, 5, "F");
-        pdf.setFontSize(7.5);
-        pdf.setFont("helvetica", "bold");
-        pdf.setTextColor(71, 85, 105);
-        const cols = ["#", "Item", "L", "W", "H", isMetric ? "kg" : "lbs", "Stack", "Rot.", isMetric ? "m³" : "ft³"];
-        const colX = [margin + 1, margin + 8, margin + 58, margin + 74, margin + 90, margin + 106, margin + 124, margin + 140, margin + 158];
-        cols.forEach((c, i) => pdf.text(c, colX[i], y + 3));
-        y += 7;
-
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(7);
-        pdf.setTextColor(30, 41, 59);
-        let totalWt = 0;
-        let totalVol = 0;
-        for (let i = 0; i < res.placed.length; i++) {
-          if (y > 275) { pdf.addPage(); y = margin; }
-          if (i % 2 === 0) {
-            pdf.setFillColor(248, 250, 252);
-            pdf.rect(margin, y - 2.5, contentW, 3.5, "F");
-          }
-          const p = res.placed[i];
-          const dimF = isMetric ? IN_TO_CM : 1;
-          const wtF = isMetric ? LB_TO_KG : 1;
-          const volVal = isMetric
-            ? (p.l * IN_TO_CM * p.w * IN_TO_CM * p.h * IN_TO_CM / 1000000)
-            : cuInToCuFt(p.l * p.w * p.h);
-          totalWt += p.weight * wtF;
-          totalVol += volVal;
-          const row = [
-            `${i + 1}`,
-            p.cargoName.substring(0, 22),
-            (p.l * dimF).toFixed(1),
-            (p.w * dimF).toFixed(1),
-            (p.h * dimF).toFixed(1),
-            (p.weight * wtF).toFixed(0),
-            p.stackable ? "Y" : "N",
-            p.rotation,
-            volVal.toFixed(isMetric ? 3 : 1),
-          ];
-          pdf.setTextColor(30, 41, 59);
-          row.forEach((c, j) => pdf.text(c, colX[j], y));
-          y += 3.5;
-        }
-        y += 1;
-        pdf.setDrawColor(148, 163, 184);
-        pdf.line(margin, y, margin + contentW, y);
-        y += 3.5;
-        pdf.setFont("helvetica", "bold");
-        pdf.setTextColor(15, 23, 42);
-        pdf.text(`Total: ${res.placed.length} pcs`, colX[0], y);
-        pdf.text(totalWt.toFixed(0), colX[5], y);
-        pdf.text(totalVol.toFixed(isMetric ? 3 : 1), colX[8], y);
-      }
-
-      const pageCount = pdf.getNumberOfPages();
-      for (let p = 1; p <= pageCount; p++) {
-        pdf.setPage(p);
-        pdf.setFontSize(7);
-        pdf.setFont("helvetica", "normal");
-        pdf.setTextColor(148, 163, 184);
-        pdf.text("AccessToNorth.com — Container Packing Report", margin, 292);
-        pdf.text(`Page ${p} of ${pageCount}`, pw - margin, 292, { align: "right" });
-      }
-
-      pdf.save(`packing-report-${new Date().toISOString().slice(0, 10)}.pdf`);
       toast({ title: "PDF Downloaded", description: "Your packing report has been saved." });
     } catch (err) {
       console.error("PDF export error:", err);
       toast({ title: "PDF Export Failed", description: "Could not generate the report.", variant: "destructive" });
     }
-  }, [multiResult, isMetric, toast]);
+  }, [multiResult, unitSystem, cargoItems, snapshotExportFn, toast]);
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
@@ -3613,6 +3541,7 @@ export default function ContainerCalculator() {
                                 placed={cResult.placed}
                                 container={cr.container}
                                 unitSystem={unitSystem}
+                                onReadyExport={ci === 0 ? (fn) => setSnapshotExportFn(() => fn) : undefined}
                               />
                             </div>
                           </CardContent>

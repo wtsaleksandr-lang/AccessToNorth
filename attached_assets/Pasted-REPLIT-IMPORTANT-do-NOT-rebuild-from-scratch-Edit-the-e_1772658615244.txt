@@ -1,0 +1,199 @@
+REPLIT — IMPORTANT: do NOT “rebuild from scratch”. Edit the existing codebase with minimal diffs.
+
+GOALS (summary)
+A) Container calculator fixes + UI upgrades
+B) 3D viewer: remove laggy selection UI, remove “Edit layout” mode (for now), improve labels like Pier2Pier but better
+C) Cargo input table: no horizontal scrolling on desktop, add per-row + (duplicate/add) and x (delete), remove “+ Add Cargo Item” CTA
+D) PDF report: generate a premium report with AccessToNorth branding + snapshot(s) of 3D view + compact summary + cargo list with totals
+E) Header mega menu: full-width dropdown (same width as header container), premium SaaS style, icons, subtle item borders, hover shadow
+
+========================================================
+A) CONTAINER CALCULATOR — FIX “AUTO UPGRADE TO 45HQ”
+========================================================
+Problem: user selects 40’ HQ but system auto-upgrades to 45’ HQ when cargo doesn’t fit. This is NOT allowed.
+Required behavior:
+1) The selected container type MUST be respected.
+2) If cargo doesn’t fit in selected container:
+   - Show a clear message: “Doesn’t fit in selected container. Try another container type or split into multiple containers.”
+   - If multi-container is supported, allow multiple containers ONLY of the same selected type (no upgrading to a different type).
+3) Remove/disable any “UPGRADE_MAP / upgradeTo / auto-upgrade” logic.
+
+Implementation:
+- Locate: client/src/pages/tools/ContainerCalculator.tsx
+- In handleCalculate (or wherever packing orchestration happens), remove the code branch that upgrades the container spec.
+- Ensure packBoxes is called only with the container selected by containerId/custom.
+- Any result object field like upgraded/upgradeTo should be removed or always false/undefined.
+- Any UI banner that says “auto-upgraded to 45’ HC/HQ” must be removed.
+
+Acceptance test:
+- Select 40’ HC, input cargo that won’t fit. Result must NOT switch to 45’ HC/HQ. It must remain 40’ HC and show “doesn’t fit” guidance.
+
+========================================================
+B) 3D VIEWER — REMOVE LAG + IMPROVE VISUALS
+========================================================
+Current issues:
+- “Edit Layout” toggle and “Drag boxes…” text exists but works badly/laggy.
+- Cargo labels are hard to read and inconvenient.
+- Grey platform base exists (or blank background looks cheap).
+Requested behavior:
+1) Remove “Edit Layout” feature completely for now:
+   - Remove the Edit Layout button/toggle.
+   - Remove the “Drag boxes to reposition…” helper text.
+   - Remove any code that tries to select boxes and display “selected item details” under the viewer (this is laggy). Do not show a separate selected-item panel.
+2) Remove the grey platform “floor” outside container.
+3) Add a subtle grid background (like a technical blueprint grid) that does NOT overlay the model and does not reduce visibility:
+   - Implement using THREE.GridHelper positioned at y=0 under the container (very light color + low opacity look).
+   - Keep container background a clean light tone (e.g., #F8FAFC) and grid subtle.
+4) Improve cargo labeling:
+   - Each box in the container must show a readable label ON the box (not as floating UI cards).
+   - Minimum label content: Item name (or “Item 1”), Qty index if relevant, L×W×H, Weight.
+   - Keep it readable but not huge. Use high contrast, subtle background panel for text.
+   - Do it better than Pier2Pier: cleaner typography, no clutter.
+   - Implementation approach: generate a CanvasTexture per placed box label and apply as a decal-like texture on the top face OR use a Sprite anchored to the top face center (sprite slightly above the face). Prefer sprite/canvas texture because it’s easiest.
+5) Show container doors:
+   - At the door end, draw a simple door outline (two door panels) as lines so users recognize orientation.
+   - Keep it subtle (same line color as wireframe).
+6) Show container dimension annotations:
+   - Keep L/W/H text similar to now, but show units based on the user’s unit selection (imperial/metric).
+   - If unitSystem=metric, show cm for dims.
+   - Place: length label top/center, width top/side, height near corner/side. Subtle.
+
+Files:
+- Viewer is inside client/src/pages/tools/ContainerCalculator.tsx (ContainerViewer3D).
+- Implement all changes there.
+
+Acceptance tests:
+- No “Edit Layout” UI exists.
+- No “selected item details” panel exists.
+- Viewer renders smoothly without click-lag.
+- Grid is visible but subtle.
+- Labels are readable and tied to each box.
+- Doors are visible.
+
+========================================================
+C) CARGO INPUT GRID — NO SIDE SCROLL + +/- CONTROLS
+========================================================
+Problems:
+- Packing list table is too wide causing horizontal scrolling.
+- Add/remove UX needs to be faster.
+
+Required behavior:
+1) Remove horizontal scroll on desktop:
+   - Rework the packing list into a responsive layout:
+     - Desktop: show columns that matter (Name, L, W, H, Qty, Weight/pc, Stackable, Rotation, Include, Delete).
+     - Move “advanced” columns into a row expand/collapse OR a “Details” popover per row.
+   - If we keep the table, it must fit without x-scroll on a standard desktop width (e.g., 1440px).
+2) Add per-row controls:
+   - Add a small “+” button at each row to duplicate that row (copy values, new id, auto name “Cargo X”).
+   - Keep “x” to delete row.
+   - Remove the big “+ Add Cargo Item” button (or keep only one tiny “Add” near header, but preferred: remove big CTA).
+3) Put the remaining CTAs in a single line:
+   - “Calculate Loading Plan” (primary)
+   - “Reset” (secondary)
+   - Keep Import/Bulk Edit near the table header (compact).
+4) Container Type panel placement:
+   - Reduce its width or place it above the cargo grid on smaller widths.
+   - Goal: overall tool should look good on desktop (not narrow/mobile-first).
+   - Increase max width container (max-w-7xl or similar) and use a balanced 2-column layout on desktop.
+
+Acceptance tests:
+- No horizontal scroll in packing list on desktop.
+- Each row has + and x.
+- UI looks wider and more “desktop”.
+
+========================================================
+D) PDF REPORT — PREMIUM ACCESS TO NORTH STYLE
+========================================================
+Current PDF is “cheap/ugly”.
+We need a better report similar to Pier2Pier, but branded and cleaner.
+
+Required PDF content:
+Page 1 (Summary)
+- AccessToNorth logo at top-left + report title “Container Packing Report”
+- Timestamp generated
+- Selected container type + internal dimensions + payload max
+- Summary metrics: total pieces, total weight, volume used %, weight used %, number of containers used
+- 1 large image: snapshot of the 3D view (per container if multi-container, otherwise just one)
+
+Page 2+ (Details)
+- Table of cargo lines (compact):
+  Columns:
+  - Item
+  - L×W×H (unit aware)
+  - Weight/pc + total weight
+  - Qty
+  - Stackable (Y/N)
+  - Rotation mode
+  - Volume (per piece + total)
+- Totals row: qty / total weight / total CBM and/or CFT (based on toggle, but include both if easy)
+
+Images:
+- Generate snapshot(s) from the existing Three.js renderer:
+  - Use renderer.domElement.toDataURL("image/png") once the scene is rendered.
+  - Store it in state as reportImage(s).
+  - For multi-container, capture image per container when user cycles containers or generate sequentially.
+
+Implementation approach (choose one):
+Option 1 (Preferred): Use @react-pdf/renderer to build a clean PDF layout + embed PNG snapshots.
+Option 2: Use jspdf + autotable + embedded images.
+Pick what fits existing stack easiest.
+
+Where:
+- If PDF button exists in the 3D section (“PDF Report”), wire it to this new generator.
+- Add the AccessToNorth logo from existing brand assets (find existing logo in project; if not, use the header logo asset and reuse it).
+
+Acceptance tests:
+- PDF has logo, clean layout, snapshot image, and compact table.
+- Looks “premium SaaS”.
+
+========================================================
+E) HEADER MEGA MENU — FULL WIDTH + ICONS + PREMIUM STYLE
+========================================================
+Current: each top menu has a narrow dropdown.
+Desired: mega menu panel same width as the header container, with evenly distributed items (3 columns), subtle per-item border, icons, hover shadow like premium SaaS.
+
+Required behavior:
+1) For dropdown like “Services”, open a full-width panel aligned to header container width (not the small narrow popup).
+2) Layout:
+   - 3 columns on desktop
+   - Each item is a card-like row: icon + title + optional short description (1 line).
+   - Subtle border around each item (very light) and on hover: slightly darker border + soft shadow + background tint.
+3) Icons:
+   - Use lucide-react icons. Pick relevant ones:
+     - Business Number (BN): Briefcase or Building2
+     - GST/HST Registration: Receipt
+     - Non-Resident Importer: Globe
+     - CARM Registration: ShieldCheck
+     - RPP/Bond Coordination: FileLock or Key
+     - Customs Clearance: PackageCheck
+     - B13 Export Declaration: FileUp
+     - HS Code Classification: ScanSearch
+     - Import Compliance Review: ClipboardCheck
+4) Keep existing styling theme (deep green header) but dropdown panel should be white with rounded corners, soft shadow, and padding.
+5) Ensure keyboard + mobile behavior:
+   - Desktop: hover or click open
+   - Mobile: tap open as an accordion list (no mega grid).
+
+Files:
+- Find the header/nav component in:
+  - client/src/components/** (likely MarketingLayout.tsx or Header.tsx / Navbar.tsx)
+- Implement mega menu without breaking routes.
+
+Acceptance tests:
+- Dropdown is full width and looks like the reference SaaS mega menu.
+- Items show icons and have hover effects.
+- Responsive works on mobile.
+
+========================================================
+DELIVERY FORMAT
+========================================================
+1) Make the changes with minimal refactors.
+2) After changes, provide:
+   - List of files modified
+   - Short notes where to test (URLs/routes)
+   - Any new dependencies added (react-pdf/jspdf) + install commands.
+
+START NOW:
+- Implement A+B+C first in ContainerCalculator.tsx
+- Then implement D (PDF)
+- Then implement E (mega menu)
