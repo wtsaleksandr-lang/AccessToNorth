@@ -88,6 +88,7 @@ async function initStripe() {
     console.error('Failed to initialize Stripe:', error);
     throw error;
   }
+
 }
 
 app.post(
@@ -216,7 +217,11 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  await initStripe();
+  try {
+    await initStripe();
+  } catch (err: any) {
+    console.warn('Stripe initialization skipped (integration not connected):', err.message);
+  }
   await ensureTrigramIndexes();
   registerPortalRoutes(app);
   registerAdminRoutes(app);
