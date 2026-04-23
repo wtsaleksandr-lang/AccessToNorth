@@ -4,3 +4,17 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+
+# Local upload storage (only used when UPLOAD_BACKEND=local)
+var/

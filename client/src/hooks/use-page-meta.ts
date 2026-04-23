@@ -4,38 +4,32 @@ interface PageMeta {
   title: string;
   description: string;
   canonical?: string;
+  ogImage?: string;
 }
 
-export function usePageMeta({ title, description, canonical }: PageMeta) {
+function setMeta(selector: string, attr: "name" | "property", key: string, value: string) {
+  let el = document.querySelector(selector) as HTMLMetaElement | null;
+  if (!el) {
+    el = document.createElement("meta");
+    el.setAttribute(attr, key);
+    document.head.appendChild(el);
+  }
+  el.setAttribute("content", value);
+}
+
+export function usePageMeta({ title, description, canonical, ogImage }: PageMeta) {
   useEffect(() => {
     document.title = title;
 
-    let metaDesc = document.querySelector('meta[name="description"]');
-    if (!metaDesc) {
-      metaDesc = document.createElement("meta");
-      metaDesc.setAttribute("name", "description");
-      document.head.appendChild(metaDesc);
-    }
-    metaDesc.setAttribute("content", description);
+    setMeta('meta[name="description"]', "name", "description", description);
+    setMeta('meta[property="og:title"]', "property", "og:title", title);
+    setMeta('meta[property="og:description"]', "property", "og:description", description);
+    setMeta('meta[name="twitter:title"]', "name", "twitter:title", title);
+    setMeta('meta[name="twitter:description"]', "name", "twitter:description", description);
 
-    let ogTitle = document.querySelector('meta[property="og:title"]');
-    if (!ogTitle) {
-      ogTitle = document.createElement("meta");
-      ogTitle.setAttribute("property", "og:title");
-      document.head.appendChild(ogTitle);
-    }
-    ogTitle.setAttribute("content", title);
-
-    let ogDesc = document.querySelector('meta[property="og:description"]');
-    if (!ogDesc) {
-      ogDesc = document.createElement("meta");
-      ogDesc.setAttribute("property", "og:description");
-      document.head.appendChild(ogDesc);
-    }
-    ogDesc.setAttribute("content", description);
-
-    let canonicalLink = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
     if (canonical) {
+      setMeta('meta[property="og:url"]', "property", "og:url", canonical);
+      let canonicalLink = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
       if (!canonicalLink) {
         canonicalLink = document.createElement("link");
         canonicalLink.setAttribute("rel", "canonical");
@@ -44,8 +38,13 @@ export function usePageMeta({ title, description, canonical }: PageMeta) {
       canonicalLink.setAttribute("href", canonical);
     }
 
+    if (ogImage) {
+      setMeta('meta[property="og:image"]', "property", "og:image", ogImage);
+      setMeta('meta[name="twitter:image"]', "name", "twitter:image", ogImage);
+    }
+
     return () => {
       document.title = "AccessToNorth.com";
     };
-  }, [title, description, canonical]);
+  }, [title, description, canonical, ogImage]);
 }

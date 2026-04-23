@@ -10,7 +10,10 @@ import {
   hsCodes,
   tariffCountries,
   customsLeads,
-  type InsertRegistration, 
+  adminUsers,
+  type AdminUser,
+  type InsertAdminUser,
+  type InsertRegistration,
   type Registration, 
   type InsertContact,
   type Order,
@@ -62,6 +65,9 @@ export interface IStorage {
   getOrderBySecureToken(token: string): Promise<Order | undefined>;
   getPendingDetailsItems(olderThan: Date): Promise<(OrderItem & { order: Order })[]>;
   updateOrderItemReminder(id: number, field: 'reminder1SentAt' | 'reminder2SentAt' | 'onHoldAt'): Promise<void>;
+  getAdminUserByEmail(email: string): Promise<AdminUser | undefined>;
+  createAdminUser(user: InsertAdminUser): Promise<AdminUser>;
+  touchAdminUserLogin(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -417,6 +423,30 @@ export class DatabaseStorage implements IStorage {
       .update(orderItems)
       .set({ [field]: new Date() } as any)
       .where(eq(orderItems.id, id));
+  }
+
+  async getAdminUserByEmail(email: string): Promise<AdminUser | undefined> {
+    const [user] = await db
+      .select()
+      .from(adminUsers)
+      .where(and(eq(adminUsers.email, email.toLowerCase()), eq(adminUsers.isActive, true)))
+      .limit(1);
+    return user;
+  }
+
+  async createAdminUser(user: InsertAdminUser): Promise<AdminUser> {
+    const [created] = await db
+      .insert(adminUsers)
+      .values({ ...user, email: user.email.toLowerCase() })
+      .returning();
+    return created;
+  }
+
+  async touchAdminUserLogin(id: number): Promise<void> {
+    await db
+      .update(adminUsers)
+      .set({ lastLoginAt: new Date() })
+      .where(eq(adminUsers.id, id));
   }
 }
 

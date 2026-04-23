@@ -265,9 +265,22 @@ export default function CustomsCalculator() {
 
   useEffect(() => {
     fetch("/api/customs/countries")
-      .then((r) => r.json())
-      .then(setCountries)
-      .catch(console.error);
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((data) => {
+        // Defensive: only accept arrays. A non-200 or malformed response used
+        // to be passed straight into setCountries, which crashed the page on
+        // the next render with "countries.map is not a function".
+        if (Array.isArray(data)) {
+          setCountries(data);
+        } else {
+          console.error("[CustomsCalculator] /api/customs/countries returned non-array:", data);
+          setCountries([]);
+        }
+      })
+      .catch((err) => {
+        console.error("[CustomsCalculator] failed to load countries:", err);
+        setCountries([]);
+      });
   }, []);
 
   useEffect(() => {

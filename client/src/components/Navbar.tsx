@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useCart } from "@/contexts/CartContext";
+import { useLocale } from "@/contexts/LocaleContext";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import type { LucideIcon } from "lucide-react";
 
 interface NavbarProps {
@@ -82,6 +84,7 @@ export function Navbar({ darkHero = false }: NavbarProps) {
   const [location, setLocation] = useLocation();
   const dropdownTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { itemCount, setIsOpen: setCartOpen } = useCart();
+  const { t } = useLocale();
 
   const useLight = darkHero && !scrolled;
 
@@ -242,7 +245,11 @@ export function Navbar({ darkHero = false }: NavbarProps) {
     <nav
       data-testid="navbar"
       className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-        scrolled ? "bg-white/90 backdrop-blur-md shadow-sm py-3" : "bg-transparent py-5"
+        scrolled
+          ? "bg-white/90 backdrop-blur-md shadow-sm py-3"
+          : darkHero
+            ? "bg-transparent py-5"
+            : "bg-white/70 backdrop-blur-sm border-b border-slate-200/40 py-4"
       }`}
     >
       <div className="container mx-auto px-4 md:px-6">
@@ -263,63 +270,66 @@ export function Navbar({ darkHero = false }: NavbarProps) {
             {renderMegaDropdown("services", serviceLinks)}
             {renderMegaDropdown("tools", toolLinks)}
 
-            <button className={`px-3 py-2 text-sm font-medium transition-colors cursor-pointer rounded-md ${textClass}`} onClick={() => navigate("/pricing")} data-testid="nav-link-pricing">Pricing</button>
-            <button className={`px-3 py-2 text-sm font-medium transition-colors cursor-pointer rounded-md ${textClass}`} onClick={() => navigate("/resources")} data-testid="nav-link-resources">Resources</button>
-            <button className={`px-3 py-2 text-sm font-medium transition-colors cursor-pointer rounded-md ${textClass}`} onClick={() => navigate("/faq")} data-testid="nav-link-faq">FAQ</button>
-            <button className={`px-3 py-2 text-sm font-medium transition-colors cursor-pointer rounded-md ${textClass}`} onClick={() => navigate("/contact")} data-testid="nav-link-contact">Contact</button>
+            <button className={`px-3 py-2 text-sm font-medium transition-colors cursor-pointer rounded-md ${textClass}`} onClick={() => navigate("/pricing")} data-testid="nav-link-pricing">{t("nav.pricing")}</button>
+            <button className={`px-3 py-2 text-sm font-medium transition-colors cursor-pointer rounded-md ${textClass}`} onClick={() => navigate("/resources")} data-testid="nav-link-resources">{t("nav.resources")}</button>
+            <button className={`px-3 py-2 text-sm font-medium transition-colors cursor-pointer rounded-md ${textClass}`} onClick={() => navigate("/faq")} data-testid="nav-link-faq">{t("nav.faq")}</button>
+            <button className={`px-3 py-2 text-sm font-medium transition-colors cursor-pointer rounded-md ${textClass}`} onClick={() => navigate("/contact")} data-testid="nav-link-contact">{t("nav.contact")}</button>
+
+            <button
+              className={`px-2 py-2 text-sm font-medium transition-colors cursor-pointer rounded-md ${textClass}`}
+              onClick={() => navigate("/portal")}
+              data-testid="button-check-status"
+            >
+              {t("nav.clientLogin")}
+            </button>
 
             <CurrencyToggle light={useLight} />
+            <LocaleToggle light={useLight} />
 
             <div className="flex items-center gap-2 ml-3">
-              {itemCount > 0 && (
-                <button
-                  onClick={() => setCartOpen(true)}
-                  className={`relative p-2 rounded-lg transition-colors cursor-pointer ${
-                    useLight
-                      ? "text-white hover:bg-white/10"
-                      : "text-slate-700 hover:bg-slate-100"
-                  }`}
-                  data-testid="button-navbar-cart"
-                >
-                  <ShoppingCart className="w-5 h-5" />
+              <button
+                onClick={() => setCartOpen(true)}
+                className={`relative p-2 rounded-lg transition-colors cursor-pointer ${
+                  useLight
+                    ? "text-white hover:bg-white/10"
+                    : "text-slate-700 hover:bg-slate-100"
+                }`}
+                aria-label={itemCount > 0 ? `Cart — ${itemCount} item${itemCount === 1 ? "" : "s"}` : "Cart — empty"}
+                data-testid="button-navbar-cart"
+              >
+                <ShoppingCart className="w-5 h-5" aria-hidden="true" />
+                {itemCount > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center leading-none px-1">
                     {itemCount}
                   </span>
-                </button>
-              )}
-              <Button
-                variant="outline"
-                className={`cursor-pointer ${useLight ? "border-white/30 text-white" : "border-primary/20 text-primary"}`}
-                onClick={() => navigate("/portal")}
-                data-testid="button-check-status"
-              >
-                Check Status
-              </Button>
+                )}
+              </button>
               <Button
                 className={`shadow-lg cursor-pointer ${useLight ? "bg-white text-slate-900 shadow-black/10" : "bg-primary shadow-primary/20"}`}
                 onClick={() => navigate("/request")}
                 data-testid="button-register-now"
               >
-                Register Now
+                {t("nav.registerNow")}
               </Button>
             </div>
           </div>
 
           <div className="lg:hidden flex items-center gap-1">
-            {itemCount > 0 && (
-              <button
-                onClick={() => setCartOpen(true)}
-                className={`relative p-2 rounded-lg transition-colors cursor-pointer ${
-                  useLight ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100"
-                }`}
-                data-testid="button-mobile-cart"
-              >
-                <ShoppingCart className="w-5 h-5" />
+            <button
+              onClick={() => setCartOpen(true)}
+              className={`relative p-2 rounded-lg transition-colors cursor-pointer ${
+                useLight ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100"
+              }`}
+              aria-label={itemCount > 0 ? `Cart — ${itemCount} item${itemCount === 1 ? "" : "s"}` : "Cart — empty"}
+              data-testid="button-mobile-cart"
+            >
+              <ShoppingCart className="w-5 h-5" aria-hidden="true" />
+              {itemCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center leading-none px-1">
                   {itemCount}
                 </span>
-              </button>
-            )}
+              )}
+            </button>
             <button
               className={`cursor-pointer p-2 ${useLight ? "text-white" : "text-slate-700"}`}
               onClick={() => setIsOpen(!isOpen)}
@@ -343,20 +353,24 @@ export function Navbar({ darkHero = false }: NavbarProps) {
               {renderMobileAccordion("services", serviceLinks)}
               {renderMobileAccordion("tools", toolLinks)}
 
-              <button onClick={() => navigate("/pricing")} className="py-3 px-2 text-left text-base font-medium text-slate-700 cursor-pointer rounded-md hover:bg-slate-50" data-testid="mobile-nav-pricing">Pricing</button>
-              <button onClick={() => navigate("/resources")} className="py-3 px-2 text-left text-base font-medium text-slate-700 cursor-pointer rounded-md hover:bg-slate-50" data-testid="mobile-nav-resources">Resources</button>
-              <button onClick={() => navigate("/faq")} className="py-3 px-2 text-left text-base font-medium text-slate-700 cursor-pointer rounded-md hover:bg-slate-50" data-testid="mobile-nav-faq">FAQ</button>
-              <button onClick={() => navigate("/contact")} className="py-3 px-2 text-left text-base font-medium text-slate-700 cursor-pointer rounded-md hover:bg-slate-50" data-testid="mobile-nav-contact">Contact</button>
+              <button onClick={() => navigate("/pricing")} className="py-3 px-2 text-left text-base font-medium text-slate-700 cursor-pointer rounded-md hover:bg-slate-50" data-testid="mobile-nav-pricing">{t("nav.pricing")}</button>
+              <button onClick={() => navigate("/resources")} className="py-3 px-2 text-left text-base font-medium text-slate-700 cursor-pointer rounded-md hover:bg-slate-50" data-testid="mobile-nav-resources">{t("nav.resources")}</button>
+              <button onClick={() => navigate("/faq")} className="py-3 px-2 text-left text-base font-medium text-slate-700 cursor-pointer rounded-md hover:bg-slate-50" data-testid="mobile-nav-faq">{t("nav.faq")}</button>
+              <button onClick={() => navigate("/contact")} className="py-3 px-2 text-left text-base font-medium text-slate-700 cursor-pointer rounded-md hover:bg-slate-50" data-testid="mobile-nav-contact">{t("nav.contact")}</button>
 
               <hr className="border-slate-100 my-2" />
 
               <div className="flex items-center justify-between py-2 px-2">
-                <span className="text-sm text-slate-500">Display currency</span>
+                <span className="text-sm text-slate-500">{t("currency.cad")} / {t("currency.usd")}</span>
                 <CurrencyToggle />
               </div>
+              <div className="flex items-center justify-between py-2 px-2">
+                <span className="text-sm text-slate-500">{t("locale.toggle")}</span>
+                <LocaleToggle />
+              </div>
 
-              <Button variant="outline" className="w-full justify-center cursor-pointer" onClick={() => navigate("/portal")} data-testid="button-mobile-check-status">Check Status</Button>
-              <Button className="w-full cursor-pointer" onClick={() => navigate("/request")} data-testid="button-mobile-register">Register Now</Button>
+              <Button className="w-full cursor-pointer" onClick={() => navigate("/request")} data-testid="button-mobile-register">{t("nav.registerNow")}</Button>
+              <button onClick={() => navigate("/portal")} className="py-2 px-2 text-center text-sm font-medium text-slate-500 hover:text-primary cursor-pointer" data-testid="button-mobile-check-status">{t("nav.clientLoginMobile")}</button>
             </div>
           </motion.div>
         )}

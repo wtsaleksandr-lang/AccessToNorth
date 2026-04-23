@@ -9,12 +9,18 @@ import { registerReportRoutes } from "./reportRoutes";
 import { registerAiReportRoutes } from "./aiReportRoutes";
 import { registerAiAssistRoutes } from "./aiAssistRoutes";
 import { registerCargoExtractRoutes } from "./cargoExtractRoutes";
+import { registerOnboardingRoutes } from "./onboardingRoutes";
+import { registerAdminCrmRoutes } from "./adminCrmRoutes";
+import { registerChatRoutes } from "./chatRoutes";
+import { registerVapiRoutes } from "./vapiRoutes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { runMigrations } from 'stripe-replit-sync';
 import { getStripeSync } from './stripeClient';
 import { WebhookHandlers } from './webhookHandlers';
 import { seedProducts } from './seedProducts';
+import { seedTaskTemplates } from './seedTaskTemplates';
+import { securityHeaders } from './middleware/securityHeaders';
 
 import { pool } from './db';
 
@@ -80,6 +86,16 @@ async function initStripe() {
     log('Seeding Stripe products...', 'stripe');
     await seedProducts();
 
+    log('Seeding service-delivery task templates...', 'crm');
+    try {
+      await seedTaskTemplates();
+    } catch (seedErr: any) {
+      // Non-fatal; service catalog lives in DB, so if the tables haven't
+      // been migrated yet the app can still boot and the admin can run
+      // `npm run db:push` before relying on the CRM flow.
+      console.error('[seed] task template seed failed (non-fatal):', seedErr?.message);
+    }
+
     log('Syncing Stripe data...', 'stripe');
     stripeSync.syncBackfill()
       .then(() => log('Stripe data synced', 'stripe'))
@@ -113,7 +129,34 @@ app.post(
         const stripe = await getUncachableStripeClient();
         const event = JSON.parse(req.body.toString());
 
-        if (event.type === 'checkout.session.completed') {
+        // Idempotency note:
+        //  - hs-classification: guarded by `order.status === 'Awaiting Payment'`
+        //  - generic packageType:  guarded inside createOrderFromCheckout
+        //    (check-then-insert on stripeSessionId)
+        //  - cart flow: created via /api/cart-checkout/complete, guarded by
+        //    getOrderByStripeSessionId before insert
+        // Any new webhook branch MUST keep this invariant.
+        if (event.type === 'checkout.session.expired') {
+          // Payment abandoned or session timed out — send a gentle nudge.
+          const session = event.data.object;
+          const customerEmail =
+            session.customer_email || session.customer_details?.email;
+          const customerName = session.customer_details?.name || null;
+          if (customerEmail) {
+            try {
+              const { sendEmail, buildPaymentFailedEmail } = await import('./emailService');
+              const notif = buildPaymentFailedEmail(customerName, session.id);
+              notif.to = customerEmail;
+              await sendEmail(notif);
+              log(`Payment-failed email sent to ${customerEmail} for session ${session.id}`, 'stripe');
+            } catch (failErr: any) {
+              console.error(
+                `Payment-failed email dispatch failed for ${session.id}:`,
+                failErr.message,
+              );
+            }
+          }
+        } else if (event.type === 'checkout.session.completed') {
           const session = event.data.object;
           const customerEmail = session.customer_email || session.customer_details?.email;
           const packageType = session.metadata?.packageType;
@@ -155,6 +198,23 @@ app.post(
                 log(`Email dispatch failed for order ${existingOrderId}: ${emailErr}`, 'stripe');
               }
             }
+          } else if (session.metadata?.cartItems) {
+            // Cart checkout — the user may close the tab before /payment-success
+            // triggers /api/cart-checkout/complete, so this webhook is the
+            // safety net that guarantees a DB record exists for every paid session.
+            // Idempotent via getOrderByStripeSessionId inside the helper.
+            const { createCartOrderFromSession } = await import('./orderService');
+            const baseUrl = process.env.REPLIT_DEV_DOMAIN
+              ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+              : 'https://www.accesstonorth.com';
+            try {
+              const { orderId, created } = await createCartOrderFromSession(session, baseUrl);
+              if (created) {
+                log(`Cart order ${orderId} created from webhook for ${customerEmail}`, 'stripe');
+              }
+            } catch (cartErr: any) {
+              console.error(`Webhook cart-order creation failed for session ${session.id}:`, cartErr.message);
+            }
           } else if (customerEmail && packageType) {
             const { createOrderFromCheckout } = await import('./orderService');
             const orderId = await createOrderFromCheckout(
@@ -164,6 +224,50 @@ app.post(
               session.id
             );
             log(`Order ${orderId} created from Stripe checkout for ${customerEmail}`, 'stripe');
+
+            // Send customer confirmation + internal alert for single-package
+            // checkouts. Previously these emails were only sent for HS-classification
+            // and cart flows — legacy /api/checkout buyers got silence.
+            try {
+              const { storage } = await import('./storage');
+              const order = await storage.getOrderById(orderId);
+              if (order && !order.confirmationEmailSentAt) {
+                const { sendEmail, buildCartOrderConfirmationEmail, buildCartInternalAlertEmail } = await import('./emailService');
+                const singleItem = [{
+                  id: packageType,
+                  serviceKey: packageType,
+                  tier: null,
+                  name: order.serviceType,
+                  price: (session.amount_total ?? 0) / 100,
+                  quantity: 1,
+                }];
+                const baseUrl = process.env.REPLIT_DEV_DOMAIN
+                  ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+                  : 'https://www.accesstonorth.com';
+                const portalUrl = `${baseUrl}/portal`;
+
+                const confirmEmail = buildCartOrderConfirmationEmail(orderId, customerName || '', singleItem, portalUrl, order.customerEmail);
+                confirmEmail.to = order.customerEmail;
+                await sendEmail(confirmEmail);
+
+                const alertEmail = buildCartInternalAlertEmail(
+                  orderId,
+                  order.customerEmail,
+                  customerName || '',
+                  singleItem,
+                  session.amount_total || 0,
+                );
+                await sendEmail(alertEmail);
+
+                await storage.updateOrderMetadata(orderId, {
+                  confirmationEmailSentAt: new Date(),
+                  internalEmailSentAt: new Date(),
+                });
+                log(`Single-package order ${orderId} confirmation emails sent`, 'stripe');
+              }
+            } catch (emailErr: any) {
+              console.error(`Single-package email dispatch failed for ${orderId}:`, emailErr.message);
+            }
           }
         }
       } catch (orderError: any) {
@@ -188,6 +292,37 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+app.use(securityHeaders);
+
+// Redact known PII/secret fields from any JSON body before logging.
+// Still logs shape + size so operators can debug — just not the values.
+const REDACT_KEYS = new Set([
+  "password", "token", "secureToken", "secure_token", "authorization",
+  "email", "customerEmail", "customer_email", "phone", "customerName", "customer_name",
+  "fileData", "file_data", "stripeSessionId", "stripe_session_id",
+  "apiKey", "api_key", "sessionId", "session_id",
+]);
+
+function redact(value: unknown, depth = 0): unknown {
+  if (depth > 6) return "[truncated]";
+  if (value == null) return value;
+  if (Array.isArray(value)) return value.slice(0, 20).map((v) => redact(v, depth + 1));
+  if (typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (REDACT_KEYS.has(k)) {
+        out[k] = "[redacted]";
+      } else {
+        out[k] = redact(v, depth + 1);
+      }
+    }
+    return out;
+  }
+  if (typeof value === "string" && value.length > 200) {
+    return `${value.slice(0, 200)}…[+${value.length - 200} chars]`;
+  }
+  return value;
+}
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -204,8 +339,12 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+      if (capturedJsonResponse && res.statusCode >= 400) {
+        // Only log response bodies for error responses (for debugging);
+        // successful responses can contain PII and aren't useful in logs.
+        const redacted = JSON.stringify(redact(capturedJsonResponse));
+        const truncated = redacted.length > 500 ? `${redacted.slice(0, 500)}…` : redacted;
+        logLine += ` :: ${truncated}`;
       }
 
       log(logLine);
@@ -226,6 +365,10 @@ app.use((req, res, next) => {
   registerAiReportRoutes(app);
   registerAiAssistRoutes(app);
   registerCargoExtractRoutes(app);
+  registerOnboardingRoutes(app);
+  registerAdminCrmRoutes(app);
+  registerChatRoutes(app);
+  registerVapiRoutes(app);
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {

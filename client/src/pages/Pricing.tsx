@@ -9,6 +9,7 @@ import { ArrowRight, ChevronDown, Award, Check, ShoppingCart } from "lucide-reac
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
+import { DiyVsUsComparison } from "@/components/DiyVsUsComparison";
 
 interface PricingItem {
   name: string;
@@ -18,6 +19,8 @@ interface PricingItem {
   service: string;
   isBundle?: boolean;
   isClearance?: boolean;
+  mostPopular?: boolean;
+  originalCAD?: number;
 }
 
 interface PricingSection {
@@ -34,7 +37,7 @@ const sections: PricingSection[] = [
       { name: "Business Number (BN)", priceCAD: 99, service: "bn" },
       { name: "GST/HST Registration", priceCAD: 249, service: "gst_hst" },
       { name: "Non-Resident Setup", priceCAD: 399, service: "non_resident_tax" },
-      { name: "Business Starter Bundle", priceCAD: 299, note: "BN + GST/HST", service: "bundle_business_starter", isBundle: true },
+      { name: "Business Starter Bundle", priceCAD: 299, originalCAD: 348, note: "BN + GST/HST — save CA$49", service: "bundle_business_starter", isBundle: true, mostPopular: true },
     ],
   },
   {
@@ -43,7 +46,7 @@ const sections: PricingSection[] = [
     items: [
       { name: "CARM Portal Setup", priceCAD: 499, service: "carm_portal" },
       { name: "RPP / Security Coordination", priceCAD: 395, service: "rpp_bond" },
-      { name: "Importer Launch Kit", priceCAD: 1500, note: "BN + GST/HST + CARM + RPP", service: "bundle_complete_importer", isBundle: true },
+      { name: "Importer Launch Kit", priceCAD: 1500, originalCAD: 1742, note: "BN + GST/HST + CARM + RPP — save CA$242", service: "bundle_complete_importer", isBundle: true, mostPopular: true },
     ],
   },
   {
@@ -83,7 +86,9 @@ const tabs = [
 ];
 
 export default function Pricing() {
-  const [expandedSection, setExpandedSection] = useState<string>("business");
+  const [expandedSections, setExpandedSections] = useState<string[]>(
+    sections.map((s) => s.id)
+  );
   const { formatPrice, isUSD } = useCurrency();
   const { addItem, setIsOpen } = useCart();
   const { toast } = useToast();
@@ -117,7 +122,18 @@ export default function Pricing() {
   });
 
   const toggleSection = (id: string) => {
-    setExpandedSection(expandedSection === id ? "" : id);
+    setExpandedSections((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    );
+  };
+
+  const scrollToSection = (id: string) => {
+    setExpandedSections((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    const el = document.getElementById(`pricing-section-${id}`);
+    if (el) {
+      const top = el.getBoundingClientRect().top + window.scrollY - 100;
+      window.scrollTo({ top, behavior: "smooth" });
+    }
   };
 
   const buildRequestUrl = (service: string, addonKeys?: string[]) => {
@@ -135,10 +151,10 @@ export default function Pricing() {
         <div className="container mx-auto px-4 md:px-6 max-w-3xl">
           <div className="text-center mb-10">
             <h1 className="text-3xl md:text-4xl font-extrabold font-display mb-4 text-slate-900" data-testid="text-pricing-page-title">
-              Transparent Pricing
+              All-in fees from <span className="text-primary">CA$99</span>.
             </h1>
             <p className="text-lg text-slate-600">
-              One-time fees. No hidden costs. Choose your service below.
+              One-time payment. No subscriptions. No surprise invoices. Pick a service — or save more with a bundle.
             </p>
             {isUSD && (
               <p className="text-xs text-amber-600 mt-2" data-testid="text-usd-notice">
@@ -152,12 +168,8 @@ export default function Pricing() {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setExpandedSection(tab.id)}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
-                  expandedSection === tab.id
-                    ? "bg-primary text-white"
-                    : "bg-white text-slate-600 border border-slate-200 hover:border-primary/30"
-                }`}
+                onClick={() => scrollToSection(tab.id)}
+                className="px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer bg-white text-slate-600 border border-slate-200 hover:border-primary/30 hover:text-primary"
                 data-testid={`tab-${tab.id}`}
               >
                 {tab.label}
@@ -167,26 +179,40 @@ export default function Pricing() {
 
           {/* Accordion sections */}
           <div className="space-y-3 mb-10">
-            {sections.map((section) => (
-              <Card key={section.id} className="border border-slate-200 overflow-hidden" data-testid={`section-${section.id}`}>
+            {sections.map((section) => {
+              const isOpen = expandedSections.includes(section.id);
+              return (
+              <Card
+                key={section.id}
+                id={`pricing-section-${section.id}`}
+                className="border border-slate-200 overflow-hidden scroll-mt-28"
+                data-testid={`section-${section.id}`}
+              >
                 <button
                   onClick={() => toggleSection(section.id)}
+                  aria-expanded={isOpen}
                   className="w-full flex items-center justify-between p-5 text-left cursor-pointer hover:bg-slate-50 transition-colors"
                   data-testid={`toggle-${section.id}`}
                 >
                   <h2 className="text-base font-bold text-slate-900">{section.title}</h2>
-                  <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${expandedSection === section.id ? "rotate-180" : ""}`} />
+                  <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
                 </button>
 
-                {expandedSection === section.id && (
+                {isOpen && (
                   <CardContent className="px-5 pb-5 pt-0">
                     <div className="divide-y divide-slate-100">
                       {section.items.map((item) => (
-                        <div key={item.name} className="flex items-center justify-between gap-4 py-3.5 first:pt-0" data-testid={`price-row-${item.service}`}>
+                        <div
+                          key={item.name}
+                          className={`flex items-center justify-between gap-4 py-3.5 first:pt-0 ${item.mostPopular ? "-mx-5 px-5 bg-blue-50/40" : ""}`}
+                          data-testid={`price-row-${item.service}`}
+                        >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-medium text-slate-800 text-sm">{item.name}</span>
-                              {item.isBundle && (
+                              {item.mostPopular ? (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary text-white font-semibold uppercase tracking-wide">Most Popular</span>
+                              ) : item.isBundle && (
                                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">Bundle</span>
                               )}
                             </div>
@@ -195,7 +221,12 @@ export default function Pricing() {
                             )}
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
-                            <span className="font-bold text-slate-900 text-sm">{formatPrice(item.priceCAD)}</span>
+                            <div className="flex flex-col items-end leading-tight">
+                              {item.originalCAD && (
+                                <span className="text-xs text-slate-400 line-through">{formatPrice(item.originalCAD)}</span>
+                              )}
+                              <span className="font-bold text-slate-900 text-sm">{formatPrice(item.priceCAD)}</span>
+                            </div>
                             {item.isClearance ? (
                               <Link href="/canadian-customs-clearance">
                                 <Button size="sm" className="cursor-pointer" data-testid={`button-select-${item.service}`}>
@@ -247,15 +278,21 @@ export default function Pricing() {
                   </CardContent>
                 )}
               </Card>
-            ))}
+              );
+            })}
           </div>
 
-          {/* Guarantee */}
+          {/* DIY / Accountant / Us comparison */}
+          <DiyVsUsComparison />
+
+          {/* Refund policy */}
           <div className="py-8 bg-blue-50/50 border border-blue-100/50 rounded-xl text-center mb-10">
             <Award className="w-10 h-10 text-primary mx-auto mb-3" />
-            <h3 className="text-lg font-bold font-display mb-2">Satisfaction Guarantee</h3>
+            <h3 className="text-lg font-bold font-display mb-2">Flat fee. Refund on unfiled work.</h3>
             <p className="text-slate-600 text-sm px-6">
-              If we fall short on our registration process due to our error, you receive a full refund. We stand behind every filing.
+              Full refund if you cancel before we submit your filing to the CRA or CBSA.
+              If an application is rejected due to our error, we re-file or refund the service fee.
+              See our <Link href="/refunds" className="underline hover:text-primary">Refund Policy</Link> for full terms.
             </p>
           </div>
 

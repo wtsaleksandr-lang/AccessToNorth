@@ -4,6 +4,7 @@ import { adminAuthMiddleware } from "./adminAuth";
 import { sendEmail, buildReportDeliveryEmail } from "./emailService";
 import multer from "multer";
 import crypto from "crypto";
+import { readUploadBytes } from "./storage/uploadStorage";
 import type { ClassificationOrderData } from "@shared/schema";
 
 const upload = multer({
@@ -124,9 +125,13 @@ export function registerReportRoutes(app: Express): void {
         return res.status(404).json({ message: "Report file not found" });
       }
 
-      const buffer = Buffer.from(reportUpload.fileData, "base64");
+      const buffer = await readUploadBytes(reportUpload);
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `attachment; filename="Report_${orderId}.pdf"`);
+      // Token is in the query string — prevent it from leaking via Referer
+      // to any resources the PDF viewer loads, and block intermediary caching.
+      res.setHeader("Referrer-Policy", "no-referrer");
+      res.setHeader("Cache-Control", "private, no-store");
       res.send(buffer);
     } catch (err) {
       console.error("Report download error:", err);
@@ -150,7 +155,7 @@ export function registerReportRoutes(app: Express): void {
           return res.status(404).json({ message: "Report file not found" });
         }
 
-        const buffer = Buffer.from(reportUpload.fileData, "base64");
+        const buffer = await readUploadBytes(reportUpload);
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader("Content-Disposition", `attachment; filename="Report_${orderId}.pdf"`);
         res.send(buffer);

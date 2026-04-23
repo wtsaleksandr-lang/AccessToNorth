@@ -18,6 +18,7 @@ import {
   AlertCircle,
   Loader2,
   ArrowLeft,
+  Download,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { OrderStep } from "@shared/schema";
@@ -520,6 +521,15 @@ function FileSection({
                 <span className="text-xs text-muted-foreground flex-shrink-0">
                   {formatSize(u.fileSize)}
                 </span>
+                <a
+                  href={`/api/portal/order/${orderId}/upload/${u.id}/download`}
+                  download={u.fileName}
+                  className="text-muted-foreground hover:text-primary p-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  aria-label={`Download ${u.fileName}`}
+                  data-testid={`button-download-${u.id}`}
+                >
+                  <Download className="w-3.5 h-3.5" aria-hidden="true" />
+                </a>
               </div>
             ))}
           </div>
@@ -565,12 +575,27 @@ function MessageSection({
 
   const sortedMessages = [...messages].reverse();
 
+  // Unread count — admin messages posted after the client's most recent reply.
+  // No need for backend state: if the client has replied, they've seen everything before it.
+  const clientLastSentAt = messages
+    .filter((m) => m.sender === "client")
+    .map((m) => new Date(m.createdAt).getTime())
+    .reduce((a, b) => Math.max(a, b), 0);
+  const unreadAdminCount = messages.filter(
+    (m) => m.sender !== "client" && new Date(m.createdAt).getTime() > clientLastSentAt,
+  ).length;
+
   return (
     <Card data-testid="card-messages">
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
           <MessageSquare className="w-4 h-4 text-primary" />
           Messages
+          {unreadAdminCount > 0 && (
+            <Badge className="ml-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5" data-testid="badge-unread-messages">
+              {unreadAdminCount} new
+            </Badge>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">

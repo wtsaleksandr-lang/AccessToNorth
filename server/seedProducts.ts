@@ -101,7 +101,7 @@ export async function seedProducts() {
     await stripe.prices.create({
       product: product.id,
       unit_amount: pkg.price,
-      currency: 'usd',
+      currency: 'cad',
       metadata: { packageType: pkg.metadata.packageType },
     });
 

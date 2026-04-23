@@ -1,11 +1,11 @@
 import { Link } from "wouter";
-import { CreditCard, Shield, Clock, Star, Lock, Upload, Landmark, Building2, BadgeCheck } from "lucide-react";
+import { CreditCard, Shield, Clock, Star, Lock, Upload, Landmark, Building2, BadgeCheck, Mail } from "lucide-react";
 
 const trustChips = [
-  { icon: Clock, label: "20+ Years Experience" },
-  { icon: Star, label: "4.9/5 Client Satisfaction" },
-  { icon: Upload, label: "Secure Document Upload" },
-  { icon: Lock, label: "Digital Delivery (2–7 days)" },
+  { icon: Lock, label: "Secure Stripe Checkout" },
+  { icon: Upload, label: "Encrypted Document Upload" },
+  { icon: Clock, label: "Typical Delivery 5–10 Days" },
+  { icon: Star, label: "Money-Back Guarantee" },
 ];
 
 const agencies = [
@@ -49,16 +49,20 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-10 mb-8">
           <div className="md:col-span-2">
             <span className="text-lg font-bold font-display text-white block mb-3">AccessToNorth</span>
+            <p className="text-xs text-slate-400 leading-relaxed mb-3 max-w-md">
+              Administrative services firm coordinating Canadian CRA and CBSA filings for resident
+              and non-resident businesses. We prepare and submit your filings under a signed
+              authorization — we are not a law firm, a customs broker, or an accounting firm.
+            </p>
             <ul className="space-y-0.5 text-xs text-slate-500 mb-3">
-              <li>Administrative services only (documentation coordination).</li>
-              <li>Not a law firm. Not a customs broker.</li>
-              <li>No legal or tax advice. No approval guarantees.</li>
+              <li>No legal, tax, or customs-brokerage advice.</li>
+              <li>No approval guarantees — processing decisions are made by the CRA / CBSA.</li>
               <li>Not affiliated with any government agency.</li>
             </ul>
             <div className="space-y-0.5 text-xs text-slate-500">
-              <p>Operates via affiliated entities in the US & Canada.</p>
-              <p>US Entity: MR Commerce LLC</p>
-              <p>Registered business location: Ontario, Canada</p>
+              <p>Operates via affiliated entities in the US &amp; Canada.</p>
+              <p>US entity: MR Commerce LLC</p>
+              <p>Registered Canadian business location: Ontario, Canada</p>
             </div>
           </div>
 
@@ -69,19 +73,32 @@ export function Footer() {
               <li><Link href="/pricing" className="hover:text-white transition-colors" data-testid="link-footer-pricing">Pricing</Link></li>
               <li><Link href="/tools" className="hover:text-white transition-colors" data-testid="link-footer-tools">Trade Tools</Link></li>
               <li><Link href="/resources" className="hover:text-white transition-colors" data-testid="link-footer-resources">Resources</Link></li>
+              <li><Link href="/blog" className="hover:text-white transition-colors" data-testid="link-footer-blog">Blog</Link></li>
+              <li><Link href="/about" className="hover:text-white transition-colors" data-testid="link-footer-about">About</Link></li>
               <li><Link href="/faq" className="hover:text-white transition-colors" data-testid="link-footer-faq">FAQ</Link></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="font-semibold text-white mb-3 text-xs tracking-widest uppercase">Legal</h4>
+            <h4 className="font-semibold text-white mb-3 text-xs tracking-widest uppercase">Contact</h4>
             <ul className="space-y-2 text-sm">
-              <li><Link href="/terms" className="hover:text-white transition-colors" data-testid="link-terms">Terms of Service</Link></li>
-              <li><Link href="/privacy" className="hover:text-white transition-colors" data-testid="link-privacy">Privacy Policy</Link></li>
-              <li><Link href="/refunds" className="hover:text-white transition-colors" data-testid="link-refunds">Refund Policy</Link></li>
-              <li><Link href="/contact" className="hover:text-white transition-colors" data-testid="link-contact">Contact</Link></li>
+              <li className="flex items-center gap-2">
+                <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <a href="mailto:operations@accesstonorth.com" className="hover:text-white transition-colors break-all" data-testid="link-footer-email">operations@accesstonorth.com</a>
+              </li>
+              <li className="flex items-start gap-2 text-xs text-slate-500 pt-1">
+                <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                <span>Mon–Fri, 9:00 a.m.–6:00 p.m. ET<br />
+                <span className="text-slate-600">Responses typically within one business day.</span></span>
+              </li>
             </ul>
-            <p className="text-xs mt-3 text-slate-500">operations@accesstonorth.com</p>
+            <h4 className="font-semibold text-white mt-5 mb-3 text-xs tracking-widest uppercase">Legal</h4>
+            <ul className="space-y-2 text-sm">
+              <li><Link href="/terms" className="hover:text-white transition-colors" data-testid="link-terms">Terms</Link></li>
+              <li><Link href="/privacy" className="hover:text-white transition-colors" data-testid="link-privacy">Privacy</Link></li>
+              <li><Link href="/security" className="hover:text-white transition-colors" data-testid="link-security">Security</Link></li>
+              <li><Link href="/refunds" className="hover:text-white transition-colors" data-testid="link-refunds">Refund Policy</Link></li>
+            </ul>
           </div>
         </div>
 

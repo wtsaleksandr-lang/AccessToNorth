@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -6,28 +6,39 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/contexts/CartContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
+import { LocaleProvider } from "@/contexts/LocaleContext";
 import { CartPanel } from "@/components/CartPanel";
+import { SiteChatWidget } from "@/components/SiteChatWidget";
+
+// Eagerly loaded — every user sees these first
 import Home from "@/pages/Home";
 import Services from "@/pages/Services";
 import Pricing from "@/pages/Pricing";
+import FAQ from "@/pages/FAQ";
+import Contact from "@/pages/Contact";
+import About from "@/pages/About";
 import Tools from "@/pages/Tools";
 import Resources from "@/pages/Resources";
-import FAQ from "@/pages/FAQ";
-import Request from "@/pages/Request";
-import Contact from "@/pages/Contact";
-import ClientPortal from "@/pages/ClientPortal";
-import PaymentSuccess from "@/pages/PaymentSuccess";
-import PaymentCancel from "@/pages/PaymentCancel";
-import Terms from "@/pages/Terms";
-import Privacy from "@/pages/Privacy";
-import Refunds from "@/pages/Refunds";
-import AdminDashboard from "@/pages/AdminDashboard";
-import CarmSecurityCalculator from "@/pages/CarmSecurityCalculator";
-import CustomsCalculator from "@/pages/CustomsCalculator";
-import CustomsClearance from "@/pages/CustomsClearance";
-import ClearanceCheckout from "@/pages/ClearanceCheckout";
-import Checkout from "@/pages/Checkout";
-import CompleteOrder from "@/pages/CompleteOrder";
+
+// Lazy — heavy bundles (three.js, pdf, canvas) or rarely-visited routes
+const Request = lazy(() => import("@/pages/Request"));
+const ClientPortal = lazy(() => import("@/pages/ClientPortal"));
+const PaymentSuccess = lazy(() => import("@/pages/PaymentSuccess"));
+const PaymentCancel = lazy(() => import("@/pages/PaymentCancel"));
+const Terms = lazy(() => import("@/pages/Terms"));
+const Privacy = lazy(() => import("@/pages/Privacy"));
+const Refunds = lazy(() => import("@/pages/Refunds"));
+const Security = lazy(() => import("@/pages/Security"));
+const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
+const AdminCrm = lazy(() => import("@/pages/AdminCrm"));
+const AdminViewAsClient = lazy(() => import("@/pages/AdminViewAsClient"));
+const OnboardingIntake = lazy(() => import("@/pages/OnboardingIntake"));
+const CarmSecurityCalculator = lazy(() => import("@/pages/CarmSecurityCalculator"));
+const CustomsCalculator = lazy(() => import("@/pages/CustomsCalculator"));
+const CustomsClearance = lazy(() => import("@/pages/CustomsClearance"));
+const ClearanceCheckout = lazy(() => import("@/pages/ClearanceCheckout"));
+const Checkout = lazy(() => import("@/pages/Checkout"));
+const CompleteOrder = lazy(() => import("@/pages/CompleteOrder"));
 import BusinessNumberBN from "@/pages/services/BusinessNumberBN";
 import GstHstRegistration from "@/pages/services/GstHstRegistration";
 import CustomsClearanceCanada from "@/pages/services/CustomsClearanceCanada";
@@ -37,23 +48,29 @@ import CarmRegistration from "@/pages/services/CarmRegistration";
 import RppBondCoordination from "@/pages/services/RppBondCoordination";
 import B13ExportDeclaration from "@/pages/services/B13ExportDeclaration";
 import NonResidentImporter from "@/pages/services/NonResidentImporter";
-import HsCodeFinder from "@/pages/tools/HsCodeFinder";
-import HsClassificationOrder from "@/pages/order/HsClassificationOrder";
-import OrderConfirmation from "@/pages/order/OrderConfirmation";
-import FreightQuote from "@/pages/tools/FreightQuote";
-import ShipmentTracking from "@/pages/tools/ShipmentTracking";
-import ContainerCalculator from "@/pages/tools/ContainerCalculator";
-import TruckLoadPlanner from "@/pages/tools/TruckLoadPlanner";
-import HowToImportIntoCanada from "@/pages/resources/HowToImportIntoCanada";
-import CustomsClearanceUnder2500 from "@/pages/resources/CustomsClearanceUnder2500";
-import WhatIsSimaDuty from "@/pages/resources/WhatIsSimaDuty";
-import WhatIsCarm from "@/pages/resources/WhatIsCarm";
-import HsCodeVsTariffTreatment from "@/pages/resources/HsCodeVsTariffTreatment";
-import IncotermsForCanadianImporters from "@/pages/resources/IncotermsForCanadianImporters";
-import FclVsLclCostComparison from "@/pages/resources/FclVsLclCostComparison";
-import B13ExportDeclarationExplained from "@/pages/resources/B13ExportDeclarationExplained";
-import WhenDoYouNeedCfiaApproval from "@/pages/resources/WhenDoYouNeedCfiaApproval";
 import NotFound from "@/pages/not-found";
+
+// Blog — split out since these are new, rarely-visited on first load
+const BlogIndex = lazy(() => import("@/pages/BlogIndex"));
+const BlogPost = lazy(() => import("@/pages/BlogPost"));
+
+// Heavy tools and rarely-visited routes — lazy loaded so they don't ship on every page paint.
+const HsCodeFinder = lazy(() => import("@/pages/tools/HsCodeFinder"));
+const HsClassificationOrder = lazy(() => import("@/pages/order/HsClassificationOrder"));
+const OrderConfirmation = lazy(() => import("@/pages/order/OrderConfirmation"));
+const FreightQuote = lazy(() => import("@/pages/tools/FreightQuote"));
+const ShipmentTracking = lazy(() => import("@/pages/tools/ShipmentTracking"));
+const ContainerCalculator = lazy(() => import("@/pages/tools/ContainerCalculator"));
+const TruckLoadPlanner = lazy(() => import("@/pages/tools/TruckLoadPlanner"));
+const HowToImportIntoCanada = lazy(() => import("@/pages/resources/HowToImportIntoCanada"));
+const CustomsClearanceUnder2500 = lazy(() => import("@/pages/resources/CustomsClearanceUnder2500"));
+const WhatIsSimaDuty = lazy(() => import("@/pages/resources/WhatIsSimaDuty"));
+const WhatIsCarm = lazy(() => import("@/pages/resources/WhatIsCarm"));
+const HsCodeVsTariffTreatment = lazy(() => import("@/pages/resources/HsCodeVsTariffTreatment"));
+const IncotermsForCanadianImporters = lazy(() => import("@/pages/resources/IncotermsForCanadianImporters"));
+const FclVsLclCostComparison = lazy(() => import("@/pages/resources/FclVsLclCostComparison"));
+const B13ExportDeclarationExplained = lazy(() => import("@/pages/resources/B13ExportDeclarationExplained"));
+const WhenDoYouNeedCfiaApproval = lazy(() => import("@/pages/resources/WhenDoYouNeedCfiaApproval"));
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -63,10 +80,23 @@ function ScrollToTop() {
   return null;
 }
 
+function RouterFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div
+        className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
+        role="status"
+        aria-label="Loading"
+      />
+    </div>
+  );
+}
+
 function Router() {
   return (
     <>
       <ScrollToTop />
+      <Suspense fallback={<RouterFallback />}>
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/services" component={Services} />
@@ -101,13 +131,20 @@ function Router() {
         <Route path="/faq" component={FAQ} />
         <Route path="/request" component={Request} />
         <Route path="/contact" component={Contact} />
+        <Route path="/about" component={About} />
+        <Route path="/blog" component={BlogIndex} />
+        <Route path="/blog/:slug" component={BlogPost} />
         <Route path="/portal" component={ClientPortal} />
         <Route path="/payment-success" component={PaymentSuccess} />
         <Route path="/payment-cancel" component={PaymentCancel} />
         <Route path="/terms" component={Terms} />
         <Route path="/privacy" component={Privacy} />
         <Route path="/refunds" component={Refunds} />
+        <Route path="/security" component={Security} />
         <Route path="/admin" component={AdminDashboard} />
+        <Route path="/admin/crm" component={AdminCrm} />
+        <Route path="/admin/view-as-client" component={AdminViewAsClient} />
+        <Route path="/onboarding/:token" component={OnboardingIntake} />
         <Route path="/carm-security-calculator" component={CarmSecurityCalculator} />
         <Route path="/customs-calculator" component={CustomsCalculator} />
         <Route path="/canadian-customs-clearance" component={CustomsClearance} />
@@ -116,6 +153,7 @@ function Router() {
         <Route path="/complete-order" component={CompleteOrder} />
         <Route component={NotFound} />
       </Switch>
+      </Suspense>
     </>
   );
 }
@@ -124,13 +162,16 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <LocaleProvider>
         <CurrencyProvider>
           <CartProvider>
             <Toaster />
             <CartPanel />
+            <SiteChatWidget />
             <Router />
           </CartProvider>
         </CurrencyProvider>
+        </LocaleProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

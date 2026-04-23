@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="g-certificate-of-origin-cusma-requirements" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#B91C1C" />
+      <stop offset="100%" stop-color="#991B1B" />
+    </linearGradient>
+    <pattern id="p-certificate-of-origin-cusma-requirements" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M30 0l-2.5 5 2.5 5 2.5-5-2.5-5zm0 15l-5 10 5 10 5-10-5-10z" fill="#FFFFFF" fill-opacity="0.03" />
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g-certificate-of-origin-cusma-requirements)" />
+  <rect width="1200" height="630" fill="url(#p-certificate-of-origin-cusma-requirements)" />
+
+  <!-- Motif decoration (large, soft) -->
+  <g transform="translate(880 170) scale(9)" fill="none" stroke="#FFFFFF" stroke-opacity="0.15" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M24 4 8 10v12c0 10 7 18 16 22 9-4 16-12 16-22V10z" />
+  </g>
+
+  <!-- Category label -->
+  <text x="80" y="110" fill="#FFFFFF" fill-opacity="0.85" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="700" letter-spacing="4" text-transform="uppercase">COMPLIANCE &amp; DUTIES</text>
+
+  <!-- Title -->
+  <text x="80" y="310" fill="#FFFFFF" font-family="Inter, system-ui, sans-serif" font-size="54" font-weight="800" letter-spacing="-1.5">Certificate of Origin Requirements</text>
+    <text x="80" y="370" fill="#FFFFFF" font-family="Inter, system-ui, sans-serif" font-size="54" font-weight="800" letter-spacing="-1.5">Under CUSMA</text>
+
+  <!-- Footer: branding + date -->
+  <line x1="80" y1="520" x2="1120" y2="520" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="1" />
+  <text x="80" y="565" fill="#FFFFFF" fill-opacity="0.9" font-family="Inter, system-ui, sans-serif" font-size="26" font-weight="700">AccessToNorth.com</text>
+  <text x="1120" y="565" text-anchor="end" fill="#FFFFFF" fill-opacity="0.7" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="500">August 30, 2026</text>
+</svg>

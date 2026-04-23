@@ -9,7 +9,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRegistrations } from "@/hooks/use-registrations";
-import { Loader2, Upload } from "lucide-react";
+import { Loader2, Upload, X, Check, ShieldCheck, Plus, Minus, Lock, Clock } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
@@ -52,10 +52,24 @@ const packageData: Record<string, { label: string; priceCAD: number }> = {
 };
 
 
+const STEPS = [
+  { id: 1, label: "Your details" },
+  { id: 2, label: "Business" },
+  { id: 3, label: "Review & pay" },
+];
+
+const STEP_FIELDS: Record<number, (keyof FormValues)[]> = {
+  1: ["fullName", "email", "phone"],
+  2: ["businessName", "residentStatus", "packageType", "businessType", "estimatedRevenue"],
+  3: ["notes", "authorizationConsent"],
+};
+
 export function RegistrationModal({ isOpen, onClose, defaultPackage }: RegistrationModalProps) {
   const { createRegistration } = useRegistrations();
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [step, setStep] = useState(1);
+  const [showMoreDetails, setShowMoreDetails] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { formatPrice } = useCurrency();
@@ -84,6 +98,18 @@ export function RegistrationModal({ isOpen, onClose, defaultPackage }: Registrat
       form.setValue("residentStatus", "non-resident");
     }
   }, [defaultPackage, form]);
+
+  useEffect(() => {
+    if (isOpen) setStep(1);
+  }, [isOpen]);
+
+  const handleNext = async () => {
+    const fieldsToValidate = STEP_FIELDS[step];
+    const valid = await form.trigger(fieldsToValidate);
+    if (valid) setStep((s) => Math.min(s + 1, STEPS.length));
+  };
+
+  const handleBack = () => setStep((s) => Math.max(s - 1, 1));
 
   const onSubmit = async (data: FormValues) => {
     try {
@@ -148,8 +174,58 @@ export function RegistrationModal({ isOpen, onClose, defaultPackage }: Registrat
             </DialogDescription>
           </DialogHeader>
 
+          {/* Progress indicator */}
+          <div className="mb-5" aria-label={`Step ${step} of ${STEPS.length}`}>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              {STEPS.map((s, idx) => {
+                const isActive = step === s.id;
+                const isDone = step > s.id;
+                return (
+                  <div key={s.id} className="flex items-center gap-2 flex-1">
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0 transition-colors ${
+                        isDone
+                          ? "bg-primary text-white"
+                          : isActive
+                            ? "bg-primary/10 text-primary border border-primary"
+                            : "bg-slate-100 text-slate-400"
+                      }`}
+                      aria-current={isActive ? "step" : undefined}
+                    >
+                      {isDone ? <Check className="w-3.5 h-3.5" aria-hidden="true" /> : s.id}
+                    </div>
+                    <span className={`text-xs font-medium ${isActive || isDone ? "text-slate-800" : "text-slate-400"}`}>
+                      {s.label}
+                    </span>
+                    {idx < STEPS.length - 1 && (
+                      <div className={`flex-1 h-[2px] ${isDone ? "bg-primary" : "bg-slate-200"}`} aria-hidden="true" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              {step === 1 && (
+                <>
+              <div className="flex flex-wrap items-center justify-center gap-3 py-2 text-[11px] text-slate-600">
+                <span className="inline-flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
+                  Secure Stripe checkout
+                </span>
+                <span className="text-slate-300" aria-hidden="true">·</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
+                  Money-back guarantee
+                </span>
+                <span className="text-slate-300" aria-hidden="true">·</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
+                  5&ndash;10 business days
+                </span>
+              </div>
               <FormField
                 control={form.control}
                 name="fullName"
@@ -193,7 +269,11 @@ export function RegistrationModal({ isOpen, onClose, defaultPackage }: Registrat
                   )}
                 />
               </div>
+                </>
+              )}
 
+              {step === 2 && (
+                <>
               <FormField
                 control={form.control}
                 name="businessName"
@@ -255,6 +335,24 @@ export function RegistrationModal({ isOpen, onClose, defaultPackage }: Registrat
                 />
               </div>
 
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowMoreDetails((v) => !v)}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+                  aria-expanded={showMoreDetails}
+                  data-testid="toggle-more-details"
+                >
+                  {showMoreDetails ? (
+                    <Minus className="w-3.5 h-3.5" aria-hidden="true" />
+                  ) : (
+                    <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                  )}
+                  {showMoreDetails ? "Hide extra details" : "Add more details (optional)"}
+                </button>
+              </div>
+
+              {showMoreDetails && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -306,7 +404,12 @@ export function RegistrationModal({ isOpen, onClose, defaultPackage }: Registrat
                   )}
                 />
               </div>
+              )}
+                </>
+              )}
 
+              {step === 3 && (
+                <>
               <FormField
                 control={form.control}
                 name="notes"
@@ -351,8 +454,13 @@ export function RegistrationModal({ isOpen, onClose, defaultPackage }: Registrat
                     {uploadedFiles.map((file, i) => (
                       <div key={i} className="flex items-center justify-between text-sm bg-slate-50 px-3 py-1.5 rounded-md">
                         <span className="text-slate-700 truncate">{file.name}</span>
-                        <button type="button" onClick={() => removeFile(i)} className="text-slate-400 hover:text-red-500 ml-2">
-                          <span className="sr-only">Remove</span>x
+                        <button
+                          type="button"
+                          onClick={() => removeFile(i)}
+                          className="text-slate-400 hover:text-red-500 ml-2 rounded-md p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                          aria-label={`Remove file ${file.name}`}
+                        >
+                          <X className="w-3.5 h-3.5" aria-hidden="true" />
                         </button>
                       </div>
                     ))}
@@ -366,8 +474,8 @@ export function RegistrationModal({ isOpen, onClose, defaultPackage }: Registrat
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 bg-blue-50/50">
                     <FormControl>
-                      <Checkbox 
-                        checked={field.value} 
+                      <Checkbox
+                        checked={field.value}
                         onCheckedChange={field.onChange}
                         data-testid="checkbox-authorization"
                       />
@@ -382,25 +490,59 @@ export function RegistrationModal({ isOpen, onClose, defaultPackage }: Registrat
                 )}
               />
 
-              <Button 
-                type="submit" 
-                className="w-full mt-4 bg-primary hover:bg-primary/90"
-                disabled={isPending}
-                data-testid="button-submit-application"
-              >
-                {isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {isRedirecting ? "Redirecting to Payment..." : "Processing..."}
-                  </>
-                ) : (
-                  "Submit & Pay Securely"
-                )}
-              </Button>
-              
-              <p className="text-xs text-muted-foreground text-center mt-4">
+              <div className="rounded-md border border-blue-100 bg-blue-50/60 p-4 flex items-start gap-3">
+                <ShieldCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" aria-hidden="true" />
+                <div className="text-xs text-slate-700">
+                  <p className="font-semibold text-slate-900 mb-0.5">Refund policy</p>
+                  <p className="leading-relaxed">
+                    Cancel before we file your application and get a full refund.
+                    Secure checkout powered by Stripe. All information is treated confidentially.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-3 pt-1">
+                <Button type="button" variant="outline" onClick={handleBack} className="sm:w-auto" data-testid="button-step-back">
+                  Back
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1 bg-primary hover:bg-primary/90"
+                  disabled={isPending}
+                  data-testid="button-submit-application"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {isRedirecting ? "Redirecting to Payment..." : "Processing..."}
+                    </>
+                  ) : (
+                    "Submit & Pay Securely"
+                  )}
+                </Button>
+              </div>
+
+              <p className="text-xs text-muted-foreground text-center">
                 You'll be redirected to our secure payment page powered by Stripe. All information is confidential.
               </p>
+                </>
+              )}
+
+              {/* Step navigation for steps 1 and 2 */}
+              {step < 3 && (
+                <div className="flex items-center justify-between gap-3 pt-2">
+                  {step > 1 ? (
+                    <Button type="button" variant="outline" onClick={handleBack} data-testid="button-step-back">
+                      Back
+                    </Button>
+                  ) : (
+                    <span />
+                  )}
+                  <Button type="button" onClick={handleNext} data-testid="button-step-next">
+                    Continue
+                  </Button>
+                </div>
+              )}
             </form>
           </Form>
         </ScrollArea>

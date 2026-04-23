@@ -122,7 +122,7 @@ export default function CustomsClearance() {
     if (ogDesc) ogDesc.setAttribute("content", "Structured, transparent customs clearance. No negotiated pricing, no manual quotes. Flat-rate packages for every shipment.");
     return () => {
       document.title = "AccessToNorth.com - Expert GST/HST & Business Number Registration in Canada";
-      if (metaDesc) metaDesc.setAttribute("content", "Expert GST/HST & Business Number Registration in Canada. Fast registration for residents and non-residents. CRA Authorized Representatives. Satisfaction Guarantee.");
+      if (metaDesc) metaDesc.setAttribute("content", "Canadian GST/HST, Business Number, CARM, and customs filings coordinated under signed authorization. Flat-fee service for residents and non-residents. From CA$99.");
       if (ogTitle) ogTitle.setAttribute("content", "AccessToNorth.com - GST/HST & Business Registration Canada");
       if (ogDesc) ogDesc.setAttribute("content", "Register your business with the CRA correctly. From Business Numbers to Non-Resident GST/HST, we handle the paperwork.");
     };

@@ -10,6 +10,8 @@ import { type LucideIcon } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useToast } from "@/hooks/use-toast";
+import { SampleDeliverableCard, type SampleDeliverableProps } from "@/components/SampleDeliverableCard";
+import { JsonLd } from "@/components/JsonLd";
 
 interface ServiceDetailProps {
   title: string;
@@ -23,6 +25,7 @@ interface ServiceDetailProps {
   ctaService: string;
   priceCAD?: number;
   additionalInfo?: string;
+  sampleDeliverable?: SampleDeliverableProps;
 }
 
 export function ServiceDetailPage({
@@ -37,6 +40,7 @@ export function ServiceDetailPage({
   ctaService,
   priceCAD,
   additionalInfo,
+  sampleDeliverable,
 }: ServiceDetailProps) {
   usePageMeta({ title: metaTitle, description: metaDescription, canonical });
   const { addItem, setIsOpen } = useCart();
@@ -56,8 +60,45 @@ export function ServiceDetailPage({
 
   const isClearance = ctaService === "customs_clearance";
 
+  const serviceJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name: title,
+    description: subtitle,
+    provider: {
+      "@type": "Organization",
+      name: "AccessToNorth.com",
+      url: "https://www.accesstonorth.com",
+    },
+    areaServed: { "@type": "Country", name: "Canada" },
+    url: canonical,
+    ...(priceCAD
+      ? {
+          offers: {
+            "@type": "Offer",
+            price: priceCAD,
+            priceCurrency: "CAD",
+            availability: "https://schema.org/InStock",
+            url: canonical,
+          },
+        }
+      : {}),
+  };
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://www.accesstonorth.com/" },
+      { "@type": "ListItem", position: 2, name: "Services", item: "https://www.accesstonorth.com/services" },
+      { "@type": "ListItem", position: 3, name: title, item: canonical },
+    ],
+  };
+
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
+      <JsonLd id={`service-jsonld-${ctaService}`} data={serviceJsonLd} />
+      <JsonLd id={`breadcrumb-jsonld-${ctaService}`} data={breadcrumbJsonLd} />
       <Navbar />
       <main className="flex-1 pt-28 pb-16">
         <div className="container mx-auto px-4 md:px-6 max-w-3xl">
@@ -103,6 +144,8 @@ export function ServiceDetailPage({
             </div>
           )}
 
+          {sampleDeliverable && <SampleDeliverableCard {...sampleDeliverable} />}
+
           {toolLink && (
             <div className="mb-8 p-5 rounded-xl bg-slate-100 border border-slate-200">
               <p className="text-sm text-slate-600 mb-3">Related tool:</p>
@@ -141,6 +184,25 @@ export function ServiceDetailPage({
                 Ask a Question
               </Button>
             </Link>
+          </div>
+          <p className="text-xs text-slate-500 mt-3 flex items-start gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-green-600 mt-0.5 shrink-0" aria-hidden="true" />
+            <span>
+              We submit within one business day of signed authorization. Agency processing (CRA, CBSA)
+              typically completes in 5&ndash;10 business days but is outside our control.
+              Refund on unfiled work. Secure Stripe checkout.
+            </span>
+          </p>
+
+          {/* Scope and authorization disclaimer */}
+          <div className="mt-6 p-4 rounded-lg bg-slate-100 border border-slate-200">
+            <p className="text-xs text-slate-600 leading-relaxed">
+              <strong className="text-slate-700">Scope.</strong> AccessToNorth coordinates the
+              filing of the above with the CRA or CBSA on your behalf, under the signed authorization
+              we send after purchase. We are not a law firm, an accounting firm, or a customs
+              broker, and we do not provide legal, tax, or customs-brokerage advice. Agency
+              processing times and decisions are made by the CRA / CBSA and are outside our control.
+            </p>
           </div>
         </div>
       </main>

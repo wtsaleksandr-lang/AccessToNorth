@@ -20,6 +20,16 @@ export default function BusinessNumberBN() {
       ctaService="bn"
       priceCAD={99}
       additionalInfo="A Business Number is required before you can open GST/HST, payroll, import/export, or corporate income tax accounts with the CRA. Processing typically takes 5–10 business days."
+      sampleDeliverable={{
+        title: "CRA Business Number confirmation",
+        fields: [
+          { label: "Business Number", value: "12345 6789 RC0001" },
+          { label: "Legal name", value: "Maple Trade Co." },
+          { label: "Entity type", value: "Sole Proprietorship" },
+          { label: "Effective date", value: "Apr 2026" },
+        ],
+        footerNote: "Sample deliverable for illustration. Actual BN numbers are issued by the CRA.",
+      }}
     />
   );
 }

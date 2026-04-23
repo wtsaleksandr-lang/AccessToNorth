@@ -80,15 +80,17 @@ export default function Services() {
                         <h3 className="text-base font-bold mb-1.5 text-slate-900">{service.title}</h3>
                         <p className="text-sm text-slate-600 mb-5 flex-1">{service.desc}</p>
                         <div className="flex flex-col gap-2">
-                          <Link href={service.href}>
-                            <Button variant="outline" className="w-full cursor-pointer" data-testid={`button-learn-${service.cta}`}>
-                              Learn More <ArrowRight className="w-4 h-4 ml-2" />
-                            </Button>
-                          </Link>
                           <Link href={service.cta === "customs_clearance" ? "/canadian-customs-clearance" : `/request?service=${service.cta}`}>
                             <Button className="w-full cursor-pointer" data-testid={`button-request-${service.cta}`}>
                               {service.cta === "customs_clearance" ? "View Packages" : "Request Service"}
                             </Button>
+                          </Link>
+                          <Link
+                            href={service.href}
+                            className="text-xs text-slate-500 hover:text-primary text-center cursor-pointer transition-colors"
+                            data-testid={`button-learn-${service.cta}`}
+                          >
+                            Learn more →
                           </Link>
                         </div>
                       </CardContent>

@@ -185,6 +185,7 @@ export default function AdminDashboard() {
 }
 
 function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -196,7 +197,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
     try {
       await adminApi("/api/admin/login", {
         method: "POST",
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ email: email.trim() || undefined, password }),
       });
       onSuccess();
     } catch (err: any) {
@@ -216,13 +217,26 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
+              <Label htmlFor="admin-email">Email (optional for legacy password)</Label>
+              <Input
+                id="admin-email"
+                type="email"
+                placeholder="you@accesstonorth.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                data-testid="input-admin-email"
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="admin-password">Password</Label>
               <Input
                 id="admin-password"
                 type="password"
-                placeholder="Enter admin password"
+                placeholder="Enter password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
                 required
                 data-testid="input-admin-password"
               />

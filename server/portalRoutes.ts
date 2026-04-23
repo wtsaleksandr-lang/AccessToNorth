@@ -2,6 +2,8 @@ import type { Express, Request, Response } from "express";
 import multer from "multer";
 import { storage } from "./storage";
 import { signPortalToken, setPortalCookie, portalAuthMiddleware, type PortalTokenPayload } from "./portalAuth";
+import { loginRateLimiter } from "./middleware/rateLimit";
+import { getUploadBackend, readUploadBytes } from "./storage/uploadStorage";
 import { z } from "zod";
 
 const upload = multer({
@@ -34,7 +36,7 @@ const messageSchema = z.object({
 });
 
 export function registerPortalRoutes(app: Express): void {
-  app.post("/api/portal/login", async (req: Request, res: Response) => {
+  app.post("/api/portal/login", loginRateLimiter, async (req: Request, res: Response) => {
     try {
       const { email, orderId } = loginSchema.parse(req.body);
       const order = await storage.getOrderByIdAndEmail(orderId, email.toLowerCase());
@@ -112,6 +114,25 @@ export function registerPortalRoutes(app: Express): void {
 
       console.log(`[Portal] New message from ${portalUser.email} on order ${orderId}: ${message.substring(0, 100)}`);
 
+      // Non-blocking: alert ops so replies don't sit unseen until someone
+      // happens to open the admin dashboard.
+      (async () => {
+        try {
+          const order = await storage.getOrderById(orderId);
+          if (!order) return;
+          const { sendEmail, buildClientMessageNotificationEmail } = await import("./emailService");
+          const notif = buildClientMessageNotificationEmail(
+            orderId,
+            order.customerEmail,
+            order.customerName,
+            message,
+          );
+          await sendEmail(notif);
+        } catch (notifyErr) {
+          console.error("Client-message notification failed (non-blocking):", notifyErr);
+        }
+      })();
+
       res.status(201).json(newMessage);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -140,17 +161,27 @@ export function registerPortalRoutes(app: Express): void {
           return res.status(400).json({ message: "No file uploaded" });
         }
 
-        const base64Data = file.buffer.toString("base64");
+        // Route through the storage abstraction. With UPLOAD_BACKEND=db
+        // (default) this is identical to the legacy behavior: we write
+        // base64 to fileData. With UPLOAD_BACKEND=local the bytes are
+        // written to disk and only a small key lands in Postgres.
+        const backend = getUploadBackend();
+        const location = await backend.put({
+          buffer: file.buffer,
+          contentType: file.mimetype,
+          fileNameHint: file.originalname,
+        });
 
         const newUpload = await storage.createUpload({
           orderId,
           fileName: file.originalname,
-          fileData: base64Data,
+          fileData: location.kind === "db-base64" ? location.fileData : "",
+          storageKey: location.kind === "external" ? location.storageKey : null,
           fileSize: file.size.toString(),
           mimeType: file.mimetype,
-        });
+        } as any);
 
-        const { fileData, ...uploadWithoutData } = newUpload;
+        const { fileData, storageKey, ...uploadWithoutData } = newUpload as any;
 
         console.log(`[Portal] File uploaded by ${portalUser.email} on order ${orderId}: ${file.originalname}`);
 
@@ -181,9 +212,10 @@ export function registerPortalRoutes(app: Express): void {
         return res.status(404).json({ message: "File not found" });
       }
 
-      const buffer = Buffer.from(targetUpload.fileData, "base64");
+      const buffer = await readUploadBytes(targetUpload);
       res.setHeader("Content-Type", targetUpload.mimeType || "application/octet-stream");
       res.setHeader("Content-Disposition", `attachment; filename="${targetUpload.fileName}"`);
+      res.setHeader("Cache-Control", "private, no-store");
       res.send(buffer);
     } catch (err) {
       console.error("Portal download error:", err);

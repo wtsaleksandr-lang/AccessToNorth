@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response } from "express";
 import fs from "fs";
 import path from "path";
 
@@ -10,10 +10,23 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  app.use(express.static(distPath, { index: "index.html" }));
 
-  // fall through to index.html if the file doesn't exist
-  app.use("/{*path}", (_req, res) => {
+  // SPA fallthrough — prefer a prerendered per-route index.html if one
+  // exists (built by script/prerender.ts); otherwise fall back to the
+  // root shell.
+  app.use("/{*path}", (req: Request, res: Response) => {
+    const urlPath = req.path.replace(/^\/+/, "").replace(/\/+$/, "");
+    if (urlPath) {
+      const routeIndex = path.resolve(distPath, urlPath, "index.html");
+      // Guard against path traversal — the resolved path must stay inside distPath.
+      if (
+        routeIndex.startsWith(distPath + path.sep) &&
+        fs.existsSync(routeIndex)
+      ) {
+        return res.sendFile(routeIndex);
+      }
+    }
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

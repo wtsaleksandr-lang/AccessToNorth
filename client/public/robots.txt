@@ -1,0 +1,13 @@
+User-agent: *
+Disallow: /admin
+Disallow: /admin/
+Disallow: /portal
+Disallow: /portal/
+Disallow: /checkout
+Disallow: /complete-order
+Disallow: /payment-success
+Disallow: /payment-cancel
+Disallow: /api/
+Allow: /
+
+Sitemap: https://www.accesstonorth.com/sitemap.xml

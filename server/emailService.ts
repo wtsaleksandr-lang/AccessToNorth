@@ -306,7 +306,8 @@ export function buildCartOrderConfirmationEmail(
   orderId: string,
   customerName: string,
   items: Array<{ name: string; price: number; quantity: number }>,
-  completeUrl: string
+  completeUrl: string,
+  customerEmail?: string,
 ): SendEmailParams {
   const totalCAD = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const itemsHtml = items.map(i => `
@@ -314,6 +315,16 @@ export function buildCartOrderConfirmationEmail(
       <td>${i.name}</td>
       <td style="text-align:right">CA$${i.price.toFixed(2)}${i.quantity > 1 ? ` x${i.quantity}` : ''}</td>
     </tr>`).join('');
+
+  const portalBlock = customerEmail
+    ? `
+<div class="highlight-box" style="background:#f7f9fc;border-color:#e2e8f0;margin-top:20px">
+<p><strong>Track your order in the client portal.</strong><br>
+Log in at <a href="${BASE_URL}/portal">${BASE_URL}/portal</a> with:<br>
+Email: <span style="font-family:monospace">${customerEmail}</span><br>
+Order ID: <span style="font-family:monospace">${orderId}</span></p>
+</div>`
+    : "";
 
   const html = emailWrapper(`
 <div class="body">
@@ -336,7 +347,7 @@ ${itemsHtml}
 <p style="text-align:center;margin:24px 0">
 <a href="${completeUrl}" class="btn">Complete Service Details</a>
 </p>
-
+${portalBlock}
 <p style="font-size:12px;color:#718096">This link is valid for 90 days. You can return to it at any time to complete or update your details.</p>
 </div>`);
 
@@ -432,6 +443,223 @@ export function buildOnHoldEmail(
   return {
     to: OPS_EMAIL,
     subject: `[On Hold] ${orderId} – ${serviceName} – intake incomplete`,
+    html,
+  };
+}
+
+/**
+ * Notifies the customer that an admin replied in their order thread.
+ * Deep-links to the client portal (email + order-id login).
+ */
+export function buildAdminMessageNotificationEmail(
+  orderId: string,
+  customerName: string | null,
+  messageExcerpt: string,
+): SendEmailParams {
+  const excerpt =
+    messageExcerpt.length > 240 ? `${messageExcerpt.slice(0, 240)}…` : messageExcerpt;
+  const html = emailWrapper(`
+<div class="body">
+<h2>New message on your order</h2>
+<p>Hi ${customerName || "there"},</p>
+<p>Our team just sent you a reply on order
+  <strong style="font-family:monospace;color:${BRAND_COLOR}">${orderId}</strong>.</p>
+
+<div class="highlight-box">
+<p>"${excerpt.replace(/"/g, "&quot;")}"</p>
+</div>
+
+<p style="text-align:center;margin:24px 0">
+<a href="${BASE_URL}/portal" class="btn">View in Portal</a>
+</p>
+<p style="font-size:12px;color:#718096">Reply directly inside the portal so it stays attached to your order.</p>
+</div>`);
+
+  return {
+    to: "",
+    subject: `New reply on order ${orderId} | AccessToNorth.com`,
+    html,
+  };
+}
+
+/**
+ * Alerts ops when a client posts a message in their portal thread.
+ */
+export function buildClientMessageNotificationEmail(
+  orderId: string,
+  customerEmail: string,
+  customerName: string | null,
+  messageExcerpt: string,
+): SendEmailParams {
+  const excerpt =
+    messageExcerpt.length > 500 ? `${messageExcerpt.slice(0, 500)}…` : messageExcerpt;
+  const html = emailWrapper(`
+<div class="body">
+<h2>Client reply received</h2>
+<table class="detail-table">
+<tr><td>Order</td><td style="font-family:monospace;color:${BRAND_COLOR}">${orderId}</td></tr>
+<tr><td>From</td><td>${customerName || "—"} (${customerEmail})</td></tr>
+</table>
+
+<div class="highlight-box">
+<p>${excerpt.replace(/\n/g, "<br>")}</p>
+</div>
+
+<p style="text-align:center;margin:24px 0">
+<a href="${BASE_URL}/admin" class="btn">Open Admin Dashboard</a>
+</p>
+</div>`);
+
+  return {
+    to: OPS_EMAIL,
+    subject: `[Client reply] ${orderId} – ${customerName || customerEmail}`,
+    html,
+  };
+}
+
+/**
+ * Sent when a Stripe checkout session expired or failed before payment.
+ */
+/**
+ * Kicks off the onboarding flow. Sent once per provisioned client_service
+ * right after checkout completes. Contains the access-token link to the
+ * structured intake form.
+ */
+export function buildOnboardingRequestEmail(
+  customerName: string | null,
+  serviceName: string,
+  onboardingUrl: string,
+): SendEmailParams {
+  const html = emailWrapper(`
+<div class="body">
+<h2>Next step: complete your intake</h2>
+<p>Hi ${customerName || "there"},</p>
+<p>Thank you for your order. To begin work on your <strong>${serviceName}</strong> engagement,
+we need a small amount of structured information — typically 5 to 10 minutes to complete.</p>
+
+<p>The intake form is tokenized to your order and valid for 60 days.</p>
+
+<p style="text-align:center;margin:24px 0">
+<a href="${onboardingUrl}" class="btn">Start intake form</a>
+</p>
+
+<div class="highlight-box">
+<p><strong>Why we need this:</strong> Your responses feed directly into the authorization forms
+we'll send for signature, and into the filing package we prepare for the CRA or CBSA. The more
+specific you can be, the faster we can move.</p>
+</div>
+
+<p style="font-size:12px;color:#718096">
+Questions? Reply to this email or contact ${OPS_EMAIL}. All information is kept confidential
+and used only to deliver your engagement.
+</p>
+</div>`);
+
+  return {
+    to: "",
+    subject: `Next step: complete your ${serviceName} intake`,
+    html,
+  };
+}
+
+/**
+ * Sent once a client_service completes (all tasks delivered). Consolidates
+ * the artifacts the client received during the engagement and closes the loop.
+ */
+export function buildServiceCompletionEmail(
+  customerName: string | null,
+  serviceName: string,
+  portalUrl: string,
+): SendEmailParams {
+  const html = emailWrapper(`
+<div class="body">
+<h2>Your ${serviceName} engagement is complete</h2>
+<p>Hi ${customerName || "there"},</p>
+<p>We've finished delivering your <strong>${serviceName}</strong> engagement. A full summary is
+available in your client portal, including every submission reference, issued account number,
+and any follow-up deadlines you'll want to track.</p>
+
+<p style="text-align:center;margin:24px 0">
+<a href="${portalUrl}" class="btn">Open client portal</a>
+</p>
+
+<div class="highlight-box">
+<p><strong>Keep these records.</strong> We retain your submission history per our data-retention
+policy, but you should also save your authorization forms, submission references, and agency
+correspondence on your side — CRA and CBSA audit windows run 4–6 years.</p>
+</div>
+
+<p style="font-size:12px;color:#718096">
+If we can help with a follow-up filing, a different service, or an upcoming deadline,
+reply to this email or contact ${OPS_EMAIL}. Thank you for choosing AccessToNorth.
+</p>
+</div>`);
+
+  return {
+    to: "",
+    subject: `${serviceName} — engagement complete`,
+    html,
+  };
+}
+
+export function buildPaymentFailedEmail(
+  customerName: string | null,
+  sessionId: string,
+): SendEmailParams {
+  const html = emailWrapper(`
+<div class="body">
+<h2>Your payment didn't go through</h2>
+<p>Hi ${customerName || "there"},</p>
+<p>We noticed your recent checkout didn't complete. No charge has been made to your card.</p>
+<p>If this was intentional, you can ignore this email. If you ran into an issue, we'd love to help — just reply to this message or start a new order at any time.</p>
+<p style="text-align:center;margin:24px 0">
+<a href="${BASE_URL}/pricing" class="btn">Try again</a>
+<a href="mailto:${OPS_EMAIL}" class="btn-outline">Contact support</a>
+</p>
+<p style="font-size:11px;color:#a0aec0">Reference: ${sessionId}</p>
+</div>`);
+
+  return {
+    to: "",
+    subject: "Your AccessToNorth checkout didn't complete",
+    html,
+  };
+}
+
+/**
+ * Generic status-update email that works for every service type — use this
+ * when you don't have HS-classification metadata. The HS-specific variant
+ * is `buildStatusUpdateEmail` below.
+ */
+export function buildGenericStatusUpdateEmail(
+  orderId: string,
+  serviceType: string,
+  newStatus: string,
+  customerName: string | null,
+): SendEmailParams {
+  const portalUrl = `${BASE_URL}/portal`;
+  const html = emailWrapper(`
+<div class="body">
+<h2>Order update: ${newStatus}</h2>
+<p>Hi ${customerName || "there"},</p>
+<p>Your order <strong style="font-family:monospace;color:${BRAND_COLOR}">${orderId}</strong> is now marked <strong>${newStatus}</strong>.</p>
+
+<table class="detail-table">
+<tr><td>Order ID</td><td style="font-family:monospace;color:${BRAND_COLOR}">${orderId}</td></tr>
+<tr><td>Service</td><td>${serviceType}</td></tr>
+<tr><td>New status</td><td>${newStatus}</td></tr>
+</table>
+
+<p style="text-align:center;margin:24px 0">
+<a href="${portalUrl}" class="btn">Track in Client Portal</a>
+</p>
+
+<p>If you have any questions, reply to this email or contact us at ${OPS_EMAIL}.</p>
+</div>`);
+
+  return {
+    to: "",
+    subject: `Order Update – ${orderId} – ${newStatus} | AccessToNorth.com`,
     html,
   };
 }

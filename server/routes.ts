@@ -7,6 +7,8 @@ import { z } from "zod";
 import { insertCarmLeadSchema } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 import { sendEmail, buildCartOrderConfirmationEmail, buildCartInternalAlertEmail, buildReminderEmail, buildOnHoldEmail } from "./emailService";
+import { lookupCartPrice } from "./pricing/catalog";
+import { createCartOrderFromSession } from "./orderService";
 
 const FRONTEND_TO_STRIPE_KEY: Record<string, string> = {
   bn: "business-number",
@@ -243,6 +245,27 @@ export async function registerRoutes(
     }
   });
 
+  // DB-only lookup: returns the order created by the webhook for this
+  // Stripe session. Used by /payment-success as a fallback when the primary
+  // cart-checkout/complete flow is not applicable (single-package buyers).
+  app.get('/api/orders/by-session/:sessionId', async (req, res) => {
+    try {
+      const order = await storage.getOrderByStripeSessionId(req.params.sessionId);
+      if (!order) {
+        return res.status(404).json({ message: "Order not yet created — try again in a few seconds." });
+      }
+      res.json({
+        orderId: order.id,
+        serviceType: order.serviceType,
+        status: order.status,
+        customerEmail: order.customerEmail,
+      });
+    } catch (err) {
+      console.error('Error fetching order by session:', err);
+      res.status(500).json({ message: "Failed to fetch order" });
+    }
+  });
+
   app.get("/api/fx-rate", (_req, res) => {
     const rate = parseFloat(process.env.FX_CAD_TO_USD || "0.72");
     res.json({ rate, base: "CAD", target: "USD" });
@@ -265,17 +288,37 @@ export async function registerRoutes(
   app.post('/api/cart-checkout', async (req, res) => {
     try {
       const input = cartCheckoutSchema.parse(req.body);
+
+      // Resolve every price from the server-side catalog. Never trust
+      // the client-supplied `price`. Reject the whole request if any
+      // serviceKey is unknown.
+      const resolved = input.items.map(item => {
+        const entry = lookupCartPrice(item.serviceKey, item.category);
+        if (!entry) {
+          throw new Error(`Unknown service key: ${item.serviceKey}`);
+        }
+        return {
+          id: item.id,
+          name: entry.name,
+          priceCAD: entry.priceCAD,
+          serviceKey: item.serviceKey,
+          tier: item.tier,
+          category: item.category,
+          quantity: item.quantity,
+        };
+      });
+
       const stripe = await getUncachableStripeClient();
       const baseUrl = `${req.protocol}://${req.get('host')}`;
 
-      const lineItems = input.items.map(item => ({
+      const lineItems = resolved.map(item => ({
         price_data: {
           currency: 'cad',
           product_data: {
             name: item.name,
             metadata: { serviceKey: item.serviceKey, tier: item.tier || '' },
           },
-          unit_amount: Math.round(item.price * 100),
+          unit_amount: item.priceCAD * 100,
         },
         quantity: item.quantity,
       }));
@@ -287,10 +330,13 @@ export async function registerRoutes(
         customer_email: input.customerEmail,
         metadata: {
           customerName: input.customerName,
-          cartItems: JSON.stringify(input.items.map(i => ({
-            id: i.id, name: i.name, price: i.price,
-            serviceKey: i.serviceKey, tier: i.tier,
-            category: i.category, quantity: i.quantity,
+          // Persist only identifiers; prices are re-resolved server-side on completion.
+          cartItems: JSON.stringify(resolved.map(i => ({
+            id: i.id,
+            serviceKey: i.serviceKey,
+            tier: i.tier,
+            category: i.category,
+            quantity: i.quantity,
           }))),
         },
         success_url: `${baseUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
@@ -301,6 +347,9 @@ export async function registerRoutes(
     } catch (err: any) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
+      }
+      if (err?.message?.startsWith("Unknown service key")) {
+        return res.status(400).json({ message: err.message });
       }
       console.error('Error creating cart checkout session:', err);
       res.status(500).json({ message: "Failed to create checkout session" });
@@ -314,12 +363,6 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Session ID is required" });
       }
 
-      const existing = await storage.getOrderByStripeSessionId(sessionId);
-      if (existing) {
-        const items = await storage.getOrderItemsByOrderId(existing.id);
-        return res.json({ orderId: existing.id, token: existing.secureToken, items });
-      }
-
       const stripe = await getUncachableStripeClient();
       const session = await stripe.checkout.sessions.retrieve(sessionId);
 
@@ -327,71 +370,16 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Payment not completed" });
       }
 
-      const customerEmail = session.customer_email || '';
-      const customerName = session.metadata?.customerName || '';
-      const cartItems = JSON.parse(session.metadata?.cartItems || '[]');
-
-      const orderId = `ATN-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-      const secureToken = crypto.randomBytes(32).toString('hex');
-      const tokenExpiry = new Date();
-      tokenExpiry.setDate(tokenExpiry.getDate() + 90);
-
-      const serviceNames = cartItems.map((i: any) => i.name).join(', ');
-
-      const order = await storage.createOrder({
-        id: orderId,
-        customerEmail,
-        customerName,
-        serviceType: serviceNames,
-        status: "Pending Details",
-        steps: [
-          { label: "Payment received", state: "done" },
-          { label: "Complete service details", state: "working" },
-          { label: "Under review", state: "upcoming" },
-          { label: "Completed", state: "upcoming" },
-        ],
-        stripeSessionId: sessionId,
-        secureToken,
-        secureTokenExpiresAt: tokenExpiry,
-      });
-
-      const orderItemsCreated = [];
-      for (const item of cartItems) {
-        const orderItem = await storage.createOrderItem({
-          orderId: order.id,
-          serviceKey: item.serviceKey,
-          serviceName: item.name,
-          tier: item.tier || null,
-          priceCAD: item.price,
-          quantity: item.quantity,
-          status: "Pending Details",
-        });
-        orderItemsCreated.push(orderItem);
-      }
-
       const baseUrl = process.env.REPLIT_DEV_DOMAIN
         ? `https://${process.env.REPLIT_DEV_DOMAIN}`
         : "https://www.accesstonorth.com";
-      const completeUrl = `${baseUrl}/complete-order?token=${secureToken}`;
 
-      try {
-        const confirmEmail = buildCartOrderConfirmationEmail(orderId, customerName, cartItems, completeUrl);
-        confirmEmail.to = customerEmail;
-        await sendEmail(confirmEmail);
-
-        const alertEmail = buildCartInternalAlertEmail(orderId, customerEmail, customerName, cartItems, session.amount_total || 0);
-        await sendEmail(alertEmail);
-
-        await storage.updateOrderMetadata(orderId, {
-          confirmationEmailSentAt: new Date(),
-          internalEmailSentAt: new Date(),
-        });
-      } catch (emailErr) {
-        console.error('Error sending order emails:', emailErr);
-      }
-
-      res.json({ orderId: order.id, token: secureToken, items: orderItemsCreated });
+      const { orderId, token, items } = await createCartOrderFromSession(session as any, baseUrl);
+      res.json({ orderId, token, items });
     } catch (err: any) {
+      if (err?.message?.startsWith("Unknown service key") || err?.message?.startsWith("No cartItems")) {
+        return res.status(400).json({ message: err.message });
+      }
       console.error('Error completing cart checkout:', err);
       res.status(500).json({ message: "Failed to process order" });
     }

@@ -26,6 +26,16 @@ export default function NonResidentImporter() {
       ctaService="non_resident_tax"
       priceCAD={399}
       additionalInfo="Non-resident businesses selling digital products, services, or physical goods into Canada may be required to register for GST/HST and obtain a Business Number. We specialize in guiding international businesses through this process."
+      sampleDeliverable={{
+        title: "Non-Resident Importer package",
+        fields: [
+          { label: "Business Number", value: "98765 4321 RC0001" },
+          { label: "GST/HST Account", value: "98765 4321 RT0001" },
+          { label: "Import Account", value: "98765 4321 RM0001" },
+          { label: "Regime", value: "Simplified GST/HST" },
+        ],
+        footerNote: "Sample deliverable for illustration. All accounts are issued by CRA/CBSA.",
+      }}
     />
   );
 }

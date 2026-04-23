@@ -116,10 +116,11 @@ export default function Request() {
               </div>
               <button
                 onClick={() => setBannerDismissed(true)}
-                className="text-green-600 hover:text-green-800 shrink-0 cursor-pointer"
+                className="text-green-600 hover:text-green-800 shrink-0 cursor-pointer rounded-md p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
                 data-testid="button-dismiss-banner"
+                aria-label="Dismiss selection banner"
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
           )}

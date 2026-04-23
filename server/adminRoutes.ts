@@ -1,9 +1,11 @@
 import type { Express, Request, Response } from "express";
 import { storage } from "./storage";
-import { verifyAdminPassword, signAdminToken, setAdminCookie, adminAuthMiddleware } from "./adminAuth";
+import { verifyAdminCredentials, signAdminToken, setAdminCookie, adminAuthMiddleware } from "./adminAuth";
+import { loginRateLimiter } from "./middleware/rateLimit";
 import { z } from "zod";
 
 const loginSchema = z.object({
+  email: z.string().email().optional(),
   password: z.string().min(1, "Password is required"),
 });
 
@@ -20,21 +22,23 @@ const messageSchema = z.object({
 });
 
 export function registerAdminRoutes(app: Express): void {
-  app.post("/api/admin/login", (req: Request, res: Response) => {
+  app.post("/api/admin/login", loginRateLimiter, async (req: Request, res: Response) => {
     try {
-      const { password } = loginSchema.parse(req.body);
+      const { email, password } = loginSchema.parse(req.body);
 
-      if (!verifyAdminPassword(password)) {
-        return res.status(401).json({ message: "Invalid password" });
+      const result = await verifyAdminCredentials(email, password);
+      if (!result) {
+        return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      const token = signAdminToken();
+      const token = signAdminToken(result);
       setAdminCookie(res, token);
-      res.json({ success: true });
+      res.json({ success: true, email: result.email ?? null });
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
       }
+      console.error("Admin login error:", err);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -106,15 +110,18 @@ export function registerAdminRoutes(app: Express): void {
         const previousStatus = order.status;
         await storage.updateOrderStatus(order.id, status);
 
-        if (
-          status === "In Progress" &&
-          previousStatus !== "In Progress" &&
-          order.metadata &&
-          order.serviceType.includes("HS Classification")
-        ) {
+        if (status !== previousStatus) {
           try {
-            const { sendEmail, buildStatusUpdateEmail } = await import("./emailService");
-            const emailParams = buildStatusUpdateEmail(order.id, status, order.metadata as any);
+            const { sendEmail, buildStatusUpdateEmail, buildGenericStatusUpdateEmail } = await import("./emailService");
+            const useHsTemplate =
+              status === "In Progress" &&
+              order.metadata &&
+              order.serviceType.includes("HS Classification");
+
+            const emailParams = useHsTemplate
+              ? buildStatusUpdateEmail(order.id, status, order.metadata as any)
+              : buildGenericStatusUpdateEmail(order.id, order.serviceType, status, order.customerName);
+
             emailParams.to = order.customerEmail;
             await sendEmail(emailParams);
           } catch (emailErr) {
@@ -146,6 +153,18 @@ export function registerAdminRoutes(app: Express): void {
         sender: "admin",
         message,
       });
+
+      // Non-blocking: notify the customer that an admin replied.
+      (async () => {
+        try {
+          const { sendEmail, buildAdminMessageNotificationEmail } = await import("./emailService");
+          const notif = buildAdminMessageNotificationEmail(order.id, order.customerName, message);
+          notif.to = order.customerEmail;
+          await sendEmail(notif);
+        } catch (notifyErr) {
+          console.error("Admin-message notification failed (non-blocking):", notifyErr);
+        }
+      })();
 
       res.status(201).json(newMessage);
     } catch (err) {

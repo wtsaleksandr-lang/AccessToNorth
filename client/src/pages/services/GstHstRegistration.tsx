@@ -21,6 +21,16 @@ export default function GstHstRegistration() {
       ctaService="gst_hst"
       priceCAD={249}
       additionalInfo="You must register for GST/HST if your worldwide taxable revenues exceed $30,000 over four consecutive calendar quarters. Voluntary registration is available for businesses below the threshold who want to claim ITCs."
+      sampleDeliverable={{
+        title: "GST/HST Account confirmation",
+        fields: [
+          { label: "GST/HST Account", value: "12345 6789 RT0001" },
+          { label: "Legal name", value: "Maple Trade Co." },
+          { label: "Reporting period", value: "Quarterly" },
+          { label: "Effective date", value: "Apr 2026" },
+        ],
+        footerNote: "Sample deliverable for illustration. Account numbers are issued by the CRA.",
+      }}
     />
   );
 }

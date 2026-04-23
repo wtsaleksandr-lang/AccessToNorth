@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>AccessToNorth Blog — Canadian Trade &amp; Tax Insights</title>
+    <link>https://www.accesstonorth.com/blog</link>
+    <atom:link href="https://www.accesstonorth.com/rss.xml" rel="self" type="application/rss+xml" />
+    <description>Weekly guides on Canadian GST/HST, CARM, customs clearance, and import compliance.</description>
+    <language>en-CA</language>
+    <lastBuildDate>Thu, 23 Apr 2026 03:39:44 GMT</lastBuildDate>
+    <item>
+      <title>How to Register for GST/HST as a Non-Resident in Canada</title>
+      <link>https://www.accesstonorth.com/blog/register-gst-hst-non-resident-canada</link>
+      <guid isPermaLink="true">https://www.accesstonorth.com/blog/register-gst-hst-non-resident-canada</guid>
+      <pubDate>Mon, 20 Apr 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>Registration &amp; Tax</category>
+      <description>If your business sells taxable goods or services to Canadian customers and you don&apos;t have a physical presence in Canada, you&apos;re almost certainly required to register for GST/HST. The rules changed substantially in 2021 and tightened again in 2024 — here&apos;s exactly how registration works in 2026, what documents you need, and what to expect from the CRA.
+
+Key takeaways:
+- Non-residents selling digital services, physical goods, or marketplace sales to Canadian consumers generally must register
+- The CRA offers two regimes: full (normal) registration and the simplified regime for digital/remote sellers
+- You need a Business Number (BN) before you can open a GST/HST account
+- Registration takes 5–15 business days once the right forms are filed
+- Once registered, returns are typically quarterly for under CA$1.5M revenue, monthly above that</description>
+    </item>
+  </channel>
+</rss>

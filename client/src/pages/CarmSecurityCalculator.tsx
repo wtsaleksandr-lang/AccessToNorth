@@ -114,7 +114,7 @@ export default function CarmSecurityCalculator() {
     if (ogDesc) ogDesc.setAttribute("content", "Estimate your CARM financial security: surety bond (50%) vs cash deposit (100%). Free calculator for Canadian importers.");
     return () => {
       document.title = "AccessToNorth.com - Expert GST/HST & Business Number Registration in Canada";
-      if (metaDesc) metaDesc.setAttribute("content", "Expert GST/HST & Business Number Registration in Canada. Fast registration for residents and non-residents. CRA Authorized Representatives. Satisfaction Guarantee.");
+      if (metaDesc) metaDesc.setAttribute("content", "Free CARM Financial Security calculator for Canadian importers. Estimate required bond or cash deposit against your projected monthly duty & tax.");
       if (ogTitle) ogTitle.setAttribute("content", "AccessToNorth.com - GST/HST & Business Registration Canada");
       if (ogDesc) ogDesc.setAttribute("content", "Register your business with the CRA correctly. From Business Numbers to Non-Resident GST/HST, we handle the paperwork.");
     };
