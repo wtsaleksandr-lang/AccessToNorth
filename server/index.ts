@@ -24,6 +24,13 @@ import { securityHeaders } from './middleware/securityHeaders';
 
 import { pool } from './db';
 
+// Prevent background promise rejections from stripe-replit-sync or other
+// integrations from crashing the production server. These are logged but
+// treated as non-fatal so the HTTP server keeps running.
+process.on('unhandledRejection', (reason) => {
+  console.warn('[server] Unhandled promise rejection (non-fatal):', reason);
+});
+
 const app = express();
 const httpServer = createServer(app);
 
@@ -102,7 +109,7 @@ async function initStripe() {
       .catch((err: any) => console.error('Error syncing Stripe data:', err));
   } catch (error) {
     console.error('Failed to initialize Stripe:', error);
-    throw error;
+    throw error; // caught by the outer IIFE try/catch — server continues
   }
 
 }
