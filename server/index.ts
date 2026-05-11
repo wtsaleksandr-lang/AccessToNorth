@@ -34,6 +34,12 @@ process.on('unhandledRejection', (reason) => {
 const app = express();
 const httpServer = createServer(app);
 
+// Trust Replit's HTTPS-terminating load balancer so req.secure reflects the
+// original https:// scheme. Without this, the secure-flag cookies set by
+// adminAuth/portalAuth are silently dropped behind the proxy and login
+// sessions never reach the browser — every login flow appears broken.
+app.set("trust proxy", 1);
+
 async function ensureTrigramIndexes() {
   const client = await pool.connect();
   try {
