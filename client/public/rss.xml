@@ -6,7 +6,39 @@
     <atom:link href="https://www.accesstonorth.com/rss.xml" rel="self" type="application/rss+xml" />
     <description>Weekly guides on Canadian GST/HST, CARM, customs clearance, and import compliance.</description>
     <language>en-CA</language>
-    <lastBuildDate>Thu, 23 Apr 2026 03:39:44 GMT</lastBuildDate>
+    <lastBuildDate>Mon, 11 May 2026 03:38:33 GMT</lastBuildDate>
+    <item>
+      <title>Do I Need a Canadian Business Number? A 5-Question Checklist</title>
+      <link>https://www.accesstonorth.com/blog/do-i-need-canadian-business-number-checklist</link>
+      <guid isPermaLink="true">https://www.accesstonorth.com/blog/do-i-need-canadian-business-number-checklist</guid>
+      <pubDate>Mon, 11 May 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>Registration &amp; Tax</category>
+      <description>The 9-digit Business Number (BN) is the foundation for every CRA account you&apos;ll ever hold — GST/HST, payroll, corporate income tax, import/export. You don&apos;t need one to exist as a business, but the moment you do almost anything taxable with the CRA, you need one. Here&apos;s a 5-question test to find out.
+
+Key takeaways:
+- The BN is a 9-digit identifier assigned by the CRA for all tax matters
+- You need one if you register for GST/HST, have employees, import commercially, or incorporate federally/provincially (some cases)
+- Sole proprietors without payroll or GST/HST often don&apos;t need one
+- Non-residents importing into Canada or selling taxable supplies must have one
+- BN applications take 3–5 business days for straightforward cases</description>
+    </item>
+    <item>
+      <title>Canada&apos;s $30,000 Rule: When to Register for GST/HST</title>
+      <link>https://www.accesstonorth.com/blog/canada-30000-rule-gst-hst</link>
+      <guid isPermaLink="true">https://www.accesstonorth.com/blog/canada-30000-rule-gst-hst</guid>
+      <pubDate>Mon, 04 May 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>Registration &amp; Tax</category>
+      <description>The CA$30,000 small-supplier threshold is the most misunderstood rule in Canadian sales tax. Most business owners think &quot;I haven&apos;t hit $30k so I&apos;m fine&quot; — but the test isn&apos;t annual, it&apos;s rolling four quarters, and the day you cross it you&apos;re on the hook for GST/HST on everything from then on. Here&apos;s how the rule actually works.
+
+Key takeaways:
+- The threshold is CA$30,000 in worldwide taxable supplies over any four consecutive calendar quarters
+- Cross it once and registration becomes mandatory on the 30th day after the trigger
+- If you exceed it in a single quarter, you&apos;re registered retroactively — the whole quarter counts as taxable
+- Voluntary registration below the threshold lets you claim Input Tax Credits
+- Taxi, ride-share, and commercial ride-hailing drivers must register regardless of revenue</description>
+    </item>
     <item>
       <title>How to Register for GST/HST as a Non-Resident in Canada</title>
       <link>https://www.accesstonorth.com/blog/register-gst-hst-non-resident-canada</link>

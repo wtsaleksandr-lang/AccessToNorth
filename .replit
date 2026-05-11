@@ -15,9 +15,8 @@ PORT = "5000"
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["doppler", "run", "--", "node", "./dist/index.cjs"]
+run = ["node", "dist/index.cjs"]
 build = ["npm", "run", "build"]
-publicDir = "dist/public"
 
 [workflows]
 runButton = "Project"
