@@ -1,9 +1,10 @@
 import type { Express, Request, Response } from "express";
 import { storage } from "./storage";
-import { adminAuthMiddleware } from "./adminAuth";
+import { adminAuthMiddleware, type AdminTokenPayload } from "./adminAuth";
 import { generateDraftReport, extractMissingInfoQuestions } from "./aiDraftService";
 import { generateReportPdf } from "./pdfGenerator";
 import { sendEmail, buildRequestInfoEmail } from "./emailService";
+import { recordAuditEvent } from "./lib/audit";
 import type { ClassificationOrderData } from "@shared/schema";
 
 export function registerAiReportRoutes(app: Express): void {
@@ -30,6 +31,13 @@ export function registerAiReportRoutes(app: Express): void {
           aiDraftReport: draft,
           aiGeneratedAt: new Date(),
           aiModelUsed: model,
+        });
+        await recordAuditEvent({
+          orderId,
+          actor: (req as any).adminUser as AdminTokenPayload | undefined,
+          action: "ai_draft_generated",
+          field: "aiDraftReport",
+          newVal: { model },
         });
 
         res.json({
@@ -63,9 +71,20 @@ export function registerAiReportRoutes(app: Express): void {
           return res.status(404).json({ message: "Order not found" });
         }
 
+        const previousDraft = order.aiDraftReport;
         await storage.updateOrderMetadata(orderId, {
           aiDraftReport: draft,
         });
+        if (previousDraft !== draft) {
+          await recordAuditEvent({
+            orderId,
+            actor: (req as any).adminUser as AdminTokenPayload | undefined,
+            action: "ai_draft_saved",
+            field: "aiDraftReport",
+            oldVal: previousDraft ? `${previousDraft.slice(0, 200)}…` : null,
+            newVal: `${draft.slice(0, 200)}${draft.length > 200 ? "…" : ""}`,
+          });
+        }
 
         res.json({ success: true });
       } catch (err: any) {
@@ -149,10 +168,39 @@ export function registerAiReportRoutes(app: Express): void {
           deliveredAt: new Date(),
         });
 
+        const previousStatus = order.status;
         await storage.updateOrderStatus(orderId, "Delivered");
 
+        const previousSteps = order.steps;
         const steps = order.steps.map((s) => ({ ...s, state: "done" as const }));
         await storage.updateOrderSteps(orderId, steps);
+
+        const actor = (req as any).adminUser as AdminTokenPayload | undefined;
+        await recordAuditEvent({
+          orderId,
+          actor,
+          action: "report_sent",
+          field: "reportFileId",
+          newVal: { customerEmail: order.customerEmail, uploadId: reportUpload.id },
+        });
+        if (previousStatus !== "Delivered") {
+          await recordAuditEvent({
+            orderId,
+            actor,
+            action: "status_change",
+            field: "status",
+            oldVal: previousStatus,
+            newVal: "Delivered",
+          });
+        }
+        await recordAuditEvent({
+          orderId,
+          actor,
+          action: "step_update",
+          field: "steps",
+          oldVal: previousSteps,
+          newVal: steps,
+        });
 
         const baseUrl = `${req.protocol}://${req.get("host")}`;
         const downloadUrl = `${baseUrl}/api/reports/${orderId}/download?token=${token}`;
@@ -221,13 +269,34 @@ export function registerAiReportRoutes(app: Express): void {
         emailParams.to = order.customerEmail;
         const emailSent = await sendEmail(emailParams);
 
+        const requestInfoMessage = `Requested additional information:\n${questions.map((q) => `- ${q}`).join("\n")}`;
         await storage.createMessage({
           orderId,
           sender: "admin",
-          message: `Requested additional information:\n${questions.map((q) => `- ${q}`).join("\n")}`,
+          message: requestInfoMessage,
         });
 
+        const previousStatus = order.status;
         await storage.updateOrderStatus(orderId, "On Hold");
+
+        const actor = (req as any).adminUser as AdminTokenPayload | undefined;
+        await recordAuditEvent({
+          orderId,
+          actor,
+          action: "info_requested",
+          field: "messages",
+          newVal: { questions, customerEmail: order.customerEmail },
+        });
+        if (previousStatus !== "On Hold") {
+          await recordAuditEvent({
+            orderId,
+            actor,
+            action: "status_change",
+            field: "status",
+            oldVal: previousStatus,
+            newVal: "On Hold",
+          });
+        }
 
         res.json({
           success: true,
