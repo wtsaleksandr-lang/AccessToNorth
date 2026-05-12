@@ -29,7 +29,7 @@ export default function Home() {
 
   usePageMeta({
     title: "AccessToNorth.com | Canadian GST/HST & Business Registration Services",
-    description: "Expert Canadian business registration services. GST/HST, Business Numbers, CARM, customs clearance, and non-resident compliance. Trusted by 10,000+ businesses.",
+    description: "Expert Canadian business registration services. GST/HST, Business Numbers, CARM, customs clearance coordination, and non-resident compliance. Trusted by 10,000+ businesses.",
     canonical: "https://www.accesstonorth.com",
   });
 
@@ -200,14 +200,15 @@ export default function Home() {
           <div className="text-center max-w-2xl mx-auto mb-10 md:mb-14">
             <h2 className="text-2xl md:text-3xl font-bold font-display mb-3">Our services</h2>
             <p className="text-base md:text-lg text-slate-600">
-              End-to-end coordination of Canadian tax and customs filings — from CRA registrations
-              to CARM onboarding and commercial clearance.
+              End-to-end coordination of Canadian tax and customs work — from CRA registrations we
+              perform in-house to CARM onboarding and commercial clearance coordination prepared for
+              filing by your licensed broker.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-5xl mx-auto mb-10">
             {[
-              { icon: Package, title: "Customs Clearance", desc: "Flat-rate commercial import clearance into Canada.", href: "/services/customs-clearance-canada" },
+              { icon: Package, title: "Customs Clearance Coordination", desc: "Flat-rate clearance coordination — declaration prepared for filing by your licensed broker.", href: "/services/customs-clearance-canada" },
               { icon: Landmark, title: "CARM Registration", desc: "End-to-end CARM portal onboarding for importers.", href: "/services/carm-registration-canada" },
               { icon: Globe, title: "Non-Resident Importer", desc: "Full NRI setup for foreign businesses selling in Canada.", href: "/services/non-resident-importer-canada" },
               { icon: FileCheck, title: "HS Code Classification", desc: "Accurate tariff classification to avoid penalties.", href: "/services/hs-code-classification-canada" },

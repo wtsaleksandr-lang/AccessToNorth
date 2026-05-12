@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { storage } from "./storage";
-import { adminAuthMiddleware } from "./adminAuth";
+import { adminAuthMiddleware, type AdminTokenPayload } from "./adminAuth";
 import {
   generateOrderSummary,
   generateClientUpdateDraft,
@@ -11,6 +11,7 @@ import {
 } from "./aiAssistService";
 import { generateSnapshotPdf, generateBrokerPackPdf } from "./pdfGenerator";
 import { sendEmail, buildSnapshotDeliveryEmail, buildBrokerPackDeliveryEmail } from "./emailService";
+import { recordAuditEvent } from "./lib/audit";
 
 export function registerAiAssistRoutes(app: Express): void {
   app.post(
@@ -31,6 +32,13 @@ export function registerAiAssistRoutes(app: Express): void {
         await storage.updateOrderMetadata(order.id, {
           aiSummary: text,
           aiAssistGeneratedAt: new Date(),
+        });
+        await recordAuditEvent({
+          orderId: order.id,
+          actor: (req as any).adminUser as AdminTokenPayload | undefined,
+          action: "ai_summary_generated",
+          field: "aiSummary",
+          newVal: { model },
         });
 
         res.json({ text, model, generatedAt: new Date().toISOString() });
@@ -60,6 +68,13 @@ export function registerAiAssistRoutes(app: Express): void {
           aiClientUpdateDraft: text,
           aiAssistGeneratedAt: new Date(),
         });
+        await recordAuditEvent({
+          orderId: order.id,
+          actor: (req as any).adminUser as AdminTokenPayload | undefined,
+          action: "ai_client_update_generated",
+          field: "aiClientUpdateDraft",
+          newVal: { model },
+        });
 
         res.json({ text, model, generatedAt: new Date().toISOString() });
       } catch (err: any) {
@@ -87,6 +102,13 @@ export function registerAiAssistRoutes(app: Express): void {
         await storage.updateOrderMetadata(order.id, {
           aiMissingDocs: text,
           aiAssistGeneratedAt: new Date(),
+        });
+        await recordAuditEvent({
+          orderId: order.id,
+          actor: (req as any).adminUser as AdminTokenPayload | undefined,
+          action: "ai_missing_docs_generated",
+          field: "aiMissingDocs",
+          newVal: { model },
         });
 
         res.json({ text, model, generatedAt: new Date().toISOString() });
@@ -116,6 +138,13 @@ export function registerAiAssistRoutes(app: Express): void {
           aiNextSteps: text,
           aiAssistGeneratedAt: new Date(),
         });
+        await recordAuditEvent({
+          orderId: order.id,
+          actor: (req as any).adminUser as AdminTokenPayload | undefined,
+          action: "ai_next_steps_generated",
+          field: "aiNextSteps",
+          newVal: { model },
+        });
 
         res.json({ text, model, generatedAt: new Date().toISOString() });
       } catch (err: any) {
@@ -142,6 +171,13 @@ export function registerAiAssistRoutes(app: Express): void {
 
         await storage.updateOrderMetadata(order.id, {
           aiReadinessSnapshotText: text,
+        });
+        await recordAuditEvent({
+          orderId: order.id,
+          actor: (req as any).adminUser as AdminTokenPayload | undefined,
+          action: "readiness_snapshot_generated",
+          field: "aiReadinessSnapshotText",
+          newVal: { model },
         });
 
         res.json({ text, model, generatedAt: new Date().toISOString() });
@@ -212,6 +248,13 @@ export function registerAiAssistRoutes(app: Express): void {
           reportToken: token,
           reportTokenExpiresAt: expiresAt,
         });
+        await recordAuditEvent({
+          orderId: order.id,
+          actor: (req as any).adminUser as AdminTokenPayload | undefined,
+          action: "readiness_snapshot_sent",
+          field: "readinessSnapshotSentAt",
+          newVal: { customerEmail: order.customerEmail, uploadId: upload.id },
+        });
 
         const baseUrl = `${req.protocol}://${req.get("host")}`;
         const downloadUrl = `${baseUrl}/api/reports/${order.id}/download?token=${token}`;
@@ -250,6 +293,13 @@ export function registerAiAssistRoutes(app: Express): void {
 
         await storage.updateOrderMetadata(order.id, {
           aiBrokerPackText: text,
+        });
+        await recordAuditEvent({
+          orderId: order.id,
+          actor: (req as any).adminUser as AdminTokenPayload | undefined,
+          action: "broker_pack_generated",
+          field: "aiBrokerPackText",
+          newVal: { model },
         });
 
         res.json({ text, model, generatedAt: new Date().toISOString() });
@@ -319,6 +369,13 @@ export function registerAiAssistRoutes(app: Express): void {
           brokerPackSentAt: new Date(),
           reportToken: token,
           reportTokenExpiresAt: expiresAt,
+        });
+        await recordAuditEvent({
+          orderId: order.id,
+          actor: (req as any).adminUser as AdminTokenPayload | undefined,
+          action: "broker_pack_sent",
+          field: "brokerPackSentAt",
+          newVal: { customerEmail: order.customerEmail, uploadId: upload.id },
         });
 
         const baseUrl = `${req.protocol}://${req.get("host")}`;

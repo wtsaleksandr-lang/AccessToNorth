@@ -33,8 +33,8 @@ const serviceLinks: MegaLink[] = [
   { name: "Non-Resident Importer", href: "/services/non-resident-importer-canada", icon: Globe, desc: "Import as a non-resident of Canada" },
   { name: "CARM Registration", href: "/services/carm-registration-canada", icon: ShieldCheck, desc: "Register on the CARM Client Portal" },
   { name: "RPP / Bond Coordination", href: "/services/rpp-bond-coordination", icon: FileLock, desc: "Release Prior to Payment setup" },
-  { name: "Customs Clearance", href: "/services/customs-clearance-canada", icon: PackageCheck, desc: "Clear your goods through CBSA" },
-  { name: "B13 Export Declaration", href: "/services/b13-export-declaration", icon: FileUp, desc: "File your export declarations" },
+  { name: "Customs Clearance Coordination", href: "/services/customs-clearance-canada", icon: PackageCheck, desc: "We prepare your declaration; your broker files it with CBSA" },
+  { name: "B13 Export Declaration", href: "/services/b13-export-declaration", icon: FileUp, desc: "We prepare your export declaration for filing by your broker" },
   { name: "HS Code Classification", href: "/services/hs-code-classification-canada", icon: ScanSearch, desc: "Get accurate tariff classification" },
   { name: "Import Compliance Review", href: "/services/import-compliance-review", icon: ClipboardCheck, desc: "Audit your import compliance" },
 ];

@@ -106,14 +106,14 @@ The source of truth for task definitions is [`server/seedTaskTemplates.ts`](../s
 | 4 | Post security in CCP + enroll in RPP | internal | agency | 3 |
 | 5 | Verify RPP activation + deliver summary | internal | — | 1 |
 
-### Customs Clearance — LVS $145 / Commercial $295
+### Customs Clearance Coordination — LVS $145 / Commercial $295
 
-**Category:** customs. **Typical SLA:** 1–2 business days (shipment-driven).
+**Category:** customs. **Typical SLA:** 1–2 business days (shipment-driven). **Filing entity:** customer's licensed customs broker (AccessToNorth does not hold a CBSA broker licence; we prepare and hand off).
 
-**LVS tasks (4):** collect docs → classify + valuation review → file release → confirm + deliver.
-**Commercial tasks (4):** collect docs → classification + origin + valuation review → file B3 commercial release against CARM security → confirm + deliver.
+**LVS tasks (4):** collect docs → classify + valuation review → prepare release paperwork and hand off to the customer's licensed broker for filing → confirm release + deliver.
+**Commercial tasks (4):** collect docs → classification + origin + valuation review → prepare B3 commercial-release package against CARM security and hand off to the customer's licensed broker for filing → confirm release + deliver.
 
-Note: these are shipment-specific and assume the customer already has an active importer BN/CARM account. For first-time importers, they should buy CARM Portal Setup first.
+Note: these are shipment-specific and assume the customer already has an active importer BN/CARM account AND a licensed customs broker engaged. For first-time importers, they should buy CARM Portal Setup first; if they don't yet have a broker, we introduce them to a vetted partner before kicking off.
 
 ### B13 Export Declaration — $125
 

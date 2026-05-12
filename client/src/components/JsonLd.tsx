@@ -38,7 +38,7 @@ export const organizationJsonLd = {
   url: "https://www.accesstonorth.com",
   logo: "https://www.accesstonorth.com/favicon.png",
   description:
-    "Canadian business registration and customs setup for residents and non-residents. GST/HST, Business Number, CARM, customs clearance, and HS classification.",
+    "Canadian business registration and customs setup for residents and non-residents. GST/HST, Business Number, CARM, customs clearance coordination, and HS classification.",
   email: "operations@accesstonorth.com",
   address: {
     "@type": "PostalAddress",

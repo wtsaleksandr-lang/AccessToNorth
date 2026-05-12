@@ -1,7 +1,14 @@
 import type { Express, Request, Response } from "express";
 import { storage } from "./storage";
-import { verifyAdminCredentials, signAdminToken, setAdminCookie, adminAuthMiddleware } from "./adminAuth";
+import {
+  verifyAdminCredentials,
+  signAdminToken,
+  setAdminCookie,
+  adminAuthMiddleware,
+  type AdminTokenPayload,
+} from "./adminAuth";
 import { loginRateLimiter } from "./middleware/rateLimit";
+import { recordAuditEvent, listAuditEventsForOrder } from "./lib/audit";
 import { z } from "zod";
 
 const loginSchema = z.object({
@@ -105,12 +112,35 @@ export function registerAdminRoutes(app: Express): void {
         return res.status(404).json({ message: "Order not found" });
       }
 
+      const actor = (req as any).adminUser as AdminTokenPayload | undefined;
+
+      const previousSteps = order.steps;
       await storage.updateOrderSteps(order.id, steps);
+      if (JSON.stringify(previousSteps) !== JSON.stringify(steps)) {
+        await recordAuditEvent({
+          orderId: order.id,
+          actor,
+          action: "step_update",
+          field: "steps",
+          oldVal: previousSteps,
+          newVal: steps,
+        });
+      }
+
       if (status) {
         const previousStatus = order.status;
         await storage.updateOrderStatus(order.id, status);
 
         if (status !== previousStatus) {
+          await recordAuditEvent({
+            orderId: order.id,
+            actor,
+            action: "status_change",
+            field: "status",
+            oldVal: previousStatus,
+            newVal: status,
+          });
+
           try {
             const { sendEmail, buildStatusUpdateEmail, buildGenericStatusUpdateEmail } = await import("./emailService");
             const useHsTemplate =
@@ -154,6 +184,15 @@ export function registerAdminRoutes(app: Express): void {
         message,
       });
 
+      await recordAuditEvent({
+        orderId: order.id,
+        actor: (req as any).adminUser as AdminTokenPayload | undefined,
+        action: "message_added",
+        field: "messages",
+        oldVal: null,
+        newVal: message,
+      });
+
       // Non-blocking: notify the customer that an admin replied.
       (async () => {
         try {
@@ -172,6 +211,24 @@ export function registerAdminRoutes(app: Express): void {
         return res.status(400).json({ message: err.errors[0].message });
       }
       console.error("Admin message error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/orders/:orderId/audit", adminAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+      const orderId = req.params.orderId as string;
+      const order = await storage.getOrderById(orderId);
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      const limitParam = parseInt(String(req.query.limit ?? "50"), 10);
+      const limit = Number.isFinite(limitParam) ? limitParam : 50;
+      const events = await listAuditEventsForOrder(order.id, limit);
+      res.json({ events });
+    } catch (err) {
+      console.error("Admin audit fetch error:", err);
       res.status(500).json({ message: "Internal server error" });
     }
   });

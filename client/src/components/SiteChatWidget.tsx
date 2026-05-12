@@ -14,7 +14,7 @@ import {
 } from "@/lib/chatHelpers";
 
 const GREETING =
-  "Hi — I'm AccessToNorth's assistant. I can answer questions about Canadian GST/HST, Business Numbers, CARM onboarding, customs clearance, or help you find the right service. What can I help you with?";
+  "Hi — I'm AccessToNorth's assistant. I can answer questions about Canadian GST/HST, Business Numbers, CARM onboarding, customs clearance coordination, or help you find the right service. What can I help you with?";
 
 const SUGGESTED: string[] = [
   "I'm a US Shopify seller — do I need GST/HST?",

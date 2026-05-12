@@ -44,6 +44,7 @@ import {
   Clipboard,
   FileCheck,
   Briefcase,
+  History,
 } from "lucide-react";
 import type { OrderStep } from "@shared/schema";
 
@@ -669,8 +670,169 @@ function OrderDetailView({ orderId, onBack }: { orderId: string; onBack: () => v
         <AdminFilesSection uploads={uploads} />
         <AdminMessagesSection orderId={orderId} messages={messages} onRefresh={loadOrder} />
       </div>
+
+      <AdminAuditTimeline orderId={orderId} refreshKey={data?.order.updatedAt ?? ""} />
     </div>
   );
+}
+
+interface AuditEventRow {
+  id: number;
+  orderId: string;
+  actorId: number | null;
+  actorEmail: string | null;
+  action: string;
+  fieldName: string | null;
+  oldValue: string | null;
+  newValue: string | null;
+  createdAt: string;
+}
+
+function AdminAuditTimeline({ orderId, refreshKey }: { orderId: string; refreshKey: string }) {
+  const [events, setEvents] = useState<AuditEventRow[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function loadAudit() {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await adminApi(`/api/admin/orders/${orderId}/audit?limit=50`);
+      setEvents(data.events as AuditEventRow[]);
+    } catch (err: any) {
+      setError(err.message || "Failed to load audit trail");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadAudit();
+    // refreshKey changes whenever the order is re-fetched (post-mutation),
+    // so the timeline refreshes itself after any save.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId, refreshKey]);
+
+  return (
+    <Card data-testid="card-audit-timeline">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center justify-between flex-wrap gap-2">
+          <span className="flex items-center gap-2">
+            <History className="w-4 h-4 text-primary" />
+            Audit Trail
+            {events && events.length > 0 && (
+              <Badge variant="secondary" className="text-xs" data-testid="badge-audit-count">
+                {events.length}
+              </Badge>
+            )}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadAudit}
+            disabled={loading}
+            data-testid="button-audit-refresh"
+          >
+            {loading ? (
+              <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+            ) : (
+              <RefreshCw className="w-3.5 h-3.5 mr-1" />
+            )}
+            Refresh
+          </Button>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {loading && !events && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Loading audit events…
+          </div>
+        )}
+
+        {error && (
+          <div className="flex items-center gap-2 text-sm text-destructive py-2">
+            <AlertCircle className="w-4 h-4" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {events && events.length === 0 && (
+          <p className="text-sm text-muted-foreground py-2" data-testid="text-audit-empty">
+            No admin mutations recorded yet. New status changes, step edits, and messages will appear here.
+          </p>
+        )}
+
+        {events && events.length > 0 && (
+          <ol className="space-y-3" data-testid="list-audit-events">
+            {events.map((ev) => (
+              <li
+                key={ev.id}
+                className="border border-border rounded-md p-3 text-sm"
+                data-testid={`audit-event-${ev.id}`}
+              >
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Badge variant="outline" className="font-mono text-xs">
+                      {formatAuditAction(ev.action)}
+                    </Badge>
+                    {ev.fieldName && (
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {ev.fieldName}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {new Date(ev.createdAt).toLocaleString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {ev.actorEmail ? (
+                    <span data-testid={`audit-actor-${ev.id}`}>
+                      by <span className="font-medium text-foreground">{ev.actorEmail}</span>
+                      {ev.actorId ? ` (#${ev.actorId})` : ""}
+                    </span>
+                  ) : (
+                    <span className="italic">by legacy/system actor</span>
+                  )}
+                </p>
+                {(ev.oldValue || ev.newValue) && (
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    {ev.oldValue !== null && (
+                      <div>
+                        <p className="text-muted-foreground">Old</p>
+                        <pre className="bg-muted/40 rounded p-2 whitespace-pre-wrap break-all">
+                          {ev.oldValue}
+                        </pre>
+                      </div>
+                    )}
+                    {ev.newValue !== null && (
+                      <div>
+                        <p className="text-muted-foreground">New</p>
+                        <pre className="bg-muted/40 rounded p-2 whitespace-pre-wrap break-all">
+                          {ev.newValue}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function formatAuditAction(action: string): string {
+  return action.replace(/_/g, " ");
 }
 
 function showReadinessSnapshot(serviceType: string): boolean {

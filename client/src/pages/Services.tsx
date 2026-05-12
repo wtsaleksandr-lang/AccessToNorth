@@ -23,15 +23,15 @@ const serviceGroups = [
     ],
   },
   {
-    category: "Customs Clearance",
+    category: "Customs Clearance Coordination",
     services: [
-      { title: "Canadian Customs Clearance", desc: "Flat-rate commercial import clearance into Canada. LVS, commercial, and compliance packages.", icon: Package, href: "/services/customs-clearance-canada", cta: "customs_clearance" },
+      { title: "Canadian Customs Clearance Coordination", desc: "Flat-rate commercial import clearance coordination — declaration paperwork prepared for filing by your licensed broker. LVS, commercial, and compliance packages.", icon: Package, href: "/services/customs-clearance-canada", cta: "customs_clearance" },
     ],
   },
   {
     category: "Export",
     services: [
-      { title: "B13 Export Declaration", desc: "Canadian Export Declaration filing for goods leaving Canada (over CA$2,000).", icon: FileText, href: "/services/b13-export-declaration", cta: "b13_export" },
+      { title: "B13 Export Declaration Preparation", desc: "Canadian Export Declaration paperwork prepared for filing by your licensed broker (for goods leaving Canada over CA$2,000).", icon: FileText, href: "/services/b13-export-declaration", cta: "b13_export" },
     ],
   },
   {
@@ -46,7 +46,7 @@ const serviceGroups = [
 export default function Services() {
   usePageMeta({
     title: "Services | AccessToNorth.com",
-    description: "Canadian business registration, GST/HST, CARM, customs clearance, HS classification, export declarations, and import compliance services. Flat-rate pricing.",
+    description: "Canadian business registration, GST/HST, CARM, customs clearance coordination, HS classification, export declaration preparation, and import compliance services. Flat-rate pricing.",
     canonical: "https://www.accesstonorth.com/services",
   });
 
@@ -60,7 +60,7 @@ export default function Services() {
               Our Services
             </h1>
             <p className="text-lg text-slate-600">
-              From business registration to customs clearance — we handle the paperwork so you can focus on your business.
+              From business registration to customs clearance coordination — we handle the paperwork (and coordinate with your licensed broker for customs filings) so you can focus on your business.
             </p>
           </div>
 

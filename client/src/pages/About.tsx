@@ -57,7 +57,7 @@ const practiceAreas = [
   {
     icon: Globe,
     name: "Customs & trade",
-    desc: "Commercial customs clearance, HS code classification, B13 export declarations, and post-entry corrections (B2).",
+    desc: "Commercial customs clearance coordination (declaration prepared for filing by your licensed broker), HS code classification, B13 export declaration preparation, and post-entry correction (B2) paperwork for broker filing.",
   },
   {
     icon: Lock,

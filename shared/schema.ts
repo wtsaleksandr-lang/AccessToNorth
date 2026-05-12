@@ -477,6 +477,42 @@ export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
 
+/**
+ * Compliance-grade audit trail for admin mutations on the flat orders table.
+ *
+ * Distinct from admin_activity_log (which covers the service-delivery CRM layer:
+ * clients / client_services / fulfillment_tasks). This table records every
+ * change to an order, its progress steps, or messages tied to it — captured
+ * with both a FK actor_id (when known) AND a snapshotted actor_email so the
+ * trail survives an admin user being deleted or renamed.
+ */
+export const auditEvents = pgTable(
+  "audit_events",
+  {
+    id: serial("id").primaryKey(),
+    orderId: text("order_id").notNull().references(() => orders.id),
+    actorId: integer("actor_id").references(() => adminUsers.id),
+    actorEmail: text("actor_email"),
+    action: text("action").notNull(),
+    fieldName: text("field_name"),
+    oldValue: text("old_value"),
+    newValue: text("new_value"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => ({
+    orderIdIdx: index("idx_audit_events_order_id").on(table.orderId),
+    createdAtIdx: index("idx_audit_events_created_at").on(table.createdAt),
+  }),
+);
+
+export const insertAuditEventSchema = createInsertSchema(auditEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type AuditEvent = typeof auditEvents.$inferSelect;
+export type InsertAuditEvent = z.infer<typeof insertAuditEventSchema>;
+
 export const carmLeads = pgTable("carm_leads", {
   id: serial("id").primaryKey(),
   email: text("email").notNull(),
