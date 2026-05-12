@@ -165,7 +165,7 @@ export default function ClearanceCheckout() {
               Order Submitted Successfully
             </h1>
             <p className="text-slate-500 mb-6">
-              We have received your clearance request. Our team will review your submission and reach out within one business day to confirm scope and request any outstanding documents.
+              We have received your clearance coordination request. Our team will review your submission and reach out within one business day to confirm scope, request any outstanding documents, and coordinate next steps with your licensed customs broker.
             </p>
             <p className="text-sm text-slate-400 mb-8">A confirmation will be sent to <span className="font-medium text-slate-600">{contactInfo.email}</span></p>
             <Button

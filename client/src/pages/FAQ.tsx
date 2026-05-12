@@ -64,7 +64,7 @@ const faqs = [
   },
   {
     q: "What is customs clearance?",
-    a: "Customs clearance is the process of getting imported goods through CBSA. It involves filing the correct declarations, paying duties and taxes, and ensuring your goods comply with Canadian import regulations.",
+    a: "Customs clearance is the process of getting imported goods through CBSA. It involves filing the correct declarations, paying duties and taxes, and ensuring your goods comply with Canadian import regulations. AccessToNorth does not file declarations with CBSA on your behalf — that requires a CBSA-licensed customs broker. We coordinate the clearance, prepare the declaration paperwork, and hand it off to your licensed broker for filing. If you don't have a broker, we'll introduce you to a vetted partner.",
   },
   {
     q: "What documents do I need to import goods into Canada?",

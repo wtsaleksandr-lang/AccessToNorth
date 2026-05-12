@@ -323,13 +323,16 @@ const SERVICES: ServiceSeed[] = [
     ],
   },
 
-  // ----- CUSTOMS CLEARANCE ---------------------------------------------
+  // ----- CUSTOMS CLEARANCE COORDINATION --------------------------------
+  // AccessToNorth coordinates and prepares paperwork. The customer's licensed
+  // customs broker files the declaration with CBSA. Internal tasks reflect
+  // that handoff.
   {
     serviceKey: "clearance-lvs",
-    name: "Low-Value Import Clearance (LVS)",
+    name: "Low-Value Import Clearance Coordination (LVS)",
     category: "customs",
     priceCAD: 145,
-    description: "Commercial customs clearance for shipments under CA$2,500.",
+    description: "Commercial customs clearance coordination for shipments under CA$2,500 — paperwork prepared for filing by the customer's licensed broker.",
     tasks: [
       {
         orderIndex: 10,
@@ -349,8 +352,8 @@ const SERVICES: ServiceSeed[] = [
       },
       {
         orderIndex: 30,
-        title: "File release entry",
-        description: "Submit LVS release via CBSA. Capture release reference.",
+        title: "Prepare release package + hand off to broker",
+        description: "Assemble LVS release package and broker-handoff documentation. Send to the customer's licensed customs broker for filing with CBSA. Capture broker's release reference once filed.",
         defaultHandledBy: "internal",
         defaultWaitingOn: "agency",
         estimatedDays: 1,
@@ -358,7 +361,7 @@ const SERVICES: ServiceSeed[] = [
       {
         orderIndex: 40,
         title: "Confirm release + deliver docs",
-        description: "Send release confirmation + duty breakdown to client.",
+        description: "Relay broker's release confirmation + duty breakdown to client.",
         defaultHandledBy: "internal",
         defaultWaitingOn: null,
         estimatedDays: 1,
@@ -368,10 +371,10 @@ const SERVICES: ServiceSeed[] = [
 
   {
     serviceKey: "clearance-commercial",
-    name: "Commercial Import Clearance",
+    name: "Commercial Import Clearance Coordination",
     category: "customs",
     priceCAD: 295,
-    description: "Commercial customs clearance for shipments over CA$2,500.",
+    description: "Commercial customs clearance coordination for shipments over CA$2,500 — declaration prepared for filing by the customer's licensed broker.",
     tasks: [
       {
         orderIndex: 10,
@@ -391,8 +394,8 @@ const SERVICES: ServiceSeed[] = [
       },
       {
         orderIndex: 30,
-        title: "File commercial release entry",
-        description: "Submit B3 entry via CBSA. Post release against CARM security.",
+        title: "Prepare B3 commercial-release package + hand off to broker",
+        description: "Assemble B3 entry package + broker-handoff documentation against CARM security. Send to the customer's licensed customs broker for filing with CBSA. Capture broker's release reference once filed.",
         defaultHandledBy: "internal",
         defaultWaitingOn: "agency",
         estimatedDays: 2,
@@ -400,7 +403,7 @@ const SERVICES: ServiceSeed[] = [
       {
         orderIndex: 40,
         title: "Confirm release + deliver documentation",
-        description: "Send release confirmation, duty and GST breakdown, and record-retention package.",
+        description: "Relay broker's release confirmation, duty and GST breakdown, and assemble record-retention package.",
         defaultHandledBy: "internal",
         defaultWaitingOn: null,
         estimatedDays: 1,
@@ -411,10 +414,10 @@ const SERVICES: ServiceSeed[] = [
   // ----- EXPORT + COMPLIANCE ------------------------------------------
   {
     serviceKey: "b13_export",
-    name: "B13 Export Declaration",
+    name: "B13 Export Declaration Preparation",
     category: "export",
     priceCAD: 125,
-    description: "Canadian Export Declaration filing via CERS for goods over CA$2,000.",
+    description: "Canadian Export Declaration paperwork prepared for filing via CERS by the customer's licensed broker (for goods over CA$2,000).",
     tasks: [
       {
         orderIndex: 10,
@@ -426,8 +429,8 @@ const SERVICES: ServiceSeed[] = [
       },
       {
         orderIndex: 20,
-        title: "Validate + submit B13 via CERS",
-        description: "Verify completeness, submit declaration within required window. Capture reference number.",
+        title: "Validate + prepare B13 CERS package + hand off to broker",
+        description: "Verify completeness and assemble the CERS-ready declaration package. Hand off to the customer's licensed broker for filing within the required window. Capture the broker's submission reference.",
         defaultHandledBy: "internal",
         defaultWaitingOn: "agency",
         estimatedDays: 1,
@@ -435,7 +438,7 @@ const SERVICES: ServiceSeed[] = [
       {
         orderIndex: 30,
         title: "Deliver confirmation to client",
-        description: "Send CERS submission reference and export permit (if applicable).",
+        description: "Relay broker's CERS submission reference and export permit (if applicable).",
         defaultHandledBy: "internal",
         defaultWaitingOn: null,
         estimatedDays: 1,

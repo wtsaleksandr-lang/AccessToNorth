@@ -21,13 +21,15 @@ export const SERVICE_CATALOG: Record<string, CatalogEntry> = {
   rpp_bond: { name: "RPP / Security Coordination", priceCAD: 395 },
   bundle_complete_importer: { name: "Importer Launch Kit", priceCAD: 1500 },
 
-  // Customs Clearance
-  "clearance-lvs": { name: "Low-Value Import Clearance", priceCAD: 145 },
-  "clearance-commercial": { name: "Commercial Import Clearance", priceCAD: 295 },
-  "clearance-compliance": { name: "Clearance + Compliance Review", priceCAD: 395 },
+  // Customs Clearance Coordination
+  // (AccessToNorth coordinates clearance and prepares paperwork; the licensed
+  // broker files the declaration with CBSA. See Terms section 2.)
+  "clearance-lvs": { name: "Low-Value Import Clearance Coordination", priceCAD: 145 },
+  "clearance-commercial": { name: "Commercial Import Clearance Coordination", priceCAD: 295 },
+  "clearance-compliance": { name: "Clearance Coordination + Compliance Review", priceCAD: 395 },
 
   // Export
-  b13_export: { name: "B13 Export Declaration", priceCAD: 125 },
+  b13_export: { name: "B13 Export Declaration Preparation", priceCAD: 125 },
 
   // Generic HS classification (per-line)
   hs_classification: { name: "HS Code Classification", priceCAD: 95 },
@@ -38,8 +40,8 @@ export const ADDON_CATALOG: Record<string, CatalogEntry> = {
   hs_extra: { name: "Additional HS Line", priceCAD: 25 },
   import_permit: { name: "Import Permit Submission", priceCAD: 125 },
   cfia: { name: "CFIA Coordination", priceCAD: 150 },
-  b2_correction: { name: "B2 Correction", priceCAD: 250 },
-  after_hours: { name: "After-Hours Clearance", priceCAD: 175 },
+  b2_correction: { name: "B2 Correction (prepared for your broker)", priceCAD: 250 },
+  after_hours: { name: "After-Hours Clearance Coordination", priceCAD: 175 },
   importer_account: { name: "Importer Account Setup", priceCAD: 95 },
   cbsa_id: { name: "CBSA ID Assistance", priceCAD: 95 },
 };

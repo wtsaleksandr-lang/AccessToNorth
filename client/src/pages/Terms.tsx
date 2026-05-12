@@ -14,14 +14,14 @@ export default function Terms() {
             <section>
               <h2 className="text-xl font-semibold font-display mb-3">1. Scope of Services</h2>
               <p className="text-slate-600 leading-relaxed">
-                AccessToNorth.com provides fixed-scope administrative preparation and submission services for Canadian tax registrations, including GST/HST numbers, Business Numbers (BN), payroll accounts, import/export accounts, and CARM portal registrations. All services are delivered digitally. We prepare and submit applications on your behalf to the Canada Revenue Agency (CRA) and related government portals based on the information you provide.
+                AccessToNorth.com provides fixed-scope administrative preparation and submission services for Canadian tax registrations, including GST/HST numbers, Business Numbers (BN), payroll accounts, import/export accounts, and CARM portal registrations. All services are delivered digitally. We prepare and submit applications on your behalf to the Canada Revenue Agency (CRA) and related government portals based on the information you provide. Where our services touch customs clearance, our role is strictly to <strong>coordinate and prepare paperwork</strong> for filing by your licensed customs broker — we do not file declarations with the CBSA on your behalf.
               </p>
             </section>
 
             <section>
               <h2 className="text-xl font-semibold font-display mb-3">2. What We Are Not</h2>
               <p className="text-slate-600 leading-relaxed">
-                AccessToNorth.com is an administrative services provider. We are <strong>not</strong> a law firm, accounting firm, licensed customs broker, or government agency. We do <strong>not</strong> provide legal advice, tax advice, or financial planning services. Our services are limited to the administrative preparation and submission of registration applications as fixed-scope deliverables.
+                AccessToNorth.com is an administrative services provider. We are <strong>not</strong> a law firm, accounting firm, licensed customs broker, or government agency. We do <strong>not</strong> provide legal advice, tax advice, or financial planning services, and we do <strong>not</strong> perform customs brokerage — meaning we do not file B3 declarations, release entries, or any other regulated filings with the Canada Border Services Agency. Where a regulated brokerage action is required, you must engage a CBSA-licensed customs broker; we will assist by preparing classification, valuation, and supporting documentation for that broker to use. Our services are limited to the administrative preparation and submission of registration applications and broker-handoff documentation as fixed-scope deliverables.
               </p>
             </section>
 

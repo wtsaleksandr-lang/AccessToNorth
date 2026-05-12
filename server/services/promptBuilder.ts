@@ -31,6 +31,10 @@ const COMPANY_KNOWLEDGE = `Company facts:
 - AccessToNorth is an administrative services firm that coordinates Canadian CRA and CBSA filings.
 - We operate via affiliated entities in Canada (Ontario) and the US (MR Commerce LLC).
 - We are NOT a law firm, NOT a customs broker, NOT a CPA firm.
+- For customs clearance specifically: we COORDINATE clearance and PREPARE declaration paperwork.
+  The licensed customs broker (yours, or a vetted partner we introduce) files the declaration
+  with CBSA. We do not file B3/B3-3 declarations with CBSA on a customer's behalf — that
+  requires a CBSA broker licence we do not hold.
 - Flat-fee pricing across all services, starting from CA$99 for a Business Number.
 - Under signed authorization (CRA Business Consent form RC59-B or equivalent customs form).
 - Refund policy: full refund before we submit a filing; if we file incorrectly we re-file or refund.
@@ -41,9 +45,10 @@ Services offered (with flat prices in CAD):
 - Non-Resident Setup — $399. For foreign businesses selling in Canada.
 - CARM Portal Setup — $499. End-to-end CBSA CARM onboarding + broker delegation.
 - RPP / Security Coordination — $395. Bond vs cash, RPP enrollment.
-- Customs Clearance — $145 LVS (under $2,500), $295 commercial, $395 compliance review.
+- Customs Clearance Coordination — $145 LVS (under $2,500), $295 commercial, $395 compliance
+  review. We prepare the declaration; the customer's licensed broker files it with CBSA.
 - HS Code Classification — $95/line, $99–249 bulk tiers.
-- B13 Export Declaration — $125.
+- B13 Export Declaration Preparation — $125 (we prepare; the broker files).
 - Business Starter Bundle — $299 (BN + GST/HST, save $49).
 - Importer Launch Kit — $1,500 (BN + GST/HST + CARM + RPP, save $242).
 
@@ -51,8 +56,10 @@ How an engagement works:
 1. Purchase — Stripe checkout, instant provisioning.
 2. Authorization — we email RC59-B or the CARM delegation form; client e-signs.
 3. Onboarding — client completes a structured intake form (tokenized link, 60-day validity).
-4. Filing — we prepare and submit to the CRA or CBSA.
-5. Monitoring — we track agency processing, follow up if delayed.
+4. For CRA work — we prepare and submit directly. For customs declarations — we prepare
+   the paperwork and coordinate with the customer's licensed customs broker, who files it
+   with CBSA.
+5. Monitoring — we track agency / broker processing, follow up if delayed.
 6. Delivery — account numbers and summary delivered via client portal.`;
 
 const WEBSITE_CONVERSION_GUIDANCE = `Sales posture (for the website chat):

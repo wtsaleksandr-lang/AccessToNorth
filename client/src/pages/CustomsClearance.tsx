@@ -40,15 +40,15 @@ const DEEP_NAVY = "#0A1E3D";
 const PACKAGES = [
   {
     id: "lvs-clearance",
-    name: "Low Value Shipment (LVS)",
+    name: "Low Value Shipment (LVS) Coordination",
     price: 145,
     priceLabel: "$145",
-    subtitle: "For goods valued under CA$2,500",
+    subtitle: "For goods valued under CA$2,500 — paperwork prepared for filing by your licensed broker",
     features: [
-      "Electronic customs entry (EDI)",
+      "Customs entry paperwork prepared for your broker (EDI-ready)",
       "Duty & GST calculation",
       "Document review",
-      "Release coordination",
+      "Release coordination with your broker and carrier",
       "Standard tariff treatment (MFN)",
     ],
     bestFor: "Regular importers, low-risk goods under CA$2,500",
@@ -56,15 +56,15 @@ const PACKAGES = [
   },
   {
     id: "commercial-clearance",
-    name: "Commercial Import Clearance",
+    name: "Commercial Import Clearance Coordination",
     price: 295,
     priceLabel: "$295",
-    subtitle: "For any goods valued over CA$2,500",
+    subtitle: "For any goods valued over CA$2,500 — declaration prepared for filing by your licensed broker",
     features: [
-      "Full electronic customs entry",
+      "Full customs declaration prepared for your broker to file",
       "Duty & tax calculation",
       "Value validation review",
-      "Release coordination",
+      "Release coordination with your broker and carrier",
       "Standard tariff treatment",
       "Basic compliance screening",
     ],
@@ -73,12 +73,12 @@ const PACKAGES = [
   },
   {
     id: "compliance-clearance",
-    name: "Clearance + Compliance Review",
+    name: "Clearance Coordination + Compliance Review",
     price: 395,
     priceLabel: "$395",
-    subtitle: "Full clearance plus regulatory compliance analysis",
+    subtitle: "Coordinated clearance preparation plus regulatory compliance analysis",
     features: [
-      "Everything in Commercial Import Clearance",
+      "Everything in Commercial Import Clearance Coordination",
       "HS code verification (1 line)",
       "Tariff treatment eligibility review (CUSMA / CPTPP / CETA)",
       "SIMA screening flag check",
@@ -95,8 +95,8 @@ const ADDONS = [
   { id: "addon-hs-additional", name: "Additional HS Line", price: 25, priceLabel: "$25" },
   { id: "addon-import-permit", name: "Import Permit Submission", price: 125, priceLabel: "$125" },
   { id: "addon-cfia", name: "CFIA Coordination", price: 150, priceLabel: "$150" },
-  { id: "addon-b2-correction", name: "B2 Correction", price: 250, priceLabel: "from $250" },
-  { id: "addon-after-hours", name: "After-Hours Clearance", price: 175, priceLabel: "$175" },
+  { id: "addon-b2-correction", name: "B2 Correction (prepared for your broker)", price: 250, priceLabel: "from $250" },
+  { id: "addon-after-hours", name: "After-Hours Clearance Coordination", price: 175, priceLabel: "$175" },
   { id: "addon-importer-setup", name: "Importer Account Setup", price: 95, priceLabel: "$95" },
   { id: "addon-cbsa-id", name: "CBSA ID Assistance", price: 95, priceLabel: "$95" },
 ];
@@ -117,9 +117,9 @@ export default function CustomsClearance() {
     const metaDesc = document.querySelector('meta[name="description"]');
     const ogTitle = document.querySelector('meta[property="og:title"]');
     const ogDesc = document.querySelector('meta[property="og:description"]');
-    if (metaDesc) metaDesc.setAttribute("content", "Professional customs clearance coordination for Canadian imports. Transparent flat pricing: LVS from CA$145, Commercial Clearance CA$295, Compliance Review CA$395.");
-    if (ogTitle) ogTitle.setAttribute("content", "Canadian Customs Clearance & Import Compliance | AccessToNorth");
-    if (ogDesc) ogDesc.setAttribute("content", "Structured, transparent customs clearance. No negotiated pricing, no manual quotes. Flat-rate packages for every shipment.");
+    if (metaDesc) metaDesc.setAttribute("content", "Professional customs clearance coordination for Canadian imports — we prepare your declaration paperwork for filing by your licensed broker. Transparent flat pricing: LVS from CA$145, Commercial Coordination CA$295, Compliance Review CA$395.");
+    if (ogTitle) ogTitle.setAttribute("content", "Canadian Customs Clearance Coordination & Import Compliance | AccessToNorth");
+    if (ogDesc) ogDesc.setAttribute("content", "Structured, transparent customs clearance coordination. We prepare declaration paperwork for filing by your licensed broker. Flat-rate packages for every shipment.");
     return () => {
       document.title = "AccessToNorth.com - Expert GST/HST & Business Number Registration in Canada";
       if (metaDesc) metaDesc.setAttribute("content", "Canadian GST/HST, Business Number, CARM, and customs filings coordinated under signed authorization. Flat-fee service for residents and non-residents. From CA$99.");
@@ -153,7 +153,7 @@ export default function CustomsClearance() {
   };
 
   const whyDifferentItems = [
-    { icon: FileCheck, text: "Customs declaration" },
+    { icon: FileCheck, text: "Customs declaration paperwork prepared for your broker" },
     { icon: Search, text: "HS classification review" },
     { icon: Scale, text: "Tariff treatment eligibility" },
     { icon: AlertTriangle, text: "SIMA & safeguard screening" },
@@ -169,11 +169,11 @@ export default function CustomsClearance() {
   ];
 
   const processSteps = [
-    { step: 1, title: "Select your services", description: "Choose a clearance package and any add-ons, then proceed to checkout.", icon: ShoppingCart },
+    { step: 1, title: "Select your services", description: "Choose a clearance coordination package and any add-ons, then proceed to checkout.", icon: ShoppingCart },
     { step: 2, title: "Submit required documents", description: "Upload your commercial invoice, packing list, and other documents based on your selected services.", icon: Send },
     { step: 3, title: "We review & confirm scope", description: "We assess documentation, verify completeness, and confirm the service scope.", icon: Search },
-    { step: 4, title: "Electronic filing", description: "Your customs entry is filed electronically with CBSA via EDI.", icon: FileText },
-    { step: 5, title: "Release confirmation", description: "You receive confirmation once goods are cleared, plus a compliance summary if applicable.", icon: CheckCircle2 },
+    { step: 4, title: "We prepare your declaration for filing", description: "We assemble your EDI-ready customs declaration and broker-handoff package. Your licensed customs broker files it with CBSA. If you don't have a broker, we'll introduce you to a vetted partner.", icon: FileText },
+    { step: 5, title: "Release confirmation", description: "Your broker confirms release with CBSA and we relay the confirmation to you, plus a compliance summary if applicable.", icon: CheckCircle2 },
   ];
 
   return (
@@ -196,10 +196,10 @@ export default function CustomsClearance() {
                 Cross-Border Compliance Infrastructure
               </div>
               <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 font-display leading-tight" data-testid="text-clearance-heading">
-                Canadian Customs Clearance & Import Compliance
+                Canadian Customs Clearance Coordination & Import Compliance
               </h1>
               <p className="text-base md:text-lg text-white/70 mb-8 max-w-lg" data-testid="text-clearance-subheading">
-                Flat-rate, transparent pricing. No negotiations, no manual quotes. Select your services, submit documents, and clear your shipment.
+                Flat-rate, transparent pricing. We coordinate your clearance and prepare the declaration paperwork — your licensed customs broker files it with CBSA. No negotiations, no manual quotes.
               </p>
               <div className="flex flex-col sm:flex-row items-start gap-3">
                 <Button
@@ -236,7 +236,7 @@ export default function CustomsClearance() {
                 <div className="absolute -bottom-8 -left-8 w-56 h-56 bg-indigo-400/10 rounded-full blur-2xl"></div>
                 <Card className="relative z-10 bg-white/5 border-white/10 backdrop-blur-sm p-6">
                   <div className="space-y-3">
-                    {["Customs Declaration Filed", "HS Code Verified", "Tariff Treatment Applied", "SIMA Screening Clear", "Release Confirmed"].map((item, i) => (
+                    {["Declaration Prepared for Broker", "HS Code Verified", "Tariff Treatment Applied", "SIMA Screening Clear", "Release Confirmed"].map((item, i) => (
                       <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
                         <div className={`w-7 h-7 rounded-full flex items-center justify-center ${i < 4 ? "bg-green-500/20" : "bg-white/10"}`}>
                           {i < 4 ? (
@@ -539,7 +539,7 @@ export default function CustomsClearance() {
                 Do you act as a licensed customs broker?
               </AccordionTrigger>
               <AccordionContent className="text-sm text-slate-600 pb-4 text-left">
-                We coordinate licensed brokerage services and compliance review. All customs entries are filed through licensed customs broker partners. Our role is to manage the coordination, documentation review, and compliance screening to ensure your shipment clears efficiently and correctly.
+                No. AccessToNorth is not a licensed customs broker and does not file declarations with CBSA. We coordinate the clearance, review your documentation, screen for compliance issues, and prepare an EDI-ready declaration package — your licensed customs broker files it with CBSA. If you don't have a broker, we'll introduce you to a vetted partner.
               </AccordionContent>
             </AccordionItem>
 
@@ -548,7 +548,7 @@ export default function CustomsClearance() {
                 How long does customs clearance take?
               </AccordionTrigger>
               <AccordionContent className="text-sm text-slate-600 pb-4 text-left">
-                Standard commercial clearance is typically processed within 1-2 business days after we receive complete documentation. Compliance review packages may take an additional business day. Urgent processing is available for time-sensitive shipments.
+                Our coordination and document-preparation work is typically complete within 1–2 business days after we receive complete documentation. Compliance review packages may take an additional business day. Final release timing depends on your broker's filing turnaround and CBSA processing. Urgent coordination is available for time-sensitive shipments.
               </AccordionContent>
             </AccordionItem>
           </Accordion>
@@ -565,10 +565,10 @@ export default function CustomsClearance() {
             transition={{ duration: 0.5 }}
           >
             <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-3 font-display">
-              Ready to clear your shipment?
+              Ready to coordinate your shipment's clearance?
             </h2>
             <p className="text-slate-500 mb-6 max-w-lg mx-auto">
-              Select your clearance package, add any services you need, and proceed to checkout. Structured. Transparent. Platform-based.
+              Select a clearance coordination package, add any services you need, and proceed to checkout. We prepare the paperwork — your licensed broker files it with CBSA. Structured. Transparent. Platform-based.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Button

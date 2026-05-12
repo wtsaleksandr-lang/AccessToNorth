@@ -51,18 +51,18 @@ const sections: PricingSection[] = [
   },
   {
     id: "clearance",
-    title: "Customs Clearance",
+    title: "Customs Clearance Coordination",
     items: [
-      { name: "Low-Value Import Clearance", priceCAD: 145, note: "Under CA$2,500", service: "clearance-lvs", isClearance: true },
-      { name: "Commercial Import Clearance", priceCAD: 295, note: "Over CA$2,500", service: "clearance-commercial", isClearance: true },
-      { name: "Clearance + Compliance Review", priceCAD: 395, service: "clearance-compliance", isClearance: true },
+      { name: "Low-Value Import Clearance Coordination", priceCAD: 145, note: "Under CA$2,500 — paperwork prepared for filing by your licensed broker", service: "clearance-lvs", isClearance: true },
+      { name: "Commercial Import Clearance Coordination", priceCAD: 295, note: "Over CA$2,500 — declaration prepared for filing by your licensed broker", service: "clearance-commercial", isClearance: true },
+      { name: "Clearance Coordination + Compliance Review", priceCAD: 395, service: "clearance-compliance", isClearance: true },
     ],
   },
   {
     id: "export",
     title: "Export",
     items: [
-      { name: "B13 Export Declaration", priceCAD: 125, service: "b13_export" },
+      { name: "B13 Export Declaration Preparation", priceCAD: 125, service: "b13_export" },
     ],
   },
 ];
@@ -72,8 +72,8 @@ const addons = [
   { name: "Additional HS Line", priceCAD: 25, key: "hs_extra" },
   { name: "Import Permit Submission", priceCAD: 125, key: "import_permit" },
   { name: "CFIA Coordination", priceCAD: 150, key: "cfia" },
-  { name: "B2 Correction", priceCAD: 250, key: "b2_correction", pricePrefix: "from " },
-  { name: "After-Hours Clearance", priceCAD: 175, key: "after_hours" },
+  { name: "B2 Correction (prepared for your broker)", priceCAD: 250, key: "b2_correction", pricePrefix: "from " },
+  { name: "After-Hours Clearance Coordination", priceCAD: 175, key: "after_hours" },
   { name: "Importer Account Setup", priceCAD: 95, key: "importer_account" },
   { name: "CBSA ID Assistance", priceCAD: 95, key: "cbsa_id" },
 ];
@@ -81,7 +81,7 @@ const addons = [
 const tabs = [
   { id: "business", label: "Starting a Business" },
   { id: "importer", label: "Importer Setup" },
-  { id: "clearance", label: "Customs Clearance" },
+  { id: "clearance", label: "Customs Clearance Coordination" },
   { id: "export", label: "Export" },
 ];
 
@@ -117,7 +117,7 @@ export default function Pricing() {
 
   usePageMeta({
     title: "Pricing | AccessToNorth.com",
-    description: "Transparent, flat-rate pricing for Canadian business registration, GST/HST, CARM, customs clearance, and export services. From CA$99. No hidden fees.",
+    description: "Transparent, flat-rate pricing for Canadian business registration, GST/HST, CARM, customs clearance coordination, and export services. From CA$99. No hidden fees.",
     canonical: "https://www.accesstonorth.com/pricing",
   });
 
