@@ -1,3 +1,7 @@
+// Doppler bootstrap — MUST be the first import. Fills process.env from the
+// Doppler vault before any other module reads env-vars at import time
+// (server/db.ts throws on missing DATABASE_URL, etc.). Side-effect only.
+import "./bootstrapDoppler";
 import express, { type Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
