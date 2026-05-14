@@ -40,7 +40,7 @@ export default function Privacy() {
           <div className="prose prose-slate max-w-none space-y-10 text-slate-700">
             <section>
               <p className="lead text-base">
-                AccessToNorth.com (operated through MR Commerce LLC and its Canadian affiliate, collectively
+                AccessToNorth.com (operated through MR Holdings &amp; Trade LLC and its Canadian affiliate, collectively
                 &ldquo;AccessToNorth&rdquo;, &ldquo;we&rdquo;, or &ldquo;us&rdquo;) is committed to protecting the
                 personal information of our clients, prospects, and website visitors. This policy explains what we
                 collect, why, how long we keep it, and your rights. If anything here is unclear, email{" "}
@@ -272,9 +272,10 @@ export default function Privacy() {
                 </a>
               </p>
               <p className="text-sm text-slate-500 mt-3">
-                AccessToNorth is operated by MR Commerce LLC and its affiliated Canadian entity. Registered Canadian
-                business location: Ontario, Canada. For regulatory complaints: Office of the Privacy Commissioner of
-                Canada, 30 Victoria Street, Gatineau, Quebec K1A 1H3.
+                AccessToNorth is operated by MR Holdings &amp; Trade LLC (a Wyoming limited liability company,
+                registered office 30 N Gould St Ste R, Sheridan, WY 82801, United States) and its affiliated
+                Canadian entity in Toronto, Canada. For regulatory complaints: Office of the Privacy Commissioner
+                of Canada, 30 Victoria Street, Gatineau, Quebec K1A 1H3.
               </p>
             </section>
           </div>

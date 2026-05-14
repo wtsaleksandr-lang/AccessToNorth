@@ -61,8 +61,8 @@ export function Footer() {
             </ul>
             <div className="space-y-0.5 text-xs text-slate-500">
               <p>Operates via affiliated entities in the US &amp; Canada.</p>
-              <p>US entity: MR Commerce LLC</p>
-              <p>Registered Canadian business location: Ontario, Canada</p>
+              <p>US entity: MR Holdings &amp; Trade LLC</p>
+              <p>Toronto, Canada</p>
             </div>
           </div>
 

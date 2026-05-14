@@ -29,7 +29,7 @@ Never:
 
 const COMPANY_KNOWLEDGE = `Company facts:
 - AccessToNorth is an administrative services firm that coordinates Canadian CRA and CBSA filings.
-- We operate via affiliated entities in Canada (Ontario) and the US (MR Commerce LLC).
+- We operate via affiliated entities in Toronto, Canada and the US (MR Holdings & Trade LLC).
 - We are NOT a law firm, NOT a customs broker, NOT a CPA firm.
 - For customs clearance specifically: we COORDINATE clearance and PREPARE declaration paperwork.
   The licensed customs broker (yours, or a vetted partner we introduce) files the declaration

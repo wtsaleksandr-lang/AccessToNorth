@@ -231,8 +231,8 @@ export default function About() {
               </div>
               <p className="text-sm text-slate-600 leading-relaxed">
                 AccessToNorth is operated through affiliated entities in the United States and
-                Canada. Our registered Canadian business location is in Ontario. Our US entity is
-                MR Commerce LLC. We are an administrative-services firm that coordinates
+                Canada. We operate out of Toronto, Canada. Our US entity is
+                MR Holdings &amp; Trade LLC. We are an administrative-services firm that coordinates
                 documentation with the CRA, CBSA, and other Canadian agencies. We are not a law
                 firm, not a customs broker, and not affiliated with any government agency.
               </p>
