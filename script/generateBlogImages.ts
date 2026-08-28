@@ -141,7 +141,7 @@ function renderSvg(post: BlogPost): string {
   <!-- Footer: branding + date -->
   <line x1="80" y1="520" x2="1120" y2="520" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="1" />
   <text x="80" y="565" fill="#FFFFFF" fill-opacity="0.9" font-family="Inter, system-ui, sans-serif" font-size="26" font-weight="700">AccessToNorth.com</text>
-  <text x="1120" y="565" text-anchor="end" fill="#FFFFFF" fill-opacity="0.7" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="500">${escape(new Date(post.publishDate).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" }))}</text>
+  <text x="1120" y="565" text-anchor="end" fill="#FFFFFF" fill-opacity="0.7" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="500">${escape(new Date(post.publishDate).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" }))}</text>
 </svg>
 `;
 }

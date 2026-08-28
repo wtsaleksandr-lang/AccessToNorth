@@ -10,4 +10,4 @@ Disallow: /payment-cancel
 Disallow: /api/
 Allow: /
 
-Sitemap: https://www.accesstonorth.com/sitemap.xml
+Sitemap: https://accesstonorth.com/sitemap.xml

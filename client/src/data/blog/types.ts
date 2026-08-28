@@ -46,6 +46,8 @@ export interface BlogPost {
   metaDescription: string;
   /** ISO date string — YYYY-MM-DD. Posts with future dates are hidden. */
   publishDate: string;
+  /** ISO date of the latest meaningful factual/content revision. */
+  updatedDate?: string;
   category: BlogCategory;
   /** Primary keyword first, then supporting keywords. Used for tags. */
   tags: string[];

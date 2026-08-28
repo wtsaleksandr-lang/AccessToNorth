@@ -1,7 +1,13 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
-import { ROUTES, SITE_URL, type RouteMeta } from "./routeMetadata";
+import {
+  BRAND_ICON,
+  ROUTES,
+  SITE_URL,
+  canonicalUrl,
+  type RouteMeta,
+} from "./routeMetadata";
 
 /**
  * Zero-dep "meta-shell" prerender.
@@ -34,26 +40,74 @@ function escapeJsonForScriptTag(obj: unknown): string {
   return JSON.stringify(obj).replace(/</g, "\\u003c");
 }
 
-function buildWebPageJsonLd(route: RouteMeta): string {
-  const data = {
+function buildPrimaryJsonLd(route: RouteMeta): string {
+  const url = canonicalUrl(route.path);
+  const base = {
     "@context": "https://schema.org",
-    "@type": "WebPage",
-    url: `${SITE_URL}${route.path}`,
+    "@id": `${url}#primary`,
+    url,
     name: route.title,
     description: route.description,
     inLanguage: "en-CA",
-    isPartOf: {
-      "@type": "WebSite",
-      name: "AccessToNorth.com",
-      url: SITE_URL,
-    },
   };
-  return `<script type="application/ld+json" data-prerender="webpage">${escapeJsonForScriptTag(data)}</script>`;
+
+  const data = route.schemaType === "WebApplication"
+    ? {
+        ...base,
+        "@type": "WebApplication",
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Any",
+        isAccessibleForFree: true,
+        offers: {
+          "@type": "Offer",
+          price: "0",
+          priceCurrency: "CAD",
+        },
+        provider: {
+          "@type": "Organization",
+          name: "AccessToNorth.com",
+          url: `${SITE_URL}/`,
+        },
+      }
+    : route.schemaType === "Article" || route.schemaType === "BlogPosting"
+      ? {
+          ...base,
+          "@type": route.schemaType,
+          headline: route.title,
+          image: [route.ogImage ?? `${SITE_URL}/og-image.png`],
+          datePublished: route.datePublished,
+          dateModified: route.dateModified ?? route.datePublished,
+          author: {
+            "@type": "Organization",
+            name: "AccessToNorth Trade Compliance Team",
+            url: `${SITE_URL}/about/`,
+          },
+          publisher: {
+            "@type": "Organization",
+            name: "AccessToNorth.com",
+            logo: { "@type": "ImageObject", url: BRAND_ICON },
+          },
+          mainEntityOfPage: { "@type": "WebPage", "@id": url },
+        }
+      : {
+          ...base,
+          "@type": "WebPage",
+          isPartOf: {
+            "@type": "WebSite",
+            name: "AccessToNorth.com",
+            url: `${SITE_URL}/`,
+          },
+        };
+
+  return `<script type="application/ld+json" data-prerender="primary">${escapeJsonForScriptTag(data)}</script>`;
 }
 
 function injectMetaForRoute(html: string, route: RouteMeta): string {
-  const canonical = `${SITE_URL}${route.path}`;
+  const canonical = canonicalUrl(route.path);
   const og = route.ogImage ?? `${SITE_URL}/og-image.png`;
+  const ogType = route.schemaType === "Article" || route.schemaType === "BlogPosting"
+    ? "article"
+    : "website";
 
   // 1. Replace the <title>
   let out = html.replace(
@@ -88,6 +142,10 @@ function injectMetaForRoute(html: string, route: RouteMeta): string {
       replacement: `<meta property="og:image" content="${og}">`,
     },
     {
+      pattern: /<meta property="og:type"[^>]*>/i,
+      replacement: `<meta property="og:type" content="${ogType}">`,
+    },
+    {
       pattern: /<meta name="twitter:title"[^>]*>/i,
       replacement: `<meta name="twitter:title" content="${escapeAttr(route.title)}">`,
     },
@@ -118,8 +176,18 @@ function injectMetaForRoute(html: string, route: RouteMeta): string {
     extraTags.push(canonicalTag);
   }
 
-  // 5. WebPage JSON-LD for this URL
-  extraTags.push(buildWebPageJsonLd(route));
+  // 5. Remove invalid same-URL multilingual alternates. The site currently
+  // changes language client-side and does not have distinct French URLs.
+  out = out.replace(/\s*<link rel="alternate" hreflang="[^"]+"[^>]*>/gi, "");
+
+  // 6. Explicit public-page crawl directives and route-specific JSON-LD.
+  const robotsTag = '<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">';
+  if (/<meta name="robots"[^>]*>/i.test(out)) {
+    out = out.replace(/<meta name="robots"[^>]*>/i, robotsTag);
+  } else {
+    extraTags.push(robotsTag);
+  }
+  extraTags.push(buildPrimaryJsonLd(route));
 
   // Inject any missing tags right before </head>
   if (extraTags.length > 0) {

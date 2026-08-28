@@ -176,6 +176,7 @@ export const POSTS: BlogPost[] = [
     metaDescription:
       "Five quick questions that tell you whether you need a CRA Business Number — for incorporated companies, sole proprietors, non-residents, and importers.",
     publishDate: "2026-05-11",
+    updatedDate: "2026-08-28",
     category: "registration-tax",
     tags: ["business number", "cra bn", "who needs a business number", "bn canada"],
     author: TEAM,
@@ -201,7 +202,7 @@ export const POSTS: BlogPost[] = [
       {
         heading: "Question 3 — Will you import goods commercially into Canada?",
         body: "Yes → BN required, specifically with an import/export program account (RM0001). CBSA requires this number on every commercial release, and under CARM you can't onboard without it.",
-        note: "Courier LVS imports below CA$2,500 where the courier acts as importer of record don't require you to have a BN. Everything above that or with a formal entry does.",
+        note: "Eligible courier shipments up to CA$3,300 may use CLVS, but the importer remains responsible for accurate customs information. Confirm BN and CARM requirements with the courier or broker for your accounting setup.",
       },
       {
         heading: "Question 4 — Are you operating as a corporation?",
@@ -607,6 +608,7 @@ export const POSTS: BlogPost[] = [
     metaDescription:
       "The Release Prior to Payment (RPP) program lets Canadian importers take possession of goods before paying duty — how it works, who qualifies, and how to apply.",
     publishDate: "2026-06-22",
+    updatedDate: "2026-08-28",
     category: "carm-imports",
     tags: ["rpp", "release prior to payment", "monthly statement of account", "carm rpp"],
     author: TEAM,
@@ -654,7 +656,7 @@ export const POSTS: BlogPost[] = [
       },
       {
         heading: "Is RPP always the right choice?",
-        body: "If you import more than once a quarter, yes. If you're a true one-off importer (say, bringing in equipment once and never again), RPP is still nice-to-have but the CARM security requirement is the same either way. The only scenario where skipping RPP makes sense is if you genuinely only ever ship under the LVS CA$2,500 threshold, handled by courier.",
+        body: "RPP is useful when you want goods released before final payment of duties and taxes. Without RPP, payment is required before release. Eligible courier shipments up to the CA$3,300 CLVS threshold may follow a simplified process, but confirm how the courier accounts for the goods and whether your business still needs its own importer setup.",
       },
     ],
     relatedPosts: [
@@ -1540,7 +1542,7 @@ export const POSTS: BlogPost[] = [
       {
         heading: "Duty on cross-border shipments",
         body: [
-          "When a non-Canadian Shopify seller ships to Canadian customers, the customer typically pays duty + GST at delivery (courier handles under LVS for shipments under CA$2,500).",
+          "When a non-Canadian Shopify seller ships to Canadian customers, the customer may be billed duty, GST, and courier fees at delivery. Eligible courier shipments up to CA$3,300 may use CLVS.",
           "If you want to offer DDP ('landed cost included'), Shopify has a Duties & Import Taxes feature. It calculates estimated duty + tax and collects at checkout. You then pay the courier or broker on import. BUT: this requires you to have a BN and CARM account, because YOU become the importer of record.",
         ],
       },
@@ -1605,7 +1607,7 @@ export const POSTS: BlogPost[] = [
       {
         heading: "Small parcel (UPS, FedEx, DHL under 150 lb)",
         body: [
-          "Typical freight cost per 10 lb Chicago → Toronto: CA$35-55. Under LVS (under CA$2,500), the courier handles clearance automatically and adds a brokerage fee of CA$7-15 per shipment.",
+          "Typical freight cost per 10 lb Chicago → Toronto: CA$35-55. Eligible courier shipments up to CA$3,300 may use CLVS, with brokerage or disbursement fees depending on the carrier and account.",
           "Duty and GST are passed to the consignee on invoice. Expect 5-10% duty on most goods plus 5% GST. Real landed cost on a CA$500 parcel: roughly CA$75 freight + CA$10 brokerage + CA$50 duty + CA$25 GST = CA$160 over invoice.",
         ],
       },
@@ -1696,7 +1698,7 @@ export const POSTS: BlogPost[] = [
           "DDP means YOU become the Canadian importer of record on every shipment. That means: BN with RM extension, CARM onboarding, financial security, a customs broker, and RPP enrollment if you're doing any volume.",
           "Operationally, your 3PL or fulfillment partner files each entry under your BN, duty is billed to your RPP monthly, and you reconcile landed cost against the duty you quoted at checkout. Shopify's Duties & Import Taxes feature handles the checkout math but NOT the customs filings.",
         ],
-        note: "Many US sellers try 'unofficial DDP' where the courier (UPS/FedEx) pre-clears on their behalf. This works for small parcels under LVS but falls apart above CA$2,500 per shipment. Courier bonds typically can't handle a high-volume DDP operation long-term.",
+        note: "Many US sellers try 'unofficial DDP' where a courier arranges customs processing. CLVS may simplify eligible shipments up to CA$3,300, but a high-volume DDP program still needs a deliberate importer, CARM, tax, and brokerage setup.",
       },
       {
         heading: "The DAP operational profile",

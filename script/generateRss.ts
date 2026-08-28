@@ -3,8 +3,9 @@ import { resolve } from "path";
 import { fileURLToPath } from "url";
 import { getPublishedPosts } from "../client/src/data/blog/posts";
 import { CATEGORIES } from "../client/src/data/blog/categories";
+import { SITE_URL, canonicalUrl } from "../shared/seo";
 
-const SITE = "https://www.accesstonorth.com";
+const SITE = SITE_URL;
 
 function escapeXml(unsafe: string): string {
   return unsafe.replace(/[<>&'"]/g, (c) => {
@@ -35,7 +36,7 @@ export async function generateRss(outDir: string): Promise<void> {
   const items = posts
     .map((post) => {
       const cat = CATEGORIES[post.category];
-      const url = `${SITE}/blog/${post.slug}`;
+      const url = canonicalUrl(`/blog/${post.slug}`);
       const pubDate = new Date(`${post.publishDate}T09:00:00-04:00`).toUTCString();
       const description = `${post.intro}\n\nKey takeaways:\n${post.keyTakeaways.map((k) => `- ${k}`).join("\n")}`;
 
@@ -57,7 +58,7 @@ export async function generateRss(outDir: string): Promise<void> {
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>AccessToNorth Blog — Canadian Trade &amp; Tax Insights</title>
-    <link>${SITE}/blog</link>
+    <link>${canonicalUrl("/blog")}</link>
     <atom:link href="${SITE}/rss.xml" rel="self" type="application/rss+xml" />
     <description>Weekly guides on Canadian GST/HST, CARM, customs clearance, and import compliance.</description>
     <language>en-CA</language>

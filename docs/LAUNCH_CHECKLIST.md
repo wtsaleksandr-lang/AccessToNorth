@@ -1,5 +1,7 @@
 # AccessToNorth — Launch Checklist
 
+> SEO and indexing work is tracked in [`SEO_ROADMAP.md`](./SEO_ROADMAP.md), including the business-icon favicon and Google Search Console steps.
+
 Every manual task that requires YOUR input, ordered by priority. Completing items 1–9 gets you to a functioning production site. Items 10+ are enhancements.
 
 ---

@@ -10,6 +10,7 @@ import { ArrowRight, CheckCircle2, Info, Calendar, Clock, Tag } from "lucide-rea
 import { getPostBySlug, POSTS } from "@/data/blog/posts";
 import { CATEGORIES } from "@/data/blog/categories";
 import NotFound from "@/pages/not-found";
+import { BRAND_ICON, SITE_URL, assetUrl, canonicalUrl } from "@shared/seo";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-CA", {
@@ -28,14 +29,14 @@ export default function BlogPost() {
   // Hide future-dated posts from direct URL visits? No — keep them accessible
   // for preview; just skip them from the index, sitemap, and RSS.
   const cat = CATEGORIES[post.category];
-  const canonical = `https://www.accesstonorth.com/blog/${post.slug}`;
+  const canonical = canonicalUrl(`/blog/${post.slug}`);
   const heroUrl = post.heroImageUrl ?? `/blog/${post.slug}.svg`;
 
   usePageMeta({
     title: post.metaTitle,
     description: post.metaDescription,
     canonical,
-    ogImage: `https://www.accesstonorth.com${heroUrl}`,
+    ogImage: assetUrl(heroUrl),
   });
 
   const articleJsonLd = {
@@ -43,23 +44,23 @@ export default function BlogPost() {
     "@type": "BlogPosting",
     headline: post.title,
     description: post.metaDescription,
-    image: [`https://www.accesstonorth.com${heroUrl}`],
+    image: [assetUrl(heroUrl)],
     author: {
       "@type": "Organization",
       name: post.author.name,
-      url: "https://www.accesstonorth.com",
+      url: `${SITE_URL}/`,
     },
     publisher: {
       "@type": "Organization",
       name: "AccessToNorth.com",
       logo: {
         "@type": "ImageObject",
-        url: "https://www.accesstonorth.com/favicon.png",
+        url: BRAND_ICON,
       },
     },
     mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
     datePublished: post.publishDate,
-    dateModified: post.publishDate,
+    dateModified: post.updatedDate ?? post.publishDate,
     keywords: post.tags.join(", "),
     articleSection: cat.name,
   };
@@ -68,8 +69,8 @@ export default function BlogPost() {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: "https://www.accesstonorth.com/" },
-      { "@type": "ListItem", position: 2, name: "Blog", item: "https://www.accesstonorth.com/blog" },
+      { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+      { "@type": "ListItem", position: 2, name: "Blog", item: canonicalUrl("/blog") },
       { "@type": "ListItem", position: 3, name: post.title, item: canonical },
     ],
   };
@@ -108,6 +109,12 @@ export default function BlogPost() {
               <Calendar className="w-3 h-3" aria-hidden="true" />
               {formatDate(post.publishDate)}
             </span>
+            {post.updatedDate && (
+              <>
+                <span className="text-slate-300" aria-hidden="true">·</span>
+                <span>Updated {formatDate(post.updatedDate)}</span>
+              </>
+            )}
             <span className="text-slate-300" aria-hidden="true">·</span>
             <span className="inline-flex items-center gap-1">
               <Clock className="w-3 h-3" aria-hidden="true" />

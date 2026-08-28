@@ -7,8 +7,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { JsonLd } from "@/components/JsonLd";
 import { ArrowRight, CheckCircle2, Info } from "lucide-react";
+import { BRAND_ICON, SITE_URL, canonicalUrl } from "@shared/seo";
 
 interface RelatedLink {
+  label: string;
+  href: string;
+}
+
+interface SourceLink {
   label: string;
   href: string;
 }
@@ -42,6 +48,10 @@ interface ResourceArticleProps {
   ctaService?: string;
   /** ISO date when this article was last reviewed — emitted in JSON-LD. */
   lastReviewed?: string;
+  /** Original publication date when different from the review date. */
+  datePublished?: string;
+  /** Primary government or standards sources used for the article. */
+  sourceLinks?: SourceLink[];
 }
 
 export function ResourceArticlePage({
@@ -56,8 +66,11 @@ export function ResourceArticlePage({
   ctaText = "Need help? Request a consultation",
   ctaService,
   lastReviewed,
+  datePublished,
+  sourceLinks,
 }: ResourceArticleProps) {
-  usePageMeta({ title: metaTitle, description: metaDescription, canonical });
+  const normalizedCanonical = canonicalUrl(canonical);
+  usePageMeta({ title: metaTitle, description: metaDescription, canonical: normalizedCanonical });
 
   const articleJsonLd = {
     "@context": "https://schema.org",
@@ -67,18 +80,18 @@ export function ResourceArticlePage({
     author: {
       "@type": "Organization",
       name: "AccessToNorth.com",
-      url: "https://www.accesstonorth.com",
+      url: `${SITE_URL}/`,
     },
     publisher: {
       "@type": "Organization",
       name: "AccessToNorth.com",
       logo: {
         "@type": "ImageObject",
-        url: "https://www.accesstonorth.com/favicon.png",
+        url: BRAND_ICON,
       },
     },
-    mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
-    datePublished: lastReviewed ?? "2026-04-01",
+    mainEntityOfPage: { "@type": "WebPage", "@id": normalizedCanonical },
+    datePublished: datePublished ?? lastReviewed ?? "2026-04-01",
     dateModified: lastReviewed ?? "2026-04-01",
   };
 
@@ -86,16 +99,16 @@ export function ResourceArticlePage({
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: "https://www.accesstonorth.com/" },
-      { "@type": "ListItem", position: 2, name: "Resources", item: "https://www.accesstonorth.com/resources" },
-      { "@type": "ListItem", position: 3, name: title, item: canonical },
+      { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+      { "@type": "ListItem", position: 2, name: "Resources", item: canonicalUrl("/resources") },
+      { "@type": "ListItem", position: 3, name: title, item: normalizedCanonical },
     ],
   };
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
-      <JsonLd id={`article-jsonld-${canonical}`} data={articleJsonLd} />
-      <JsonLd id={`article-breadcrumb-${canonical}`} data={breadcrumbJsonLd} />
+      <JsonLd id={`article-jsonld-${normalizedCanonical}`} data={articleJsonLd} />
+      <JsonLd id={`article-breadcrumb-${normalizedCanonical}`} data={breadcrumbJsonLd} />
       <Navbar />
       <main className="flex-1 pt-28 pb-16">
         <article className="container mx-auto px-4 md:px-6 max-w-3xl">
@@ -171,6 +184,26 @@ export function ResourceArticlePage({
                 </section>
               ))}
             </div>
+          )}
+
+          {sourceLinks && sourceLinks.length > 0 && (
+            <aside className="my-10 p-5 rounded-xl bg-white border border-slate-200">
+              <h2 className="text-sm font-semibold text-slate-800 mb-3">Official sources</h2>
+              <ul className="space-y-2 text-sm">
+                {sourceLinks.map((source) => (
+                  <li key={source.href}>
+                    <a
+                      href={source.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      {source.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </aside>
           )}
 
           {relatedLinks && relatedLinks.length > 0 && (

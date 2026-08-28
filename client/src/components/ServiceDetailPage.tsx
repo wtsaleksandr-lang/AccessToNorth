@@ -12,6 +12,7 @@ import { useCurrency } from "@/contexts/CurrencyContext";
 import { useToast } from "@/hooks/use-toast";
 import { SampleDeliverableCard, type SampleDeliverableProps } from "@/components/SampleDeliverableCard";
 import { JsonLd } from "@/components/JsonLd";
+import { SITE_URL, canonicalUrl } from "@shared/seo";
 
 interface ServiceDetailProps {
   title: string;
@@ -42,7 +43,8 @@ export function ServiceDetailPage({
   additionalInfo,
   sampleDeliverable,
 }: ServiceDetailProps) {
-  usePageMeta({ title: metaTitle, description: metaDescription, canonical });
+  const normalizedCanonical = canonicalUrl(canonical);
+  usePageMeta({ title: metaTitle, description: metaDescription, canonical: normalizedCanonical });
   const { addItem, setIsOpen } = useCart();
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
@@ -68,10 +70,10 @@ export function ServiceDetailPage({
     provider: {
       "@type": "Organization",
       name: "AccessToNorth.com",
-      url: "https://www.accesstonorth.com",
+      url: `${SITE_URL}/`,
     },
     areaServed: { "@type": "Country", name: "Canada" },
-    url: canonical,
+    url: normalizedCanonical,
     ...(priceCAD
       ? {
           offers: {
@@ -79,7 +81,7 @@ export function ServiceDetailPage({
             price: priceCAD,
             priceCurrency: "CAD",
             availability: "https://schema.org/InStock",
-            url: canonical,
+            url: normalizedCanonical,
           },
         }
       : {}),
@@ -89,9 +91,9 @@ export function ServiceDetailPage({
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: "https://www.accesstonorth.com/" },
-      { "@type": "ListItem", position: 2, name: "Services", item: "https://www.accesstonorth.com/services" },
-      { "@type": "ListItem", position: 3, name: title, item: canonical },
+      { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+      { "@type": "ListItem", position: 2, name: "Services", item: canonicalUrl("/services") },
+      { "@type": "ListItem", position: 3, name: title, item: normalizedCanonical },
     ],
   };
 

@@ -1,10 +1,12 @@
 import { useEffect } from "react";
+import { DEFAULT_OG_IMAGE, SITE_URL, assetUrl, canonicalUrl } from "@shared/seo";
 
 interface PageMeta {
   title: string;
   description: string;
   canonical?: string;
   ogImage?: string;
+  robots?: string;
 }
 
 function setMeta(selector: string, attr: "name" | "property", key: string, value: string) {
@@ -17,7 +19,13 @@ function setMeta(selector: string, attr: "name" | "property", key: string, value
   el.setAttribute("content", value);
 }
 
-export function usePageMeta({ title, description, canonical, ogImage }: PageMeta) {
+export function usePageMeta({
+  title,
+  description,
+  canonical,
+  ogImage,
+  robots = "index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1",
+}: PageMeta) {
   useEffect(() => {
     document.title = title;
 
@@ -27,24 +35,32 @@ export function usePageMeta({ title, description, canonical, ogImage }: PageMeta
     setMeta('meta[name="twitter:title"]', "name", "twitter:title", title);
     setMeta('meta[name="twitter:description"]', "name", "twitter:description", description);
 
-    if (canonical) {
-      setMeta('meta[property="og:url"]', "property", "og:url", canonical);
+    const normalizedCanonical = canonical
+      ? canonicalUrl(canonical)
+      : canonicalUrl(window.location.pathname);
+
+    if (normalizedCanonical) {
+      setMeta('meta[property="og:url"]', "property", "og:url", normalizedCanonical);
       let canonicalLink = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
       if (!canonicalLink) {
         canonicalLink = document.createElement("link");
         canonicalLink.setAttribute("rel", "canonical");
         document.head.appendChild(canonicalLink);
       }
-      canonicalLink.setAttribute("href", canonical);
+      canonicalLink.setAttribute("href", normalizedCanonical);
     }
 
-    if (ogImage) {
-      setMeta('meta[property="og:image"]', "property", "og:image", ogImage);
-      setMeta('meta[name="twitter:image"]', "name", "twitter:image", ogImage);
-    }
+    const normalizedOgImage = ogImage
+      ? ogImage.startsWith("http")
+        ? ogImage.replace(/^https?:\/\/(?:www\.)?accesstonorth\.com/i, SITE_URL)
+        : assetUrl(ogImage)
+      : DEFAULT_OG_IMAGE;
+    setMeta('meta[property="og:image"]', "property", "og:image", normalizedOgImage);
+    setMeta('meta[name="twitter:image"]', "name", "twitter:image", normalizedOgImage);
+    setMeta('meta[name="robots"]', "name", "robots", robots);
 
     return () => {
       document.title = "AccessToNorth.com";
     };
-  }, [title, description, canonical, ogImage]);
+  }, [title, description, canonical, ogImage, robots]);
 }

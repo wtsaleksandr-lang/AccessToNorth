@@ -18,6 +18,7 @@ export default function NotFound() {
   usePageMeta({
     title: "Page Not Found | AccessToNorth.com",
     description: "The page you're looking for doesn't exist. Browse popular pages or head back home.",
+    robots: "noindex,nofollow",
   });
 
   return (

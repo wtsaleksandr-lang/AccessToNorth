@@ -2,15 +2,254 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>AccessToNorth Blog — Canadian Trade &amp; Tax Insights</title>
-    <link>https://www.accesstonorth.com/blog</link>
-    <atom:link href="https://www.accesstonorth.com/rss.xml" rel="self" type="application/rss+xml" />
+    <link>https://accesstonorth.com/blog/</link>
+    <atom:link href="https://accesstonorth.com/rss.xml" rel="self" type="application/rss+xml" />
     <description>Weekly guides on Canadian GST/HST, CARM, customs clearance, and import compliance.</description>
     <language>en-CA</language>
-    <lastBuildDate>Mon, 11 May 2026 03:44:29 GMT</lastBuildDate>
+    <lastBuildDate>Fri, 28 Aug 2026 21:45:10 GMT</lastBuildDate>
+    <item>
+      <title>CBSA AMPS Penalties: Top Violations and Average Fines</title>
+      <link>https://accesstonorth.com/blog/amps-penalties-canada/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/amps-penalties-canada/</guid>
+      <pubDate>Mon, 24 Aug 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>Compliance &amp; Duties</category>
+      <description>AMPS is how CBSA fines you for clerical and compliance errors that don&apos;t rise to the level of criminal prosecution. Penalties range from CA$150 to CA$25,000 per violation, and a busy importer can rack up several in a single audit if their documentation is sloppy. Here are the top 10 violations and the typical cost of each.
+
+Key takeaways:
+- AMPS penalties escalate by &apos;level&apos; — each repeat multiplies the base amount
+- Most common: C152 (failure to report), C218 (incorrect declaration), C215 (missing certificate)
+- First violations are often CA$150–500; repeat offenders hit CA$1,000+ fast
+- AMPS is assessable up to 4 years after the infraction
+- Clean compliance history lowers your risk of targeted audits</description>
+    </item>
+    <item>
+      <title>SIMA Duty 2026: Active Cases and What They Cost You</title>
+      <link>https://accesstonorth.com/blog/sima-duty-2026-cases/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/sima-duty-2026-cases/</guid>
+      <pubDate>Mon, 17 Aug 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>Compliance &amp; Duties</category>
+      <description>SIMA duty is the single biggest uncontrolled cost in Canadian importing. A 40% anti-dumping rate on a CA$500,000 annual import program is CA$200,000/year you didn&apos;t plan for. Here&apos;s what&apos;s active in 2026 and how to stay out of it.
+
+Key takeaways:
+- SIMA duties apply on top of MFN duty — not instead of it
+- Measures target specific product + country combinations, not broad categories
+- Most active cases in 2026 cover steel, aluminum, refined sugar, upholstered furniture, and specific copper/wire products
+- Normal-value determinations let pre-approved exporters avoid full SIMA duty
+- Check CBSA&apos;s Measures in Force list BEFORE placing any large order</description>
+    </item>
+    <item>
+      <title>What to Do When CBSA Holds Your Shipment</title>
+      <link>https://accesstonorth.com/blog/cbsa-shipment-hold-guide/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/cbsa-shipment-hold-guide/</guid>
+      <pubDate>Mon, 10 Aug 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>HS Codes &amp; Classification</category>
+      <description>A CBSA hold at the border means one thing: your cargo isn&apos;t moving until someone fixes something. The faster you identify the reason and respond, the less you pay in storage. Here&apos;s the triage checklist.
+
+Key takeaways:
+- CBSA holds fall into 6 categories — document, physical exam, SIMA, OGD, CARM, or random targeting
+- The first call is to your customs broker — they see the hold reason in CARM
+- Storage fees start immediately — CA$50–200/day at most ports, more at major airports
+- Most holds resolve in 1–3 business days once the triggering issue is fixed
+- Keep a &apos;hold response kit&apos; ready: commercial invoice, packing list, HS ruling, CUSMA certificate</description>
+    </item>
+    <item>
+      <title>Customs Valuation Methods in Canada Explained</title>
+      <link>https://accesstonorth.com/blog/customs-valuation-methods/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/customs-valuation-methods/</guid>
+      <pubDate>Mon, 03 Aug 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>HS Codes &amp; Classification</category>
+      <description>Duty in Canada is calculated on &apos;value for duty&apos; — not always the same as the invoice price. CBSA applies six valuation methods in hierarchical order. Most importers default to the first (transaction value) without knowing the alternatives or when CBSA can reject it. Here&apos;s the full picture.
+
+Key takeaways:
+- Transaction value (method 1) is used in 95% of imports — the price actually paid or payable
+- CBSA can reject transaction value if the sale isn&apos;t &apos;arm&apos;s length&apos; or conditions distort price
+- Methods 2–6 apply in order when method 1 fails; you can&apos;t pick the cheapest
+- Assists (tooling, design, inputs you provide to the exporter) must be added to value for duty
+- Misvalued entries are reviewable for 4 years — reassessment includes duty + GST + interest</description>
+    </item>
+    <item>
+      <title>CUSMA Origin Certification: When and How</title>
+      <link>https://accesstonorth.com/blog/cusma-origin-certification/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/cusma-origin-certification/</guid>
+      <pubDate>Mon, 27 Jul 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>HS Codes &amp; Classification</category>
+      <description>CUSMA (the Canada-US-Mexico Agreement, known in the US as USMCA) replaced NAFTA in 2020. It simplified origin certification — no more rigid form — but ALSO tightened the rules of origin for several sectors. If you&apos;re importing goods from the US or Mexico and want the zero-duty rate, here&apos;s how to certify correctly.
+
+Key takeaways:
+- CUSMA allows three parties to certify: exporter, producer, or importer
+- No specific form required — 9 data elements on any commercial document work
+- The certification can be blanket (covers a year) or shipment-specific
+- Rules of origin changed materially for autos, textiles, and certain agricultural products
+- CBSA can audit back 4 years — keep certifications and supporting records for 5</description>
+    </item>
+    <item>
+      <title>7 Most Common HS Code Misclassification Mistakes</title>
+      <link>https://accesstonorth.com/blog/hs-misclassification-mistakes/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/hs-misclassification-mistakes/</guid>
+      <pubDate>Mon, 20 Jul 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>HS Codes &amp; Classification</category>
+      <description>CBSA&apos;s post-entry review teams see the same mistakes over and over. Here are the seven most common HS misclassifications — and why each one either overpays duty or triggers an audit.
+
+Key takeaways:
+- Apparel is the #1 misclassification category — blends and composition notes matter
+- Food products often get stuck in the wrong chapter because of preparation state
+- Electronics misclassify because &apos;smart&apos; attributes get ignored
+- &apos;Parts of&apos; classifications are their own minefield — parts vs. accessories vs. standalone
+- Every mistake is reviewable within 4 years — plan refunds or expect reassessments</description>
+    </item>
+    <item>
+      <title>How to Find Your Canadian HS Code (Without Guessing)</title>
+      <link>https://accesstonorth.com/blog/find-canadian-hs-code/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/find-canadian-hs-code/</guid>
+      <pubDate>Mon, 13 Jul 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>HS Codes &amp; Classification</category>
+      <description>Every mistake in Canadian customs starts with a wrong HS code. The code drives your duty rate, your tax treatment, your permit requirements, and whether SIMA duty applies. Here&apos;s the method trade professionals actually use — not the &quot;search a keyword and pick&quot; approach that gets you audited.
+
+Key takeaways:
+- Canadian HS codes are 10 digits — 6 international + 4 Canada-specific
+- Always start from the General Rules of Interpretation (GRIs), not keyword search
+- Use CBSA&apos;s AIRS tool to check OGD permit requirements for each code
+- Check CBSA&apos;s ruling database before finalizing — someone may have already classified an identical product
+- When unsure, file an Advance Ruling — it&apos;s free and binds CBSA for future shipments</description>
+    </item>
+    <item>
+      <title>CARM Common Errors (and How to Fix Them Fast)</title>
+      <link>https://accesstonorth.com/blog/carm-common-errors/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/carm-common-errors/</guid>
+      <pubDate>Mon, 06 Jul 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>CARM &amp; Import Accounts</category>
+      <description>When a CARM-related error holds your shipment at the border, every hour costs storage + demurrage. Here are the seven most common errors we see every week, what each one actually means, and how to fix them without a 45-minute CBSA phone queue.
+
+Key takeaways:
+- Most CARM errors fall into 5 buckets: security, delegation, business claim, account status, and HS code mismatch
+- Fix most issues in the portal directly — call CBSA only if the portal won&apos;t accept your input
+- Keep your broker&apos;s BN, your RM number, and your CARM login handy — you&apos;ll need them
+- Shipment holds trigger storage fees starting CA$100+/day — treat errors as time-sensitive</description>
+    </item>
+    <item>
+      <title>Delegating Your Customs Broker in CARM: Step-by-Step</title>
+      <link>https://accesstonorth.com/blog/delegating-customs-broker-carm/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/delegating-customs-broker-carm/</guid>
+      <pubDate>Mon, 29 Jun 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>CARM &amp; Import Accounts</category>
+      <description>The single most common reason first-time CARM-enrolled importers get shipments held at the border is a forgotten broker delegation. Your broker can&apos;t file entries on accounts they don&apos;t have access to — and CARM requires the delegation to flow through the portal, not via paper authorization. Here&apos;s the exact flow.
+
+Key takeaways:
+- Brokers need portal-level delegation to file entries after CARM
+- Three permission tiers: View, Edit, Manage
+- Delegation is account-specific (per RM extension) and expires when revoked
+- The broker must accept from their side — invitation alone isn&apos;t enough
+- Allow 1–2 business days for acceptance before your first scheduled release</description>
+    </item>
+    <item>
+      <title>Release Prior to Payment (RPP) Explained: Why You Need It</title>
+      <link>https://accesstonorth.com/blog/rpp-program-explained/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/rpp-program-explained/</guid>
+      <pubDate>Mon, 22 Jun 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>CARM &amp; Import Accounts</category>
+      <description>Without the Release Prior to Payment program, every Canadian import comes with a cash-flow crisis: duty must be paid at the moment of release, which means your broker needs your money in their trust account BEFORE the goods clear. For any business importing more than occasionally, this is unworkable. RPP fixes it — and it&apos;s simpler to enroll in than most people think.
+
+Key takeaways:
+- RPP lets you take possession of goods at the border and pay duty/tax on a monthly Statement of Account
+- Enrollment requires financial security (bond or cash) posted in CARM
+- Payment is due by the last business day of the month following release
+- The program applies across all your import accounts and all points of entry
+- Almost every active Canadian importer uses RPP — without it, scale is impossible</description>
+    </item>
+    <item>
+      <title>CARM Financial Security: Bond vs Cash Deposit Comparison</title>
+      <link>https://accesstonorth.com/blog/carm-bond-vs-cash-security/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/carm-bond-vs-cash-security/</guid>
+      <pubDate>Mon, 15 Jun 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>CARM &amp; Import Accounts</category>
+      <description>CARM forces every commercial importer to post financial security — but the CBSA gives you three ways to do it, and the wrong choice can cost you thousands per year. Here&apos;s the unbiased comparison of customs bonds, cash deposits, and Release Prior to Payment.
+
+Key takeaways:
+- Customs bond: lowest cost for most importers — annual premium 1–3% of face amount
+- Cash deposit: simplest but ties up working capital, minimum CA$5,000
+- RPP enrollment: mandatory if you want duty deferred until monthly settlement
+- Security amount = 50% of your highest expected monthly duty &amp; tax
+- Minimums: CA$5,000 cash, CA$25,000 bond face (surety sets premium on face, not required security)</description>
+    </item>
+    <item>
+      <title>CARM Onboarding Checklist: Every Step in One Page</title>
+      <link>https://accesstonorth.com/blog/carm-onboarding-checklist/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/carm-onboarding-checklist/</guid>
+      <pubDate>Mon, 08 Jun 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>CARM &amp; Import Accounts</category>
+      <description>CARM onboarding looks intimidating because the CBSA documentation is 200+ pages. In practice it boils down to five discrete steps that must happen in order. Do them right the first time and you&apos;ll be cleared to import in 2–3 weeks; miss one and you&apos;ll get held at the border.
+
+Key takeaways:
+- The 5 steps: BN/RM → GCKey → claim business account → post security → delegate broker
+- The bottleneck is financial security — start that step first if you have a shipment incoming
+- A Canadian authorized representative is required if you&apos;re non-resident
+- Total timeline: 2–3 weeks for residents, 3–4 weeks for non-residents
+- Every commercial importer needs this, including one-off importers and NRI model sellers</description>
+    </item>
+    <item>
+      <title>What Happens If You Miss a GST/HST Filing Deadline</title>
+      <link>https://accesstonorth.com/blog/gst-hst-missed-deadline-penalties/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/gst-hst-missed-deadline-penalties/</guid>
+      <pubDate>Mon, 01 Jun 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>Registration &amp; Tax</category>
+      <description>Missing a GST/HST return isn&apos;t the end of the world — but the penalties compound fast and the CRA&apos;s automated systems flag repeat offenders for audit. If you&apos;ve just noticed you missed a deadline, here&apos;s exactly what the CRA will do, what it&apos;ll cost you, and how to minimize damage.
+
+Key takeaways:
+- Late-filing penalty: 1% of net tax owing plus 0.25% per month (max 12 months), capped at 15%
+- Interest accrues at the CRA&apos;s prescribed rate — roughly 10% annually in 2026
+- Three or more late filings in four years triggers &apos;repeat failure&apos; penalty: 2% + 2%/month (max 20%)
+- File the missed return before CRA contacts you — that&apos;s your best cost-minimization lever
+- For unreported tax, the Voluntary Disclosures Program can eliminate penalties if you qualify</description>
+    </item>
+    <item>
+      <title>Non-Resident Taxes for US Amazon FBA Sellers: 2026 Update</title>
+      <link>https://accesstonorth.com/blog/non-resident-amazon-fba-canada/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/non-resident-amazon-fba-canada/</guid>
+      <pubDate>Mon, 25 May 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>E-commerce &amp; Non-Resident</category>
+      <description>Amazon FBA Canada looks simple from the seller dashboard: ship pallets to an Amazon warehouse, let them distribute. In reality, the moment your inventory crosses the border you become an importer of record — with Canadian sales tax obligations, a CARM account, and potentially an RPP bond. Here&apos;s what every US-based FBA seller needs in 2026.
+
+Key takeaways:
+- Amazon Canada sellers are the importer of record — Amazon does not clear your goods for you at scale
+- You need a BN, GST/HST, and an import (RM) account with CBSA before your first shipment
+- CARM onboarding and financial security are mandatory even if you&apos;re fully non-resident
+- Amazon collects marketplace tax on B2C sales; you may still owe GST/HST on B2B sales and inputs
+- Duty drawback is available on goods that leave Canada without being sold here</description>
+    </item>
+    <item>
+      <title>Voluntary vs. Mandatory GST/HST Registration: Which Is Right for You?</title>
+      <link>https://accesstonorth.com/blog/voluntary-vs-mandatory-gst-hst/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/voluntary-vs-mandatory-gst-hst/</guid>
+      <pubDate>Mon, 18 May 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>Registration &amp; Tax</category>
+      <description>Registration is mandatory once you cross CA$30,000 in taxable supplies. But thousands of Canadian small businesses register voluntarily while they&apos;re still under the threshold — and it usually saves them money. Here&apos;s how to tell if you should.
+
+Key takeaways:
+- Voluntary registration is allowed as soon as you have or intend to have a commercial activity
+- ITC recovery is the #1 reason to register early — you can claim tax back on business expenses
+- The compliance cost is a quarterly return plus bookkeeping that tracks GST/HST separately
+- Once voluntarily registered you must stay registered for at least 1 year before deregistering
+- B2B businesses almost always benefit from voluntary registration; B2C depends on whether your customers can claim the tax back</description>
+    </item>
     <item>
       <title>Do I Need a Canadian Business Number? A 5-Question Checklist</title>
-      <link>https://www.accesstonorth.com/blog/do-i-need-canadian-business-number-checklist</link>
-      <guid isPermaLink="true">https://www.accesstonorth.com/blog/do-i-need-canadian-business-number-checklist</guid>
+      <link>https://accesstonorth.com/blog/do-i-need-canadian-business-number-checklist/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/do-i-need-canadian-business-number-checklist/</guid>
       <pubDate>Mon, 11 May 2026 13:00:00 GMT</pubDate>
       <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
       <category>Registration &amp; Tax</category>
@@ -25,8 +264,8 @@ Key takeaways:
     </item>
     <item>
       <title>Canada&apos;s $30,000 Rule: When to Register for GST/HST</title>
-      <link>https://www.accesstonorth.com/blog/canada-30000-rule-gst-hst</link>
-      <guid isPermaLink="true">https://www.accesstonorth.com/blog/canada-30000-rule-gst-hst</guid>
+      <link>https://accesstonorth.com/blog/canada-30000-rule-gst-hst/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/canada-30000-rule-gst-hst/</guid>
       <pubDate>Mon, 04 May 2026 13:00:00 GMT</pubDate>
       <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
       <category>Registration &amp; Tax</category>
@@ -41,8 +280,8 @@ Key takeaways:
     </item>
     <item>
       <title>How to Register for GST/HST as a Non-Resident in Canada</title>
-      <link>https://www.accesstonorth.com/blog/register-gst-hst-non-resident-canada</link>
-      <guid isPermaLink="true">https://www.accesstonorth.com/blog/register-gst-hst-non-resident-canada</guid>
+      <link>https://accesstonorth.com/blog/register-gst-hst-non-resident-canada/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/register-gst-hst-non-resident-canada/</guid>
       <pubDate>Mon, 20 Apr 2026 13:00:00 GMT</pubDate>
       <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
       <category>Registration &amp; Tax</category>

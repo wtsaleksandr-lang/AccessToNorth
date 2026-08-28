@@ -641,10 +641,10 @@ function UtilBar({ pct, label, color }: { pct: number; label: string; color: str
 
 export default function ContainerCalculator() {
   usePageMeta({
-    title: "Container Loading Calculator | 3D Load Planner | AccessToNorth.com",
+    title: "Free 3D Container Loading Calculator | AccessToNorth.com",
     description:
-      "Free 3D container loading calculator. Plan optimal cargo placement in 20', 40', 40' HC, and 45' HC shipping containers. Visualize your load plan instantly.",
-    canonical: "https://www.accesstonorth.com/tools/container-calculator",
+      "Free 3D container loading calculator for 20', 40', 40' HC, and 45' HC containers. Import cargo dimensions, get a best-fit recommendation, and export a PDF load plan.",
+    canonical: "/tools/container-calculator",
   });
 
   const { toast } = useToast();
@@ -3620,6 +3620,90 @@ export default function ContainerCalculator() {
             </div>
           </div>
         </div>
+
+        <section className="mt-16 border-t border-slate-200 bg-white/70 py-14" aria-labelledby="container-guide-heading">
+          <div className="container mx-auto px-4 md:px-6 max-w-5xl">
+            <div className="max-w-3xl mb-9">
+              <h2 id="container-guide-heading" className="text-2xl md:text-3xl font-bold font-display text-slate-900 mb-3">
+                How the 3D container loading calculator works
+              </h2>
+              <p className="text-slate-600 leading-relaxed">
+                Add each pallet, crate, or carton with its outside dimensions, quantity, and total gross weight.
+                The planner checks physical placement and payload limits, compares standard container sizes, and
+                recommends the smallest practical option that fits the complete load. You can then inspect the
+                arrangement in 3D and export the loading plan as a PDF.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 mb-3">Supported container sizes</h3>
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 text-slate-600">
+                      <tr>
+                        <th className="text-left px-4 py-3">Type</th>
+                        <th className="text-left px-4 py-3">Internal dimensions*</th>
+                        <th className="text-right px-4 py-3">Volume</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                      <tr><td className="px-4 py-3 font-medium">20&apos; DC</td><td className="px-4 py-3">5.90 × 2.35 × 2.39 m</td><td className="px-4 py-3 text-right">33.2 m³</td></tr>
+                      <tr><td className="px-4 py-3 font-medium">40&apos; DC</td><td className="px-4 py-3">12.03 × 2.35 × 2.39 m</td><td className="px-4 py-3 text-right">67.7 m³</td></tr>
+                      <tr><td className="px-4 py-3 font-medium">40&apos; HC</td><td className="px-4 py-3">12.03 × 2.35 × 2.67 m</td><td className="px-4 py-3 text-right">76.3 m³</td></tr>
+                      <tr><td className="px-4 py-3 font-medium">45&apos; HC</td><td className="px-4 py-3">13.33 × 2.35 × 2.67 m</td><td className="px-4 py-3 text-right">86.2 m³</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-xs text-slate-500 mt-2">*Preset dimensions are approximate. Confirm the shipping line&apos;s equipment specification before loading.</p>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 mb-3">What the calculation checks</h3>
+                <ul className="space-y-3 text-sm text-slate-700">
+                  {[
+                    "Whether every piece fits through the container's usable internal space",
+                    "Allowed horizontal rotation, fixed orientation, pallet footprint, and stacking rules",
+                    "Total gross cargo weight against the selected container's payload limit",
+                    "How many containers are needed when one unit cannot hold the complete shipment",
+                    "Best-fit comparison across 20' DC, 40' DC, 40' HC, and 45' HC equipment",
+                    "Volume, floor-area, and weight utilization for the proposed plan",
+                  ].map((item) => (
+                    <li key={item} className="flex gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" aria-hidden="true" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <div className="max-w-3xl">
+              <h3 className="text-lg font-bold text-slate-900 mb-3">Container loading calculator FAQ</h3>
+              <div className="space-y-3">
+                <details className="rounded-xl border border-slate-200 bg-white p-4">
+                  <summary className="cursor-pointer font-semibold text-slate-800">Is this container loading calculator free?</summary>
+                  <p className="mt-3 text-sm text-slate-600">Yes. The calculator, best-fit recommendation, 3D preview, document import, and PDF report can be used without creating an account.</p>
+                </details>
+                <details className="rounded-xl border border-slate-200 bg-white p-4">
+                  <summary className="cursor-pointer font-semibold text-slate-800">Should I enter total weight or weight per pallet?</summary>
+                  <p className="mt-3 text-sm text-slate-600">Enter the total gross weight for the complete cargo row. If one row represents seven identical pallets, enter the combined weight of all seven; the calculator derives the per-piece weight.</p>
+                </details>
+                <details className="rounded-xl border border-slate-200 bg-white p-4">
+                  <summary className="cursor-pointer font-semibold text-slate-800">Does a calculated fit guarantee the cargo can be loaded?</summary>
+                  <p className="mt-3 text-sm text-slate-600">No. Treat the result as a planning estimate. Confirm door clearance, lifting access, blocking and bracing, axle or floor concentration limits, cargo compatibility, and the carrier&apos;s exact container specification.</p>
+                </details>
+                <details className="rounded-xl border border-slate-200 bg-white p-4">
+                  <summary className="cursor-pointer font-semibold text-slate-800">Can I import a packing list instead of typing dimensions?</summary>
+                  <p className="mt-3 text-sm text-slate-600">Yes. Spreadsheets are parsed locally, and supported documents or images can be analyzed to extract cargo dimensions for review before they are added.</p>
+                </details>
+              </div>
+              <p className="mt-6 text-sm text-slate-600">
+                Planning Canadian imports? Use the free <Link href="/tools/hs-code-finder" className="text-primary hover:underline">Canadian HS Code Finder</Link> and <Link href="/customs-calculator" className="text-primary hover:underline">customs duty calculator</Link> to estimate classification and landed costs.
+              </p>
+            </div>
+          </div>
+        </section>
       </main>
       <Footer />
     </div>

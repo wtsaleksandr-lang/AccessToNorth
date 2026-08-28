@@ -1,20 +1,19 @@
 import { writeFile, mkdir } from "fs/promises";
 import { resolve } from "path";
 import { fileURLToPath } from "url";
-import { ROUTES, DISALLOW, SITE_URL } from "./routeMetadata";
+import { ROUTES, DISALLOW, SITE_URL, canonicalUrl } from "./routeMetadata";
 
 export async function generateSeoFiles(outDir: string): Promise<void> {
   await mkdir(outDir, { recursive: true });
 
-  const today = new Date().toISOString().slice(0, 10);
   const sitemapRoutes = ROUTES.filter((r) => r.sitemap !== false);
 
   const urls = sitemapRoutes
     .map((r) => {
       const changefreq = r.changefreq ?? "monthly";
+      const lastmod = r.lastmod ? `\n    <lastmod>${r.lastmod}</lastmod>` : "";
       return `  <url>
-    <loc>${SITE_URL}${r.path}</loc>
-    <lastmod>${today}</lastmod>
+    <loc>${canonicalUrl(r.path)}</loc>${lastmod}
     <changefreq>${changefreq}</changefreq>
     <priority>${r.priority}</priority>
   </url>`;
