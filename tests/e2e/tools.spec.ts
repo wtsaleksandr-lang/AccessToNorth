@@ -97,6 +97,21 @@ test.describe("tool pages load without runtime errors", () => {
     await expect(page.getByTestId("button-unit-imperial")).toBeVisible();
     await expect(page.getByTestId("button-unit-metric")).toBeVisible();
 
+    // Regression: 5,260 kg is the total row weight for all 7 pallets. It must
+    // not be multiplied by quantity, and the best-fit recommendation is 1x40' DC.
+    await page.getByTestId("button-unit-metric-table").click();
+    await page.getByTestId("button-container-40hc").click();
+    await page.getByTestId("input-cargo-name-0").fill("7 Pallets");
+    await page.getByTestId("input-cargo-length-0").fill("121.92");
+    await page.getByTestId("input-cargo-width-0").fill("121.92");
+    await page.getByTestId("input-cargo-height-0").fill("154.94");
+    await page.getByTestId("input-cargo-qty-0").fill("7");
+    await page.getByTestId("input-cargo-weight-0").fill("5260");
+    await page.getByTestId("button-calculate").click();
+
+    await expect(page.getByTestId("notice-all-fit")).toContainText("1 × 40' High Cube", { timeout: 10_000 });
+    await expect(page.getByTestId("notice-container-recommendation")).toContainText("40' Standard");
+
     // Three.js often logs GPU warnings — filter those out but fail on real errors.
     const realErrors = errors.filter((e) => !/WebGL|GPU|THREE\./i.test(e));
     expect(realErrors, `Uncaught errors on /tools/container-calculator: ${realErrors.join("\n")}`).toEqual([]);

@@ -1,3 +1,4 @@
+import React from "react";
 import {
   Document,
   Page,
@@ -542,8 +543,8 @@ export function buildCargoSummaryRows(
       l: item.length,
       w: item.width,
       h: item.height,
-      weightPer: item.weight,
-      totalWeight: item.weight * item.quantity,
+      weightPer: item.quantity > 0 ? item.weight / item.quantity : 0,
+      totalWeight: item.weight,
       stackable: item.stackable,
       rotation: item.rotationMode === "all" ? "All" : item.rotationMode === "horizontal" ? "Horiz." : "Fixed",
       color: item.color,

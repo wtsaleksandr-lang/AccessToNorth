@@ -51,137 +51,27 @@ import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import {
+  CONTAINER_PRESETS,
+  cuInToCuFt,
+  packIntoContainers,
+  recommendContainer,
+  type CargoItem,
+  type ContainerRecommendation,
+  type ContainerSpec,
+  type LoadPriority,
+  type MultiContainerResult,
+  type PalletType,
+  type PlacedBox,
+  type RotationMode,
+} from "@/lib/containerPacking";
 
 const IN_TO_CM = 2.54;
 const CM_TO_IN = 1 / IN_TO_CM;
 const LB_TO_KG = 0.453592;
 const KG_TO_LB = 1 / LB_TO_KG;
 
-interface ContainerSpec {
-  id: string;
-  name: string;
-  lengthIn: number;
-  widthIn: number;
-  heightIn: number;
-  maxPayloadLbs: number;
-  volumeCuFt: number;
-  tare: number;
-}
-
-const CONTAINER_PRESETS: ContainerSpec[] = [
-  {
-    id: "20dc",
-    name: "20' Standard (DC)",
-    lengthIn: 232.2,
-    widthIn: 92.6,
-    heightIn: 94.2,
-    maxPayloadLbs: 62170,
-    volumeCuFt: 1172,
-    tare: 5071,
-  },
-  {
-    id: "40dc",
-    name: "40' Standard (DC)",
-    lengthIn: 473.8,
-    widthIn: 92.6,
-    heightIn: 94.2,
-    maxPayloadLbs: 58820,
-    volumeCuFt: 2390,
-    tare: 8333,
-  },
-  {
-    id: "40hc",
-    name: "40' High Cube (HC)",
-    lengthIn: 473.8,
-    widthIn: 92.6,
-    heightIn: 105.1,
-    maxPayloadLbs: 58420,
-    volumeCuFt: 2694,
-    tare: 8775,
-  },
-  {
-    id: "45hc",
-    name: "45' High Cube (HC)",
-    lengthIn: 524.8,
-    widthIn: 92.6,
-    heightIn: 105.1,
-    maxPayloadLbs: 57650,
-    volumeCuFt: 3043,
-    tare: 10580,
-  },
-];
-
-type RotationMode = "all" | "horizontal" | "fixed";
-type LoadPriority = "first" | "normal" | "last";
-type PalletType = "none" | "us48x40" | "euro" | "custom";
-
-interface CargoItem {
-  id: string;
-  name: string;
-  length: number;
-  width: number;
-  height: number;
-  weight: number;
-  quantity: number;
-  color: string;
-  stackable: boolean;
-  palletized: boolean;
-  palletType: PalletType;
-  customPalletL: number;
-  customPalletW: number;
-  customPalletH: number;
-  rotationMode: RotationMode;
-  included: boolean;
-  loadPriority: LoadPriority;
-}
-
 type BulkApplyScope = "all" | "selected" | "defaults";
-
-const PALLET_DIMS: Record<string, { l: number; w: number; h: number; label: string }> = {
-  us48x40: { l: 48, w: 40, h: 6, label: "US 48×40\"" },
-  euro: { l: 47.2, w: 31.5, h: 5.7, label: "Euro 1200×800mm" },
-};
-
-interface PlacedBox {
-  cargoId: string;
-  cargoName: string;
-  color: string;
-  x: number;
-  y: number;
-  z: number;
-  l: number;
-  w: number;
-  h: number;
-  weight: number;
-  rotation: string;
-  stackable: boolean;
-}
-
-interface LoadingResult {
-  placed: PlacedBox[];
-  unplaced: { name: string; qty: number }[];
-  totalWeight: number;
-  totalVolume: number;
-  containerVolume: number;
-  maxPayload: number;
-  volumeUtil: number;
-  weightUtil: number;
-  floorArea: number;
-  containerFloorArea: number;
-  piecesLoaded: number;
-  piecesTotal: number;
-}
-
-interface MultiContainerResult {
-  containers: {
-    container: ContainerSpec;
-    result: LoadingResult;
-    label: string;
-  }[];
-  totalContainers: number;
-  totalPiecesAll: number;
-  totalPiecesLoaded: number;
-}
 
 const CARGO_COLORS = [
   "#22c55e", "#3b82f6", "#ef4444", "#f59e0b", "#8b5cf6",
@@ -195,200 +85,6 @@ function generateId() {
 
 function inToM(inches: number) {
   return inches * 0.0254;
-}
-
-function cuInToCuFt(cuIn: number) {
-  return cuIn / 1728;
-}
-
-function sqInToSqFt(sqIn: number) {
-  return sqIn / 144;
-}
-
-function getRotations(
-  bl: number, bw: number, bh: number, mode: RotationMode
-): [number, number, number, string][] {
-  if (mode === "fixed") {
-    return [[bl, bw, bh, "LWH"]];
-  }
-  if (mode === "horizontal") {
-    return [
-      [bl, bw, bh, "LWH"],
-      [bw, bl, bh, "WLH"],
-    ];
-  }
-  return [
-    [bl, bw, bh, "LWH"],
-    [bl, bh, bw, "LHW"],
-    [bw, bl, bh, "WLH"],
-    [bw, bh, bl, "WHL"],
-    [bh, bl, bw, "HLW"],
-    [bh, bw, bl, "HWL"],
-  ];
-}
-
-function packBoxes(
-  items: CargoItem[],
-  container: ContainerSpec,
-): LoadingResult {
-  const cL = container.lengthIn;
-  const cW = container.widthIn;
-  const cH = container.heightIn;
-  const maxPay = container.maxPayloadLbs;
-
-  const includedItems = items.filter((i) => i.included);
-
-  const allBoxes: {
-    cargoId: string;
-    name: string;
-    color: string;
-    dims: [number, number, number];
-    weight: number;
-    stackable: boolean;
-    rotationMode: RotationMode;
-    loadPriority: LoadPriority;
-  }[] = [];
-
-  for (const item of includedItems) {
-    let boxL = item.length;
-    let boxW = item.width;
-    let boxH = item.height;
-    let boxWeight = item.weight;
-
-    if (item.palletized && item.palletType !== "none" && item.palletType !== "custom") {
-      const pd = PALLET_DIMS[item.palletType];
-      if (pd) {
-        boxL = Math.max(boxL, pd.l);
-        boxW = Math.max(boxW, pd.w);
-        boxH = boxH + pd.h;
-        boxWeight = boxWeight + 40;
-      }
-    }
-
-    for (let q = 0; q < item.quantity; q++) {
-      allBoxes.push({
-        cargoId: item.id,
-        name: item.name || `Item ${items.indexOf(item) + 1}`,
-        color: item.color,
-        dims: [boxL, boxW, boxH],
-        weight: boxWeight,
-        stackable: item.stackable,
-        rotationMode: item.rotationMode,
-        loadPriority: item.loadPriority,
-      });
-    }
-  }
-
-  const priorityOrder: Record<LoadPriority, number> = { first: 0, normal: 1, last: 2 };
-  allBoxes.sort((a, b) => {
-    const pa = priorityOrder[a.loadPriority];
-    const pb = priorityOrder[b.loadPriority];
-    if (pa !== pb) return pa - pb;
-    const volA = a.dims[0] * a.dims[1] * a.dims[2];
-    const volB = b.dims[0] * b.dims[1] * b.dims[2];
-    return volB - volA;
-  });
-
-  const placed: PlacedBox[] = [];
-  const unplacedMap = new Map<string, number>();
-  let totalWeight = 0;
-
-  const spaces: { x: number; y: number; z: number; l: number; w: number; h: number }[] = [
-    { x: 0, y: 0, z: 0, l: cL, w: cW, h: cH },
-  ];
-
-  for (const box of allBoxes) {
-    const [bl, bw, bh] = box.dims;
-    const rotations = getRotations(bl, bw, bh, box.rotationMode);
-
-    let bestFit: { spaceIdx: number; rotation: [number, number, number, string] } | null = null;
-    let bestWaste = Infinity;
-
-    for (let si = 0; si < spaces.length; si++) {
-      const sp = spaces[si];
-      if (!box.stackable && sp.y > 0.1) continue;
-
-      for (const rot of rotations) {
-        const [rl, rw, rh] = rot;
-        if (rl <= sp.l + 0.01 && rw <= sp.w + 0.01 && rh <= sp.h + 0.01) {
-          if (totalWeight + box.weight <= maxPay) {
-            const waste = (sp.l * sp.w * sp.h) - (rl * rw * rh);
-            if (waste < bestWaste) {
-              bestWaste = waste;
-              bestFit = { spaceIdx: si, rotation: rot };
-            }
-          }
-        }
-      }
-    }
-
-    if (bestFit) {
-      const sp = spaces[bestFit.spaceIdx];
-      const [rl, rw, rh, rotLabel] = bestFit.rotation;
-
-      placed.push({
-        cargoId: box.cargoId,
-        cargoName: box.name,
-        color: box.color,
-        x: sp.x,
-        y: sp.y,
-        z: sp.z,
-        l: rl,
-        w: rw,
-        h: rh,
-        weight: box.weight,
-        rotation: rotLabel,
-        stackable: box.stackable,
-      });
-
-      totalWeight += box.weight;
-      spaces.splice(bestFit.spaceIdx, 1);
-
-      if (sp.l - rl > 0.1) {
-        spaces.push({ x: sp.x + rl, y: sp.y, z: sp.z, l: sp.l - rl, w: sp.w, h: sp.h });
-      }
-      if (sp.w - rw > 0.1) {
-        spaces.push({ x: sp.x, y: sp.y, z: sp.z + rw, l: rl, w: sp.w - rw, h: sp.h });
-      }
-      if (sp.h - rh > 0.1) {
-        spaces.push({ x: sp.x, y: sp.y + rh, z: sp.z, l: rl, w: rw, h: sp.h - rh });
-      }
-
-      spaces.sort((a, b) => {
-        if (Math.abs(a.y - b.y) > 0.1) return a.y - b.y;
-        if (Math.abs(a.z - b.z) > 0.1) return a.z - b.z;
-        return a.x - b.x;
-      });
-    } else {
-      unplacedMap.set(box.name, (unplacedMap.get(box.name) || 0) + 1);
-    }
-  }
-
-  const totalVolume = placed.reduce((s, p) => s + p.l * p.w * p.h, 0);
-  const containerVolume = cL * cW * cH;
-  const totalPiecesAll = items.filter((i) => i.included).reduce((s, i) => s + i.quantity, 0);
-
-  let maxX = 0, maxZ = 0;
-  for (const p of placed) {
-    maxX = Math.max(maxX, p.x + p.l);
-    maxZ = Math.max(maxZ, p.z + p.w);
-  }
-  const floorArea = maxX * maxZ;
-
-  return {
-    placed,
-    unplaced: Array.from(unplacedMap.entries()).map(([name, qty]) => ({ name, qty })),
-    totalWeight,
-    totalVolume: cuInToCuFt(totalVolume),
-    containerVolume: cuInToCuFt(containerVolume),
-    maxPayload: maxPay,
-    volumeUtil: (totalVolume / containerVolume) * 100,
-    weightUtil: (totalWeight / maxPay) * 100,
-    floorArea: sqInToSqFt(floorArea),
-    containerFloorArea: sqInToSqFt(cL * cW),
-    piecesLoaded: placed.length,
-    piecesTotal: totalPiecesAll,
-  };
 }
 
 export type SnapshotExportFn = () => { iso: string; top: string; sideA: string; front: string } | null;
@@ -406,12 +102,13 @@ function ContainerViewer3D({
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [webglError, setWebglError] = useState(false);
+  const [showBranding, setShowBranding] = useState(true);
   const sceneRef = useRef<{
     renderer: THREE.WebGLRenderer;
     scene: THREE.Scene;
     camera: THREE.PerspectiveCamera;
     controls: OrbitControls;
-    animId: number;
+    render: () => void;
   } | null>(null);
 
   useEffect(() => {
@@ -430,12 +127,15 @@ function ContainerViewer3D({
     }
     renderer.setSize(w, h);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x000000, 0);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFShadowMap;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     el.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xf8fafc);
 
     const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 1000);
 
@@ -447,53 +147,84 @@ function ContainerViewer3D({
     camera.lookAt(cL / 2, cH / 3, cW / 2);
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
+    controls.enableDamping = false;
     controls.target.set(cL / 2, cH / 3, cW / 2);
     controls.minDistance = 1;
     controls.maxDistance = 30;
     controls.update();
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
+    scene.add(new THREE.HemisphereLight(0xdbeafe, 0x334155, 1.25));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.28));
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    const dirLight = new THREE.DirectionalLight(0xfff7ed, 2.2);
     dirLight.position.set(cL, cH * 2, cW * 1.5);
     dirLight.castShadow = true;
+    dirLight.shadow.mapSize.set(1024, 1024);
+    dirLight.shadow.camera.near = 0.1;
+    dirLight.shadow.camera.far = Math.max(cL, cW) * 5;
+    dirLight.shadow.bias = -0.0008;
     scene.add(dirLight);
 
-    const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+    const fillLight = new THREE.DirectionalLight(0xbfdbfe, 0.8);
     fillLight.position.set(-cL, cH, -cW);
     scene.add(fillLight);
 
-    const gridSize = Math.max(cL, cW) * 2;
-    const gridDivisions = 120;
+    const gridSize = Math.max(cL, cW) * 2.4;
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(gridSize, gridSize),
+      new THREE.MeshStandardMaterial({ color: 0xdbe2ea, roughness: 0.96, metalness: 0.02 }),
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.set(cL / 2, -0.035, cW / 2);
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    const safetyLineMaterial = new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.8 });
+    for (const z of [-0.3, cW + 0.3]) {
+      const line = new THREE.Mesh(new THREE.BoxGeometry(cL * 1.15, 0.012, 0.045), safetyLineMaterial);
+      line.position.set(cL / 2, -0.012, z);
+      line.receiveShadow = true;
+      scene.add(line);
+    }
+
+    const gridDivisions = 64;
     const grid = new THREE.GridHelper(gridSize, gridDivisions, 0xcbd5e1, 0xe2e8f0);
-    grid.position.set(cL / 2, -0.01, cW / 2);
+    grid.position.set(cL / 2, -0.02, cW / 2);
     if (Array.isArray(grid.material)) {
       grid.material.forEach((m) => {
         (m as THREE.LineBasicMaterial).transparent = true;
-        (m as THREE.LineBasicMaterial).opacity = 0.25;
+        (m as THREE.LineBasicMaterial).opacity = 0.18;
       });
     } else {
       (grid.material as THREE.LineBasicMaterial).transparent = true;
-      (grid.material as THREE.LineBasicMaterial).opacity = 0.25;
+      (grid.material as THREE.LineBasicMaterial).opacity = 0.18;
     }
     scene.add(grid);
 
     const containerEdges = new THREE.EdgesGeometry(new THREE.BoxGeometry(cL, cH, cW));
     const containerWire = new THREE.LineSegments(
       containerEdges,
-      new THREE.LineBasicMaterial({ color: 0x64748b, linewidth: 2 })
+      new THREE.LineBasicMaterial({ color: 0x334155, transparent: true, opacity: 0.82 })
     );
     containerWire.position.set(cL / 2, cH / 2, cW / 2);
     scene.add(containerWire);
 
+    const floor = new THREE.Mesh(
+      new THREE.BoxGeometry(cL, 0.035, cW),
+      new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.9, metalness: 0.12 }),
+    );
+    floor.position.set(cL / 2, -0.015, cW / 2);
+    floor.receiveShadow = true;
+    scene.add(floor);
+
     const wallMat = new THREE.MeshStandardMaterial({
-      color: 0xcbd5e1,
+      color: 0x94a3b8,
       transparent: true,
-      opacity: 0.08,
+      opacity: 0.13,
+      roughness: 0.7,
+      metalness: 0.22,
       side: THREE.DoubleSide,
+      depthWrite: false,
     });
 
     const backWall = new THREE.Mesh(new THREE.PlaneGeometry(cW, cH), wallMat);
@@ -509,27 +240,68 @@ function ContainerViewer3D({
     rightWall.position.set(cL / 2, cH / 2, cW);
     scene.add(rightWall);
 
-    const doorLineMat = new THREE.LineBasicMaterial({ color: 0x64748b, linewidth: 2 });
+    const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(cL, cW), wallMat.clone());
+    (ceiling.material as THREE.MeshStandardMaterial).opacity = 0.07;
+    ceiling.rotation.x = Math.PI / 2;
+    ceiling.position.set(cL / 2, cH, cW / 2);
+    scene.add(ceiling);
+
+    if (showBranding) {
+      const brandCanvas = document.createElement("canvas");
+      brandCanvas.width = 1024;
+      brandCanvas.height = 256;
+      const brandCtx = brandCanvas.getContext("2d")!;
+      brandCtx.clearRect(0, 0, brandCanvas.width, brandCanvas.height);
+      brandCtx.textAlign = "center";
+      brandCtx.textBaseline = "middle";
+      brandCtx.font = "700 108px Inter, Arial, sans-serif";
+      brandCtx.fillStyle = "rgba(15, 23, 42, 0.5)";
+      brandCtx.fillText("AccessToNorth.com", brandCanvas.width / 2, brandCanvas.height / 2);
+      const brandTexture = new THREE.CanvasTexture(brandCanvas);
+      brandTexture.colorSpace = THREE.SRGBColorSpace;
+      const brand = new THREE.Mesh(
+        new THREE.PlaneGeometry(Math.min(cL * 0.55, 6.2), Math.min(cH * 0.2, 0.55)),
+        new THREE.MeshBasicMaterial({ map: brandTexture, transparent: true, opacity: 0.75, depthWrite: false }),
+      );
+      brand.position.set(cL * 0.58, cH * 0.62, cW + 0.008);
+      scene.add(brand);
+    }
+
     const doorX = cL;
-    const doorInset = 0.005;
-    const doorFramePts = [
-      new THREE.Vector3(doorX + doorInset, 0, 0),
-      new THREE.Vector3(doorX + doorInset, cH, 0),
-      new THREE.Vector3(doorX + doorInset, cH, cW),
-      new THREE.Vector3(doorX + doorInset, 0, cW),
-      new THREE.Vector3(doorX + doorInset, 0, 0),
-    ];
-    const doorFrameGeo = new THREE.BufferGeometry().setFromPoints(doorFramePts);
-    scene.add(new THREE.Line(doorFrameGeo, doorLineMat));
-    const doorCenterPts = [
-      new THREE.Vector3(doorX + doorInset, 0, cW / 2),
-      new THREE.Vector3(doorX + doorInset, cH, cW / 2),
-    ];
-    const doorCenterGeo = new THREE.BufferGeometry().setFromPoints(doorCenterPts);
-    const doorDashedMat = new THREE.LineDashedMaterial({ color: 0x94a3b8, dashSize: cH * 0.04, gapSize: cH * 0.02 });
-    const doorCenterLine = new THREE.Line(doorCenterGeo, doorDashedMat);
-    doorCenterLine.computeLineDistances();
-    scene.add(doorCenterLine);
+    const doorMat = new THREE.MeshStandardMaterial({
+      color: 0x64748b,
+      transparent: true,
+      opacity: 0.3,
+      roughness: 0.6,
+      metalness: 0.35,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    for (const z of [cW * 0.25, cW * 0.75]) {
+      const doorPanel = new THREE.Mesh(new THREE.PlaneGeometry(cW * 0.49, cH * 0.98), doorMat);
+      doorPanel.rotation.y = Math.PI / 2;
+      doorPanel.position.set(doorX + 0.006, cH / 2, z);
+      scene.add(doorPanel);
+    }
+
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.45, metalness: 0.65 });
+    const addDoorFrame = (geometry: THREE.BufferGeometry, x: number, y: number, z: number) => {
+      const mesh = new THREE.Mesh(geometry, frameMat);
+      mesh.position.set(x, y, z);
+      mesh.castShadow = true;
+      scene.add(mesh);
+    };
+    addDoorFrame(new THREE.BoxGeometry(0.045, cH, 0.035), doorX + 0.025, cH / 2, 0);
+    addDoorFrame(new THREE.BoxGeometry(0.045, cH, 0.035), doorX + 0.025, cH / 2, cW / 2);
+    addDoorFrame(new THREE.BoxGeometry(0.045, cH, 0.035), doorX + 0.025, cH / 2, cW);
+    addDoorFrame(new THREE.BoxGeometry(0.045, 0.04, cW), doorX + 0.025, 0, cW / 2);
+    addDoorFrame(new THREE.BoxGeometry(0.045, 0.04, cW), doorX + 0.025, cH, cW / 2);
+
+    const rodGeometry = new THREE.CylinderGeometry(0.012, 0.012, cH * 0.78, 8);
+    for (const z of [cW * 0.28, cW * 0.72]) {
+      addDoorFrame(rodGeometry, doorX + 0.052, cH * 0.52, z);
+      addDoorFrame(new THREE.BoxGeometry(0.035, 0.035, cW * 0.12), doorX + 0.07, cH * 0.42, z);
+    }
 
     const cargoMeshes: THREE.Mesh[] = [];
     const runningPiece: Record<string, number> = {};
@@ -559,7 +331,7 @@ function ContainerViewer3D({
       const line2 = `${(box.l * dimF).toFixed(0)}×${(box.w * dimF).toFixed(0)}×${(box.h * dimF).toFixed(0)} ${dimU}`;
       const line3 = `${(box.weight * wtF).toFixed(0)} ${wtU}`;
 
-      function makeFaceLabel(faceW: number, faceH: number): THREE.CanvasTexture {
+      const makeFaceLabel = (faceW: number, faceH: number): THREE.CanvasTexture => {
         const cw = 256;
         const ch = Math.round(256 * (faceH / faceW)) || 256;
         const c = document.createElement("canvas");
@@ -567,8 +339,14 @@ function ContainerViewer3D({
         c.height = ch;
         const ctx = c.getContext("2d")!;
 
-        ctx.fillStyle = box.color;
+        const gradient = ctx.createLinearGradient(0, 0, cw, ch);
+        gradient.addColorStop(0, baseColor.clone().offsetHSL(0, 0.02, 0.1).getStyle());
+        gradient.addColorStop(1, baseColor.clone().offsetHSL(0, 0, -0.08).getStyle());
+        ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, cw, ch);
+        ctx.strokeStyle = "rgba(255,255,255,0.28)";
+        ctx.lineWidth = 4;
+        ctx.strokeRect(4, 4, cw - 8, ch - 8);
 
         const fontSize = Math.max(16, Math.min(28, Math.round(ch * 0.18)));
         const subSize = Math.max(12, Math.round(fontSize * 0.72));
@@ -589,19 +367,23 @@ function ContainerViewer3D({
         ctx.fillText(line3, cw / 2, cy + fontSize * 0.5 + subSize * 1.15);
 
         const tex = new THREE.CanvasTexture(c);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 4);
         tex.needsUpdate = true;
         return tex;
-      }
+      };
 
       const texLR = makeFaceLabel(bW, bH);
       const texTB = makeFaceLabel(bL, bW);
       const texFB = makeFaceLabel(bL, bH);
 
-      function faceMat(tex: THREE.CanvasTexture) {
-        return new THREE.MeshBasicMaterial({
+      const faceMat = (tex: THREE.CanvasTexture) => {
+        return new THREE.MeshStandardMaterial({
           map: tex,
+          roughness: 0.74,
+          metalness: 0.02,
         });
-      }
+      };
 
       const materials = [
         faceMat(texLR), faceMat(texLR),
@@ -620,6 +402,8 @@ function ContainerViewer3D({
       const edgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(bL, bH, bW));
       const edgeMat = new THREE.LineBasicMaterial({
         color: baseColor.clone().multiplyScalar(0.6),
+        transparent: true,
+        opacity: 0.72,
       });
       const edges = new THREE.LineSegments(edgeGeo, edgeMat);
       edges.position.copy(boxMesh.position);
@@ -662,15 +446,13 @@ function ContainerViewer3D({
       new THREE.Vector3(-0.3, cH / 2, -0.2)
     );
 
-    let animId = 0;
-    function animate() {
-      animId = requestAnimationFrame(animate);
-      controls.update();
+    const renderScene = () => {
       renderer.render(scene, camera);
-    }
-    animate();
+    };
+    controls.addEventListener("change", renderScene);
+    renderScene();
 
-    sceneRef.current = { renderer, scene, camera, controls, animId };
+    sceneRef.current = { renderer, scene, camera, controls, render: renderScene };
 
     if (onReadyExport) {
       const exportSnapshots: SnapshotExportFn = () => {
@@ -695,8 +477,8 @@ function ContainerViewer3D({
 
         const iso = capture(cL * 1.5, cH * 1.8, cW * 2.5);
         const top = capture(centerX, Math.max(cL, cW) * 2.5, centerZ + 0.01);
-        const sideA = capture(cL * 2.5, cH * 0.8, centerZ);
-        const front = capture(centerX, cH * 0.8, cW * 3);
+        const sideA = capture(centerX, cH * 0.8, cW * 3);
+        const front = capture(cL * 2.5, cH * 0.8, centerZ);
 
         cam.position.copy(savedPos);
         ctrl.target.copy(savedTarget);
@@ -717,31 +499,36 @@ function ContainerViewer3D({
       camera.aspect = nw / nh;
       camera.updateProjectionMatrix();
       renderer.setSize(nw, nh);
+      renderScene();
     };
     window.addEventListener("resize", handleResize);
 
     return () => {
       window.removeEventListener("resize", handleResize);
-      cancelAnimationFrame(animId);
+      controls.removeEventListener("change", renderScene);
       controls.dispose();
+      const disposeMaterial = (material: THREE.Material) => {
+        const map = (material as THREE.MeshStandardMaterial | THREE.MeshBasicMaterial | THREE.SpriteMaterial).map;
+        map?.dispose();
+        material.dispose();
+      };
       scene.traverse((obj) => {
         if (obj instanceof THREE.Mesh) {
           obj.geometry.dispose();
           if (Array.isArray(obj.material)) {
-            obj.material.forEach((m) => m.dispose());
+            obj.material.forEach(disposeMaterial);
           } else {
-            obj.material.dispose();
+            disposeMaterial(obj.material);
           }
         } else if (obj instanceof THREE.LineSegments) {
           obj.geometry.dispose();
           if (Array.isArray(obj.material)) {
-            obj.material.forEach((m) => m.dispose());
+            obj.material.forEach(disposeMaterial);
           } else {
-            obj.material.dispose();
+            disposeMaterial(obj.material);
           }
         } else if (obj instanceof THREE.Sprite) {
-          obj.material.map?.dispose();
-          obj.material.dispose();
+          disposeMaterial(obj.material);
         }
       });
       renderer.dispose();
@@ -749,7 +536,7 @@ function ContainerViewer3D({
         el.removeChild(renderer.domElement);
       }
     };
-  }, [placed, container, unitSystem]);
+  }, [placed, container, unitSystem, showBranding]);
 
   const fmt = (inches: number) => {
     if (unitSystem === "metric") return `${(inches * IN_TO_CM).toFixed(1)} cm`;
@@ -777,8 +564,25 @@ function ContainerViewer3D({
           </p>
         </div>
       ) : (
-        <div className="relative w-full h-[400px] md:h-[500px] rounded-xl overflow-hidden border border-slate-200 bg-slate-50" data-testid="container-3d-viewer">
+        <div
+          className="relative w-full h-[400px] md:h-[500px] rounded-xl overflow-hidden border border-slate-200 bg-[radial-gradient(circle_at_50%_15%,#ffffff_0%,#e9eff6_55%,#d7e0ea_100%)]"
+          data-testid="container-3d-viewer"
+        >
           <div ref={mountRef} className="absolute inset-0" />
+          <div className="absolute top-3 left-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowBranding((current) => !current)}
+              className="h-8 px-2.5 rounded-lg border border-white/70 bg-white/80 backdrop-blur text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white transition-colors flex items-center gap-1.5"
+              data-testid="button-toggle-container-branding"
+            >
+              {showBranding ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+              Branding
+            </button>
+          </div>
+          <div className="absolute bottom-3 right-3 rounded-md bg-slate-900/60 px-2 py-1 text-[10px] text-white/90 backdrop-blur-sm pointer-events-none">
+            Drag to rotate · Scroll to zoom
+          </div>
         </div>
       )}
     </div>
@@ -845,7 +649,7 @@ export default function ContainerCalculator() {
 
   const { toast } = useToast();
   const [unitSystem, setUnitSystem] = useState<"imperial" | "metric">("imperial");
-  const [suggestedContainerId, setSuggestedContainerId] = useState<string | null>(null);
+  const [recommendation, setRecommendation] = useState<ContainerRecommendation | null>(null);
   const [pendingRecalc, setPendingRecalc] = useState(false);
   const [containerId, setContainerId] = useState("20dc");
   const [customContainer, setCustomContainer] = useState({
@@ -856,8 +660,8 @@ export default function ContainerCalculator() {
   });
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkDefaults, setBulkDefaults] = useState({
-    stackable: true,
-    rotationMode: "all" as RotationMode,
+    stackable: false,
+    rotationMode: "horizontal" as RotationMode,
     loadPriority: "normal" as LoadPriority,
     palletized: false,
     palletType: "none" as PalletType,
@@ -902,6 +706,7 @@ export default function ContainerCalculator() {
   const [importStep, setImportStep] = useState<"upload" | "mapping" | "preview">("upload");
   const [importLoading, setImportLoading] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+  const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const [importUnits, setImportUnits] = useState<"imperial" | "metric">("imperial");
   const [importItems, setImportItems] = useState<Array<{ name: string; length: number; width: number; height: number; weight: number; quantity: number; stackable?: boolean; rotationMode?: RotationMode; loadPriority?: LoadPriority; palletized?: boolean; include: boolean }>>([]);
   const [dragOver, setDragOver] = useState(false);
@@ -956,6 +761,7 @@ export default function ContainerCalculator() {
     if (newUnit === unitSystem) return;
     setUnitSystem(newUnit);
     setMultiResult(null);
+    setRecommendation(null);
   }, [unitSystem]);
 
   const addItem = useCallback(() => {
@@ -994,6 +800,7 @@ export default function ContainerCalculator() {
     setImportStep("upload");
     setImportLoading(false);
     setImportError(null);
+    setImportWarnings([]);
     setImportItems([]);
     setImportUnits(unitSystem);
     setDragOver(false);
@@ -1058,32 +865,42 @@ export default function ContainerCalculator() {
       setImportError("Please map at least one dimension column (Length, Width, or Height).");
       return;
     }
+    const weightHeader = wtKey.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const weightIsPerPiece = /(^| )(unit weight|weight per|per unit|per piece|each weight|wt pc)( |$)/.test(weightHeader);
     const items = importRawRows
-      .map((r) => ({
-        name: nKey ? String(r[nKey] || "").substring(0, 100) : "",
-        length: Math.max(0, parseFloat(lKey ? r[lKey] : "") || 0),
-        width: Math.max(0, parseFloat(wKey ? r[wKey] : "") || 0),
-        height: Math.max(0, parseFloat(hKey ? r[hKey] : "") || 0),
-        weight: Math.max(0, parseFloat(wtKey ? r[wtKey] : "") || 0),
-        quantity: Math.max(1, Math.round(parseFloat(qKey ? r[qKey] : "") || 1)),
-        stackable: sKey ? parseStackable(r[sKey] || "") : undefined,
-        rotationMode: rKey ? parseRotation(r[rKey] || "") : undefined,
-        loadPriority: pKey ? parsePriority(r[pKey] || "") : undefined,
-        palletized: plKey ? parseStackable(r[plKey] || "") : undefined,
-        include: true,
-      }))
+      .map((r) => {
+        const quantity = Math.max(1, Math.round(parseFloat(qKey ? r[qKey] : "") || 1));
+        const rawWeight = Math.max(0, parseFloat(wtKey ? r[wtKey] : "") || 0);
+        return {
+          name: nKey ? String(r[nKey] || "").substring(0, 100) : "",
+          length: Math.max(0, parseFloat(lKey ? r[lKey] : "") || 0),
+          width: Math.max(0, parseFloat(wKey ? r[wKey] : "") || 0),
+          height: Math.max(0, parseFloat(hKey ? r[hKey] : "") || 0),
+          weight: weightIsPerPiece ? rawWeight * quantity : rawWeight,
+          quantity,
+          stackable: sKey ? parseStackable(r[sKey] || "") : undefined,
+          rotationMode: rKey ? parseRotation(r[rKey] || "") : undefined,
+          loadPriority: pKey ? parsePriority(r[pKey] || "") : undefined,
+          palletized: plKey ? parseStackable(r[plKey] || "") : undefined,
+          include: true,
+        };
+      })
       .filter((i) => i.length > 0 || i.width > 0 || i.height > 0);
     if (items.length === 0) {
       setImportError("No valid dimensional data found with the selected column mapping.");
       return;
     }
     setImportError(null);
+    setImportWarnings(weightIsPerPiece
+      ? ["A per-unit weight column was detected and converted to total row weight using the quantity."]
+      : []);
     setImportItems(items);
     setImportStep("preview");
   }, [importColMap, importRawRows]);
 
   const handleImportFile = useCallback(async (file: File) => {
     setImportError(null);
+    setImportWarnings([]);
     setImportLoading(true);
 
     try {
@@ -1140,9 +957,12 @@ export default function ContainerCalculator() {
         return;
       }
 
-      const isImage = file.type.startsWith("image/");
-      const isPdf = file.type === "application/pdf";
-      if (isImage || isPdf) {
+      const aiDocumentExtensions = new Set([
+        "pdf", "doc", "docx", "rtf", "odt", "ppt", "pptx",
+        "txt", "text", "md", "markdown", "json", "xml", "html", "htm", "eml",
+        "jpg", "jpeg", "png", "webp", "gif",
+      ]);
+      if (aiDocumentExtensions.has(ext)) {
         const formData = new FormData();
         formData.append("file", file);
         const res = await fetch("/api/cargo/extract", {
@@ -1161,13 +981,14 @@ export default function ContainerCalculator() {
           return;
         }
         setImportUnits(data.units === "metric" ? "metric" : "imperial");
+        setImportWarnings(Array.isArray(data.warnings) ? data.warnings : []);
         setImportItems(data.items.map((i: any) => ({ ...i, include: true })));
         setImportStep("preview");
         setImportLoading(false);
         return;
       }
 
-      setImportError("Unsupported file type. Please upload a CSV, Excel, PDF, or image (JPG/PNG).");
+      setImportError("Unsupported file type. Upload a common spreadsheet, PDF, Word, PowerPoint, email, text, or image file.");
       setImportLoading(false);
     } catch (err) {
       setImportError("An unexpected error occurred while processing the file.");
@@ -1215,7 +1036,7 @@ export default function ContainerCalculator() {
   }, [importItems, importUnits, cargoItems.length, bulkDefaults, toast]);
 
   const downloadSampleCSV = useCallback(() => {
-    const csvContent = `Name,Length,Width,Height,Weight,Quantity,Stackable,Rotation,Priority,Palletized\nCardboard Box A,24,18,12,15,10,yes,all,normal,no\nPallet Load B,48,40,36,250,4,no,fixed,first,yes\nSmall Carton C,12,10,8,5,25,yes,horizontal,last,no`;
+    const csvContent = `Name,Length,Width,Height,Total Weight,Quantity,Stackable,Rotation,Priority,Palletized\nCardboard Box A,24,18,12,150,10,yes,all,normal,no\nPallet Load B,48,40,36,1000,4,no,fixed,first,yes\nSmall Carton C,12,10,8,125,25,yes,horizontal,last,no`;
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -1241,80 +1062,17 @@ export default function ContainerCalculator() {
     setCalculating(true);
     setTimeout(() => {
       try {
-        const totalPiecesAll = validItems.reduce((s, i) => s + i.quantity, 0);
+        const selectedPlan = packIntoContainers(validItems, container);
+        const bestPlan = containerId === "custom" ? null : recommendContainer(validItems);
+        setMultiResult(selectedPlan);
+        setRecommendation(bestPlan);
 
-        const useContainer = container;
-
-        const res = packBoxes(validItems, useContainer);
-
-        if (containerId !== "custom" && res.unplaced.length > 0) {
-          const currentIdx = CONTAINER_PRESETS.findIndex((c) => c.id === containerId);
-          const nextPreset = currentIdx >= 0 && currentIdx < CONTAINER_PRESETS.length - 1
-            ? CONTAINER_PRESETS[currentIdx + 1]
-            : null;
-          setSuggestedContainerId(nextPreset ? nextPreset.id : null);
-        } else {
-          setSuggestedContainerId(null);
-        }
-
-        if (res.unplaced.length === 0) {
-          setMultiResult({
-            containers: [{ container: useContainer, result: res, label: `1 × ${useContainer.name}` }],
-            totalContainers: 1,
-            totalPiecesAll,
-            totalPiecesLoaded: res.piecesLoaded,
+        if (selectedPlan.totalPiecesLoaded < selectedPlan.totalPiecesAll) {
+          toast({
+            title: "Some items still didn't fit",
+            description: `${selectedPlan.totalPiecesAll - selectedPlan.totalPiecesLoaded} piece(s) could not be placed. Check the item dimensions, orientation, and payload limits.`,
+            variant: "destructive",
           });
-        } else {
-          const allContainers: MultiContainerResult["containers"] = [];
-          let remaining = validItems.map((i) => ({ ...i }));
-          let containerNum = 0;
-
-          while (remaining.length > 0 && containerNum < 10) {
-            containerNum++;
-            const thisResult = packBoxes(remaining, useContainer);
-            allContainers.push({
-              container: useContainer,
-              result: thisResult,
-              label: `Container ${containerNum} — ${useContainer.name}`,
-            });
-
-            if (thisResult.unplaced.length === 0) {
-              remaining = [];
-            } else {
-              const placedCounts = new Map<string, number>();
-              for (const p of thisResult.placed) {
-                placedCounts.set(p.cargoId, (placedCounts.get(p.cargoId) || 0) + 1);
-              }
-              const nextRemaining: CargoItem[] = [];
-              for (const item of remaining) {
-                const placedQty = placedCounts.get(item.id) || 0;
-                const leftover = item.quantity - placedQty;
-                if (leftover > 0) {
-                  nextRemaining.push({ ...item, quantity: leftover });
-                }
-              }
-              remaining = nextRemaining;
-
-              if (thisResult.piecesLoaded === 0) break;
-            }
-          }
-
-          const totalLoaded = allContainers.reduce((s, c) => s + c.result.piecesLoaded, 0);
-
-          setMultiResult({
-            containers: allContainers,
-            totalContainers: allContainers.length,
-            totalPiecesAll,
-            totalPiecesLoaded: totalLoaded,
-          });
-
-          if (totalLoaded < totalPiecesAll) {
-            toast({
-              title: "Some items still didn't fit",
-              description: `${totalPiecesAll - totalLoaded} piece(s) could not be placed even with ${allContainers.length} container(s).`,
-              variant: "destructive",
-            });
-          }
         }
         setCalculating(false);
       } catch (err) {
@@ -1362,6 +1120,7 @@ export default function ContainerCalculator() {
 
   const handleReset = useCallback(() => {
     setMultiResult(null);
+    setRecommendation(null);
     setCargoItems([defaultCargoItem(0), defaultCargoItem(1)]);
     setSelectedIds(new Set());
   }, [defaultCargoItem]);
@@ -1396,8 +1155,11 @@ export default function ContainerCalculator() {
       const a = document.createElement("a");
       a.href = url;
       a.download = `AccessToNorth_PackingReport_${new Date().toISOString().slice(0, 10)}.pdf`;
+      a.style.display = "none";
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 
       toast({ title: "PDF Downloaded", description: "Your packing report has been saved." });
     } catch (err) {
@@ -1711,6 +1473,11 @@ export default function ContainerCalculator() {
                         <span className="hidden sm:inline">Bulk Edit</span>
                       </Button>
                     </div>
+                  </div>
+
+                  <div className="mb-3 flex items-start gap-1.5 rounded-lg border border-blue-100 bg-blue-50/70 px-2.5 py-2 text-[11px] text-blue-800">
+                    <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    Enter the <strong>total gross weight for each row</strong>. The calculator divides it across the quantity automatically.
                   </div>
 
                   {selectedIds.size > 0 && (
@@ -2069,6 +1836,11 @@ export default function ContainerCalculator() {
                                             <input
                                               type="number"
                                               placeholder="L"
+                                              value={isMetric ? +((currentItem?.customPalletL || 0) * IN_TO_CM).toFixed(1) : currentItem?.customPalletL || ""}
+                                              onChange={(e) => {
+                                                const value = parseFloat(e.target.value) || 0;
+                                                updateItem(visualPopup.itemId, "customPalletL", isMetric ? value * CM_TO_IN : value);
+                                              }}
                                               className="w-full h-7 px-2 text-xs rounded border border-orange-200 focus:border-orange-400 focus:ring-1 focus:ring-orange-200 outline-none"
                                               data-testid="popup-pallet-custom-l"
                                               onKeyDown={(e) => e.stopPropagation()}
@@ -2079,6 +1851,11 @@ export default function ContainerCalculator() {
                                             <input
                                               type="number"
                                               placeholder="W"
+                                              value={isMetric ? +((currentItem?.customPalletW || 0) * IN_TO_CM).toFixed(1) : currentItem?.customPalletW || ""}
+                                              onChange={(e) => {
+                                                const value = parseFloat(e.target.value) || 0;
+                                                updateItem(visualPopup.itemId, "customPalletW", isMetric ? value * CM_TO_IN : value);
+                                              }}
                                               className="w-full h-7 px-2 text-xs rounded border border-orange-200 focus:border-orange-400 focus:ring-1 focus:ring-orange-200 outline-none"
                                               data-testid="popup-pallet-custom-w"
                                             />
@@ -2088,6 +1865,11 @@ export default function ContainerCalculator() {
                                             <input
                                               type="number"
                                               placeholder="H"
+                                              value={isMetric ? +((currentItem?.customPalletH || 0) * IN_TO_CM).toFixed(1) : currentItem?.customPalletH || ""}
+                                              onChange={(e) => {
+                                                const value = parseFloat(e.target.value) || 0;
+                                                updateItem(visualPopup.itemId, "customPalletH", isMetric ? value * CM_TO_IN : value);
+                                              }}
                                               className="w-full h-7 px-2 text-xs rounded border border-orange-200 focus:border-orange-400 focus:ring-1 focus:ring-orange-200 outline-none"
                                               data-testid="popup-pallet-custom-h"
                                             />
@@ -2646,7 +2428,7 @@ export default function ContainerCalculator() {
                                 <input
                                   ref={importFileRef}
                                   type="file"
-                                  accept=".csv,.tsv,.xlsx,.xls,.pdf,.jpg,.jpeg,.png,.webp"
+                                  accept=".csv,.tsv,.xlsx,.xls,.pdf,.doc,.docx,.rtf,.odt,.ppt,.pptx,.txt,.md,.json,.xml,.html,.eml,.jpg,.jpeg,.png,.webp,.gif"
                                   className="hidden"
                                   onChange={(e) => {
                                     const f = e.target.files?.[0];
@@ -2678,7 +2460,7 @@ export default function ContainerCalculator() {
                                       Drop your file here, or click to browse
                                     </p>
                                     <p className="text-xs text-slate-500">
-                                      CSV spreadsheets are parsed instantly. Images and PDFs are read by AI.
+                                      Spreadsheets are parsed instantly. Documents, emails, PDFs, and images are read by AI.
                                     </p>
                                     <div className="flex flex-wrap justify-center gap-2 mt-3">
                                       <Badge variant="secondary" className="text-[10px] font-medium gap-1">
@@ -2692,6 +2474,9 @@ export default function ContainerCalculator() {
                                       </Badge>
                                       <Badge variant="secondary" className="text-[10px] font-medium gap-1">
                                         <FileUp className="w-3 h-3" /> PDF
+                                      </Badge>
+                                      <Badge variant="secondary" className="text-[10px] font-medium gap-1">
+                                        <FileUp className="w-3 h-3" /> Word / Text
                                       </Badge>
                                     </div>
                                   </>
@@ -2711,7 +2496,7 @@ export default function ContainerCalculator() {
                                   <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">CSV Template</span>
                                 </div>
                                 <p className="text-xs text-slate-500 mb-2">
-                                  Use headers like: Name, Length, Width, Height, Weight, Quantity, Stackable, Rotation, Priority, Palletized
+                                  Use headers like: Name, Length, Width, Height, Total Weight, Quantity, Stackable, Rotation, Priority, Palletized
                                 </p>
                                 <p className="text-[10px] text-slate-400 mb-3">
                                   Stackable/Palletized: yes/no &bull; Rotation: all/horizontal/fixed &bull; Priority: first/normal/last
@@ -2724,7 +2509,7 @@ export default function ContainerCalculator() {
                                         <th className="px-2 py-1.5 text-right font-semibold">Length</th>
                                         <th className="px-2 py-1.5 text-right font-semibold">Width</th>
                                         <th className="px-2 py-1.5 text-right font-semibold">Height</th>
-                                        <th className="px-2 py-1.5 text-right font-semibold">Weight</th>
+                                        <th className="px-2 py-1.5 text-right font-semibold">Total Weight</th>
                                         <th className="px-2 py-1.5 text-right font-semibold">Qty</th>
                                         <th className="px-2 py-1.5 text-center font-semibold">Stackable</th>
                                         <th className="px-2 py-1.5 text-center font-semibold">Rotation</th>
@@ -2738,7 +2523,7 @@ export default function ContainerCalculator() {
                                         <td className="px-2 py-1.5 text-right">24</td>
                                         <td className="px-2 py-1.5 text-right">18</td>
                                         <td className="px-2 py-1.5 text-right">12</td>
-                                        <td className="px-2 py-1.5 text-right">15</td>
+                                        <td className="px-2 py-1.5 text-right">150</td>
                                         <td className="px-2 py-1.5 text-right">10</td>
                                         <td className="px-2 py-1.5 text-center">yes</td>
                                         <td className="px-2 py-1.5 text-center">all</td>
@@ -2750,7 +2535,7 @@ export default function ContainerCalculator() {
                                         <td className="px-2 py-1.5 text-right">48</td>
                                         <td className="px-2 py-1.5 text-right">40</td>
                                         <td className="px-2 py-1.5 text-right">36</td>
-                                        <td className="px-2 py-1.5 text-right">250</td>
+                                        <td className="px-2 py-1.5 text-right">1000</td>
                                         <td className="px-2 py-1.5 text-right">4</td>
                                         <td className="px-2 py-1.5 text-center">no</td>
                                         <td className="px-2 py-1.5 text-center">fixed</td>
@@ -2793,7 +2578,7 @@ export default function ContainerCalculator() {
 
                               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                 {(["name", "length", "width", "height", "weight", "quantity", "stackable", "rotation", "priority", "palletized"] as const).map((field) => {
-                                  const labels: Record<string, string> = { name: "Item Name", length: "Length", width: "Width", height: "Height", weight: "Weight", quantity: "Quantity", stackable: "Stackable", rotation: "Rotation", priority: "Priority", palletized: "Palletized" };
+                                  const labels: Record<string, string> = { name: "Item Name", length: "Length", width: "Width", height: "Height", weight: "Total Weight", quantity: "Quantity", stackable: "Stackable", rotation: "Rotation", priority: "Priority", palletized: "Palletized" };
                                   const required = field === "length" || field === "width" || field === "height";
                                   return (
                                     <div key={field}>
@@ -2848,7 +2633,7 @@ export default function ContainerCalculator() {
                                   <ChevronRight className="w-4 h-4" />
                                   Continue to Preview
                                 </Button>
-                                <Button variant="outline" onClick={() => { setImportStep("upload"); setImportError(null); }} className="gap-1.5" data-testid="button-mapping-back">
+                                <Button variant="outline" onClick={() => { setImportStep("upload"); setImportError(null); setImportWarnings([]); }} className="gap-1.5" data-testid="button-mapping-back">
                                   <RotateCcw className="w-4 h-4" />
                                   Back
                                 </Button>
@@ -2892,6 +2677,15 @@ export default function ContainerCalculator() {
                                 </div>
                               </div>
 
+                              {importWarnings.length > 0 && (
+                                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800" data-testid="import-warnings">
+                                  <p className="font-semibold mb-1">Please verify these extracted details:</p>
+                                  <ul className="list-disc pl-4 space-y-0.5">
+                                    {importWarnings.map((warning, index) => <li key={index}>{warning}</li>)}
+                                  </ul>
+                                </div>
+                              )}
+
                               <div className="overflow-x-auto rounded-xl border border-slate-200 max-h-[45vh]">
                                 <table className="w-full text-xs">
                                   <thead className="sticky top-0 z-10">
@@ -2916,7 +2710,7 @@ export default function ContainerCalculator() {
                                       <th className="px-2 py-2 text-right font-semibold">L</th>
                                       <th className="px-2 py-2 text-right font-semibold">W</th>
                                       <th className="px-2 py-2 text-right font-semibold">H</th>
-                                      <th className="px-2 py-2 text-right font-semibold">Wt</th>
+                                      <th className="px-2 py-2 text-right font-semibold">Total Wt</th>
                                       <th className="px-2 py-2 text-right font-semibold">Qty</th>
                                     </tr>
                                   </thead>
@@ -3051,7 +2845,7 @@ export default function ContainerCalculator() {
                                 </Button>
                                 <Button
                                   variant="outline"
-                                  onClick={() => { setImportStep("upload"); setImportItems([]); setImportError(null); }}
+                                  onClick={() => { setImportStep("upload"); setImportItems([]); setImportError(null); setImportWarnings([]); }}
                                   className="gap-1.5"
                                   data-testid="button-import-back"
                                 >
@@ -3075,8 +2869,8 @@ export default function ContainerCalculator() {
 
                   <div className="sm:hidden space-y-2" data-testid="cargo-mobile-cards">
                     {cargoItems.map((item, idx) => {
-                      const totalWt = item.weight * item.quantity;
-                      const displayTotalWt = unitSystem === "metric" ? (totalWt * LB_TO_KG).toFixed(1) : totalWt.toFixed(1);
+                      const perPieceWt = item.quantity > 0 ? item.weight / item.quantity : 0;
+                      const displayPerPieceWt = unitSystem === "metric" ? (perPieceWt * LB_TO_KG).toFixed(1) : perPieceWt.toFixed(1);
                       const volIn3 = item.length * item.width * item.height * item.quantity;
                       const displayVol = unitSystem === "imperial" ? (volIn3 / 1728).toFixed(2) : (volIn3 * 0.000016387064).toFixed(4);
 
@@ -3127,13 +2921,13 @@ export default function ContainerCalculator() {
                               <Input type="number" min={1} value={item.quantity || ""} onChange={(e) => updateItem(item.id, "quantity", parseInt(e.target.value) || 0)} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-cargo-qty-${idx}`} />
                             </div>
                             <div className="text-center">
-                              <span className="text-[8px] text-slate-400 uppercase block">W/pc</span>
+                              <span className="text-[8px] text-slate-400 uppercase block">Total wt</span>
                               <Input type="number" min={0} step="0.1" value={toDisplayWeight(item.weight)} onChange={(e) => updateItem(item.id, "weight", fromDisplayWeight(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-cargo-weight-${idx}`} />
                             </div>
                             <div className="text-center">
-                              <span className="text-[8px] text-slate-400 uppercase block">Total</span>
+                              <span className="text-[8px] text-slate-400 uppercase block">Per pc</span>
                               <div className="h-6 flex items-center justify-center text-[10px] text-slate-500 font-medium" data-testid={`text-wtotal-${idx}`}>
-                                {item.weight > 0 && item.quantity > 0 ? displayTotalWt : "—"}
+                                {item.weight > 0 && item.quantity > 0 ? displayPerPieceWt : "—"}
                               </div>
                             </div>
                           </div>
@@ -3235,7 +3029,7 @@ export default function ContainerCalculator() {
                             <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Qty</span>
                           </th>
                           <th className="px-0.5 py-2 text-center" style={{ width: 56 }}>
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{weightUnit}</span>
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide" title="Total gross weight for this row">Total {weightUnit}</span>
                           </th>
                           <th className="px-0.5 py-2 text-center" style={{ width: 52 }}>
                             <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Stack</div>
@@ -3454,28 +3248,33 @@ export default function ContainerCalculator() {
                   className="space-y-5"
                   data-testid="results-section"
                 >
-                  {suggestedContainerId && multiResult.totalPiecesLoaded < multiResult.totalPiecesAll && (
-                    <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-3" data-testid="notice-does-not-fit">
-                      <AlertTriangle className="w-5 h-5 text-amber-700 mt-0.5 shrink-0" />
+                  {recommendation
+                    && recommendation.plan.totalPiecesLoaded === recommendation.plan.totalPiecesAll
+                    && (
+                      recommendation.container.id !== containerId
+                      || recommendation.plan.totalContainers < multiResult.totalContainers
+                    ) && (
+                    <div className="p-4 rounded-lg bg-blue-50 border border-blue-200 flex items-start gap-3" data-testid="notice-container-recommendation">
+                      <Sparkles className="w-5 h-5 text-blue-700 mt-0.5 shrink-0" />
                       <div className="text-sm flex-1">
-                        <p className="font-semibold text-amber-900">Some cargo does not fit in the selected container</p>
-                        <p className="text-amber-800 mt-1">
-                          We kept your selected container type. You can try a larger container to see if it reduces leftovers or number of containers.
+                        <p className="font-semibold text-blue-900">Recommended container: {recommendation.container.name}</p>
+                        <p className="text-blue-800 mt-1">
+                          The best-fit plan uses <strong>{recommendation.plan.totalContainers} × {recommendation.container.name}</strong>
+                          {multiResult.totalContainers !== recommendation.plan.totalContainers
+                            ? ` instead of ${multiResult.totalContainers} × ${container.name}.`
+                            : ` and avoids excess unused capacity.`}
                         </p>
                         <div className="mt-3">
                           <Button
                             size="sm"
                             variant="outline"
-                            data-testid="button-try-larger-container"
+                            data-testid="button-use-recommended-container"
                             onClick={() => {
-                              const next = CONTAINER_PRESETS.find((c) => c.id === suggestedContainerId);
-                              if (!next) return;
-                              setContainerId(next.id);
-                              setSuggestedContainerId(null);
+                              setContainerId(recommendation.container.id);
                               setPendingRecalc(true);
                             }}
                           >
-                            Try {CONTAINER_PRESETS.find((c) => c.id === suggestedContainerId)?.name ?? "larger container"}
+                            Use recommended container
                           </Button>
                         </div>
                       </div>
@@ -3508,6 +3307,7 @@ export default function ContainerCalculator() {
                       <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
                       <p className="text-sm font-semibold text-green-800">
                         All {multiResult.totalPiecesAll} piece(s) fit in 1 × {multiResult.containers[0].container.name}
+                        {recommendation?.container.id === containerId ? " — best-fit container" : ""}
                       </p>
                     </div>
                   )}
