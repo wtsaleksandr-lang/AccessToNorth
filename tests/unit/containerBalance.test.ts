@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculateContainerBalance } from "../../client/src/lib/containerBalance";
+import { calculateContainerBalance, centerContainerCargoLayout } from "../../client/src/lib/containerBalance";
 import type { ContainerSpec, PlacedBox } from "../../client/src/lib/containerPacking";
 
 const container: ContainerSpec = {
@@ -69,4 +69,19 @@ test("empty layouts return neutral values", () => {
   assert.equal(balance.longitudinalPct, 50);
   assert.equal(balance.lateralPct, 50);
   assert.deepEqual(balance.guidance, []);
+});
+
+test("safe centering moves the complete layout without changing relative positions", () => {
+  const placed = [
+    box({ x: 0, z: 0, weight: 1000 }),
+    box({ x: 48, z: 0, weight: 1000 }),
+  ];
+  const centered = centerContainerCargoLayout(placed, container);
+  assert.equal(centered.changed, true);
+  assert.ok(centered.shiftXIn > 0);
+  assert.ok(centered.shiftZIn > 0);
+  assert.equal(centered.placed[1].x - centered.placed[0].x, 48);
+  assert.equal(centered.placed[1].z - centered.placed[0].z, 0);
+  assert.ok(centered.placed.every((item) => item.x >= 0 && item.z >= 0));
+  assert.ok(centered.placed.every((item) => item.x + item.l <= container.lengthIn && item.z + item.w <= container.widthIn));
 });

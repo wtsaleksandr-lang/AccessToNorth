@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { generatePackingReportBlob } from "../../client/src/pages/tools/container-pdf/ContainerPackingReportPDF";
+import {
+  generatePackingReportBlob,
+  resolveContainerReportBrand,
+} from "../../client/src/pages/tools/container-pdf/ContainerPackingReportPDF";
 import { generateBasicPackingReportBlob } from "../../client/src/pages/tools/container-pdf/ContainerPackingReportFallback";
 
 test("packing report renders a valid PDF blob", async () => {
@@ -51,6 +54,63 @@ test("packing report renders a valid PDF blob", async () => {
   const signature = new TextDecoder().decode((await blob.arrayBuffer()).slice(0, 5));
   assert.equal(signature, "%PDF-");
   assert.ok(blob.size > 1000);
+});
+
+test("complete report includes a loading-plan page for every container", async () => {
+  const containerSpec = {
+    id: "20dc",
+    name: "20' Standard (DC)",
+    lengthIn: 232.2,
+    widthIn: 92.6,
+    heightIn: 94.2,
+    maxPayloadLbs: 62170,
+    volumeCuFt: 1172,
+    tare: 5071,
+  };
+  const makeResult = (piecesLoaded: number) => ({
+    placed: [],
+    unplaced: [],
+    totalWeight: piecesLoaded * 1200,
+    totalVolume: piecesLoaded * 80,
+    containerVolume: 1172,
+    maxPayload: 62170,
+    volumeUtil: piecesLoaded * 6.8,
+    weightUtil: piecesLoaded * 1.93,
+    floorArea: piecesLoaded * 16,
+    containerFloorArea: 149.3,
+    piecesLoaded,
+    piecesTotal: piecesLoaded,
+  });
+  const firstResult = makeResult(4);
+  const secondResult = makeResult(3);
+  const blob = await generatePackingReportBlob({
+    containerSpec,
+    cargoRows: [{
+      name: "Pallets",
+      qty: 7,
+      l: 48,
+      w: 48,
+      h: 61,
+      weightPer: 1200,
+      totalWeight: 8400,
+      stackable: false,
+      rotation: "Horiz.",
+      color: "#155e75",
+      volPer: 80,
+      totalVol: 560,
+    }],
+    result: firstResult,
+    totalContainers: 2,
+    unitSystem: "imperial",
+    images: { iso: "", top: "", sideA: "", front: "" },
+    containerPlans: [
+      { label: "Container 1", containerSpec, result: firstResult },
+      { label: "Container 2", containerSpec, result: secondResult },
+    ],
+  });
+
+  const pdfSource = new TextDecoder("latin1").decode(await blob.arrayBuffer());
+  assert.equal((pdfSource.match(/\/Type \/Page\b/g) ?? []).length, 3);
 });
 
 test("compatibility packing report renders a valid PDF blob", async () => {
@@ -121,4 +181,24 @@ test("compatibility packing report renders a valid PDF blob", async () => {
   const signature = new TextDecoder().decode((await blob.arrayBuffer()).slice(0, 5));
   assert.equal(signature, "%PDF-");
   assert.ok(blob.size > 1000);
+});
+
+test("report branding keeps AccessToNorth defaults and accepts entitled account overrides", () => {
+  assert.deepEqual(resolveContainerReportBrand(), {
+    name: "AccessToNorth",
+    domainSuffix: ".com",
+    tagline: "Canadian Import & Business Registration Services",
+    accentColor: "#0f7fe5",
+  });
+  assert.deepEqual(resolveContainerReportBrand({
+    name: "North Star Imports",
+    domainSuffix: "",
+    tagline: "Prepared for warehouse operations",
+    accentColor: "#155e75",
+  }), {
+    name: "North Star Imports",
+    domainSuffix: "",
+    tagline: "Prepared for warehouse operations",
+    accentColor: "#155e75",
+  });
 });
