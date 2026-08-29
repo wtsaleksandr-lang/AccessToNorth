@@ -65,6 +65,7 @@ import {
   type PlacedBox,
   type RotationMode,
 } from "@/lib/containerPacking";
+import { mergeImportedCargoItems, type ImportedCargoRow } from "@/lib/containerImport";
 
 const IN_TO_CM = 2.54;
 const CM_TO_IN = 1 / IN_TO_CM;
@@ -74,9 +75,9 @@ const KG_TO_LB = 1 / LB_TO_KG;
 type BulkApplyScope = "all" | "selected" | "defaults";
 
 const CARGO_COLORS = [
-  "#22c55e", "#3b82f6", "#ef4444", "#f59e0b", "#8b5cf6",
-  "#ec4899", "#06b6d4", "#f97316", "#14b8a6", "#a855f7",
-  "#6366f1", "#10b981", "#e11d48", "#0ea5e9", "#d946ef",
+  "#0f766e", "#2563eb", "#b45309", "#7c3aed", "#be123c",
+  "#0e7490", "#475569", "#c2410c", "#047857", "#6d28d9",
+  "#1d4ed8", "#15803d", "#9f1239", "#0369a1", "#a21caf",
 ];
 
 function generateId() {
@@ -89,6 +90,115 @@ function inToM(inches: number) {
 
 export type SnapshotExportFn = () => { iso: string; top: string; sideA: string; front: string } | null;
 
+function ContainerFallback2D({
+  placed,
+  container,
+  onRetry,
+}: {
+  placed: PlacedBox[];
+  container: ContainerSpec;
+  onRetry: () => void;
+}) {
+  const padding = Math.max(3, container.widthIn * 0.04);
+  const labelSize = Math.max(3, container.widthIn * 0.045);
+
+  return (
+    <div
+      className="w-full min-h-[340px] rounded-xl overflow-hidden border border-slate-200 bg-gradient-to-b from-slate-50 to-slate-100 p-4 sm:p-5"
+      data-testid="container-3d-viewer"
+    >
+      <div className="flex items-start justify-between gap-4 mb-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-800">2D Load Preview</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Interactive 3D could not start in this browser session, so the same loading plan is shown from above.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onRetry}
+          className="shrink-0 gap-1.5 bg-white"
+          data-testid="button-retry-3d"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          Retry 3D
+        </Button>
+      </div>
+
+      <div className="rounded-lg border border-slate-200 bg-white p-2 shadow-inner">
+        <svg
+          viewBox={`${-padding} ${-padding} ${container.lengthIn + padding * 2} ${container.widthIn + padding * 2}`}
+          className="block w-full h-[220px]"
+          preserveAspectRatio="xMidYMid meet"
+          role="img"
+          aria-label={`Top view of ${placed.length} loaded pieces inside ${container.name}`}
+        >
+          <rect
+            x="0"
+            y="0"
+            width={container.lengthIn}
+            height={container.widthIn}
+            rx="2"
+            fill="#e2e8f0"
+            stroke="#334155"
+            strokeWidth="1.5"
+          />
+          {placed.map((box, index) => {
+            const canLabel = box.l >= labelSize * 2.2 && box.w >= labelSize * 1.5;
+            return (
+              <g key={`${box.cargoId}-${index}`}>
+                <rect
+                  x={box.x + 0.5}
+                  y={box.z + 0.5}
+                  width={Math.max(0.5, box.l - 1)}
+                  height={Math.max(0.5, box.w - 1)}
+                  rx="1"
+                  fill={box.color}
+                  fillOpacity="0.86"
+                  stroke="#ffffff"
+                  strokeWidth="0.8"
+                />
+                {canLabel && (
+                  <text
+                    x={box.x + box.l / 2}
+                    y={box.z + box.w / 2}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fontSize={labelSize}
+                    fontWeight="700"
+                    fill="#ffffff"
+                    stroke="rgba(15,23,42,0.45)"
+                    strokeWidth="0.35"
+                    paintOrder="stroke"
+                  >
+                    {index + 1}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+          <line
+            x1={container.lengthIn}
+            y1="0"
+            x2={container.lengthIn}
+            y2={container.widthIn}
+            stroke="#0f7fe5"
+            strokeWidth="2"
+            strokeDasharray="3 2"
+          />
+        </svg>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 mt-3 text-[11px] text-slate-500">
+        <span>Universal SVG preview — no graphics hardware required</span>
+        <span className="font-medium text-slate-600">Dashed blue line: container doors</span>
+      </div>
+    </div>
+  );
+}
+
 function ContainerViewer3D({
   placed,
   container,
@@ -98,10 +208,11 @@ function ContainerViewer3D({
   placed: PlacedBox[];
   container: ContainerSpec;
   unitSystem: "imperial" | "metric";
-  onReadyExport?: (fn: SnapshotExportFn) => void;
+  onReadyExport?: (fn: SnapshotExportFn | null) => void;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [webglError, setWebglError] = useState(false);
+  const [rendererAttempt, setRendererAttempt] = useState(0);
   const [showBranding, setShowBranding] = useState(true);
   const sceneRef = useRef<{
     renderer: THREE.WebGLRenderer;
@@ -115,25 +226,39 @@ function ContainerViewer3D({
     if (!mountRef.current || webglError) return;
 
     const el = mountRef.current;
-    const w = el.clientWidth;
-    const h = el.clientHeight;
+    const w = Math.max(el.clientWidth, 320);
+    const h = Math.max(el.clientHeight, 300);
+    const compactViewport = window.matchMedia("(max-width: 767px)").matches;
 
     let renderer: THREE.WebGLRenderer;
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer = new THREE.WebGLRenderer({
+        antialias: !compactViewport,
+        alpha: true,
+        powerPreference: "default",
+        failIfMajorPerformanceCaveat: false,
+      });
     } catch {
+      onReadyExport?.(null);
       setWebglError(true);
       return;
     }
     renderer.setSize(w, h);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, compactViewport ? 1.5 : 2));
     renderer.setClearColor(0x000000, 0);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = 1.02;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     el.appendChild(renderer.domElement);
+
+    const handleContextLost = (event: Event) => {
+      event.preventDefault();
+      onReadyExport?.(null);
+      setWebglError(true);
+    };
+    renderer.domElement.addEventListener("webglcontextlost", handleContextLost);
 
     const scene = new THREE.Scene();
 
@@ -143,86 +268,110 @@ function ContainerViewer3D({
     const cW = inToM(container.widthIn);
     const cH = inToM(container.heightIn);
 
-    camera.position.set(cL * 1.5, cH * 1.8, cW * 2.5);
-    camera.lookAt(cL / 2, cH / 3, cW / 2);
+    camera.position.set(cL * 1.4, cH * 1.65, cW * 2.35);
+    camera.lookAt(cL / 2, cH * 0.38, cW / 2);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = false;
-    controls.target.set(cL / 2, cH / 3, cW / 2);
+    controls.enablePan = false;
+    controls.target.set(cL / 2, cH * 0.38, cW / 2);
     controls.minDistance = 1;
     controls.maxDistance = 30;
     controls.update();
 
-    scene.add(new THREE.HemisphereLight(0xdbeafe, 0x334155, 1.25));
-    scene.add(new THREE.AmbientLight(0xffffff, 0.28));
+    scene.add(new THREE.HemisphereLight(0xeaf2ff, 0x1e293b, 1.15));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.34));
 
-    const dirLight = new THREE.DirectionalLight(0xfff7ed, 2.2);
+    const dirLight = new THREE.DirectionalLight(0xfffbeb, 2.05);
     dirLight.position.set(cL, cH * 2, cW * 1.5);
     dirLight.castShadow = true;
-    dirLight.shadow.mapSize.set(1024, 1024);
+    const shadowMapSize = compactViewport ? 512 : 1024;
+    dirLight.shadow.mapSize.set(shadowMapSize, shadowMapSize);
     dirLight.shadow.camera.near = 0.1;
     dirLight.shadow.camera.far = Math.max(cL, cW) * 5;
     dirLight.shadow.bias = -0.0008;
     scene.add(dirLight);
 
-    const fillLight = new THREE.DirectionalLight(0xbfdbfe, 0.8);
+    const fillLight = new THREE.DirectionalLight(0x93c5fd, 0.72);
     fillLight.position.set(-cL, cH, -cW);
     scene.add(fillLight);
 
-    const gridSize = Math.max(cL, cW) * 2.4;
+    const rimLight = new THREE.DirectionalLight(0xffffff, 0.38);
+    rimLight.position.set(cL * 0.2, cH * 1.4, cW * 2.2);
+    scene.add(rimLight);
+
+    const gridSize = Math.max(cL, cW) * 2.25;
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(gridSize, gridSize),
-      new THREE.MeshStandardMaterial({ color: 0xdbe2ea, roughness: 0.96, metalness: 0.02 }),
+      new THREE.MeshStandardMaterial({ color: 0xe7ebf0, roughness: 0.98, metalness: 0.01 }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(cL / 2, -0.035, cW / 2);
     ground.receiveShadow = true;
     scene.add(ground);
 
-    const safetyLineMaterial = new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.8 });
-    for (const z of [-0.3, cW + 0.3]) {
-      const line = new THREE.Mesh(new THREE.BoxGeometry(cL * 1.15, 0.012, 0.045), safetyLineMaterial);
-      line.position.set(cL / 2, -0.012, z);
-      line.receiveShadow = true;
-      scene.add(line);
-    }
-
-    const gridDivisions = 64;
-    const grid = new THREE.GridHelper(gridSize, gridDivisions, 0xcbd5e1, 0xe2e8f0);
+    const gridDivisions = 48;
+    const grid = new THREE.GridHelper(gridSize, gridDivisions, 0xcbd5e1, 0xdce3ea);
     grid.position.set(cL / 2, -0.02, cW / 2);
     if (Array.isArray(grid.material)) {
       grid.material.forEach((m) => {
         (m as THREE.LineBasicMaterial).transparent = true;
-        (m as THREE.LineBasicMaterial).opacity = 0.18;
+        (m as THREE.LineBasicMaterial).opacity = 0.11;
       });
     } else {
       (grid.material as THREE.LineBasicMaterial).transparent = true;
-      (grid.material as THREE.LineBasicMaterial).opacity = 0.18;
+      (grid.material as THREE.LineBasicMaterial).opacity = 0.11;
     }
     scene.add(grid);
 
     const containerEdges = new THREE.EdgesGeometry(new THREE.BoxGeometry(cL, cH, cW));
     const containerWire = new THREE.LineSegments(
       containerEdges,
-      new THREE.LineBasicMaterial({ color: 0x334155, transparent: true, opacity: 0.82 })
+      new THREE.LineBasicMaterial({ color: 0x0f172a, transparent: true, opacity: 0.5 })
     );
     containerWire.position.set(cL / 2, cH / 2, cW / 2);
     scene.add(containerWire);
 
+    const structureMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      roughness: 0.34,
+      metalness: 0.7,
+    });
+    const addStructure = (geometry: THREE.BufferGeometry, x: number, y: number, z: number) => {
+      const beam = new THREE.Mesh(geometry, structureMat);
+      beam.position.set(x, y, z);
+      beam.castShadow = true;
+      scene.add(beam);
+    };
+    const rail = Math.max(0.032, Math.min(cH, cW) * 0.018);
+    for (const x of [0, cL]) {
+      for (const z of [0, cW]) {
+        addStructure(new THREE.BoxGeometry(rail, cH, rail), x, cH / 2, z);
+      }
+    }
+    for (const y of [0, cH]) {
+      for (const z of [0, cW]) {
+        addStructure(new THREE.BoxGeometry(cL, rail, rail), cL / 2, y, z);
+      }
+      for (const x of [0, cL]) {
+        addStructure(new THREE.BoxGeometry(rail, rail, cW), x, y, cW / 2);
+      }
+    }
+
     const floor = new THREE.Mesh(
       new THREE.BoxGeometry(cL, 0.035, cW),
-      new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.9, metalness: 0.12 }),
+      new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.86, metalness: 0.16 }),
     );
     floor.position.set(cL / 2, -0.015, cW / 2);
     floor.receiveShadow = true;
     scene.add(floor);
 
     const wallMat = new THREE.MeshStandardMaterial({
-      color: 0x94a3b8,
+      color: 0x60a5fa,
       transparent: true,
-      opacity: 0.13,
-      roughness: 0.7,
-      metalness: 0.22,
+      opacity: 0.075,
+      roughness: 0.42,
+      metalness: 0.28,
       side: THREE.DoubleSide,
       depthWrite: false,
     });
@@ -241,7 +390,7 @@ function ContainerViewer3D({
     scene.add(rightWall);
 
     const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(cL, cW), wallMat.clone());
-    (ceiling.material as THREE.MeshStandardMaterial).opacity = 0.07;
+    (ceiling.material as THREE.MeshStandardMaterial).opacity = 0.045;
     ceiling.rotation.x = Math.PI / 2;
     ceiling.position.set(cL / 2, cH, cW / 2);
     scene.add(ceiling);
@@ -254,14 +403,16 @@ function ContainerViewer3D({
       brandCtx.clearRect(0, 0, brandCanvas.width, brandCanvas.height);
       brandCtx.textAlign = "center";
       brandCtx.textBaseline = "middle";
-      brandCtx.font = "700 108px Inter, Arial, sans-serif";
-      brandCtx.fillStyle = "rgba(15, 23, 42, 0.5)";
-      brandCtx.fillText("AccessToNorth.com", brandCanvas.width / 2, brandCanvas.height / 2);
+      brandCtx.font = "700 94px Inter, Arial, sans-serif";
+      brandCtx.fillStyle = "rgba(15, 23, 42, 0.62)";
+      brandCtx.fillText("AccessToNorth.com", brandCanvas.width / 2, brandCanvas.height / 2 - 6);
+      brandCtx.fillStyle = "rgba(15, 127, 229, 0.58)";
+      brandCtx.fillRect(332, 188, 360, 7);
       const brandTexture = new THREE.CanvasTexture(brandCanvas);
       brandTexture.colorSpace = THREE.SRGBColorSpace;
       const brand = new THREE.Mesh(
         new THREE.PlaneGeometry(Math.min(cL * 0.55, 6.2), Math.min(cH * 0.2, 0.55)),
-        new THREE.MeshBasicMaterial({ map: brandTexture, transparent: true, opacity: 0.75, depthWrite: false }),
+        new THREE.MeshBasicMaterial({ map: brandTexture, transparent: true, opacity: 0.68, depthWrite: false }),
       );
       brand.position.set(cL * 0.58, cH * 0.62, cW + 0.008);
       scene.add(brand);
@@ -269,11 +420,11 @@ function ContainerViewer3D({
 
     const doorX = cL;
     const doorMat = new THREE.MeshStandardMaterial({
-      color: 0x64748b,
+      color: 0x1e3a5f,
       transparent: true,
-      opacity: 0.3,
-      roughness: 0.6,
-      metalness: 0.35,
+      opacity: 0.18,
+      roughness: 0.42,
+      metalness: 0.48,
       side: THREE.DoubleSide,
       depthWrite: false,
     });
@@ -284,7 +435,8 @@ function ContainerViewer3D({
       scene.add(doorPanel);
     }
 
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.45, metalness: 0.65 });
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.32, metalness: 0.74 });
+    const hardwareMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.18, metalness: 0.92 });
     const addDoorFrame = (geometry: THREE.BufferGeometry, x: number, y: number, z: number) => {
       const mesh = new THREE.Mesh(geometry, frameMat);
       mesh.position.set(x, y, z);
@@ -299,8 +451,15 @@ function ContainerViewer3D({
 
     const rodGeometry = new THREE.CylinderGeometry(0.012, 0.012, cH * 0.78, 8);
     for (const z of [cW * 0.28, cW * 0.72]) {
-      addDoorFrame(rodGeometry, doorX + 0.052, cH * 0.52, z);
-      addDoorFrame(new THREE.BoxGeometry(0.035, 0.035, cW * 0.12), doorX + 0.07, cH * 0.42, z);
+      const rod = new THREE.Mesh(rodGeometry, hardwareMat);
+      rod.position.set(doorX + 0.052, cH * 0.52, z);
+      rod.castShadow = true;
+      scene.add(rod);
+
+      const handle = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.035, cW * 0.12), hardwareMat);
+      handle.position.set(doorX + 0.07, cH * 0.42, z);
+      handle.castShadow = true;
+      scene.add(handle);
     }
 
     const cargoMeshes: THREE.Mesh[] = [];
@@ -340,12 +499,12 @@ function ContainerViewer3D({
         const ctx = c.getContext("2d")!;
 
         const gradient = ctx.createLinearGradient(0, 0, cw, ch);
-        gradient.addColorStop(0, baseColor.clone().offsetHSL(0, 0.02, 0.1).getStyle());
-        gradient.addColorStop(1, baseColor.clone().offsetHSL(0, 0, -0.08).getStyle());
+        gradient.addColorStop(0, baseColor.clone().offsetHSL(0, -0.01, 0.075).getStyle());
+        gradient.addColorStop(1, baseColor.clone().offsetHSL(0, -0.02, -0.055).getStyle());
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, cw, ch);
-        ctx.strokeStyle = "rgba(255,255,255,0.28)";
-        ctx.lineWidth = 4;
+        ctx.strokeStyle = "rgba(255,255,255,0.2)";
+        ctx.lineWidth = 3;
         ctx.strokeRect(4, 4, cw - 8, ch - 8);
 
         const fontSize = Math.max(16, Math.min(28, Math.round(ch * 0.18)));
@@ -355,8 +514,8 @@ function ContainerViewer3D({
 
         ctx.shadowColor = "#000000";
         ctx.shadowBlur = 0;
-        ctx.shadowOffsetX = 2;
-        ctx.shadowOffsetY = 2;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
 
         ctx.fillStyle = "#ffffff";
         ctx.font = `bold ${fontSize}px Inter, Arial, sans-serif`;
@@ -380,8 +539,8 @@ function ContainerViewer3D({
       const faceMat = (tex: THREE.CanvasTexture) => {
         return new THREE.MeshStandardMaterial({
           map: tex,
-          roughness: 0.74,
-          metalness: 0.02,
+          roughness: 0.64,
+          metalness: 0.015,
         });
       };
 
@@ -401,9 +560,9 @@ function ContainerViewer3D({
 
       const edgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(bL, bH, bW));
       const edgeMat = new THREE.LineBasicMaterial({
-        color: baseColor.clone().multiplyScalar(0.6),
+        color: 0x0f172a,
         transparent: true,
-        opacity: 0.72,
+        opacity: 0.42,
       });
       const edges = new THREE.LineSegments(edgeGeo, edgeMat);
       edges.position.copy(boxMesh.position);
@@ -506,6 +665,7 @@ function ContainerViewer3D({
     return () => {
       window.removeEventListener("resize", handleResize);
       controls.removeEventListener("change", renderScene);
+      renderer.domElement.removeEventListener("webglcontextlost", handleContextLost);
       controls.dispose();
       const disposeMaterial = (material: THREE.Material) => {
         const map = (material as THREE.MeshStandardMaterial | THREE.MeshBasicMaterial | THREE.SpriteMaterial).map;
@@ -536,7 +696,7 @@ function ContainerViewer3D({
         el.removeChild(renderer.domElement);
       }
     };
-  }, [placed, container, unitSystem, showBranding]);
+  }, [placed, container, unitSystem, showBranding, rendererAttempt, webglError]);
 
   const fmt = (inches: number) => {
     if (unitSystem === "metric") return `${(inches * IN_TO_CM).toFixed(1)} cm`;
@@ -547,40 +707,42 @@ function ContainerViewer3D({
     <div>
       <div className="flex items-center justify-end mb-2 gap-2 flex-wrap">
         <div className="flex items-center gap-2 text-xs text-slate-600">
-          <span className="bg-slate-100 border border-slate-200 rounded px-2 py-0.5">L: <span className="font-semibold">{fmt(container.lengthIn)}</span></span>
-          <span className="bg-slate-100 border border-slate-200 rounded px-2 py-0.5">W: <span className="font-semibold">{fmt(container.widthIn)}</span></span>
-          <span className="bg-slate-100 border border-slate-200 rounded px-2 py-0.5">H: <span className="font-semibold">{fmt(container.heightIn)}</span></span>
+          <span className="bg-white border border-slate-200 rounded-md px-2 py-1 shadow-sm">L <span className="font-semibold text-slate-800">{fmt(container.lengthIn)}</span></span>
+          <span className="bg-white border border-slate-200 rounded-md px-2 py-1 shadow-sm">W <span className="font-semibold text-slate-800">{fmt(container.widthIn)}</span></span>
+          <span className="bg-white border border-slate-200 rounded-md px-2 py-1 shadow-sm">H <span className="font-semibold text-slate-800">{fmt(container.heightIn)}</span></span>
         </div>
       </div>
       {webglError ? (
-        <div
-          className="w-full h-[300px] rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-center p-6"
-          data-testid="container-3d-viewer"
-        >
-          <Box className="w-12 h-12 text-slate-400 mb-3" />
-          <p className="text-sm font-medium text-slate-700 mb-1">3D Preview Unavailable</p>
-          <p className="text-xs text-slate-500">
-            Your browser does not support WebGL. The loading plan details are shown below.
-          </p>
-        </div>
+        <ContainerFallback2D
+          placed={placed}
+          container={container}
+          onRetry={() => {
+            setWebglError(false);
+            setRendererAttempt((attempt) => attempt + 1);
+          }}
+        />
       ) : (
         <div
-          className="relative w-full h-[400px] md:h-[500px] rounded-xl overflow-hidden border border-slate-200 bg-[radial-gradient(circle_at_50%_15%,#ffffff_0%,#e9eff6_55%,#d7e0ea_100%)]"
+          className="relative w-full h-[400px] md:h-[500px] rounded-xl overflow-hidden border border-slate-200/90 bg-[radial-gradient(ellipse_at_45%_0%,#ffffff_0%,#f3f6fa_48%,#e6ebf1_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_45px_-34px_rgba(15,23,42,0.45)]"
           data-testid="container-3d-viewer"
         >
           <div ref={mountRef} className="absolute inset-0" />
           <div className="absolute top-3 left-3 flex items-center gap-2">
+            <div className="h-8 px-2.5 rounded-lg border border-white/80 bg-white/75 backdrop-blur text-[11px] font-semibold text-slate-700 shadow-sm flex items-center gap-1.5 pointer-events-none">
+              <Box className="w-3.5 h-3.5 text-primary" />
+              Interactive 3D
+            </div>
             <button
               type="button"
               onClick={() => setShowBranding((current) => !current)}
-              className="h-8 px-2.5 rounded-lg border border-white/70 bg-white/80 backdrop-blur text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white transition-colors flex items-center gap-1.5"
+              className="h-8 px-2.5 rounded-lg border border-white/80 bg-white/75 backdrop-blur text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white transition-colors flex items-center gap-1.5"
               data-testid="button-toggle-container-branding"
             >
               {showBranding ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
               Branding
             </button>
           </div>
-          <div className="absolute bottom-3 right-3 rounded-md bg-slate-900/60 px-2 py-1 text-[10px] text-white/90 backdrop-blur-sm pointer-events-none">
+          <div className="absolute bottom-3 right-3 rounded-md border border-white/80 bg-white/75 px-2 py-1 text-[10px] font-medium text-slate-600 shadow-sm backdrop-blur pointer-events-none">
             Drag to rotate · Scroll to zoom
           </div>
         </div>
@@ -652,6 +814,7 @@ export default function ContainerCalculator() {
   const [recommendation, setRecommendation] = useState<ContainerRecommendation | null>(null);
   const [pendingRecalc, setPendingRecalc] = useState(false);
   const [containerId, setContainerId] = useState("20dc");
+  const [containerSelectionMode, setContainerSelectionMode] = useState<"recommend" | "manual">("recommend");
   const [customContainer, setCustomContainer] = useState({
     lengthIn: 232.2,
     widthIn: 92.6,
@@ -708,7 +871,7 @@ export default function ContainerCalculator() {
   const [importError, setImportError] = useState<string | null>(null);
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const [importUnits, setImportUnits] = useState<"imperial" | "metric">("imperial");
-  const [importItems, setImportItems] = useState<Array<{ name: string; length: number; width: number; height: number; weight: number; quantity: number; stackable?: boolean; rotationMode?: RotationMode; loadPriority?: LoadPriority; palletized?: boolean; include: boolean }>>([]);
+  const [importItems, setImportItems] = useState<ImportedCargoRow[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const importFileRef = useRef<HTMLInputElement>(null);
   const [importRawHeaders, setImportRawHeaders] = useState<string[]>([]);
@@ -1004,36 +1167,30 @@ export default function ContainerCalculator() {
   }, [handleImportFile]);
 
   const confirmImport = useCallback(() => {
-    const toAdd = importItems.filter((i) => i.include && (i.length > 0 || i.width > 0 || i.height > 0));
-    if (toAdd.length === 0) return;
-    const isImportMetric = importUnits === "metric";
-    const startIdx = cargoItems.length;
-    const newItems: CargoItem[] = toAdd.map((item, idx) => ({
-      id: generateId(),
-      name: item.name,
-      length: isImportMetric ? item.length * CM_TO_IN : item.length,
-      width: isImportMetric ? item.width * CM_TO_IN : item.width,
-      height: isImportMetric ? item.height * CM_TO_IN : item.height,
-      weight: isImportMetric ? item.weight * KG_TO_LB : item.weight,
-      quantity: item.quantity,
-      color: CARGO_COLORS[(startIdx + idx) % CARGO_COLORS.length],
-      stackable: item.stackable !== undefined ? item.stackable : bulkDefaults.stackable,
-      palletized: item.palletized !== undefined ? item.palletized : bulkDefaults.palletized,
-      palletType: bulkDefaults.palletType,
-      customPalletL: bulkDefaults.customPalletL,
-      customPalletW: bulkDefaults.customPalletW,
-      customPalletH: bulkDefaults.customPalletH,
-      rotationMode: item.rotationMode !== undefined ? item.rotationMode : bulkDefaults.rotationMode,
-      included: true,
-      loadPriority: item.loadPriority !== undefined ? item.loadPriority : bulkDefaults.loadPriority,
-    }));
-    setCargoItems((prev) => [...prev, ...newItems]);
+    const importedCount = importItems.filter((i) => (
+      i.include && (i.length > 0 || i.width > 0 || i.height > 0)
+    )).length;
+    if (importedCount === 0) return;
+
+    setCargoItems((previousItems) => {
+      return mergeImportedCargoItems({
+        previousItems,
+        importedRows: importItems,
+        units: importUnits,
+        defaults: bulkDefaults,
+        colors: CARGO_COLORS,
+        createId: generateId,
+      }).items;
+    });
+    setUnitSystem(importUnits);
+    setMultiResult(null);
+    setRecommendation(null);
     setShowImportModal(false);
     toast({
-      title: `${newItems.length} item${newItems.length > 1 ? "s" : ""} imported`,
-      description: "Items have been added to your packing list.",
+      title: `${importedCount} item${importedCount > 1 ? "s" : ""} filled in`,
+      description: "The extracted cargo fields are ready for review in the calculator.",
     });
-  }, [importItems, importUnits, cargoItems.length, bulkDefaults, toast]);
+  }, [importItems, importUnits, bulkDefaults, toast]);
 
   const downloadSampleCSV = useCallback(() => {
     const csvContent = `Name,Length,Width,Height,Total Weight,Quantity,Stackable,Rotation,Priority,Palletized\nCardboard Box A,24,18,12,150,10,yes,all,normal,no\nPallet Load B,48,40,36,1000,4,no,fixed,first,yes\nSmall Carton C,12,10,8,125,25,yes,horizontal,last,no`;
@@ -1062,8 +1219,16 @@ export default function ContainerCalculator() {
     setCalculating(true);
     setTimeout(() => {
       try {
-        const selectedPlan = packIntoContainers(validItems, container);
-        const bestPlan = containerId === "custom" ? null : recommendContainer(validItems);
+        const bestPlan = containerSelectionMode === "manual" && containerId === "custom"
+          ? null
+          : recommendContainer(validItems);
+        const selectedPlan = containerSelectionMode === "recommend" && bestPlan
+          ? bestPlan.plan
+          : packIntoContainers(validItems, container);
+
+        if (containerSelectionMode === "recommend" && bestPlan) {
+          setContainerId(bestPlan.container.id);
+        }
         setMultiResult(selectedPlan);
         setRecommendation(bestPlan);
 
@@ -1085,7 +1250,7 @@ export default function ContainerCalculator() {
         });
       }
     }, 500);
-  }, [cargoItems, container, containerId, toast]);
+  }, [cargoItems, container, containerId, containerSelectionMode, toast]);
 
   useEffect(() => {
     if (pendingRecalc) {
@@ -1121,6 +1286,8 @@ export default function ContainerCalculator() {
   const handleReset = useCallback(() => {
     setMultiResult(null);
     setRecommendation(null);
+    setContainerId("20dc");
+    setContainerSelectionMode("recommend");
     setCargoItems([defaultCargoItem(0), defaultCargoItem(1)]);
     setSelectedIds(new Set());
   }, [defaultCargoItem]);
@@ -1129,27 +1296,49 @@ export default function ContainerCalculator() {
     if (!multiResult || multiResult.containers.length === 0) return;
     toast({ title: "Generating PDF...", description: "Please wait while we create your report." });
     try {
-      const { generatePackingReportBlob, buildCargoSummaryRows } = await import(
-        "./container-pdf/ContainerPackingReportPDF"
-      );
+      const cr = multiResult.containers[0];
+      let blob: Blob | null = null;
 
-      let images = { iso: "", top: "", sideA: "", front: "" };
-      if (snapshotExportFn) {
-        const snaps = snapshotExportFn();
-        if (snaps) images = snaps;
+      try {
+        const { generatePackingReportBlob, buildCargoSummaryRows } = await import(
+          "./container-pdf/ContainerPackingReportPDF"
+        );
+        let images = { iso: "", top: "", sideA: "", front: "" };
+
+        if (snapshotExportFn) {
+          try {
+            const snaps = snapshotExportFn();
+            if (snaps) images = snaps;
+          } catch (snapshotError) {
+            console.warn("3D snapshots unavailable; generating the report without them.", snapshotError);
+          }
+        }
+
+        blob = await generatePackingReportBlob({
+          containerSpec: cr.container,
+          cargoRows: buildCargoSummaryRows(cargoItems),
+          result: cr.result,
+          totalContainers: multiResult.totalContainers,
+          unitSystem,
+          images,
+        });
+      } catch (richReportError) {
+        console.warn("Rich PDF generation failed; using the compatibility report.", richReportError);
+        const { generateBasicPackingReportBlob } = await import(
+          "./container-pdf/ContainerPackingReportFallback"
+        );
+        blob = await generateBasicPackingReportBlob({
+          containerSpec: cr.container,
+          cargoItems,
+          result: cr.result,
+          totalContainers: multiResult.totalContainers,
+          unitSystem,
+        });
       }
 
-      const cr = multiResult.containers[0];
-      const cargoRows = buildCargoSummaryRows(cargoItems);
-
-      const blob = await generatePackingReportBlob({
-        containerSpec: cr.container,
-        cargoRows,
-        result: cr.result,
-        totalContainers: multiResult.totalContainers,
-        unitSystem,
-        images,
-      });
+      if (!blob || blob.size < 1000) {
+        throw new Error("Generated PDF was empty.");
+      }
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -1159,9 +1348,9 @@ export default function ContainerCalculator() {
       document.body.appendChild(a);
       a.click();
       a.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 
-      toast({ title: "PDF Downloaded", description: "Your packing report has been saved." });
+      toast({ title: "PDF Ready", description: "Your packing report download has started." });
     } catch (err) {
       console.error("PDF export error:", err);
       toast({ title: "PDF Export Failed", description: "Could not generate the report.", variant: "destructive" });
@@ -1246,6 +1435,27 @@ export default function ContainerCalculator() {
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => {
+                        setContainerSelectionMode("recommend");
+                        setMultiResult(null);
+                        setRecommendation(null);
+                      }}
+                      className={`col-span-2 text-left p-3 rounded-lg border text-sm transition-all ${
+                        containerSelectionMode === "recommend"
+                          ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                          : "border-slate-200 hover:border-primary/40"
+                      }`}
+                      data-testid="button-container-recommend"
+                    >
+                      <span className="font-semibold text-slate-900 flex items-center gap-1.5 text-xs">
+                        <Sparkles className="w-3.5 h-3.5 text-primary" />
+                        Recommend the best container
+                      </span>
+                      <span className="text-[10px] text-slate-500 block mt-1">
+                        We’ll compare every standard size after you enter the cargo details.
+                      </span>
+                    </button>
                     {CONTAINER_PRESETS.map((ct) => {
                       const volDisplay = isMetric
                         ? `${(ct.volumeCuFt * 0.0283168).toFixed(1)} m³`
@@ -1257,11 +1467,12 @@ export default function ContainerCalculator() {
                         <button
                           key={ct.id}
                           onClick={() => {
+                            setContainerSelectionMode("manual");
                             setContainerId(ct.id);
                             setMultiResult(null);
                           }}
                           className={`text-left p-2.5 rounded-lg border text-sm transition-all ${
-                            containerId === ct.id
+                            containerSelectionMode === "manual" && containerId === ct.id
                               ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                               : "border-slate-200 hover:border-slate-300"
                           }`}
@@ -1277,11 +1488,12 @@ export default function ContainerCalculator() {
                     })}
                     <button
                       onClick={() => {
+                        setContainerSelectionMode("manual");
                         setContainerId("custom");
                         setMultiResult(null);
                       }}
                       className={`text-left p-2.5 rounded-lg border text-sm transition-all col-span-2 ${
-                        containerId === "custom"
+                        containerSelectionMode === "manual" && containerId === "custom"
                           ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                           : "border-slate-200 hover:border-slate-300"
                       }`}
@@ -1294,7 +1506,7 @@ export default function ContainerCalculator() {
                     </button>
                   </div>
 
-                  {containerId === "custom" && (
+                  {containerSelectionMode === "manual" && containerId === "custom" && (
                     <div className="mt-3 p-3 rounded-lg bg-primary/5 border border-primary/15">
                       <div className="grid grid-cols-4 gap-1.5">
                         <div>
@@ -2841,7 +3053,7 @@ export default function ContainerCalculator() {
                                   data-testid="button-confirm-import"
                                 >
                                   <Plus className="w-4 h-4" />
-                                  Import {importItems.filter((i) => i.include).length} Item{importItems.filter((i) => i.include).length !== 1 ? "s" : ""}
+                                  Fill Calculator with {importItems.filter((i) => i.include).length} Item{importItems.filter((i) => i.include).length !== 1 ? "s" : ""}
                                 </Button>
                                 <Button
                                   variant="outline"
@@ -3270,6 +3482,7 @@ export default function ContainerCalculator() {
                             variant="outline"
                             data-testid="button-use-recommended-container"
                             onClick={() => {
+                              setContainerSelectionMode("manual");
                               setContainerId(recommendation.container.id);
                               setPendingRecalc(true);
                             }}
