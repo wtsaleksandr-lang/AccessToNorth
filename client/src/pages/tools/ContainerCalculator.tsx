@@ -74,9 +74,9 @@ const KG_TO_LB = 1 / LB_TO_KG;
 type BulkApplyScope = "all" | "selected" | "defaults";
 
 const CARGO_COLORS = [
-  "#22c55e", "#3b82f6", "#ef4444", "#f59e0b", "#8b5cf6",
-  "#ec4899", "#06b6d4", "#f97316", "#14b8a6", "#a855f7",
-  "#6366f1", "#10b981", "#e11d48", "#0ea5e9", "#d946ef",
+  "#0f766e", "#2563eb", "#b45309", "#7c3aed", "#be123c",
+  "#0e7490", "#475569", "#c2410c", "#047857", "#6d28d9",
+  "#1d4ed8", "#15803d", "#9f1239", "#0369a1", "#a21caf",
 ];
 
 function generateId() {
@@ -247,7 +247,7 @@ function ContainerViewer3D({
     renderer.setClearColor(0x000000, 0);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = 1.02;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     el.appendChild(renderer.domElement);
@@ -267,20 +267,21 @@ function ContainerViewer3D({
     const cW = inToM(container.widthIn);
     const cH = inToM(container.heightIn);
 
-    camera.position.set(cL * 1.5, cH * 1.8, cW * 2.5);
-    camera.lookAt(cL / 2, cH / 3, cW / 2);
+    camera.position.set(cL * 1.4, cH * 1.65, cW * 2.35);
+    camera.lookAt(cL / 2, cH * 0.38, cW / 2);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = false;
-    controls.target.set(cL / 2, cH / 3, cW / 2);
+    controls.enablePan = false;
+    controls.target.set(cL / 2, cH * 0.38, cW / 2);
     controls.minDistance = 1;
     controls.maxDistance = 30;
     controls.update();
 
-    scene.add(new THREE.HemisphereLight(0xdbeafe, 0x334155, 1.25));
-    scene.add(new THREE.AmbientLight(0xffffff, 0.28));
+    scene.add(new THREE.HemisphereLight(0xeaf2ff, 0x1e293b, 1.15));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.34));
 
-    const dirLight = new THREE.DirectionalLight(0xfff7ed, 2.2);
+    const dirLight = new THREE.DirectionalLight(0xfffbeb, 2.05);
     dirLight.position.set(cL, cH * 2, cW * 1.5);
     dirLight.castShadow = true;
     const shadowMapSize = compactViewport ? 512 : 1024;
@@ -290,64 +291,86 @@ function ContainerViewer3D({
     dirLight.shadow.bias = -0.0008;
     scene.add(dirLight);
 
-    const fillLight = new THREE.DirectionalLight(0xbfdbfe, 0.8);
+    const fillLight = new THREE.DirectionalLight(0x93c5fd, 0.72);
     fillLight.position.set(-cL, cH, -cW);
     scene.add(fillLight);
 
-    const gridSize = Math.max(cL, cW) * 2.4;
+    const rimLight = new THREE.DirectionalLight(0xffffff, 0.38);
+    rimLight.position.set(cL * 0.2, cH * 1.4, cW * 2.2);
+    scene.add(rimLight);
+
+    const gridSize = Math.max(cL, cW) * 2.25;
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(gridSize, gridSize),
-      new THREE.MeshStandardMaterial({ color: 0xdbe2ea, roughness: 0.96, metalness: 0.02 }),
+      new THREE.MeshStandardMaterial({ color: 0xe7ebf0, roughness: 0.98, metalness: 0.01 }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(cL / 2, -0.035, cW / 2);
     ground.receiveShadow = true;
     scene.add(ground);
 
-    const safetyLineMaterial = new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.8 });
-    for (const z of [-0.3, cW + 0.3]) {
-      const line = new THREE.Mesh(new THREE.BoxGeometry(cL * 1.15, 0.012, 0.045), safetyLineMaterial);
-      line.position.set(cL / 2, -0.012, z);
-      line.receiveShadow = true;
-      scene.add(line);
-    }
-
-    const gridDivisions = 64;
-    const grid = new THREE.GridHelper(gridSize, gridDivisions, 0xcbd5e1, 0xe2e8f0);
+    const gridDivisions = 48;
+    const grid = new THREE.GridHelper(gridSize, gridDivisions, 0xcbd5e1, 0xdce3ea);
     grid.position.set(cL / 2, -0.02, cW / 2);
     if (Array.isArray(grid.material)) {
       grid.material.forEach((m) => {
         (m as THREE.LineBasicMaterial).transparent = true;
-        (m as THREE.LineBasicMaterial).opacity = 0.18;
+        (m as THREE.LineBasicMaterial).opacity = 0.11;
       });
     } else {
       (grid.material as THREE.LineBasicMaterial).transparent = true;
-      (grid.material as THREE.LineBasicMaterial).opacity = 0.18;
+      (grid.material as THREE.LineBasicMaterial).opacity = 0.11;
     }
     scene.add(grid);
 
     const containerEdges = new THREE.EdgesGeometry(new THREE.BoxGeometry(cL, cH, cW));
     const containerWire = new THREE.LineSegments(
       containerEdges,
-      new THREE.LineBasicMaterial({ color: 0x334155, transparent: true, opacity: 0.82 })
+      new THREE.LineBasicMaterial({ color: 0x0f172a, transparent: true, opacity: 0.5 })
     );
     containerWire.position.set(cL / 2, cH / 2, cW / 2);
     scene.add(containerWire);
 
+    const structureMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      roughness: 0.34,
+      metalness: 0.7,
+    });
+    const addStructure = (geometry: THREE.BufferGeometry, x: number, y: number, z: number) => {
+      const beam = new THREE.Mesh(geometry, structureMat);
+      beam.position.set(x, y, z);
+      beam.castShadow = true;
+      scene.add(beam);
+    };
+    const rail = Math.max(0.032, Math.min(cH, cW) * 0.018);
+    for (const x of [0, cL]) {
+      for (const z of [0, cW]) {
+        addStructure(new THREE.BoxGeometry(rail, cH, rail), x, cH / 2, z);
+      }
+    }
+    for (const y of [0, cH]) {
+      for (const z of [0, cW]) {
+        addStructure(new THREE.BoxGeometry(cL, rail, rail), cL / 2, y, z);
+      }
+      for (const x of [0, cL]) {
+        addStructure(new THREE.BoxGeometry(rail, rail, cW), x, y, cW / 2);
+      }
+    }
+
     const floor = new THREE.Mesh(
       new THREE.BoxGeometry(cL, 0.035, cW),
-      new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.9, metalness: 0.12 }),
+      new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.86, metalness: 0.16 }),
     );
     floor.position.set(cL / 2, -0.015, cW / 2);
     floor.receiveShadow = true;
     scene.add(floor);
 
     const wallMat = new THREE.MeshStandardMaterial({
-      color: 0x94a3b8,
+      color: 0x60a5fa,
       transparent: true,
-      opacity: 0.13,
-      roughness: 0.7,
-      metalness: 0.22,
+      opacity: 0.075,
+      roughness: 0.42,
+      metalness: 0.28,
       side: THREE.DoubleSide,
       depthWrite: false,
     });
@@ -366,7 +389,7 @@ function ContainerViewer3D({
     scene.add(rightWall);
 
     const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(cL, cW), wallMat.clone());
-    (ceiling.material as THREE.MeshStandardMaterial).opacity = 0.07;
+    (ceiling.material as THREE.MeshStandardMaterial).opacity = 0.045;
     ceiling.rotation.x = Math.PI / 2;
     ceiling.position.set(cL / 2, cH, cW / 2);
     scene.add(ceiling);
@@ -379,14 +402,16 @@ function ContainerViewer3D({
       brandCtx.clearRect(0, 0, brandCanvas.width, brandCanvas.height);
       brandCtx.textAlign = "center";
       brandCtx.textBaseline = "middle";
-      brandCtx.font = "700 108px Inter, Arial, sans-serif";
-      brandCtx.fillStyle = "rgba(15, 23, 42, 0.5)";
-      brandCtx.fillText("AccessToNorth.com", brandCanvas.width / 2, brandCanvas.height / 2);
+      brandCtx.font = "700 94px Inter, Arial, sans-serif";
+      brandCtx.fillStyle = "rgba(15, 23, 42, 0.62)";
+      brandCtx.fillText("AccessToNorth.com", brandCanvas.width / 2, brandCanvas.height / 2 - 6);
+      brandCtx.fillStyle = "rgba(15, 127, 229, 0.58)";
+      brandCtx.fillRect(332, 188, 360, 7);
       const brandTexture = new THREE.CanvasTexture(brandCanvas);
       brandTexture.colorSpace = THREE.SRGBColorSpace;
       const brand = new THREE.Mesh(
         new THREE.PlaneGeometry(Math.min(cL * 0.55, 6.2), Math.min(cH * 0.2, 0.55)),
-        new THREE.MeshBasicMaterial({ map: brandTexture, transparent: true, opacity: 0.75, depthWrite: false }),
+        new THREE.MeshBasicMaterial({ map: brandTexture, transparent: true, opacity: 0.68, depthWrite: false }),
       );
       brand.position.set(cL * 0.58, cH * 0.62, cW + 0.008);
       scene.add(brand);
@@ -394,11 +419,11 @@ function ContainerViewer3D({
 
     const doorX = cL;
     const doorMat = new THREE.MeshStandardMaterial({
-      color: 0x64748b,
+      color: 0x1e3a5f,
       transparent: true,
-      opacity: 0.3,
-      roughness: 0.6,
-      metalness: 0.35,
+      opacity: 0.18,
+      roughness: 0.42,
+      metalness: 0.48,
       side: THREE.DoubleSide,
       depthWrite: false,
     });
@@ -409,7 +434,8 @@ function ContainerViewer3D({
       scene.add(doorPanel);
     }
 
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.45, metalness: 0.65 });
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.32, metalness: 0.74 });
+    const hardwareMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.18, metalness: 0.92 });
     const addDoorFrame = (geometry: THREE.BufferGeometry, x: number, y: number, z: number) => {
       const mesh = new THREE.Mesh(geometry, frameMat);
       mesh.position.set(x, y, z);
@@ -424,8 +450,15 @@ function ContainerViewer3D({
 
     const rodGeometry = new THREE.CylinderGeometry(0.012, 0.012, cH * 0.78, 8);
     for (const z of [cW * 0.28, cW * 0.72]) {
-      addDoorFrame(rodGeometry, doorX + 0.052, cH * 0.52, z);
-      addDoorFrame(new THREE.BoxGeometry(0.035, 0.035, cW * 0.12), doorX + 0.07, cH * 0.42, z);
+      const rod = new THREE.Mesh(rodGeometry, hardwareMat);
+      rod.position.set(doorX + 0.052, cH * 0.52, z);
+      rod.castShadow = true;
+      scene.add(rod);
+
+      const handle = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.035, cW * 0.12), hardwareMat);
+      handle.position.set(doorX + 0.07, cH * 0.42, z);
+      handle.castShadow = true;
+      scene.add(handle);
     }
 
     const cargoMeshes: THREE.Mesh[] = [];
@@ -465,12 +498,12 @@ function ContainerViewer3D({
         const ctx = c.getContext("2d")!;
 
         const gradient = ctx.createLinearGradient(0, 0, cw, ch);
-        gradient.addColorStop(0, baseColor.clone().offsetHSL(0, 0.02, 0.1).getStyle());
-        gradient.addColorStop(1, baseColor.clone().offsetHSL(0, 0, -0.08).getStyle());
+        gradient.addColorStop(0, baseColor.clone().offsetHSL(0, -0.01, 0.075).getStyle());
+        gradient.addColorStop(1, baseColor.clone().offsetHSL(0, -0.02, -0.055).getStyle());
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, cw, ch);
-        ctx.strokeStyle = "rgba(255,255,255,0.28)";
-        ctx.lineWidth = 4;
+        ctx.strokeStyle = "rgba(255,255,255,0.2)";
+        ctx.lineWidth = 3;
         ctx.strokeRect(4, 4, cw - 8, ch - 8);
 
         const fontSize = Math.max(16, Math.min(28, Math.round(ch * 0.18)));
@@ -480,8 +513,8 @@ function ContainerViewer3D({
 
         ctx.shadowColor = "#000000";
         ctx.shadowBlur = 0;
-        ctx.shadowOffsetX = 2;
-        ctx.shadowOffsetY = 2;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
 
         ctx.fillStyle = "#ffffff";
         ctx.font = `bold ${fontSize}px Inter, Arial, sans-serif`;
@@ -505,8 +538,8 @@ function ContainerViewer3D({
       const faceMat = (tex: THREE.CanvasTexture) => {
         return new THREE.MeshStandardMaterial({
           map: tex,
-          roughness: 0.74,
-          metalness: 0.02,
+          roughness: 0.64,
+          metalness: 0.015,
         });
       };
 
@@ -526,9 +559,9 @@ function ContainerViewer3D({
 
       const edgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(bL, bH, bW));
       const edgeMat = new THREE.LineBasicMaterial({
-        color: baseColor.clone().multiplyScalar(0.6),
+        color: 0x0f172a,
         transparent: true,
-        opacity: 0.72,
+        opacity: 0.42,
       });
       const edges = new THREE.LineSegments(edgeGeo, edgeMat);
       edges.position.copy(boxMesh.position);
@@ -673,9 +706,9 @@ function ContainerViewer3D({
     <div>
       <div className="flex items-center justify-end mb-2 gap-2 flex-wrap">
         <div className="flex items-center gap-2 text-xs text-slate-600">
-          <span className="bg-slate-100 border border-slate-200 rounded px-2 py-0.5">L: <span className="font-semibold">{fmt(container.lengthIn)}</span></span>
-          <span className="bg-slate-100 border border-slate-200 rounded px-2 py-0.5">W: <span className="font-semibold">{fmt(container.widthIn)}</span></span>
-          <span className="bg-slate-100 border border-slate-200 rounded px-2 py-0.5">H: <span className="font-semibold">{fmt(container.heightIn)}</span></span>
+          <span className="bg-white border border-slate-200 rounded-md px-2 py-1 shadow-sm">L <span className="font-semibold text-slate-800">{fmt(container.lengthIn)}</span></span>
+          <span className="bg-white border border-slate-200 rounded-md px-2 py-1 shadow-sm">W <span className="font-semibold text-slate-800">{fmt(container.widthIn)}</span></span>
+          <span className="bg-white border border-slate-200 rounded-md px-2 py-1 shadow-sm">H <span className="font-semibold text-slate-800">{fmt(container.heightIn)}</span></span>
         </div>
       </div>
       {webglError ? (
@@ -689,22 +722,26 @@ function ContainerViewer3D({
         />
       ) : (
         <div
-          className="relative w-full h-[400px] md:h-[500px] rounded-xl overflow-hidden border border-slate-200 bg-[radial-gradient(circle_at_50%_15%,#ffffff_0%,#e9eff6_55%,#d7e0ea_100%)]"
+          className="relative w-full h-[400px] md:h-[500px] rounded-xl overflow-hidden border border-slate-200/90 bg-[radial-gradient(ellipse_at_45%_0%,#ffffff_0%,#f3f6fa_48%,#e6ebf1_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_45px_-34px_rgba(15,23,42,0.45)]"
           data-testid="container-3d-viewer"
         >
           <div ref={mountRef} className="absolute inset-0" />
           <div className="absolute top-3 left-3 flex items-center gap-2">
+            <div className="h-8 px-2.5 rounded-lg border border-white/80 bg-white/75 backdrop-blur text-[11px] font-semibold text-slate-700 shadow-sm flex items-center gap-1.5 pointer-events-none">
+              <Box className="w-3.5 h-3.5 text-primary" />
+              Interactive 3D
+            </div>
             <button
               type="button"
               onClick={() => setShowBranding((current) => !current)}
-              className="h-8 px-2.5 rounded-lg border border-white/70 bg-white/80 backdrop-blur text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white transition-colors flex items-center gap-1.5"
+              className="h-8 px-2.5 rounded-lg border border-white/80 bg-white/75 backdrop-blur text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white transition-colors flex items-center gap-1.5"
               data-testid="button-toggle-container-branding"
             >
               {showBranding ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
               Branding
             </button>
           </div>
-          <div className="absolute bottom-3 right-3 rounded-md bg-slate-900/60 px-2 py-1 text-[10px] text-white/90 backdrop-blur-sm pointer-events-none">
+          <div className="absolute bottom-3 right-3 rounded-md border border-white/80 bg-white/75 px-2 py-1 text-[10px] font-medium text-slate-600 shadow-sm backdrop-blur pointer-events-none">
             Drag to rotate · Scroll to zoom
           </div>
         </div>
