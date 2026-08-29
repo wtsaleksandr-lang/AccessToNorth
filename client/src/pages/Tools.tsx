@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { usePageMeta } from "@/hooks/use-page-meta";
-import { Calculator, Shield, Truck, Package, FileSearch, Ship } from "lucide-react";
+import { Calculator, Shield, Truck, Package, FileSearch, Ship, Layers3 } from "lucide-react";
 
 const tools = [
   {
@@ -27,6 +27,13 @@ const tools = [
     description: "Estimate your CARM security deposit requirements based on import volume, frequency, and compliance history.",
     icon: Shield,
     href: "/carm-security-calculator",
+    available: true,
+  },
+  {
+    title: "Pallet Builder",
+    description: "Build optimized carton-by-carton pallet plans. Compare layer patterns, check height, gross weight and stability, preview in 3D, and export a visual PDF.",
+    icon: Layers3,
+    href: "/tools/pallet-builder",
     available: true,
   },
   {
@@ -62,7 +69,7 @@ const tools = [
 export default function Tools() {
   usePageMeta({
     title: "Free Trade Tools | AccessToNorth.com",
-    description: "Free tools for Canadian importers and exporters: HS code finder, duty calculator, CARM security calculator, 3D container planner, and truck load planner.",
+    description: "Free tools for Canadian importers and exporters: HS code finder, duty calculator, CARM security calculator, pallet builder, 3D container planner, and truck load planner.",
     canonical: "/tools",
   });
 

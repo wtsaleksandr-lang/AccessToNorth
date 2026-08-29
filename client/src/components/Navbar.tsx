@@ -44,6 +44,7 @@ const toolLinks: MegaLink[] = [
   { name: "HS Code Finder", href: "/tools/hs-code-finder", icon: Search, desc: "Search tariff codes by keyword" },
   { name: "Customs Duty & Tax Calculator", href: "/customs-calculator", icon: Calculator, desc: "Estimate duties & taxes on imports" },
   { name: "CARM Security Calculator", href: "/carm-security-calculator", icon: Lock, desc: "Calculate your RPP security amount" },
+  { name: "Pallet Builder", href: "/tools/pallet-builder", icon: PackageCheck, desc: "Build carton-by-carton pallet plans" },
   { name: "Container Loading Calculator", href: "/tools/container-calculator", icon: Ship, desc: "Build a 3D container loading plan" },
   { name: "Truck Load Planner", href: "/tools/truck-load-planner", icon: Truck, desc: "Match cargo to a trailer" },
   { name: "Freight Quote", href: "/tools/freight-quote", icon: Truck, desc: "Get a shipping rate estimate", comingSoon: true },

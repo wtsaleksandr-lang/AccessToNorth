@@ -153,6 +153,32 @@ test.describe("tool pages load without runtime errors", () => {
     expect(realErrors, `Uncaught errors on /tools/truck-load-planner: ${realErrors.join("\n")}`).toEqual([]);
   });
 
+  test("Pallet Builder — creates a real layer plan and transfers it", async ({ page }) => {
+    const errors = trackPageErrors(page);
+    await page.goto("/tools/pallet-builder");
+
+    await expect(page.getByTestId("text-pallet-builder-title")).toBeVisible({ timeout: 15_000 });
+    await page.getByTestId("pallet-carton-name-0").fill("Export cartons");
+    await page.getByTestId("pallet-carton-lengthIn-0").fill("24");
+    await page.getByTestId("pallet-carton-widthIn-0").fill("18");
+    await page.getByTestId("pallet-carton-heightIn-0").fill("12");
+    await page.getByTestId("pallet-carton-weight-0").fill("20");
+    await page.getByTestId("pallet-carton-quantity-0").fill("20");
+
+    await expect(page.getByTestId("pallet-metric-pallets-required")).toContainText("1");
+    await expect(page.getByTestId("pallet-metric-cartons-planned")).toContainText("20");
+    await expect(page.getByTestId("pallet-metric-loaded-height")).toContainText("65.5 in");
+    await expect(page.getByTestId("pallet-3d-preview")).toBeVisible();
+
+    await page.getByTestId("pallet-to-container").click();
+    await expect(page).toHaveURL(/\/tools\/container-calculator\?from=pallet-builder/);
+    await expect(page.getByTestId("input-cargo-name-0")).toHaveValue("Built pallet", { timeout: 15_000 });
+    await expect(page.getByTestId("input-cargo-qty-0")).toHaveValue("1");
+
+    const realErrors = errors.filter((error) => !/WebGL|GPU|THREE\./i.test(error));
+    expect(realErrors, `Uncaught errors during pallet-builder transfer: ${realErrors.join("\n")}`).toEqual([]);
+  });
+
   test("Freight Quote — waitlist form renders (service marked coming soon)", async ({ page }) => {
     const errors = trackPageErrors(page);
     await page.goto("/tools/freight-quote");

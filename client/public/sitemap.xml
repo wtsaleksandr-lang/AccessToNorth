@@ -106,6 +106,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://accesstonorth.com/tools/pallet-builder/</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://accesstonorth.com/tools/container-calculator/</loc>
     <lastmod>2026-08-28</lastmod>
     <changefreq>monthly</changefreq>

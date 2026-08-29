@@ -61,6 +61,7 @@ const OrderConfirmation = lazy(() => import("@/pages/order/OrderConfirmation"));
 const FreightQuote = lazy(() => import("@/pages/tools/FreightQuote"));
 const ShipmentTracking = lazy(() => import("@/pages/tools/ShipmentTracking"));
 const ContainerCalculator = lazy(() => import("@/pages/tools/ContainerCalculator"));
+const PalletBuilder = lazy(() => import("@/pages/tools/PalletBuilder"));
 const TruckLoadPlanner = lazy(() => import("@/pages/tools/TruckLoadPlanner"));
 const HowToImportIntoCanada = lazy(() => import("@/pages/resources/HowToImportIntoCanada"));
 const CustomsClearanceUnder2500 = lazy(() => import("@/pages/resources/CustomsClearanceUnder2500"));
@@ -117,6 +118,7 @@ function Router() {
         <Route path="/tools/freight-quote" component={FreightQuote} />
         <Route path="/tools/shipment-tracking" component={ShipmentTracking} />
         <Route path="/tools/container-calculator" component={ContainerCalculator} />
+        <Route path="/tools/pallet-builder" component={PalletBuilder} />
         <Route path="/tools/truck-load-planner" component={TruckLoadPlanner} />
         <Route path="/resources" component={Resources} />
         <Route path="/resources/how-to-import-into-canada" component={HowToImportIntoCanada} />

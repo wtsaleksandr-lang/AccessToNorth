@@ -100,7 +100,7 @@ const STATIC_ROUTES: RouteMeta[] = [
     changefreq: "monthly",
     title: "Free Trade Tools | AccessToNorth.com",
     description:
-      "Free tools for Canadian importers and exporters: HS code finder, duty calculator, CARM security calculator, 3D container planner, and truck load planner.",
+      "Free tools for Canadian importers and exporters: HS code finder, duty calculator, CARM security calculator, pallet builder, 3D container planner, and truck load planner.",
   },
   {
     path: "/resources",
@@ -211,6 +211,16 @@ const STATIC_ROUTES: RouteMeta[] = [
     title: "CARM Financial Security Calculator | AccessToNorth.com",
     description:
       "Calculate your required RPP security amount for CARM enrollment. Get an estimate based on your monthly duty and tax exposure.",
+  },
+  {
+    path: "/tools/pallet-builder",
+    priority: "0.8",
+    changefreq: "monthly",
+    lastmod: "2026-08-29",
+    schemaType: "WebApplication",
+    title: "Free 3D Pallet Builder & Carton Calculator | AccessToNorth.com",
+    description:
+      "Build optimized pallet loading plans from carton dimensions. Calculate layers, pallet count, height, weight, utilization, and export a visual PDF plan.",
   },
   {
     path: "/tools/container-calculator",
