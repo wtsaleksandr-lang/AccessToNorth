@@ -9,6 +9,7 @@ import {
   Font,
   pdf,
 } from "@react-pdf/renderer";
+import { calculateContainerBalance } from "@/lib/containerBalance";
 
 const IN_TO_CM = 2.54;
 const LB_TO_KG = 0.453592;
@@ -290,6 +291,44 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
     color: "#92400e",
   },
+  balancePanel: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 8,
+    marginBottom: 12,
+    backgroundColor: "#f8fafc",
+    borderWidth: 0.7,
+    borderColor: SLATE_200,
+    borderRadius: 4,
+  },
+  balanceStatus: {
+    width: 88,
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+    borderRadius: 3,
+  },
+  balanceStatusLabel: {
+    fontSize: 7.5,
+    fontFamily: "Helvetica-Bold",
+  },
+  balanceMetric: {
+    flex: 1,
+    borderLeftWidth: 0.5,
+    borderLeftColor: SLATE_200,
+    paddingLeft: 8,
+  },
+  balanceMetricLabel: {
+    fontSize: 5.8,
+    color: SLATE_500,
+    textTransform: "uppercase" as const,
+    marginBottom: 2,
+  },
+  balanceMetricValue: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: SLATE_900,
+  },
 });
 
 const COL_WIDTHS = {
@@ -346,6 +385,14 @@ function ReportPage1({
   const totalQty = cargoRows.reduce((s, r) => s + r.qty, 0);
   const totalWt = cargoRows.reduce((s, r) => s + r.totalWeight, 0);
   const totalVolCuFt = cargoRows.reduce((s, r) => s + r.totalVol, 0);
+  const balance = calculateContainerBalance(result.placed, containerSpec);
+  const balanceAppearance = balance.status === "balanced"
+    ? { label: "Well balanced", backgroundColor: "#dcfce7", color: "#15803d" }
+    : balance.status === "caution"
+      ? { label: "Balance caution", backgroundColor: "#fef3c7", color: "#b45309" }
+      : balance.status === "review"
+        ? { label: "Review balance", backgroundColor: "#ffe4e6", color: "#be123c" }
+        : { label: "No weight data", backgroundColor: SLATE_100, color: SLATE_500 };
 
   return (
     <Page size="A4" style={styles.page}>
@@ -391,6 +438,25 @@ function ReportPage1({
           <Text style={styles.summaryLabel}>Volume Used</Text>
           <Text style={styles.summaryValue}>{result.volumeUtil.toFixed(1)}%</Text>
           <Text style={styles.summarySub}>{fmtVol(result.totalVolume, isMetric)}</Text>
+        </View>
+      </View>
+
+      <Text style={styles.sectionTitle}>Weight Balance</Text>
+      <View style={styles.balancePanel}>
+        <View style={[styles.balanceStatus, { backgroundColor: balanceAppearance.backgroundColor }]}>
+          <Text style={[styles.balanceStatusLabel, { color: balanceAppearance.color }]}>{balanceAppearance.label}</Text>
+        </View>
+        <View style={styles.balanceMetric}>
+          <Text style={styles.balanceMetricLabel}>CG from closed end</Text>
+          <Text style={styles.balanceMetricValue}>{fmtDim(balance.centerXIn, isMetric)} ({balance.longitudinalPct.toFixed(0)}%)</Text>
+        </View>
+        <View style={styles.balanceMetric}>
+          <Text style={styles.balanceMetricLabel}>Lateral CG from Side A</Text>
+          <Text style={styles.balanceMetricValue}>{fmtDim(balance.centerZIn, isMetric)} ({balance.lateralPct.toFixed(0)}%)</Text>
+        </View>
+        <View style={styles.balanceMetric}>
+          <Text style={styles.balanceMetricLabel}>Weight split</Text>
+          <Text style={styles.balanceMetricValue}>{balance.closedEndWeightPct.toFixed(0)} / {balance.doorEndWeightPct.toFixed(0)}%</Text>
         </View>
       </View>
 

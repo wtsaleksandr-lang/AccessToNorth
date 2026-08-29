@@ -44,6 +44,7 @@ import {
   Table,
   FileDown,
   MousePointerClick,
+  Crosshair,
 } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -65,6 +66,7 @@ import {
 } from "@/lib/containerPacking";
 import { mergeImportedCargoItems, type ImportedCargoRow } from "@/lib/containerImport";
 import { validateManualLayout, validateManualPlacement } from "@/lib/containerLayout";
+import { calculateContainerBalance } from "@/lib/containerBalance";
 
 const IN_TO_CM = 2.54;
 const CM_TO_IN = 1 / IN_TO_CM;
@@ -1046,6 +1048,164 @@ function UtilBar({ pct, label, color }: { pct: number; label: string; color: str
           style={{ width: `${capped}%`, backgroundColor: color }}
         />
       </div>
+    </div>
+  );
+}
+
+function BalanceSplitBar({
+  firstLabel,
+  secondLabel,
+  firstPct,
+}: {
+  firstLabel: string;
+  secondLabel: string;
+  firstPct: number;
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3 mb-1.5 text-[11px] font-medium text-slate-600">
+        <span>{firstLabel} <strong className="text-slate-900">{firstPct.toFixed(0)}%</strong></span>
+        <span><strong className="text-slate-900">{(100 - firstPct).toFixed(0)}%</strong> {secondLabel}</span>
+      </div>
+      <div className="relative h-2.5 overflow-hidden rounded-full bg-slate-200">
+        <div className="absolute inset-y-0 left-0 bg-slate-700" style={{ width: `${firstPct}%` }} />
+        <div className="absolute inset-y-0 left-1/2 w-px bg-white/90" />
+      </div>
+    </div>
+  );
+}
+
+function ContainerBalancePanel({
+  placed,
+  container,
+  unitSystem,
+}: {
+  placed: PlacedBox[];
+  container: ContainerSpec;
+  unitSystem: "imperial" | "metric";
+}) {
+  const balance = useMemo(() => calculateContainerBalance(placed, container), [placed, container]);
+  const metric = unitSystem === "metric";
+  const fmtDim = (inches: number) => metric
+    ? `${(inches * IN_TO_CM).toFixed(0)} cm`
+    : `${inches.toFixed(1)} in`;
+  const status = balance.status === "balanced"
+    ? { label: "Well balanced", badge: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" }
+    : balance.status === "caution"
+      ? { label: "Balance caution", badge: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-500" }
+      : balance.status === "review"
+        ? { label: "Review balance", badge: "bg-rose-50 text-rose-700 border-rose-200", dot: "bg-rose-500" }
+        : { label: "No weight data", badge: "bg-slate-50 text-slate-600 border-slate-200", dot: "bg-slate-400" };
+
+  return (
+    <div className="mt-5 pt-5 border-t border-slate-200" data-testid="container-balance-panel">
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div>
+          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <Crosshair className="w-4 h-4 text-primary" />
+            Weight Balance & Center of Gravity
+          </h3>
+          <p className="text-xs text-slate-500 mt-1">Updates instantly when cargo is moved in the 3D editor.</p>
+        </div>
+        <span className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${status.badge}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
+          {status.label}
+        </span>
+      </div>
+
+      <div className="grid lg:grid-cols-[1.25fr_1fr] gap-4">
+        <div className="rounded-xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-3 shadow-sm">
+          <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-2">
+            <span>Closed end</span>
+            <span>Doors</span>
+          </div>
+          <svg
+            viewBox={`0 0 ${container.lengthIn} ${container.widthIn}`}
+            className="block w-full rounded-md bg-slate-100"
+            role="img"
+            aria-label={`Top view showing center of gravity at ${balance.longitudinalPct.toFixed(0)} percent of container length and ${balance.lateralPct.toFixed(0)} percent of container width`}
+          >
+            <rect x="0.8" y="0.8" width={container.lengthIn - 1.6} height={container.widthIn - 1.6} rx="2" fill="#e2e8f0" stroke="#334155" strokeWidth="1.6" />
+            <rect
+              x={container.lengthIn * 0.35}
+              y={container.widthIn * 0.3}
+              width={container.lengthIn * 0.3}
+              height={container.widthIn * 0.4}
+              rx="2"
+              fill="#10b981"
+              fillOpacity="0.08"
+              stroke="#10b981"
+              strokeOpacity="0.4"
+              strokeWidth="0.9"
+              strokeDasharray="3 2"
+            />
+            {placed.map((box, index) => (
+              <rect
+                key={`${box.cargoId}-${index}`}
+                x={box.x + 0.7}
+                y={box.z + 0.7}
+                width={Math.max(0.5, box.l - 1.4)}
+                height={Math.max(0.5, box.w - 1.4)}
+                rx="1"
+                fill={box.color}
+                fillOpacity="0.36"
+                stroke="#ffffff"
+                strokeOpacity="0.8"
+                strokeWidth="0.7"
+              />
+            ))}
+            <line x1={balance.centerXIn} y1="0" x2={balance.centerXIn} y2={container.widthIn} stroke="#0f172a" strokeOpacity="0.35" strokeWidth="0.8" strokeDasharray="2 2" />
+            <line x1="0" y1={balance.centerZIn} x2={container.lengthIn} y2={balance.centerZIn} stroke="#0f172a" strokeOpacity="0.35" strokeWidth="0.8" strokeDasharray="2 2" />
+            <circle cx={balance.centerXIn} cy={balance.centerZIn} r={Math.max(2.5, container.widthIn * 0.045)} fill="#ffffff" stroke="#0f172a" strokeWidth="1.8" />
+            <circle cx={balance.centerXIn} cy={balance.centerZIn} r={Math.max(0.9, container.widthIn * 0.016)} fill="#0f7fe5" />
+            <line x1={container.lengthIn} y1="0" x2={container.lengthIn} y2={container.widthIn} stroke="#0f7fe5" strokeWidth="1.6" strokeDasharray="3 2" />
+          </svg>
+          <div className="flex items-center justify-between gap-3 mt-2 text-[10px] text-slate-500">
+            <span>Green zone is a neutral planning target</span>
+            <span className="font-semibold text-slate-700">● Estimated CG</span>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">From closed end</p>
+              <p className="text-sm font-bold text-slate-900 mt-0.5">{fmtDim(balance.centerXIn)}</p>
+              <p className="text-[10px] text-slate-500">{balance.longitudinalPct.toFixed(0)}% of length</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">From Side A</p>
+              <p className="text-sm font-bold text-slate-900 mt-0.5">{fmtDim(balance.centerZIn)}</p>
+              <p className="text-[10px] text-slate-500">{balance.lateralPct.toFixed(0)}% of width</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">CG height</p>
+              <p className="text-sm font-bold text-slate-900 mt-0.5">{fmtDim(balance.centerYIn)}</p>
+              <p className="text-[10px] text-slate-500">{balance.heightPct.toFixed(0)}% of height</p>
+            </div>
+          </div>
+
+          <BalanceSplitBar firstLabel="Closed end" secondLabel="Doors" firstPct={balance.closedEndWeightPct} />
+          <BalanceSplitBar firstLabel="Side A" secondLabel="Side B" firstPct={balance.sideAWeightPct} />
+
+          {balance.guidance.length > 0 ? (
+            <div className={`rounded-lg border p-3 ${balance.status === "review" ? "bg-rose-50 border-rose-200" : "bg-amber-50 border-amber-200"}`}>
+              <p className={`text-[11px] font-bold ${balance.status === "review" ? "text-rose-800" : "text-amber-800"}`}>Suggested adjustment</p>
+              <ul className={`mt-1 space-y-0.5 text-[11px] ${balance.status === "review" ? "text-rose-700" : "text-amber-700"}`}>
+                {balance.guidance.map((item) => <li key={item}>• {item}</li>)}
+              </ul>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-[11px] text-emerald-700">
+              Weight is reasonably centered for planning purposes.
+            </div>
+          )}
+        </div>
+      </div>
+
+      <p className="mt-3 text-[10px] leading-relaxed text-slate-400">
+        Planning estimate only. It does not calculate chassis axle loads, floor point loads, lashing forces, or regulatory compliance. Confirm the final plan with the carrier and loading facility.
+      </p>
     </div>
   );
 }
@@ -3924,6 +4084,12 @@ export default function ContainerCalculator() {
                                 color="#22c55e"
                               />
                             </div>
+
+                            <ContainerBalancePanel
+                              placed={cResult.placed}
+                              container={cr.container}
+                              unitSystem={unitSystem}
+                            />
                           </CardContent>
                         </Card>
 
