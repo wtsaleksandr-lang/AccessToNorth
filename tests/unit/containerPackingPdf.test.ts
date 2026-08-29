@@ -110,7 +110,7 @@ test("complete report includes a loading-plan page for every container", async (
   });
 
   const pdfSource = new TextDecoder("latin1").decode(await blob.arrayBuffer());
-  assert.equal((pdfSource.match(/\/Type \/Page\b/g) ?? []).length, 3);
+  assert.equal((pdfSource.match(/\/Type \/Page\b/g) ?? []).length, 4);
 });
 
 test("compatibility packing report renders a valid PDF blob", async () => {
@@ -187,8 +187,8 @@ test("report branding keeps AccessToNorth defaults and accepts entitled account 
   assert.deepEqual(resolveContainerReportBrand(), {
     name: "AccessToNorth",
     domainSuffix: ".com",
-    tagline: "Canadian Import & Business Registration Services",
-    accentColor: "#0f7fe5",
+    tagline: "Container loading calculator",
+    accentColor: "#007BFF",
   });
   assert.deepEqual(resolveContainerReportBrand({
     name: "North Star Imports",

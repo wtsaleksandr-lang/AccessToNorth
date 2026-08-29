@@ -99,14 +99,58 @@ function generateId() {
   return Math.random().toString(36).substr(2, 9);
 }
 
-function ContainerLineIcon({ active = false, className = "h-12 w-20" }: { active?: boolean; className?: string }) {
+function ContainerLineIcon({
+  active = false,
+  className = "h-12 w-20",
+  short = false,
+}: {
+  active?: boolean;
+  className?: string;
+  short?: boolean;
+}) {
+  const start = short ? 26 : 8;
+  const front = start + 20;
+  const end = 112;
+  const ribXs = Array.from(
+    { length: short ? 5 : 7 },
+    (_, index) => front + 10 + index * ((end - front - 16) / (short ? 4 : 6)),
+  );
+  const stroke = active ? "#007BFF" : "#64748b";
+
   return (
-    <svg viewBox="0 0 128 72" className={className} aria-hidden="true">
-      <path d="M13 23 80 9l34 15-66 15Z" fill={active ? "#e0f2fe" : "#f1f5f9"} stroke={active ? "#0284c7" : "#94a3b8"} strokeWidth="2" />
-      <path d="M13 23v35l35 10V39Zm35 16 66-15v34L48 68Z" fill={active ? "#f0f9ff" : "#ffffff"} stroke={active ? "#0284c7" : "#94a3b8"} strokeWidth="2" />
-      {[58, 69, 80, 91, 102].map(x => <path key={x} d={`M${x} 37v26`} stroke={active ? "#7dd3fc" : "#cbd5e1"} strokeWidth="1.3" />)}
-      <path d="M20 29v26m8-24v27m8-25v28" stroke={active ? "#7dd3fc" : "#cbd5e1"} strokeWidth="1.2" />
-      <path d="M48 39v29" stroke={active ? "#0369a1" : "#64748b"} strokeWidth="2" />
+    <svg viewBox="0 0 120 66" className={className} aria-hidden="true">
+      <ellipse cx="64" cy="58" rx={short ? 39 : 52} ry="4" fill="#0f172a" opacity="0.08" />
+      <path
+        d={`M${start} 18 91 7l21 10-66 13Z`}
+        fill={active ? "#dbeafe" : "#eef2f7"}
+        stroke={stroke}
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d={`M${front} 30 112 17v31L${front} 60Z`}
+        fill={active ? "#eff6ff" : "#ffffff"}
+        stroke={stroke}
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d={`M${start} 18l${front - start} 12v30L${start} 49Z`}
+        fill={active ? "#bfdbfe" : "#e2e8f0"}
+        stroke={stroke}
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      {ribXs.map((x) => (
+        <path
+          key={x}
+          d={`M${x} ${30 - (x - front) * 0.19}v29`}
+          stroke={active ? "#93c5fd" : "#cbd5e1"}
+          strokeWidth="1.15"
+        />
+      ))}
+      <path d={`M${start + 10} 24v30M${start} 33l${front - start} 11`} stroke={active ? "#60a5fa" : "#94a3b8"} strokeWidth="1" />
+      <path d={`M${start + 6} 37v7m8-3v7`} stroke={stroke} strokeWidth="1.3" strokeLinecap="round" />
     </svg>
   );
 }
@@ -1663,6 +1707,7 @@ export default function ContainerCalculator() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [visualPopup, setVisualPopup] = useState<{ type: "stackable" | "rotation" | "palletized" | "priority"; itemId: string } | null>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
+  const resultContainerRailRef = useRef<HTMLDivElement>(null);
   const [snapshotExportFn, setSnapshotExportFn] = useState<SnapshotExportFn | null>(null);
   const [activeResultTab, setActiveResultTab] = useState<ResultWorkspaceTab>("plan");
   const [activeResultContainer, setActiveResultContainer] = useState(0);
@@ -2193,6 +2238,22 @@ export default function ContainerCalculator() {
         containerSpec: entry.container,
         result: entry.result,
       }));
+      let logoDataUrl: string | undefined;
+      try {
+        const response = await fetch("/favicon.png", { cache: "force-cache" });
+        if (response.ok) {
+          const logoBlob = await response.blob();
+          logoDataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(logoBlob);
+          });
+        }
+      } catch (logoError) {
+        console.warn("Brand icon could not be embedded; using the vector fallback.", logoError);
+      }
+      const reportBrand = { logoDataUrl };
       let blob: Blob | null = null;
 
       try {
@@ -2218,6 +2279,7 @@ export default function ContainerCalculator() {
           unitSystem,
           images,
           containerPlans,
+          brand: reportBrand,
         });
       } catch (richReportError) {
         console.warn("Rich PDF generation failed; using the compatibility report.", richReportError);
@@ -2231,6 +2293,7 @@ export default function ContainerCalculator() {
           totalContainers: multiResult.totalContainers,
           unitSystem,
           containerPlans,
+          brand: reportBrand,
         });
       }
 
@@ -2396,11 +2459,26 @@ export default function ContainerCalculator() {
                           }`}
                           data-testid={`button-container-${ct.id}`}
                         >
-                          <span className="font-semibold text-slate-900 block leading-tight text-xs">
-                            {ct.name}
+                          <span className="flex items-start gap-2">
+                            <span data-testid={`container-icon-${ct.id}`} className={`mt-0.5 flex h-9 w-12 shrink-0 items-center justify-center rounded-lg ${
+                              containerSelectionMode === "manual" && containerId === ct.id
+                                ? "bg-blue-50"
+                                : "bg-slate-50"
+                            }`}>
+                              <ContainerLineIcon
+                                active={containerSelectionMode === "manual" && containerId === ct.id}
+                                short={ct.id.startsWith("20")}
+                                className="h-8 w-11"
+                              />
+                            </span>
+                            <span className="min-w-0">
+                              <span className="font-semibold text-slate-900 block leading-tight text-xs">
+                                {ct.name}
+                              </span>
+                              <span className="text-[10px] text-slate-400 block mt-0.5 leading-snug">{dimsDisplay}</span>
+                              <span className="text-[10px] text-slate-500 block">{volDisplay}</span>
+                            </span>
                           </span>
-                          <span className="text-[10px] text-slate-400 block mt-0.5">{dimsDisplay}</span>
-                          <span className="text-[10px] text-slate-500 block">{volDisplay}</span>
                         </button>
                       );
                     })}
@@ -2553,13 +2631,13 @@ export default function ContainerCalculator() {
 
             <div className="lg:col-span-7 space-y-5">
               <Card className="border-slate-200">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between mb-4">
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                       <Box className="w-4 h-4 text-primary" />
                       Packing List
                     </h2>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 ml-auto">
                       <div className="flex rounded-lg border border-slate-200 overflow-hidden">
                         <button
                           onClick={() => handleUnitSwitch("imperial")}
@@ -2609,9 +2687,11 @@ export default function ContainerCalculator() {
                     </div>
                   </div>
 
-                  <div className="mb-3 flex items-start gap-1.5 rounded-lg border border-blue-100 bg-blue-50/70 px-2.5 py-2 text-[11px] text-blue-800">
+                  <div className="mb-3 flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50/70 px-3 py-2.5 text-blue-800">
                     <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                    Enter the <strong>total gross weight for each row</strong>. The calculator divides it across the quantity automatically.
+                    <p className="min-w-0 text-[11px] leading-[1.55] text-left">
+                      Enter the <strong>total gross weight for each row</strong>. The calculator divides it across the quantity automatically.
+                    </p>
                   </div>
 
                   {selectedIds.size > 0 && (
@@ -4506,8 +4586,8 @@ export default function ContainerCalculator() {
                   )}
 
                   <Card className="border-slate-200 overflow-hidden shadow-sm" data-testid="container-results-workspace">
-                    <div className="border-b border-slate-200 bg-white px-4 py-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                      <div className="flex items-center gap-2 overflow-x-auto" role="tablist" aria-label="Loading result views">
+                    <div className="border-b border-slate-200 bg-white px-3 py-3 sm:px-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="grid w-full grid-cols-3 gap-1 sm:gap-2 lg:flex lg:w-auto" role="tablist" aria-label="Loading result views" data-testid="result-workspace-tabs">
                         {([
                           { id: "plan" as const, label: "Loading Plan", icon: Ship },
                           { id: "overview" as const, label: "Overview", icon: LayoutDashboard },
@@ -4523,23 +4603,23 @@ export default function ContainerCalculator() {
                               aria-selected={selected}
                               onClick={() => setActiveResultTab(tab.id)}
                               data-testid={`result-tab-${tab.id}`}
-                              className={`shrink-0 inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors ${
+                              className={`min-w-0 w-full inline-flex items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-[10px] font-semibold whitespace-nowrap transition-colors sm:gap-2 sm:px-3.5 sm:text-sm ${
                                 selected
                                   ? "bg-blue-50 text-primary ring-1 ring-inset ring-blue-200"
                                   : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
                               }`}
                             >
-                              <TabIcon className="w-4 h-4" />
-                              {tab.label}
+                              <TabIcon className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
+                              <span className="truncate">{tab.label}</span>
                             </button>
                           );
                         })}
                       </div>
-                      <div className="flex items-center gap-2 self-start lg:self-auto">
+                      <div className="grid w-full grid-cols-2 gap-2 lg:flex lg:w-auto">
                         <Button
                           size="sm"
                           variant="outline"
-                          className="gap-1.5"
+                          className="gap-1.5 px-2 text-xs sm:px-3 sm:text-sm"
                           onClick={handleExportCSV}
                           data-testid="button-export-csv"
                         >
@@ -4549,7 +4629,7 @@ export default function ContainerCalculator() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="gap-1.5"
+                          className="gap-1.5 px-2 text-xs sm:px-3 sm:text-sm"
                           onClick={handleExportPDF}
                           data-testid="button-export-pdf"
                         >
@@ -4559,8 +4639,43 @@ export default function ContainerCalculator() {
                       </div>
                     </div>
 
-                    <div className="bg-slate-50/70 p-3 overflow-x-auto">
-                      <div className="flex gap-3 min-w-max">
+                    <div className="relative bg-slate-50/70 p-3" data-testid="result-container-carousel">
+                      {multiResult.totalContainers > 2 && (
+                        <>
+                          <button
+                            type="button"
+                            aria-label="Previous containers"
+                            onClick={() => {
+                              const nextIndex = Math.max(0, activeResultContainer - 1);
+                              setActiveResultContainer(nextIndex);
+                              (resultContainerRailRef.current?.children[nextIndex] as HTMLElement | undefined)?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+                            }}
+                            disabled={activeResultContainer === 0}
+                            className="absolute left-1 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/80 bg-white/90 text-slate-700 shadow-lg shadow-slate-900/10 backdrop-blur-md transition-all hover:scale-105 hover:text-primary disabled:pointer-events-none disabled:opacity-0"
+                            data-testid="button-container-carousel-previous"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label="Next containers"
+                            onClick={() => {
+                              const nextIndex = Math.min(multiResult.totalContainers - 1, activeResultContainer + 1);
+                              setActiveResultContainer(nextIndex);
+                              (resultContainerRailRef.current?.children[nextIndex] as HTMLElement | undefined)?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+                            }}
+                            disabled={activeResultContainer === multiResult.totalContainers - 1}
+                            className="absolute right-1 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/80 bg-white/90 text-slate-700 shadow-lg shadow-slate-900/10 backdrop-blur-md transition-all hover:scale-105 hover:text-primary disabled:pointer-events-none disabled:opacity-0"
+                            data-testid="button-container-carousel-next"
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
+                      <div
+                        ref={resultContainerRailRef}
+                        className="flex w-full snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                      >
                         {multiResult.containers.map((entry, index) => {
                           const selected = index === activeResultContainer;
                           const entryResult = entry.result;
@@ -4568,10 +4683,13 @@ export default function ContainerCalculator() {
                             <button
                               type="button"
                               key={`${entry.container.id}-${index}`}
-                              onClick={() => setActiveResultContainer(index)}
+                              onClick={(event) => {
+                                setActiveResultContainer(index);
+                                event.currentTarget.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+                              }}
                               data-testid={`result-container-card-${index}`}
                               aria-pressed={selected}
-                              className={`w-[270px] rounded-xl border bg-white p-3 text-left transition-all ${
+                              className={`w-[86%] shrink-0 snap-start rounded-2xl border bg-white p-3 text-left transition-all sm:w-[calc((100%_-_0.75rem)/2)] ${
                                 selected
                                   ? "border-primary shadow-sm ring-2 ring-primary/10"
                                   : "border-slate-200 hover:border-slate-300 hover:shadow-sm"
@@ -4579,7 +4697,7 @@ export default function ContainerCalculator() {
                             >
                               <div className="flex items-center gap-3">
                                 <div className={`rounded-lg p-2 ${selected ? "bg-blue-50 text-primary" : "bg-slate-50 text-slate-500"}`}>
-                                  <ContainerLineIcon active={selected} className="w-16 h-9" />
+                                  <ContainerLineIcon active={selected} short={entry.container.id.startsWith("20")} className="w-16 h-9" />
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <p className="font-bold text-sm text-slate-900 truncate">{entry.label}</p>

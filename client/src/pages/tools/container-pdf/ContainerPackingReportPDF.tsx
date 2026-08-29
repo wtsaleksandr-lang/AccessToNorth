@@ -1,26 +1,29 @@
 import React from "react";
 import {
+  Circle,
   Document,
+  G,
+  Image,
+  Line,
   Page,
+  Path,
+  Rect,
+  StyleSheet,
+  Svg,
   Text,
   View,
-  Image,
-  Svg,
-  Rect,
-  Path,
-  Line,
-  Circle,
-  StyleSheet,
   pdf,
 } from "@react-pdf/renderer";
 import { calculateContainerBalance } from "@/lib/containerBalance";
 
 const IN_TO_CM = 2.54;
 const LB_TO_KG = 0.453592;
+const CUFT_TO_CBM = 0.0283168;
 
 const BRAND_NAVY = "#0f172a";
-const BRAND_GREEN = "#0f7fe5";
-const BRAND_GREEN_LIGHT = "#eaf5ff";
+const BRAND_BLUE = "#007BFF";
+const BRAND_BLUE_LIGHT = "#eff6ff";
+const SLATE_50 = "#f8fafc";
 const SLATE_100 = "#f1f5f9";
 const SLATE_200 = "#e2e8f0";
 const SLATE_500 = "#64748b";
@@ -91,7 +94,7 @@ interface SnapshotImages {
 }
 
 export interface ContainerReportBrand {
-  /** Paid-account branding is supplied by the server after entitlement checks. */
+  /** Paid-account branding is supplied only after entitlement checks. */
   name?: string;
   domainSuffix?: string;
   tagline?: string;
@@ -108,8 +111,8 @@ export interface ContainerReportPlan {
 export const ACCESS_TO_NORTH_REPORT_BRAND: Required<Omit<ContainerReportBrand, "logoDataUrl">> = {
   name: "AccessToNorth",
   domainSuffix: ".com",
-  tagline: "Canadian Import & Business Registration Services",
-  accentColor: "#0f7fe5",
+  tagline: "Container loading calculator",
+  accentColor: BRAND_BLUE,
 };
 
 export function resolveContainerReportBrand(brand?: ContainerReportBrand) {
@@ -134,357 +137,553 @@ interface PDFReportProps {
   brand?: ContainerReportBrand;
 }
 
-function cuInToCuFt(cuIn: number) {
-  return cuIn / 1728;
-}
-
 const styles = StyleSheet.create({
   page: {
-    padding: 28,
-    fontSize: 8,
+    paddingTop: 28,
+    paddingHorizontal: 30,
+    paddingBottom: 42,
     fontFamily: "Helvetica",
+    fontSize: 8,
     color: SLATE_900,
-  },
-  headerBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
     backgroundColor: "#ffffff",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: -30,
+    marginTop: -28,
+    marginBottom: 18,
+    paddingHorizontal: 30,
+    paddingVertical: 13,
     borderBottomWidth: 1,
     borderBottomColor: SLATE_200,
-    marginHorizontal: -28,
-    marginTop: -28,
-    paddingHorizontal: 28,
-    paddingVertical: 12,
-    marginBottom: 16,
+    backgroundColor: "#ffffff",
   },
-  headerLeft: {
+  headerBrand: {
     flexDirection: "row",
     alignItems: "center",
+    maxWidth: 300,
   },
   headerIcon: {
-    width: 28,
-    height: 28,
-    marginRight: 8,
-    borderRadius: 7,
+    width: 34,
+    height: 34,
+    marginRight: 9,
   },
-  headerBrandCopy: {
-    flexDirection: "column",
+  customLogo: {
+    width: 116,
+    height: 34,
+    objectFit: "contain" as const,
+    objectPosition: "left center" as const,
   },
-  headerWordmark: {
+  wordmark: {
     flexDirection: "row",
     alignItems: "baseline",
   },
-  headerLogo: {
-    fontSize: 14,
+  wordmarkMain: {
     fontFamily: "Helvetica-Bold",
+    fontSize: 16,
+    letterSpacing: -0.45,
     color: BRAND_NAVY,
-    letterSpacing: 0.3,
   },
-  headerDomain: {
-    fontSize: 14,
+  wordmarkDomain: {
     fontFamily: "Helvetica-Bold",
-    color: "#0f7fe5",
+    fontSize: 16,
+    letterSpacing: -0.45,
   },
-  headerSubtitle: {
-    fontSize: 6.8,
-    color: SLATE_500,
-    marginTop: 2,
-  },
-  headerRight: {
+  headerMeta: {
+    width: 205,
     alignItems: "flex-end",
   },
-  headerTimestamp: {
-    fontSize: 7,
-    color: SLATE_500,
-  },
   headerTitle: {
+    fontFamily: "Helvetica-Bold",
     fontSize: 10,
     color: BRAND_NAVY,
-    fontFamily: "Helvetica-Bold",
+    textAlign: "right" as const,
   },
-  sectionTitle: {
-    fontSize: 10,
-    fontFamily: "Helvetica-Bold",
-    color: BRAND_GREEN,
-    marginBottom: 6,
-    paddingBottom: 3,
-    borderBottomWidth: 1,
-    borderBottomColor: BRAND_GREEN_LIGHT,
-  },
-  summaryGrid: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 14,
-  },
-  summaryBox: {
-    flex: 1,
-    backgroundColor: SLATE_100,
-    borderRadius: 4,
-    padding: 8,
-  },
-  summaryLabel: {
-    fontSize: 6.5,
-    color: SLATE_500,
-    textTransform: "uppercase" as const,
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
-  summaryValue: {
-    fontSize: 11,
-    fontFamily: "Helvetica-Bold",
-    color: SLATE_900,
-  },
-  summarySub: {
-    fontSize: 6.5,
-    color: SLATE_500,
-    marginTop: 1,
-  },
-  table: {
-    marginBottom: 14,
-  },
-  tableHeader: {
-    flexDirection: "row",
-    backgroundColor: BRAND_NAVY,
-    paddingVertical: 4,
-    paddingHorizontal: 4,
-    borderTopLeftRadius: 3,
-    borderTopRightRadius: 3,
-  },
-  tableHeaderText: {
-    fontSize: 6.5,
-    fontFamily: "Helvetica-Bold",
-    color: "#ffffff",
-    textTransform: "uppercase" as const,
-    letterSpacing: 0.3,
-  },
-  tableRow: {
-    flexDirection: "row",
-    paddingVertical: 3,
-    paddingHorizontal: 4,
-    borderBottomWidth: 0.5,
-    borderBottomColor: SLATE_200,
-  },
-  tableRowAlt: {
-    backgroundColor: "#f8fafc",
-  },
-  tableCell: {
-    fontSize: 7,
-    color: SLATE_700,
-  },
-  tableCellBold: {
-    fontSize: 7,
-    fontFamily: "Helvetica-Bold",
-    color: SLATE_900,
-  },
-  totalsRow: {
-    flexDirection: "row",
-    paddingVertical: 4,
-    paddingHorizontal: 4,
-    backgroundColor: BRAND_GREEN_LIGHT,
-    borderBottomLeftRadius: 3,
-    borderBottomRightRadius: 3,
-  },
-  colorSwatch: {
-    width: 8,
-    height: 8,
-    borderRadius: 2,
-  },
-  imageContainer: {
-    marginBottom: 12,
-  },
-  imageLarge: {
-    width: "100%",
-    borderRadius: 4,
-    border: `1 solid ${SLATE_200}`,
-  },
-  imageLabel: {
-    fontSize: 7,
-    color: SLATE_500,
-    textAlign: "center" as const,
+  headerSubtitle: {
     marginTop: 3,
-  },
-  smallImagesGrid: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 12,
-  },
-  smallImageWrapper: {
-    flex: 1,
-  },
-  smallImage: {
-    width: "100%",
-    borderRadius: 3,
-    border: `1 solid ${SLATE_200}`,
+    fontSize: 6.8,
+    color: SLATE_500,
+    textAlign: "right" as const,
   },
   footer: {
     position: "absolute" as const,
-    bottom: 16,
-    left: 28,
-    right: 28,
+    left: 30,
+    right: 30,
+    bottom: 15,
     flexDirection: "row",
     justifyContent: "space-between",
-    borderTopWidth: 0.5,
+    paddingTop: 5,
+    borderTopWidth: 0.6,
     borderTopColor: SLATE_200,
-    paddingTop: 4,
   },
   footerText: {
-    fontSize: 6,
+    fontSize: 6.2,
     color: SLATE_500,
   },
-  disclaimer: {
-    fontSize: 5.5,
-    color: "#94a3b8",
-    textAlign: "center" as const,
-    marginTop: 2,
-  },
-  multiContainerBadge: {
-    backgroundColor: "#fef3c7",
-    borderRadius: 3,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    marginBottom: 10,
-    alignSelf: "flex-start" as const,
-  },
-  multiContainerText: {
-    fontSize: 7.5,
+  eyebrow: {
+    marginBottom: 5,
     fontFamily: "Helvetica-Bold",
-    color: "#92400e",
+    fontSize: 7,
+    letterSpacing: 0.65,
+    textTransform: "uppercase" as const,
+    color: BRAND_BLUE,
   },
-  balancePanel: {
+  pageTitle: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 20,
+    letterSpacing: -0.4,
+    color: BRAND_NAVY,
+  },
+  pageIntro: {
+    maxWidth: 430,
+    marginTop: 5,
+    marginBottom: 14,
+    fontSize: 8.2,
+    lineHeight: 1.45,
+    color: SLATE_500,
+  },
+  sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    padding: 8,
-    marginBottom: 12,
-    backgroundColor: "#f8fafc",
-    borderWidth: 0.7,
-    borderColor: SLATE_200,
-    borderRadius: 4,
+    justifyContent: "space-between",
+    marginTop: 3,
+    marginBottom: 7,
   },
-  balanceStatus: {
-    width: 88,
-    paddingVertical: 5,
-    paddingHorizontal: 6,
-    borderRadius: 3,
-  },
-  balanceStatusLabel: {
-    fontSize: 7.5,
+  sectionTitle: {
     fontFamily: "Helvetica-Bold",
+    fontSize: 10,
+    color: BRAND_NAVY,
   },
-  balanceMetric: {
-    flex: 1,
-    borderLeftWidth: 0.5,
-    borderLeftColor: SLATE_200,
-    paddingLeft: 8,
-  },
-  balanceMetricLabel: {
-    fontSize: 5.8,
+  sectionMeta: {
+    fontSize: 6.7,
     color: SLATE_500,
-    textTransform: "uppercase" as const,
-    marginBottom: 2,
-  },
-  balanceMetricValue: {
-    fontSize: 8,
-    fontFamily: "Helvetica-Bold",
-    color: SLATE_900,
   },
   decisionBanner: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 9,
-    marginBottom: 12,
-    borderRadius: 5,
+    marginBottom: 15,
+    padding: 12,
     borderWidth: 0.8,
+    borderRadius: 7,
+  },
+  decisionCopy: {
+    maxWidth: 390,
   },
   decisionTitle: {
     fontFamily: "Helvetica-Bold",
-    fontSize: 9,
+    fontSize: 10,
   },
-  decisionCopy: {
-    fontSize: 6.8,
+  decisionText: {
+    marginTop: 3,
+    fontSize: 7.4,
+    lineHeight: 1.35,
     color: SLATE_700,
-    marginTop: 2,
   },
-  operationalGrid: {
+  decisionBadge: {
+    minWidth: 90,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: "#ffffff",
+    textAlign: "center" as const,
+    fontFamily: "Helvetica-Bold",
+    fontSize: 8,
+    color: BRAND_NAVY,
+  },
+  metricGrid: {
     flexDirection: "row",
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 15,
   },
-  operationalBox: {
+  metricCard: {
     flex: 1,
+    minHeight: 61,
+    padding: 9,
     borderWidth: 0.7,
     borderColor: SLATE_200,
-    borderRadius: 4,
-    padding: 7,
+    borderRadius: 7,
+    backgroundColor: SLATE_50,
   },
-  operationalTitle: {
-    fontFamily: "Helvetica-Bold",
-    color: BRAND_NAVY,
-    fontSize: 7.5,
+  metricLabel: {
     marginBottom: 4,
+    fontFamily: "Helvetica-Bold",
+    fontSize: 6.2,
+    letterSpacing: 0.45,
+    textTransform: "uppercase" as const,
+    color: SLATE_500,
   },
-  operationalLine: {
-    color: SLATE_700,
+  metricValue: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 12,
+    color: SLATE_900,
+  },
+  metricSub: {
+    marginTop: 3,
     fontSize: 6.5,
-    marginBottom: 2,
+    lineHeight: 1.2,
+    color: SLATE_500,
+  },
+  equipmentGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap" as const,
+    gap: 8,
+    marginBottom: 13,
+  },
+  equipmentCard: {
+    width: "49.2%",
+    minHeight: 78,
+    padding: 9,
+    borderWidth: 0.7,
+    borderColor: SLATE_200,
+    borderRadius: 7,
+    backgroundColor: "#ffffff",
+  },
+  equipmentTop: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  equipmentIconWrap: {
+    width: 82,
+    height: 42,
+    marginRight: 7,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 6,
+    backgroundColor: BRAND_BLUE_LIGHT,
+  },
+  equipmentIcon: {
+    width: 74,
+    height: 38,
+  },
+  equipmentName: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 8.3,
+    color: SLATE_900,
+  },
+  equipmentType: {
+    marginTop: 2,
+    fontSize: 6.6,
+    color: SLATE_500,
+  },
+  equipmentPieces: {
+    marginTop: 4,
+    fontFamily: "Helvetica-Bold",
+    fontSize: 7,
+    color: BRAND_BLUE,
+  },
+  progressRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 8,
+  },
+  progressMetric: {
+    flex: 1,
+  },
+  progressLabels: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 3,
+  },
+  progressLabel: {
+    fontSize: 5.8,
+    color: SLATE_500,
+  },
+  progressTrack: {
+    height: 4,
+    overflow: "hidden",
+    borderRadius: 2,
+    backgroundColor: SLATE_100,
+  },
+  progressFill: {
+    height: 4,
+    borderRadius: 2,
+  },
+  noteGrid: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 4,
+  },
+  noteCard: {
+    flex: 1,
+    padding: 9,
+    borderWidth: 0.7,
+    borderColor: SLATE_200,
+    borderRadius: 7,
+    backgroundColor: SLATE_50,
+  },
+  noteTitle: {
+    marginBottom: 5,
+    fontFamily: "Helvetica-Bold",
+    fontSize: 7.3,
+    color: SLATE_900,
+  },
+  noteLine: {
+    marginBottom: 3,
+    fontSize: 6.5,
+    lineHeight: 1.3,
+    color: SLATE_700,
+  },
+  table: {
+    marginBottom: 12,
+    borderWidth: 0.7,
+    borderColor: SLATE_200,
+    borderRadius: 6,
+    overflow: "hidden",
+  },
+  tableHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 23,
+    paddingHorizontal: 7,
+    paddingVertical: 6,
+    backgroundColor: BRAND_NAVY,
+  },
+  tableHeaderText: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 6.1,
+    letterSpacing: 0.25,
+    textTransform: "uppercase" as const,
+    color: "#ffffff",
+  },
+  tableRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 24,
+    paddingHorizontal: 7,
+    paddingVertical: 5,
+    borderBottomWidth: 0.5,
+    borderBottomColor: SLATE_200,
+    backgroundColor: "#ffffff",
+  },
+  tableRowAlt: {
+    backgroundColor: SLATE_50,
+  },
+  tableCell: {
+    paddingRight: 4,
+    fontSize: 6.8,
+    lineHeight: 1.25,
+    color: SLATE_700,
+  },
+  tableCellStrong: {
+    paddingRight: 4,
+    fontFamily: "Helvetica-Bold",
+    fontSize: 6.8,
+    lineHeight: 1.25,
+    color: SLATE_900,
+  },
+  totalsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 27,
+    paddingHorizontal: 7,
+    paddingVertical: 6,
+    backgroundColor: BRAND_BLUE_LIGHT,
+  },
+  swatch: {
+    width: 9,
+    height: 9,
+    borderRadius: 3,
+  },
+  containerHero: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 13,
+    padding: 11,
+    borderWidth: 0.8,
+    borderColor: "#bfdbfe",
+    borderRadius: 8,
+    backgroundColor: "#f8fbff",
+  },
+  containerHeroIcon: {
+    width: 112,
+    height: 58,
+    marginRight: 13,
+  },
+  containerHeroLabel: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 13,
+    color: SLATE_900,
+  },
+  containerHeroType: {
+    marginTop: 3,
+    fontSize: 8,
+    color: SLATE_500,
+  },
+  containerHeroDims: {
+    marginTop: 6,
+    fontFamily: "Helvetica-Bold",
+    fontSize: 7,
+    color: BRAND_BLUE,
   },
   planFrame: {
-    backgroundColor: "#f8fafc",
+    marginBottom: 13,
+    padding: 10,
     borderWidth: 0.8,
     borderColor: SLATE_200,
-    borderRadius: 5,
-    padding: 10,
-    marginBottom: 12,
+    borderRadius: 8,
+    backgroundColor: SLATE_50,
   },
   planLegend: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 5,
+    marginTop: 6,
+  },
+  balancePanel: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 8,
+    marginBottom: 12,
+    padding: 9,
+    borderWidth: 0.7,
+    borderColor: SLATE_200,
+    borderRadius: 7,
+    backgroundColor: SLATE_50,
+  },
+  balanceStatus: {
+    width: 94,
+    justifyContent: "center",
+    padding: 7,
+    borderRadius: 6,
+  },
+  balanceStatusText: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 7.5,
+  },
+  balanceMetric: {
+    flex: 1,
+    justifyContent: "center",
+    paddingLeft: 8,
+    borderLeftWidth: 0.5,
+    borderLeftColor: SLATE_200,
+  },
+  balanceLabel: {
+    marginBottom: 3,
+    fontSize: 5.8,
+    textTransform: "uppercase" as const,
+    color: SLATE_500,
+  },
+  balanceValue: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 7.5,
+    lineHeight: 1.25,
+    color: SLATE_900,
+  },
+  warning: {
+    marginBottom: 12,
+    padding: 9,
+    borderWidth: 0.8,
+    borderColor: "#fed7aa",
+    borderRadius: 7,
+    backgroundColor: "#fff7ed",
+  },
+  warningTitle: {
+    marginBottom: 3,
+    fontFamily: "Helvetica-Bold",
+    fontSize: 7.5,
+    color: "#c2410c",
+  },
+  warningText: {
+    fontSize: 6.7,
+    lineHeight: 1.35,
+    color: "#9a3412",
+  },
+  snapshotLarge: {
+    width: "100%",
+    height: 260,
+    objectFit: "contain" as const,
+    borderWidth: 0.7,
+    borderColor: SLATE_200,
+    borderRadius: 7,
+    backgroundColor: SLATE_50,
+  },
+  snapshotGrid: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 10,
+  },
+  snapshotSmall: {
+    flex: 1,
+    height: 150,
+    objectFit: "contain" as const,
+    borderWidth: 0.7,
+    borderColor: SLATE_200,
+    borderRadius: 7,
+    backgroundColor: SLATE_50,
+  },
+  snapshotLabel: {
+    marginTop: 4,
+    fontSize: 6.5,
+    textAlign: "center" as const,
+    color: SLATE_500,
   },
 });
 
-const COL_WIDTHS = {
-  name: 80,
-  qty: 28,
-  dims: 72,
-  wPer: 40,
-  wTot: 40,
-  stack: 30,
-  rot: 36,
-  color: 20,
-  volPer: 40,
-  volTot: 42,
-};
-
-function fmtDim(v: number, isMetric: boolean) {
-  if (isMetric) return `${(v * IN_TO_CM).toFixed(1)} cm`;
-  return `${v.toFixed(1)}"`;
+function cuInToCuFt(cuIn: number) {
+  return cuIn / 1728;
 }
 
-function fmtDimShort(v: number, isMetric: boolean) {
-  if (isMetric) return `${(v * IN_TO_CM).toFixed(0)}`;
-  return `${v.toFixed(1)}`;
+function clampPct(value: number) {
+  return Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
 }
 
-function fmtWt(v: number, isMetric: boolean) {
-  if (isMetric) return `${Math.round(v * LB_TO_KG).toLocaleString()} kg`;
-  return `${Math.round(v).toLocaleString()} lbs`;
+function shorten(value: string, max: number) {
+  const normalized = value.trim() || "Unnamed cargo";
+  return normalized.length <= max ? normalized : `${normalized.slice(0, Math.max(1, max - 3))}...`;
 }
 
-function fmtVol(v: number, isMetric: boolean) {
-  if (isMetric) return `${(v * 0.0283168).toFixed(3)} m\u00B3`;
-  return `${v.toFixed(1)} ft\u00B3`;
+function chunks<T>(items: T[], size: number): T[][] {
+  if (items.length === 0) return [[]];
+  const pages: T[][] = [];
+  for (let index = 0; index < items.length; index += size) pages.push(items.slice(index, index + size));
+  return pages;
 }
 
-function fmtVolShort(cuFt: number, isMetric: boolean) {
-  if (isMetric) return (cuFt * 0.0283168).toFixed(3);
-  return cuFt.toFixed(1);
+function fmtDim(value: number, metric: boolean, decimals = 1) {
+  return metric ? `${(value * IN_TO_CM).toFixed(decimals)} cm` : `${value.toFixed(decimals)} in`;
+}
+
+function fmtDimValue(value: number, metric: boolean, decimals = 1) {
+  return metric ? (value * IN_TO_CM).toFixed(decimals) : value.toFixed(decimals);
+}
+
+function fmtWeight(value: number, metric: boolean) {
+  return metric
+    ? `${Math.round(value * LB_TO_KG).toLocaleString()} kg`
+    : `${Math.round(value).toLocaleString()} lbs`;
+}
+
+function fmtVolume(valueCuFt: number, metric: boolean) {
+  return metric ? `${(valueCuFt * CUFT_TO_CBM).toFixed(2)} m3` : `${valueCuFt.toFixed(1)} ft3`;
+}
+
+function ReportBrandMark({ brand: brandInput }: { brand?: ContainerReportBrand }) {
+  const brand = resolveContainerReportBrand(brandInput);
+  return (
+    <View style={styles.headerBrand}>
+      {brandInput?.logoDataUrl ? (
+        <Image src={brandInput.logoDataUrl} style={styles.headerIcon} />
+      ) : (
+        <Svg style={styles.headerIcon} viewBox="0 0 24 24">
+          <Rect x="0" y="0" width="24" height="24" rx="5.25" fill={brand.accentColor} />
+          <G transform="translate(4.5 4.5) scale(0.625)" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <Path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+            <Path d="m9 12 2 2 4-4" />
+          </G>
+        </Svg>
+      )}
+      <View style={styles.wordmark}>
+        <Text style={styles.wordmarkMain}>{brand.name}</Text>
+        {brand.domainSuffix ? <Text style={[styles.wordmarkDomain, { color: brand.accentColor }]}>{brand.domainSuffix}</Text> : null}
+      </View>
+    </View>
+  );
 }
 
 function ReportHeader({
-  brand: brandInput,
+  brand,
   title,
   subtitle,
 }: {
@@ -492,255 +691,278 @@ function ReportHeader({
   title: string;
   subtitle: string;
 }) {
-  const brand = resolveContainerReportBrand(brandInput);
   return (
-    <View style={styles.headerBar}>
-      <View style={styles.headerLeft}>
-        {brand.logoDataUrl ? (
-          <Image src={brand.logoDataUrl} style={styles.headerIcon} />
-        ) : (
-          <Svg style={styles.headerIcon} viewBox="0 0 32 32">
-            <Rect x="0" y="0" width="32" height="32" rx="8" fill={brand.accentColor} />
-            <Path d="M16 6.5l8 3v6.2c0 5-3.3 8.8-8 10.1-4.7-1.3-8-5.1-8-10.1V9.5l8-3z" fill="none" stroke="#fff" strokeWidth="2" />
-            <Path d="M12.1 16.1l2.6 2.6 5.4-5.5" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-          </Svg>
-        )}
-        <View style={styles.headerBrandCopy}>
-          <View style={styles.headerWordmark}>
-            <Text style={styles.headerLogo}>{brand.name}</Text>
-            {brand.domainSuffix ? <Text style={[styles.headerDomain, { color: brand.accentColor }]}>{brand.domainSuffix}</Text> : null}
-          </View>
-          <Text style={styles.headerSubtitle}>{brand.tagline}</Text>
-        </View>
-      </View>
-      <View style={styles.headerRight}>
+    <View style={styles.header} fixed>
+      <ReportBrandMark brand={brand} />
+      <View style={styles.headerMeta}>
         <Text style={styles.headerTitle}>{title}</Text>
-        <Text style={styles.headerTimestamp}>{subtitle}</Text>
+        <Text style={styles.headerSubtitle}>{subtitle}</Text>
       </View>
     </View>
   );
 }
 
-function ReportPage1({
-  containerSpec,
-  cargoRows,
-  result,
-  unitSystem,
-  containerPlans,
-  brand,
-}: PDFReportProps) {
-  const isMetric = unitSystem === "metric";
-  const dimUnit = isMetric ? "cm" : "in";
-  const wtUnit = isMetric ? "kg" : "lbs";
-  const volUnit = isMetric ? "m\u00B3" : "ft\u00B3";
+function ReportFooter({ brand }: { brand?: ContainerReportBrand }) {
+  const resolved = resolveContainerReportBrand(brand);
+  return (
+    <View style={styles.footer} fixed>
+      <Text style={styles.footerText}>Generated by {resolved.name}{resolved.domainSuffix} - verify the plan before loading</Text>
+      <Text style={styles.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+    </View>
+  );
+}
 
-  const totalQty = cargoRows.reduce((s, r) => s + r.qty, 0);
-  const totalWt = cargoRows.reduce((s, r) => s + r.totalWeight, 0);
-  const totalVolCuFt = cargoRows.reduce((s, r) => s + r.totalVol, 0);
-  const plans = containerPlans?.length
-    ? containerPlans
-    : [{ label: "Container 1", containerSpec, result }];
-  const piecesLoaded = plans.reduce((sum, plan) => sum + plan.result.piecesLoaded, 0);
+function MetricCard({ label, value, sub }: { label: string; value: string; sub: string }) {
+  return (
+    <View style={styles.metricCard} wrap={false}>
+      <Text style={styles.metricLabel}>{label}</Text>
+      <Text style={styles.metricValue}>{value}</Text>
+      <Text style={styles.metricSub}>{sub}</Text>
+    </View>
+  );
+}
+
+function ContainerIllustration({ container, style }: { container: ContainerSpec; style: any }) {
+  const short = container.id.startsWith("20") || container.lengthIn < 300;
+  const start = short ? 26 : 8;
+  const front = start + 20;
+  const ribXs = Array.from(
+    { length: short ? 5 : 7 },
+    (_, index) => front + 10 + index * ((112 - front - 16) / (short ? 4 : 6)),
+  );
+  return (
+    <Svg viewBox="0 0 120 66" style={style}>
+      <Path d="M12 58 C38 63 88 63 114 56" fill="none" stroke="#cbd5e1" strokeWidth="3" opacity={0.55} />
+      <Path d={`M${start} 18 91 7l21 10-66 13Z`} fill="#dbeafe" stroke={BRAND_BLUE} strokeWidth="1.7" />
+      <Path d={`M${front} 30 112 17v31L${front} 60Z`} fill="#eff6ff" stroke={BRAND_BLUE} strokeWidth="1.7" />
+      <Path d={`M${start} 18l${front - start} 12v30L${start} 49Z`} fill="#bfdbfe" stroke={BRAND_BLUE} strokeWidth="1.7" />
+      {ribXs.map((x) => (
+        <Path key={x} d={`M${x} ${30 - (x - front) * 0.19}v29`} fill="none" stroke="#93c5fd" strokeWidth="1.1" />
+      ))}
+      <Path d={`M${start + 10} 24v30M${start} 33l${front - start} 11`} fill="none" stroke="#60a5fa" strokeWidth="1" />
+      <Path d={`M${start + 6} 37v7m8-3v7`} fill="none" stroke={BRAND_BLUE} strokeWidth="1.2" strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function ProgressMetric({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <View style={styles.progressMetric}>
+      <View style={styles.progressLabels}>
+        <Text style={styles.progressLabel}>{label}</Text>
+        <Text style={styles.progressLabel}>{value.toFixed(0)}%</Text>
+      </View>
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { width: `${clampPct(value)}%`, backgroundColor: color }]} />
+      </View>
+    </View>
+  );
+}
+
+function EquipmentCard({ plan, index }: { plan: ContainerReportPlan; index: number }) {
+  return (
+    <View style={styles.equipmentCard} wrap={false}>
+      <View style={styles.equipmentTop}>
+        <View style={styles.equipmentIconWrap}>
+          <ContainerIllustration container={plan.containerSpec} style={styles.equipmentIcon} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.equipmentName}>{plan.label || `Container ${index + 1}`}</Text>
+          <Text style={styles.equipmentType}>{plan.containerSpec.name}</Text>
+          <Text style={styles.equipmentPieces}>{plan.result.piecesLoaded} pieces assigned</Text>
+        </View>
+      </View>
+      <View style={styles.progressRow}>
+        <ProgressMetric label="Volume" value={plan.result.volumeUtil} color="#8b5cf6" />
+        <ProgressMetric label="Payload" value={plan.result.weightUtil} color="#10b981" />
+      </View>
+    </View>
+  );
+}
+
+function OverviewPage(props: PDFReportProps) {
+  const { cargoRows, brand } = props;
+  const metric = props.unitSystem === "metric";
+  const plans = props.containerPlans?.length
+    ? props.containerPlans
+    : [{ label: "Container 1", containerSpec: props.containerSpec, result: props.result }];
+  const totalPieces = cargoRows.reduce((sum, row) => sum + row.qty, 0);
+  const totalEnteredWeight = cargoRows.reduce((sum, row) => sum + row.totalWeight, 0);
+  const totalEnteredVolume = cargoRows.reduce((sum, row) => sum + row.totalVol, 0);
+  const loadedPieces = plans.reduce((sum, plan) => sum + plan.result.piecesLoaded, 0);
   const loadedWeight = plans.reduce((sum, plan) => sum + plan.result.totalWeight, 0);
-  const payloadCapacity = plans.reduce((sum, plan) => sum + plan.result.maxPayload, 0);
   const loadedVolume = plans.reduce((sum, plan) => sum + plan.result.totalVolume, 0);
+  const payloadCapacity = plans.reduce((sum, plan) => sum + plan.result.maxPayload, 0);
   const volumeCapacity = plans.reduce((sum, plan) => sum + plan.result.containerVolume, 0);
-  const complete = piecesLoaded >= totalQty;
-  const balance = calculateContainerBalance(result.placed, containerSpec);
-  const balanceAppearance = balance.status === "balanced"
-    ? { label: "Well balanced", backgroundColor: "#dcfce7", color: "#15803d" }
-    : balance.status === "caution"
-      ? { label: "Balance caution", backgroundColor: "#fef3c7", color: "#b45309" }
-      : balance.status === "review"
-        ? { label: "Review balance", backgroundColor: "#ffe4e6", color: "#be123c" }
-        : { label: "No weight data", backgroundColor: SLATE_100, color: SLATE_500 };
+  const complete = loadedPieces >= totalPieces;
+  const visiblePlans = plans.slice(0, 6);
 
   return (
     <Page size="A4" style={styles.page}>
       <ReportHeader brand={brand} title="Container Loading Report" subtitle={new Date().toLocaleString()} />
 
+      <Text style={styles.eyebrow}>Complete loading plan</Text>
+      <Text style={styles.pageTitle}>Loading plan overview</Text>
+      <Text style={styles.pageIntro}>
+        A practical summary of the selected equipment, assigned cargo, utilization, and operator checks. Measurements are planning values and must be confirmed against the actual container.
+      </Text>
+
       <View style={[
         styles.decisionBanner,
         complete
-          ? { backgroundColor: "#effaf4", borderColor: "#bbf7d0" }
-          : { backgroundColor: "#fff7ed", borderColor: "#fed7aa" },
-      ]}>
-        <View>
+          ? { borderColor: "#bbf7d0", backgroundColor: "#f0fdf4" }
+          : { borderColor: "#fed7aa", backgroundColor: "#fff7ed" },
+      ]} wrap={false}>
+        <View style={styles.decisionCopy}>
           <Text style={[styles.decisionTitle, { color: complete ? "#15803d" : "#c2410c" }]}>
-            {complete ? "Complete loading plan" : "Operator review required"}
+            {complete ? "All cargo assigned" : "Operator review required"}
           </Text>
-          <Text style={styles.decisionCopy}>
+          <Text style={styles.decisionText}>
             {complete
-              ? `${piecesLoaded} of ${totalQty} pieces assigned across ${plans.length} container${plans.length === 1 ? "" : "s"}.`
-              : `${Math.max(0, totalQty - piecesLoaded)} piece(s) remain unassigned. Review dimensions, orientation, or equipment.`}
+              ? `${loadedPieces} of ${totalPieces} pieces are assigned across ${plans.length} container${plans.length === 1 ? "" : "s"}.`
+              : `${Math.max(0, totalPieces - loadedPieces)} piece(s) remain unassigned. Review dimensions, rotation, stacking, or equipment selection.`}
           </Text>
         </View>
-        <Text style={[styles.decisionTitle, { color: BRAND_NAVY }]}>{plans.length} × equipment</Text>
+        <Text style={styles.decisionBadge}>{plans.length} container{plans.length === 1 ? "" : "s"}</Text>
       </View>
 
-      <Text style={styles.sectionTitle}>Executive Summary</Text>
-      <View style={styles.summaryGrid}>
-        <View style={styles.summaryBox}>
-          <Text style={styles.summaryLabel}>Equipment</Text>
-          <Text style={styles.summaryValue}>{plans.length}</Text>
-          <Text style={styles.summarySub}>{Array.from(new Set(plans.map((plan) => plan.containerSpec.name))).join(", ")}</Text>
-        </View>
-        <View style={styles.summaryBox}>
-          <Text style={styles.summaryLabel}>Pieces Assigned</Text>
-          <Text style={styles.summaryValue}>{piecesLoaded} / {totalQty}</Text>
-          <Text style={styles.summarySub}>{complete ? "All cargo assigned" : "Unassigned cargo remains"}</Text>
-        </View>
-        <View style={styles.summaryBox}>
-          <Text style={styles.summaryLabel}>Payload Used</Text>
-          <Text style={styles.summaryValue}>{payloadCapacity > 0 ? (loadedWeight / payloadCapacity * 100).toFixed(1) : "0.0"}%</Text>
-          <Text style={styles.summarySub}>{fmtWt(loadedWeight, isMetric)}</Text>
-        </View>
-        <View style={styles.summaryBox}>
-          <Text style={styles.summaryLabel}>Volume Used</Text>
-          <Text style={styles.summaryValue}>{volumeCapacity > 0 ? (loadedVolume / volumeCapacity * 100).toFixed(1) : "0.0"}%</Text>
-          <Text style={styles.summarySub}>{fmtVol(loadedVolume, isMetric)}</Text>
-        </View>
+      <View style={styles.metricGrid}>
+        <MetricCard label="Pieces assigned" value={`${loadedPieces} / ${totalPieces}`} sub={complete ? "Complete allocation" : "Exceptions remain"} />
+        <MetricCard label="Gross cargo weight" value={fmtWeight(totalEnteredWeight, metric)} sub={`${fmtWeight(loadedWeight, metric)} assigned`} />
+        <MetricCard label="Payload used" value={`${(payloadCapacity > 0 ? loadedWeight / payloadCapacity * 100 : 0).toFixed(1)}%`} sub={`${fmtWeight(payloadCapacity, metric)} capacity`} />
+        <MetricCard label="Volume used" value={`${(volumeCapacity > 0 ? loadedVolume / volumeCapacity * 100 : 0).toFixed(1)}%`} sub={`${fmtVolume(totalEnteredVolume, metric)} entered`} />
       </View>
 
-      <Text style={styles.sectionTitle}>{plans.length > 1 ? "Selected Container Balance" : "Weight Balance"}</Text>
-      <View style={styles.balancePanel}>
-        <View style={[styles.balanceStatus, { backgroundColor: balanceAppearance.backgroundColor }]}>
-          <Text style={[styles.balanceStatusLabel, { color: balanceAppearance.color }]}>{balanceAppearance.label}</Text>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Equipment plan</Text>
+        <Text style={styles.sectionMeta}>{plans.length} unit{plans.length === 1 ? "" : "s"} selected</Text>
+      </View>
+      <View style={styles.equipmentGrid}>
+        {visiblePlans.map((plan, index) => <EquipmentCard key={`${plan.containerSpec.id}-${index}`} plan={plan} index={index} />)}
+      </View>
+      {plans.length > visiblePlans.length ? (
+        <Text style={[styles.sectionMeta, { marginTop: -7, marginBottom: 10 }]}>+ {plans.length - visiblePlans.length} additional units are detailed on the following pages.</Text>
+      ) : null}
+
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Operational checks</Text>
+        <Text style={styles.sectionMeta}>Complete before loading</Text>
+      </View>
+      <View style={styles.noteGrid} wrap={false}>
+        <View style={styles.noteCard}>
+          <Text style={styles.noteTitle}>Verify equipment</Text>
+          <Text style={styles.noteLine}>- Confirm internal and door-opening dimensions.</Text>
+          <Text style={styles.noteLine}>- Check floor and point-load limits.</Text>
         </View>
-        <View style={styles.balanceMetric}>
-          <Text style={styles.balanceMetricLabel}>CG from closed end</Text>
-          <Text style={styles.balanceMetricValue}>{fmtDim(balance.centerXIn, isMetric)} ({balance.longitudinalPct.toFixed(0)}%)</Text>
+        <View style={styles.noteCard}>
+          <Text style={styles.noteTitle}>Load and secure</Text>
+          <Text style={styles.noteLine}>- Confirm lifting and unloading access.</Text>
+          <Text style={styles.noteLine}>- Engineer blocking, bracing, and lashing separately.</Text>
         </View>
-        <View style={styles.balanceMetric}>
-          <Text style={styles.balanceMetricLabel}>Lateral CG from Side A</Text>
-          <Text style={styles.balanceMetricValue}>{fmtDim(balance.centerZIn, isMetric)} ({balance.lateralPct.toFixed(0)}%)</Text>
-        </View>
-        <View style={styles.balanceMetric}>
-          <Text style={styles.balanceMetricLabel}>Weight split</Text>
-          <Text style={styles.balanceMetricValue}>{balance.closedEndWeightPct.toFixed(0)} / {balance.doorEndWeightPct.toFixed(0)}%</Text>
+        <View style={styles.noteCard}>
+          <Text style={styles.noteTitle}>Handover</Text>
+          <Text style={styles.noteLine}>- Verify final count and gross weight.</Text>
+          <Text style={styles.noteLine}>- Photograph and sign off the secured load.</Text>
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Cargo Manifest</Text>
-      <View style={styles.table}>
-        <View style={styles.tableHeader}>
-          <Text style={[styles.tableHeaderText, { width: COL_WIDTHS.name }]}>Item</Text>
-          <Text style={[styles.tableHeaderText, { width: COL_WIDTHS.qty, textAlign: "center" }]}>Qty</Text>
-          <Text style={[styles.tableHeaderText, { width: COL_WIDTHS.dims, textAlign: "center" }]}>L x W x H ({dimUnit})</Text>
-          <Text style={[styles.tableHeaderText, { width: COL_WIDTHS.wPer, textAlign: "right" }]}>{wtUnit}/pc</Text>
-          <Text style={[styles.tableHeaderText, { width: COL_WIDTHS.wTot, textAlign: "right" }]}>Tot {wtUnit}</Text>
-          <Text style={[styles.tableHeaderText, { width: COL_WIDTHS.stack, textAlign: "center" }]}>Stack</Text>
-          <Text style={[styles.tableHeaderText, { width: COL_WIDTHS.rot, textAlign: "center" }]}>Rot.</Text>
-          <Text style={[styles.tableHeaderText, { width: COL_WIDTHS.color, textAlign: "center" }]}></Text>
-          <Text style={[styles.tableHeaderText, { width: COL_WIDTHS.volTot, textAlign: "right" }]}>Vol ({volUnit})</Text>
-        </View>
-
-        {cargoRows.map((row, i) => {
-          const wtF = isMetric ? LB_TO_KG : 1;
-          return (
-            <View key={i} style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
-              <Text style={[styles.tableCellBold, { width: COL_WIDTHS.name }]}>{row.name.substring(0, 28)}</Text>
-              <Text style={[styles.tableCell, { width: COL_WIDTHS.qty, textAlign: "center" }]}>{row.qty}</Text>
-              <Text style={[styles.tableCell, { width: COL_WIDTHS.dims, textAlign: "center" }]}>
-                {fmtDimShort(row.l, isMetric)} x {fmtDimShort(row.w, isMetric)} x {fmtDimShort(row.h, isMetric)}
-              </Text>
-              <Text style={[styles.tableCell, { width: COL_WIDTHS.wPer, textAlign: "right" }]}>{(row.weightPer * wtF).toFixed(0)}</Text>
-              <Text style={[styles.tableCell, { width: COL_WIDTHS.wTot, textAlign: "right" }]}>{(row.totalWeight * wtF).toFixed(0)}</Text>
-              <Text style={[styles.tableCell, { width: COL_WIDTHS.stack, textAlign: "center" }]}>{row.stackable ? "Yes" : "No"}</Text>
-              <Text style={[styles.tableCell, { width: COL_WIDTHS.rot, textAlign: "center" }]}>{row.rotation}</Text>
-              <View style={[{ width: COL_WIDTHS.color, alignItems: "center", justifyContent: "center" }]}>
-                <View style={[styles.colorSwatch, { backgroundColor: row.color }]} />
-              </View>
-              <Text style={[styles.tableCell, { width: COL_WIDTHS.volTot, textAlign: "right" }]}>{fmtVolShort(row.totalVol, isMetric)}</Text>
-            </View>
-          );
-        })}
-
-        <View style={styles.totalsRow}>
-          <Text style={[styles.tableCellBold, { width: COL_WIDTHS.name, color: BRAND_GREEN }]}>TOTALS</Text>
-          <Text style={[styles.tableCellBold, { width: COL_WIDTHS.qty, textAlign: "center" }]}>{totalQty}</Text>
-          <Text style={[styles.tableCell, { width: COL_WIDTHS.dims }]}></Text>
-          <Text style={[styles.tableCell, { width: COL_WIDTHS.wPer }]}></Text>
-          <Text style={[styles.tableCellBold, { width: COL_WIDTHS.wTot, textAlign: "right" }]}>{(totalWt * (isMetric ? LB_TO_KG : 1)).toFixed(0)}</Text>
-          <Text style={[styles.tableCell, { width: COL_WIDTHS.stack }]}></Text>
-          <Text style={[styles.tableCell, { width: COL_WIDTHS.rot }]}></Text>
-          <Text style={[styles.tableCell, { width: COL_WIDTHS.color }]}></Text>
-          <Text style={[styles.tableCellBold, { width: COL_WIDTHS.volTot, textAlign: "right" }]}>{fmtVolShort(totalVolCuFt, isMetric)}</Text>
-        </View>
-      </View>
-
-      <Text style={styles.sectionTitle}>Loading &amp; Handover Checks</Text>
-      <View style={styles.operationalGrid} wrap={false}>
-        <View style={styles.operationalBox}>
-          <Text style={styles.operationalTitle}>Before loading</Text>
-          <Text style={styles.operationalLine}>- Confirm actual container and door dimensions</Text>
-          <Text style={styles.operationalLine}>- Check floor point loads and lifting access</Text>
-          <Text style={styles.operationalLine}>- Confirm cargo compatibility and orientation</Text>
-        </View>
-        <View style={styles.operationalBox}>
-          <Text style={styles.operationalTitle}>Securement</Text>
-          <Text style={styles.operationalLine}>- Engineer blocking, bracing, and lashing separately</Text>
-          <Text style={styles.operationalLine}>- Keep practical forklift and unloading access</Text>
-          <Text style={styles.operationalLine}>- Treat calculated COG as guidance, not a loading rule</Text>
-        </View>
-        <View style={styles.operationalBox}>
-          <Text style={styles.operationalTitle}>Sign-off</Text>
-          <Text style={styles.operationalLine}>- Verify final count and gross cargo weight</Text>
-          <Text style={styles.operationalLine}>- Photograph the final secured load</Text>
-          <Text style={styles.operationalLine}>- Obtain carrier / warehouse approval</Text>
-        </View>
-      </View>
-
-      <View style={styles.footer} fixed>
-        <Text style={styles.footerText}>Generated by {resolveContainerReportBrand(brand).name}{resolveContainerReportBrand(brand).domainSuffix} Container Loading Calculator</Text>
-        <Text style={styles.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
-      </View>
+      <ReportFooter brand={brand} />
     </Page>
   );
 }
 
-function ReportPage2({
-  containerSpec,
+const MANIFEST_COLUMNS = {
+  name: "29%",
+  qty: "7%",
+  dims: "23%",
+  weight: "15%",
+  stack: "10%",
+  rotation: "10%",
+  key: "6%",
+} as const;
+
+function CargoManifestPage({
+  rows,
+  allRows,
+  pageIndex,
+  pageCount,
   unitSystem,
-  images,
   brand,
-}: Pick<PDFReportProps, "containerSpec" | "unitSystem" | "images" | "brand">) {
-  const isMetric = unitSystem === "metric";
-  const dimLabel = `${fmtDim(containerSpec.lengthIn, isMetric)} x ${fmtDim(containerSpec.widthIn, isMetric)} x ${fmtDim(containerSpec.heightIn, isMetric)}`;
-
-  const views = [
-    { label: "Top View (Plan)", src: images.top },
-    { label: "Right Side View", src: images.sideA },
-    { label: "Front / Doors View", src: images.front },
-  ].filter((v) => v.src);
-
-  if (views.length === 0) return null;
+}: {
+  rows: CargoSummaryRow[];
+  allRows: CargoSummaryRow[];
+  pageIndex: number;
+  pageCount: number;
+  unitSystem: "imperial" | "metric";
+  brand?: ContainerReportBrand;
+}) {
+  const metric = unitSystem === "metric";
+  const dimUnit = metric ? "cm" : "in";
+  const weightUnit = metric ? "kg" : "lbs";
+  const totalQty = allRows.reduce((sum, row) => sum + row.qty, 0);
+  const totalWeight = allRows.reduce((sum, row) => sum + row.totalWeight, 0);
+  const totalVolume = allRows.reduce((sum, row) => sum + row.totalVol, 0);
 
   return (
     <Page size="A4" style={styles.page}>
-      <ReportHeader brand={brand} title="Rendered Load Plan Views" subtitle={`${containerSpec.name} - ${dimLabel}`} />
+      <ReportHeader brand={brand} title="Cargo Details" subtitle={`Manifest page ${pageIndex + 1} of ${pageCount}`} />
+      <Text style={styles.eyebrow}>Packing list</Text>
+      <Text style={styles.pageTitle}>Cargo manifest</Text>
+      <Text style={styles.pageIntro}>Dimensions are outside dimensions. Weight is the total gross weight entered for each cargo row and is divided across its quantity for placement calculations.</Text>
 
-      <Text style={styles.sectionTitle}>Additional Load Plan Views</Text>
-
-      {views.map((v, i) => (
-        <View key={i} style={{ marginBottom: 16 }}>
-          <Image src={v.src} style={{ width: "100%", borderRadius: 4, border: `1 solid ${SLATE_200}` }} />
-          <Text style={styles.imageLabel}>{v.label}</Text>
+      {pageIndex === 0 ? (
+        <View style={styles.metricGrid}>
+          <MetricCard label="Cargo rows" value={String(allRows.length)} sub={`${totalQty} total pieces`} />
+          <MetricCard label="Gross weight" value={fmtWeight(totalWeight, metric)} sub="Entered total" />
+          <MetricCard label="Cargo volume" value={fmtVolume(totalVolume, metric)} sub="Theoretical total" />
+          <MetricCard label="Units" value={`${dimUnit} / ${weightUnit}`} sub="Report measurement system" />
         </View>
-      ))}
+      ) : null}
 
-      <View style={{ marginTop: "auto", paddingTop: 8, borderTopWidth: 0.5, borderTopColor: SLATE_200 }}>
-        <Text style={styles.disclaimer}>
-          Estimates only. Actual loading may vary. Always verify packing plans with your carrier, freight forwarder, or warehouse operator before shipping.
-        </Text>
+      <View style={styles.table}>
+        <View style={styles.tableHeader} fixed>
+          <Text style={[styles.tableHeaderText, { width: MANIFEST_COLUMNS.name }]}>Cargo</Text>
+          <Text style={[styles.tableHeaderText, { width: MANIFEST_COLUMNS.qty, textAlign: "center" }]}>Qty</Text>
+          <Text style={[styles.tableHeaderText, { width: MANIFEST_COLUMNS.dims, textAlign: "center" }]}>L x W x H ({dimUnit})</Text>
+          <Text style={[styles.tableHeaderText, { width: MANIFEST_COLUMNS.weight, textAlign: "right" }]}>Total {weightUnit}</Text>
+          <Text style={[styles.tableHeaderText, { width: MANIFEST_COLUMNS.stack, textAlign: "center" }]}>Stack</Text>
+          <Text style={[styles.tableHeaderText, { width: MANIFEST_COLUMNS.rotation, textAlign: "center" }]}>Rotate</Text>
+          <Text style={[styles.tableHeaderText, { width: MANIFEST_COLUMNS.key, textAlign: "right" }]}>Key</Text>
+        </View>
+        {rows.map((row, index) => (
+          <View key={`${row.name}-${index}`} style={[styles.tableRow, index % 2 ? styles.tableRowAlt : {}]} wrap={false}>
+            <Text style={[styles.tableCellStrong, { width: MANIFEST_COLUMNS.name }]}>{row.name || "Unnamed cargo"}</Text>
+            <Text style={[styles.tableCell, { width: MANIFEST_COLUMNS.qty, textAlign: "center" }]}>{row.qty}</Text>
+            <Text style={[styles.tableCell, { width: MANIFEST_COLUMNS.dims, textAlign: "center" }]}>{fmtDimValue(row.l, metric)} x {fmtDimValue(row.w, metric)} x {fmtDimValue(row.h, metric)}</Text>
+            <Text style={[styles.tableCell, { width: MANIFEST_COLUMNS.weight, textAlign: "right" }]}>{Math.round(row.totalWeight * (metric ? LB_TO_KG : 1)).toLocaleString()}</Text>
+            <Text style={[styles.tableCell, { width: MANIFEST_COLUMNS.stack, textAlign: "center" }]}>{row.stackable ? "Yes" : "No"}</Text>
+            <Text style={[styles.tableCell, { width: MANIFEST_COLUMNS.rotation, textAlign: "center" }]}>{row.rotation}</Text>
+            <View style={{ width: MANIFEST_COLUMNS.key, alignItems: "flex-end" }}><View style={[styles.swatch, { backgroundColor: row.color }]} /></View>
+          </View>
+        ))}
+        {pageIndex === pageCount - 1 ? (
+          <View style={styles.totalsRow} wrap={false}>
+            <Text style={[styles.tableCellStrong, { width: MANIFEST_COLUMNS.name, color: BRAND_BLUE }]}>Manifest totals</Text>
+            <Text style={[styles.tableCellStrong, { width: MANIFEST_COLUMNS.qty, textAlign: "center" }]}>{totalQty}</Text>
+            <Text style={[styles.tableCell, { width: MANIFEST_COLUMNS.dims }]}></Text>
+            <Text style={[styles.tableCellStrong, { width: MANIFEST_COLUMNS.weight, textAlign: "right" }]}>{Math.round(totalWeight * (metric ? LB_TO_KG : 1)).toLocaleString()}</Text>
+            <Text style={[styles.tableCell, { width: MANIFEST_COLUMNS.stack }]}></Text>
+            <Text style={[styles.tableCell, { width: MANIFEST_COLUMNS.rotation }]}></Text>
+            <Text style={[styles.tableCell, { width: MANIFEST_COLUMNS.key }]}></Text>
+          </View>
+        ) : null}
       </View>
 
-      <View style={styles.footer} fixed>
-        <Text style={styles.footerText}>Generated by {resolveContainerReportBrand(brand).name}{resolveContainerReportBrand(brand).domainSuffix} Container Loading Calculator</Text>
-        <Text style={styles.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
-      </View>
+      <ReportFooter brand={brand} />
     </Page>
   );
+}
+
+function balanceAppearance(status: ReturnType<typeof calculateContainerBalance>["status"]) {
+  if (status === "balanced") return { label: "Well balanced", backgroundColor: "#dcfce7", color: "#15803d" };
+  if (status === "caution") return { label: "Balance caution", backgroundColor: "#fef3c7", color: "#b45309" };
+  if (status === "review") return { label: "Review balance", backgroundColor: "#ffe4e6", color: "#be123c" };
+  return { label: "No weight data", backgroundColor: SLATE_100, color: SLATE_500 };
 }
 
 function ContainerPlanPage({
@@ -757,50 +979,47 @@ function ContainerPlanPage({
   brand?: ContainerReportBrand;
 }) {
   const { containerSpec, result } = plan;
-  const isMetric = unitSystem === "metric";
+  const metric = unitSystem === "metric";
   const balance = calculateContainerBalance(result.placed, containerSpec);
-  const cargoGroups = Array.from(result.placed.reduce((groups, box) => {
-    const current = groups.get(box.cargoName) ?? { name: box.cargoName, color: box.color, pieces: 0, weight: 0 };
+  const appearance = balanceAppearance(balance.status);
+  const groups = Array.from(result.placed.reduce((map, box) => {
+    const current = map.get(box.cargoId) ?? { name: box.cargoName || "Cargo", color: box.color, pieces: 0, weight: 0 };
     current.pieces += 1;
     current.weight += box.weight;
-    groups.set(box.cargoName, current);
-    return groups;
+    map.set(box.cargoId, current);
+    return map;
   }, new Map<string, { name: string; color: string; pieces: number; weight: number }>()).values());
-  const ordered = [...result.placed].sort((a, b) => a.x - b.x || a.y - b.y || a.z - b.z);
-  const planHeight = Math.max(112, Math.min(200, containerSpec.widthIn / containerSpec.lengthIn * 470));
+  const planHeight = Math.max(130, Math.min(188, containerSpec.widthIn / containerSpec.lengthIn * 510));
+  const dimText = `${fmtDim(containerSpec.lengthIn, metric)} x ${fmtDim(containerSpec.widthIn, metric)} x ${fmtDim(containerSpec.heightIn, metric)}`;
 
   return (
     <Page size="A4" style={styles.page}>
-      <ReportHeader brand={brand} title={`Container ${index + 1} of ${count}`} subtitle={containerSpec.name} />
+      <ReportHeader brand={brand} title={`Container ${index + 1} of ${count}`} subtitle={shorten(containerSpec.name, 42)} />
 
-      <Text style={styles.sectionTitle}>Equipment &amp; Utilization</Text>
-      <View style={styles.summaryGrid}>
-        <View style={styles.summaryBox}>
-          <Text style={styles.summaryLabel}>Container</Text>
-          <Text style={styles.summaryValue}>{plan.label}</Text>
-          <Text style={styles.summarySub}>{containerSpec.name}</Text>
-        </View>
-        <View style={styles.summaryBox}>
-          <Text style={styles.summaryLabel}>Pieces</Text>
-          <Text style={styles.summaryValue}>{result.piecesLoaded}</Text>
-          <Text style={styles.summarySub}>{result.unplaced.length ? "Review unplaced cargo" : "Assigned to this unit"}</Text>
-        </View>
-        <View style={styles.summaryBox}>
-          <Text style={styles.summaryLabel}>Payload</Text>
-          <Text style={styles.summaryValue}>{result.weightUtil.toFixed(1)}%</Text>
-          <Text style={styles.summarySub}>{fmtWt(result.totalWeight, isMetric)}</Text>
-        </View>
-        <View style={styles.summaryBox}>
-          <Text style={styles.summaryLabel}>Volume</Text>
-          <Text style={styles.summaryValue}>{result.volumeUtil.toFixed(1)}%</Text>
-          <Text style={styles.summarySub}>{fmtVol(result.totalVolume, isMetric)}</Text>
+      <View style={styles.containerHero} wrap={false}>
+        <ContainerIllustration container={containerSpec} style={styles.containerHeroIcon} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.eyebrow}>Loading plan</Text>
+          <Text style={styles.containerHeroLabel}>{plan.label || `Container ${index + 1}`}</Text>
+          <Text style={styles.containerHeroType}>{containerSpec.name}</Text>
+          <Text style={styles.containerHeroDims}>{dimText}</Text>
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Top-Down Loading Plan</Text>
+      <View style={styles.metricGrid}>
+        <MetricCard label="Pieces assigned" value={String(result.piecesLoaded)} sub={result.unplaced.length ? "Exceptions require review" : "Assigned to this unit"} />
+        <MetricCard label="Gross weight" value={fmtWeight(result.totalWeight, metric)} sub={`${result.weightUtil.toFixed(1)}% of payload`} />
+        <MetricCard label="Cargo volume" value={fmtVolume(result.totalVolume, metric)} sub={`${result.volumeUtil.toFixed(1)}% of capacity`} />
+        <MetricCard label="Load footprint" value={`${(result.containerFloorArea > 0 ? result.floorArea / result.containerFloorArea * 100 : 0).toFixed(1)}%`} sub="Projected floor use" />
+      </View>
+
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Top-down loading plan</Text>
+        <Text style={styles.sectionMeta}>Closed end at left - doors at right</Text>
+      </View>
       <View style={styles.planFrame} wrap={false}>
         <Svg viewBox={`0 0 ${containerSpec.lengthIn} ${containerSpec.widthIn}`} style={{ width: "100%", height: planHeight }}>
-          <Rect x={0} y={0} width={containerSpec.lengthIn} height={containerSpec.widthIn} rx={2} fill="#eef3f8" stroke="#64748b" strokeWidth={1.5} />
+          <Rect x={0} y={0} width={containerSpec.lengthIn} height={containerSpec.widthIn} rx={2} fill="#e9eff5" stroke="#475569" strokeWidth={1.5} />
           <Line x1={containerSpec.lengthIn / 2} y1={0} x2={containerSpec.lengthIn / 2} y2={containerSpec.widthIn} stroke="#cbd5e1" strokeWidth={0.7} strokeDasharray="4 3" />
           {[...result.placed].sort((a, b) => a.y - b.y).map((box, boxIndex) => (
             <Rect
@@ -811,76 +1030,190 @@ function ContainerPlanPage({
               height={Math.max(1, box.w - 1.4)}
               rx={1}
               fill={box.color}
-              fillOpacity={0.84}
+              fillOpacity={0.88}
               stroke="#ffffff"
-              strokeWidth={0.7}
+              strokeWidth={0.8}
             />
           ))}
-          <Line x1={containerSpec.lengthIn - 1.5} y1={1} x2={containerSpec.lengthIn - 1.5} y2={containerSpec.widthIn - 1} stroke={resolveContainerReportBrand(brand).accentColor} strokeWidth={2} strokeDasharray="5 3" />
+          <Line x1={containerSpec.lengthIn - 1.5} y1={1} x2={containerSpec.lengthIn - 1.5} y2={containerSpec.widthIn - 1} stroke={resolveContainerReportBrand(brand).accentColor} strokeWidth={2.2} strokeDasharray="5 3" />
           {result.placed.some((box) => box.weight > 0) ? (
             <>
-              <Circle cx={balance.centerXIn} cy={balance.centerZIn} r={5} fill="#ffffff" stroke="#0f172a" strokeWidth={1.2} />
+              <Circle cx={balance.centerXIn} cy={balance.centerZIn} r={5} fill="#ffffff" stroke={BRAND_NAVY} strokeWidth={1.2} />
               <Circle cx={balance.centerXIn} cy={balance.centerZIn} r={2} fill={resolveContainerReportBrand(brand).accentColor} />
             </>
           ) : null}
         </Svg>
         <View style={styles.planLegend}>
-          <Text style={styles.footerText}>Closed end - load from this end toward doors</Text>
-          <Text style={styles.footerText}>Dashed line: doors | ring: calculated COG</Text>
+          <Text style={styles.footerText}>Colored blocks: assigned cargo</Text>
+          <Text style={styles.footerText}>Dashed blue line: doors | ring: calculated COG</Text>
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Cargo Allocation</Text>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Cargo breakdown</Text>
+        <Text style={styles.sectionMeta}>{groups.length} cargo type{groups.length === 1 ? "" : "s"}</Text>
+      </View>
       <View style={styles.table} wrap={false}>
         <View style={styles.tableHeader}>
-          <Text style={[styles.tableHeaderText, { width: "48%" }]}>Cargo</Text>
-          <Text style={[styles.tableHeaderText, { width: "16%", textAlign: "right" }]}>Pieces</Text>
-          <Text style={[styles.tableHeaderText, { width: "24%", textAlign: "right" }]}>Weight</Text>
-          <Text style={[styles.tableHeaderText, { width: "12%", textAlign: "right" }]}>Key</Text>
+          <Text style={[styles.tableHeaderText, { width: "54%" }]}>Cargo</Text>
+          <Text style={[styles.tableHeaderText, { width: "14%", textAlign: "right" }]}>Pieces</Text>
+          <Text style={[styles.tableHeaderText, { width: "25%", textAlign: "right" }]}>Weight</Text>
+          <Text style={[styles.tableHeaderText, { width: "7%", textAlign: "right" }]}>Key</Text>
         </View>
-        {cargoGroups.map((group, groupIndex) => (
-          <View key={group.name} style={[styles.tableRow, groupIndex % 2 ? styles.tableRowAlt : {}]}>
-            <Text style={[styles.tableCellBold, { width: "48%" }]}>{group.name}</Text>
-            <Text style={[styles.tableCell, { width: "16%", textAlign: "right" }]}>{group.pieces}</Text>
-            <Text style={[styles.tableCell, { width: "24%", textAlign: "right" }]}>{fmtWt(group.weight, isMetric)}</Text>
-            <View style={{ width: "12%", alignItems: "flex-end" }}><View style={[styles.colorSwatch, { backgroundColor: group.color }]} /></View>
+        {groups.slice(0, 8).map((group, groupIndex) => (
+          <View key={`${group.name}-${groupIndex}`} style={[styles.tableRow, groupIndex % 2 ? styles.tableRowAlt : {}]}>
+            <Text style={[styles.tableCellStrong, { width: "54%" }]}>{group.name}</Text>
+            <Text style={[styles.tableCell, { width: "14%", textAlign: "right" }]}>{group.pieces}</Text>
+            <Text style={[styles.tableCell, { width: "25%", textAlign: "right" }]}>{fmtWeight(group.weight, metric)}</Text>
+            <View style={{ width: "7%", alignItems: "flex-end" }}><View style={[styles.swatch, { backgroundColor: group.color }]} /></View>
           </View>
         ))}
       </View>
 
-      <Text style={styles.sectionTitle}>Loading Sequence Snapshot</Text>
-      <Text style={{ fontSize: 6.8, color: SLATE_500, marginBottom: 5 }}>
-        Sequence is ordered from the closed end toward the doors. Confirm the working sequence with the loading crew and secure each zone before advancing.
-      </Text>
-      <View style={styles.table} wrap={false}>
-        {ordered.slice(0, 14).map((box, sequenceIndex) => (
-          <View key={`${box.cargoId}-${sequenceIndex}`} style={[styles.tableRow, sequenceIndex % 2 ? styles.tableRowAlt : {}]}>
-            <Text style={[styles.tableCellBold, { width: "9%" }]}>{sequenceIndex + 1}</Text>
-            <Text style={[styles.tableCell, { width: "35%" }]}>{box.cargoName}</Text>
-            <Text style={[styles.tableCell, { width: "32%" }]}>X {fmtDim(box.x, isMetric)} | Z {fmtDim(box.z, isMetric)}</Text>
-            <Text style={[styles.tableCell, { width: "24%", textAlign: "right" }]}>{fmtDim(box.l, isMetric)} long</Text>
+      <View style={styles.balancePanel} wrap={false}>
+        <View style={[styles.balanceStatus, { backgroundColor: appearance.backgroundColor }]}>
+          <Text style={[styles.balanceStatusText, { color: appearance.color }]}>{appearance.label}</Text>
+        </View>
+        <View style={styles.balanceMetric}>
+          <Text style={styles.balanceLabel}>COG from closed end</Text>
+          <Text style={styles.balanceValue}>{fmtDim(balance.centerXIn, metric)} ({balance.longitudinalPct.toFixed(0)}%)</Text>
+        </View>
+        <View style={styles.balanceMetric}>
+          <Text style={styles.balanceLabel}>COG from Side A</Text>
+          <Text style={styles.balanceValue}>{fmtDim(balance.centerZIn, metric)} ({balance.lateralPct.toFixed(0)}%)</Text>
+        </View>
+        <View style={styles.balanceMetric}>
+          <Text style={styles.balanceLabel}>End weight split</Text>
+          <Text style={styles.balanceValue}>{balance.closedEndWeightPct.toFixed(0)} / {balance.doorEndWeightPct.toFixed(0)}%</Text>
+        </View>
+      </View>
+
+      {result.unplaced.length > 0 ? (
+        <View style={styles.warning} wrap={false}>
+          <Text style={styles.warningTitle}>Unplaced cargo requires review</Text>
+          <Text style={styles.warningText}>{result.unplaced.map((item) => `${item.name}: ${item.qty}`).join(" | ")}</Text>
+        </View>
+      ) : null}
+
+      <ReportFooter brand={brand} />
+    </Page>
+  );
+}
+
+const PLACEMENT_COLUMNS = {
+  seq: "8%",
+  cargo: "28%",
+  position: "22%",
+  dims: "23%",
+  weight: "12%",
+  rotation: "7%",
+} as const;
+
+function PlacementPage({
+  plan,
+  containerIndex,
+  containerCount,
+  rows,
+  pageIndex,
+  pageCount,
+  unitSystem,
+  brand,
+}: {
+  plan: ContainerReportPlan;
+  containerIndex: number;
+  containerCount: number;
+  rows: { box: PlacedBox; sequence: number }[];
+  pageIndex: number;
+  pageCount: number;
+  unitSystem: "imperial" | "metric";
+  brand?: ContainerReportBrand;
+}) {
+  const metric = unitSystem === "metric";
+  const dimUnit = metric ? "cm" : "in";
+  return (
+    <Page size="A4" style={styles.page}>
+      <ReportHeader brand={brand} title={`Container ${containerIndex + 1} Placement List`} subtitle={`${plan.label} - page ${pageIndex + 1} of ${pageCount}`} />
+      <Text style={styles.eyebrow}>Loading sequence</Text>
+      <Text style={styles.pageTitle}>Item placement details</Text>
+      <Text style={styles.pageIntro}>Sequence runs from the closed end toward the doors. Coordinates use the closed-end floor corner as the origin. Confirm the working sequence with the loading crew.</Text>
+
+      <View style={styles.containerHero} wrap={false}>
+        <ContainerIllustration container={plan.containerSpec} style={styles.containerHeroIcon} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.containerHeroLabel}>{plan.label}</Text>
+          <Text style={styles.containerHeroType}>{plan.containerSpec.name} - container {containerIndex + 1} of {containerCount}</Text>
+          <Text style={styles.containerHeroDims}>{plan.result.piecesLoaded} assigned pieces | {fmtWeight(plan.result.totalWeight, metric)} | {plan.result.volumeUtil.toFixed(1)}% volume</Text>
+        </View>
+      </View>
+
+      <View style={styles.table}>
+        <View style={styles.tableHeader} fixed>
+          <Text style={[styles.tableHeaderText, { width: PLACEMENT_COLUMNS.seq }]}>Seq.</Text>
+          <Text style={[styles.tableHeaderText, { width: PLACEMENT_COLUMNS.cargo }]}>Cargo</Text>
+          <Text style={[styles.tableHeaderText, { width: PLACEMENT_COLUMNS.position }]}>X / Y / Z ({dimUnit})</Text>
+          <Text style={[styles.tableHeaderText, { width: PLACEMENT_COLUMNS.dims }]}>L x W x H ({dimUnit})</Text>
+          <Text style={[styles.tableHeaderText, { width: PLACEMENT_COLUMNS.weight, textAlign: "right" }]}>Weight</Text>
+          <Text style={[styles.tableHeaderText, { width: PLACEMENT_COLUMNS.rotation, textAlign: "right" }]}>Rot.</Text>
+        </View>
+        {rows.map(({ box, sequence }, index) => (
+          <View key={`${box.cargoId}-${sequence}`} style={[styles.tableRow, index % 2 ? styles.tableRowAlt : {}]} wrap={false}>
+            <Text style={[styles.tableCellStrong, { width: PLACEMENT_COLUMNS.seq }]}>{sequence}</Text>
+            <Text style={[styles.tableCellStrong, { width: PLACEMENT_COLUMNS.cargo }]}>{box.cargoName || "Unnamed cargo"}</Text>
+            <Text style={[styles.tableCell, { width: PLACEMENT_COLUMNS.position }]}>{fmtDimValue(box.x, metric, 0)} / {fmtDimValue(box.y, metric, 0)} / {fmtDimValue(box.z, metric, 0)}</Text>
+            <Text style={[styles.tableCell, { width: PLACEMENT_COLUMNS.dims }]}>{fmtDimValue(box.l, metric)} x {fmtDimValue(box.w, metric)} x {fmtDimValue(box.h, metric)}</Text>
+            <Text style={[styles.tableCell, { width: PLACEMENT_COLUMNS.weight, textAlign: "right" }]}>{Math.round(box.weight * (metric ? LB_TO_KG : 1)).toLocaleString()}</Text>
+            <Text style={[styles.tableCell, { width: PLACEMENT_COLUMNS.rotation, textAlign: "right" }]}>{box.rotation}</Text>
           </View>
         ))}
-        {ordered.length > 14 ? (
-          <Text style={{ fontSize: 6.5, color: SLATE_500, paddingTop: 4 }}>+ {ordered.length - 14} additional placements; use the detailed digital plan for item-level inspection.</Text>
-        ) : null}
       </View>
 
-      <View style={[styles.balancePanel, { marginTop: 2 }]} wrap={false}>
-        <View style={styles.balanceMetric}>
-          <Text style={styles.balanceMetricLabel}>Calculated COG</Text>
-          <Text style={styles.balanceMetricValue}>{fmtDim(balance.centerXIn, isMetric)} from closed end | {fmtDim(balance.centerZIn, isMetric)} from Side A</Text>
-        </View>
-        <View style={styles.balanceMetric}>
-          <Text style={styles.balanceMetricLabel}>Practical note</Text>
-          <Text style={{ fontSize: 6.2, color: SLATE_700 }}>Balance targets can conflict with bracing, access, and unloading. Final securement governs.</Text>
-        </View>
+      <View style={styles.warning} wrap={false}>
+        <Text style={styles.warningTitle}>Practical loading note</Text>
+        <Text style={styles.warningText}>This sequence is a planning aid. Forklift access, door clearance, blocking, bracing, lashing, cargo compatibility, and warehouse procedures govern the final loading method.</Text>
       </View>
 
-      <View style={styles.footer} fixed>
-        <Text style={styles.footerText}>Planning report - verify dimensions, placement, and securement before loading</Text>
-        <Text style={styles.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
-      </View>
+      <ReportFooter brand={brand} />
+    </Page>
+  );
+}
+
+function SnapshotPage({
+  containerSpec,
+  images,
+  brand,
+}: Pick<PDFReportProps, "containerSpec" | "images" | "brand">) {
+  const smallViews = [
+    { label: "Top view", src: images.top },
+    { label: "Side view", src: images.sideA },
+    { label: "Doors view", src: images.front },
+  ].filter((view) => view.src);
+  if (!images.iso && smallViews.length === 0) return null;
+
+  return (
+    <Page size="A4" style={styles.page}>
+      <ReportHeader brand={brand} title="Rendered Plan Views" subtitle={shorten(containerSpec.name, 45)} />
+      <Text style={styles.eyebrow}>Visualization</Text>
+      <Text style={styles.pageTitle}>Rendered loading plan</Text>
+      <Text style={styles.pageIntro}>These images reproduce the active web visualization at export time. Use the top-down diagram and placement tables as the dimensional reference.</Text>
+
+      {images.iso ? (
+        <View wrap={false}>
+          <Image src={images.iso} style={styles.snapshotLarge} />
+          <Text style={styles.snapshotLabel}>Isometric loading-plan view</Text>
+        </View>
+      ) : null}
+      {smallViews.length > 0 ? (
+        <View style={styles.snapshotGrid} wrap={false}>
+          {smallViews.map((view) => (
+            <View key={view.label} style={{ flex: 1 }}>
+              <Image src={view.src} style={styles.snapshotSmall} />
+              <Text style={styles.snapshotLabel}>{view.label}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      <ReportFooter brand={brand} />
     </Page>
   );
 }
@@ -889,20 +1222,56 @@ function PackingReportDocument(props: PDFReportProps) {
   const plans = props.containerPlans?.length
     ? props.containerPlans
     : [{ label: "Container 1", containerSpec: props.containerSpec, result: props.result }];
+  const manifestPages = chunks(props.cargoRows, 12);
+
   return (
-    <Document title={`Container Loading Report - ${resolveContainerReportBrand(props.brand).name}`} author={resolveContainerReportBrand(props.brand).name}>
-      <ReportPage1 {...props} />
-      {plans.map((plan, index) => (
-        <ContainerPlanPage
-          key={`${plan.containerSpec.id}-${index}`}
-          plan={plan}
-          index={index}
-          count={plans.length}
+    <Document
+      title={`Container Loading Report - ${resolveContainerReportBrand(props.brand).name}`}
+      author={resolveContainerReportBrand(props.brand).name}
+      subject="Container loading plan, cargo manifest, and placement details"
+    >
+      <OverviewPage {...props} />
+      {manifestPages.map((rows, index) => (
+        <CargoManifestPage
+          key={`manifest-${index}`}
+          rows={rows}
+          allRows={props.cargoRows}
+          pageIndex={index}
+          pageCount={manifestPages.length}
           unitSystem={props.unitSystem}
           brand={props.brand}
         />
       ))}
-      <ReportPage2 containerSpec={props.containerSpec} unitSystem={props.unitSystem} images={props.images} brand={props.brand} />
+      {plans.flatMap((plan, index) => {
+        const ordered = [...plan.result.placed]
+          .sort((a, b) => a.x - b.x || a.y - b.y || a.z - b.z)
+          .map((box, sequenceIndex) => ({ box, sequence: sequenceIndex + 1 }));
+        const placementPages = ordered.length ? chunks(ordered, 16) : [];
+        return [
+          <ContainerPlanPage
+            key={`plan-${plan.containerSpec.id}-${index}`}
+            plan={plan}
+            index={index}
+            count={plans.length}
+            unitSystem={props.unitSystem}
+            brand={props.brand}
+          />,
+          ...placementPages.map((rows, pageIndex) => (
+            <PlacementPage
+              key={`placement-${plan.containerSpec.id}-${index}-${pageIndex}`}
+              plan={plan}
+              containerIndex={index}
+              containerCount={plans.length}
+              rows={rows}
+              pageIndex={pageIndex}
+              pageCount={placementPages.length}
+              unitSystem={props.unitSystem}
+              brand={props.brand}
+            />
+          )),
+        ];
+      })}
+      <SnapshotPage containerSpec={props.containerSpec} images={props.images} brand={props.brand} />
     </Document>
   );
 }
@@ -910,30 +1279,29 @@ function PackingReportDocument(props: PDFReportProps) {
 export type { ContainerSpec, PlacedBox, LoadingResult, CargoSummaryRow, SnapshotImages, PDFReportProps };
 
 export async function generatePackingReportBlob(props: PDFReportProps): Promise<Blob> {
-  const doc = <PackingReportDocument {...props} />;
-  const blob = await pdf(doc).toBlob();
-  return blob;
+  return pdf(<PackingReportDocument {...props} />).toBlob();
 }
 
 export function buildCargoSummaryRows(
-  cargoItems: { name: string; quantity: number; length: number; width: number; height: number; weight: number; stackable: boolean; rotationMode: string; color: string; included: boolean }[]
+  cargoItems: { name: string; quantity: number; length: number; width: number; height: number; weight: number; stackable: boolean; rotationMode: string; color: string; included: boolean }[],
 ): CargoSummaryRow[] {
-  const includedItems = cargoItems.filter((c) => c.included && c.quantity > 0);
-  return includedItems.map((item) => {
-    const volPerCuFt = cuInToCuFt(item.length * item.width * item.height);
-    return {
-      name: item.name || "Unnamed",
-      qty: item.quantity,
-      l: item.length,
-      w: item.width,
-      h: item.height,
-      weightPer: item.quantity > 0 ? item.weight / item.quantity : 0,
-      totalWeight: item.weight,
-      stackable: item.stackable,
-      rotation: item.rotationMode === "all" ? "All" : item.rotationMode === "horizontal" ? "Horiz." : "Fixed",
-      color: item.color,
-      volPer: volPerCuFt,
-      totalVol: volPerCuFt * item.quantity,
-    };
-  });
+  return cargoItems
+    .filter((item) => item.included && item.quantity > 0)
+    .map((item) => {
+      const volumePerCuFt = cuInToCuFt(item.length * item.width * item.height);
+      return {
+        name: item.name || "Unnamed cargo",
+        qty: item.quantity,
+        l: item.length,
+        w: item.width,
+        h: item.height,
+        weightPer: item.quantity > 0 ? item.weight / item.quantity : 0,
+        totalWeight: item.weight,
+        stackable: item.stackable,
+        rotation: item.rotationMode === "all" ? "All" : item.rotationMode === "horizontal" ? "Horiz." : "Fixed",
+        color: item.color,
+        volPer: volumePerCuFt,
+        totalVol: volumePerCuFt * item.quantity,
+      };
+    });
 }

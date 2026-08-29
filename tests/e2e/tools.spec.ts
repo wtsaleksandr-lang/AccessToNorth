@@ -93,6 +93,8 @@ test.describe("tool pages load without runtime errors", () => {
     // Container-size picker renders on mount — the 3D viewer itself only
     // appears after the user adds cargo, so don't assert on it here.
     await expect(page.getByTestId("button-container-custom")).toBeVisible();
+    await expect(page.getByTestId("container-icon-20dc")).toBeVisible();
+    await expect(page.getByTestId("container-icon-40hc")).toBeVisible();
     // Unit-system toggle should be interactive on mount.
     await expect(page.getByTestId("button-unit-imperial")).toBeVisible();
     await expect(page.getByTestId("button-unit-metric")).toBeVisible();
@@ -151,6 +153,12 @@ test.describe("tool pages load without runtime errors", () => {
 
     await page.getByTestId("result-tab-details").click();
     await expect(page.getByTestId("table-loading-details-0")).toBeVisible();
+
+    await page.setViewportSize({ width: 360, height: 800 });
+    const tabsFitMobile = await page.getByTestId("result-workspace-tabs").evaluate((element) => (
+      element.scrollWidth <= element.clientWidth + 1
+    ));
+    expect(tabsFitMobile, "Loading Plan, Overview, and Cargo Details must fit without horizontal scrolling").toBe(true);
 
     // Any fit-affecting edit must invalidate the old plan so stale results
     // cannot be mistaken for the result of the new cargo inputs.
