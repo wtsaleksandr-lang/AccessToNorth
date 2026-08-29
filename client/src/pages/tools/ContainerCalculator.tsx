@@ -31,9 +31,7 @@ import {
   Maximize2,
   Settings2,
   Layers,
-  RotateCw,
-  Eye,
-  EyeOff,
+  Undo2,
   ArrowUpDown,
   ChevronDown,
   CheckSquare,
@@ -66,6 +64,7 @@ import {
   type RotationMode,
 } from "@/lib/containerPacking";
 import { mergeImportedCargoItems, type ImportedCargoRow } from "@/lib/containerImport";
+import { validateManualLayout, validateManualPlacement } from "@/lib/containerLayout";
 
 const IN_TO_CM = 2.54;
 const CM_TO_IN = 1 / IN_TO_CM;
@@ -204,16 +203,28 @@ function ContainerViewer3D({
   container,
   unitSystem,
   onReadyExport,
+  onPlacedChange,
 }: {
   placed: PlacedBox[];
   container: ContainerSpec;
   unitSystem: "imperial" | "metric";
   onReadyExport?: (fn: SnapshotExportFn | null) => void;
+  onPlacedChange?: (nextPlaced: PlacedBox[]) => void;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [webglError, setWebglError] = useState(false);
   const [rendererAttempt, setRendererAttempt] = useState(0);
-  const [showBranding, setShowBranding] = useState(true);
+  const [arrangeMode, setArrangeMode] = useState(false);
+  const [historyCount, setHistoryCount] = useState(0);
+  const [placementMessage, setPlacementMessage] = useState("Select a cargo item and drag it to a new position.");
+  const arrangementHistoryRef = useRef<PlacedBox[][]>([]);
+  const optimizedLayoutRef = useRef<PlacedBox[]>(placed.map((box) => ({ ...box })));
+  const optimizedLayoutIdentityRef = useRef("");
+  const cameraViewRef = useRef<{
+    containerId: string;
+    position: [number, number, number];
+    target: [number, number, number];
+  } | null>(null);
   const sceneRef = useRef<{
     renderer: THREE.WebGLRenderer;
     scene: THREE.Scene;
@@ -221,6 +232,42 @@ function ContainerViewer3D({
     controls: OrbitControls;
     render: () => void;
   } | null>(null);
+
+  const layoutIdentity = useMemo(
+    () => `${container.id}:${placed.map((box) => `${box.cargoId}:${box.l}:${box.w}:${box.h}`).join("|")}`,
+    [container.id, placed],
+  );
+
+  useEffect(() => {
+    if (optimizedLayoutIdentityRef.current === layoutIdentity) return;
+    optimizedLayoutIdentityRef.current = layoutIdentity;
+    optimizedLayoutRef.current = placed.map((box) => ({ ...box }));
+    arrangementHistoryRef.current = [];
+    setHistoryCount(0);
+  }, [layoutIdentity, placed]);
+
+  const undoArrangement = useCallback(() => {
+    const previous = arrangementHistoryRef.current.pop();
+    if (!previous) return;
+    setHistoryCount(arrangementHistoryRef.current.length);
+    setPlacementMessage("Previous cargo position restored.");
+    const currentColors = new Map(placed.map((box) => [box.cargoId, box.color]));
+    onPlacedChange?.(previous.map((box) => ({
+      ...box,
+      color: currentColors.get(box.cargoId) ?? box.color,
+    })));
+  }, [onPlacedChange, placed]);
+
+  const resetArrangement = useCallback(() => {
+    arrangementHistoryRef.current = [];
+    setHistoryCount(0);
+    setPlacementMessage("The optimized loading plan has been restored.");
+    const currentColors = new Map(placed.map((box) => [box.cargoId, box.color]));
+    onPlacedChange?.(optimizedLayoutRef.current.map((box) => ({
+      ...box,
+      color: currentColors.get(box.cargoId) ?? box.color,
+    })));
+  }, [onPlacedChange, placed]);
 
   useEffect(() => {
     if (!mountRef.current || webglError) return;
@@ -277,6 +324,10 @@ function ContainerViewer3D({
     controls.target.set(cL / 2, cH * 0.38, cW / 2);
     controls.minDistance = 1;
     controls.maxDistance = 30;
+    if (cameraViewRef.current?.containerId === container.id) {
+      camera.position.fromArray(cameraViewRef.current.position);
+      controls.target.fromArray(cameraViewRef.current.target);
+    }
     controls.update();
 
     scene.add(new THREE.HemisphereLight(0xeaf2ff, 0x1e293b, 1.15));
@@ -394,29 +445,6 @@ function ContainerViewer3D({
     ceiling.rotation.x = Math.PI / 2;
     ceiling.position.set(cL / 2, cH, cW / 2);
     scene.add(ceiling);
-
-    if (showBranding) {
-      const brandCanvas = document.createElement("canvas");
-      brandCanvas.width = 1024;
-      brandCanvas.height = 256;
-      const brandCtx = brandCanvas.getContext("2d")!;
-      brandCtx.clearRect(0, 0, brandCanvas.width, brandCanvas.height);
-      brandCtx.textAlign = "center";
-      brandCtx.textBaseline = "middle";
-      brandCtx.font = "700 94px Inter, Arial, sans-serif";
-      brandCtx.fillStyle = "rgba(15, 23, 42, 0.62)";
-      brandCtx.fillText("AccessToNorth.com", brandCanvas.width / 2, brandCanvas.height / 2 - 6);
-      brandCtx.fillStyle = "rgba(15, 127, 229, 0.58)";
-      brandCtx.fillRect(332, 188, 360, 7);
-      const brandTexture = new THREE.CanvasTexture(brandCanvas);
-      brandTexture.colorSpace = THREE.SRGBColorSpace;
-      const brand = new THREE.Mesh(
-        new THREE.PlaneGeometry(Math.min(cL * 0.55, 6.2), Math.min(cH * 0.2, 0.55)),
-        new THREE.MeshBasicMaterial({ map: brandTexture, transparent: true, opacity: 0.68, depthWrite: false }),
-      );
-      brand.position.set(cL * 0.58, cH * 0.62, cW + 0.008);
-      scene.add(brand);
-    }
 
     const doorX = cL;
     const doorMat = new THREE.MeshStandardMaterial({
@@ -567,6 +595,7 @@ function ContainerViewer3D({
       const edges = new THREE.LineSegments(edgeGeo, edgeMat);
       edges.position.copy(boxMesh.position);
       edges.userData = { linkedTo: idx };
+      boxMesh.userData.linkedEdges = edges;
       scene.add(edges);
     }
 
@@ -608,6 +637,175 @@ function ContainerViewer3D({
     const renderScene = () => {
       renderer.render(scene, camera);
     };
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const dragIntersection = new THREE.Vector3();
+    type DragState = {
+      pointerId: number;
+      mesh: THREE.Mesh;
+      index: number;
+      startPosition: THREE.Vector3;
+      offset: THREE.Vector3;
+      plane: THREE.Plane;
+      nextLayout: PlacedBox[] | null;
+      valid: boolean;
+    };
+    let dragState: DragState | null = null;
+
+    const updatePointer = (event: PointerEvent) => {
+      const bounds = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
+      pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+    };
+
+    const highlightMesh = (mesh: THREE.Mesh, color: number | null) => {
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      materials.forEach((material) => {
+        if (!(material instanceof THREE.MeshStandardMaterial)) return;
+        material.emissive.setHex(color ?? 0x000000);
+        material.emissiveIntensity = color === null ? 0 : 0.24;
+      });
+    };
+
+    const moveMesh = (mesh: THREE.Mesh, position: THREE.Vector3) => {
+      mesh.position.copy(position);
+      const linkedEdges = mesh.userData.linkedEdges as THREE.LineSegments | undefined;
+      linkedEdges?.position.copy(position);
+    };
+
+    const placementText = (reason: "inside" | "collision" | "unsupported" | null) => {
+      if (reason === "collision") return "That position overlaps another cargo item.";
+      if (reason === "unsupported") return "That position would leave stacked cargo without enough support.";
+      if (reason === "inside") return "Cargo must remain fully inside the container.";
+      return "Valid position — release to place cargo.";
+    };
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!arrangeMode || event.button !== 0) return;
+      updatePointer(event);
+      const intersection = raycaster.intersectObjects(cargoMeshes, false)[0];
+      if (!intersection || !(intersection.object instanceof THREE.Mesh)) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      const mesh = intersection.object;
+      const index = mesh.userData.placedIndex as number;
+      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -mesh.position.y);
+      if (!raycaster.ray.intersectPlane(plane, dragIntersection)) return;
+
+      dragState = {
+        pointerId: event.pointerId,
+        mesh,
+        index,
+        startPosition: mesh.position.clone(),
+        offset: dragIntersection.clone().sub(mesh.position),
+        plane,
+        nextLayout: null,
+        valid: false,
+      };
+      renderer.domElement.setPointerCapture(event.pointerId);
+      renderer.domElement.style.cursor = "grabbing";
+      controls.enabled = false;
+      highlightMesh(mesh, 0x0ea5e9);
+      setPlacementMessage("Drag horizontally — floor and supported stack levels snap automatically.");
+      renderScene();
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (!dragState || dragState.pointerId !== event.pointerId) return;
+      event.preventDefault();
+      updatePointer(event);
+      if (!raycaster.ray.intersectPlane(dragState.plane, dragIntersection)) return;
+
+      const mesh = dragState.mesh;
+      const halfLength = (mesh.userData.l as number) / 2;
+      const halfWidth = (mesh.userData.w as number) / 2;
+      const halfHeight = (mesh.userData.h as number) / 2;
+      const snap = inToM(1);
+      const unclampedX = dragIntersection.x - dragState.offset.x;
+      const unclampedZ = dragIntersection.z - dragState.offset.z;
+      const nextX = Math.min(cL - halfLength, Math.max(halfLength, Math.round(unclampedX / snap) * snap));
+      const nextZ = Math.min(cW - halfWidth, Math.max(halfWidth, Math.round(unclampedZ / snap) * snap));
+      const current = placed[dragState.index];
+      const horizontalCandidate: PlacedBox = {
+        ...current,
+        x: Number(((nextX - halfLength) / 0.0254).toFixed(3)),
+        z: Number(((nextZ - halfWidth) / 0.0254).toFixed(3)),
+      };
+      const otherBoxes = placed.filter((_, index) => index !== dragState!.index);
+      const verticalLevels = Array.from(new Set([
+        current.y,
+        0,
+        ...otherBoxes.filter((box) => box.stackable).map((box) => Number((box.y + box.h).toFixed(3))),
+      ]))
+        .filter((level) => level >= 0 && level + current.h <= container.heightIn + 0.05)
+        .sort((a, b) => Math.abs(a - current.y) - Math.abs(b - current.y));
+
+      let candidate = horizontalCandidate;
+      for (const level of verticalLevels) {
+        const levelCandidate = { ...horizontalCandidate, y: level };
+        if (validateManualPlacement(levelCandidate, otherBoxes, container).valid) {
+          candidate = levelCandidate;
+          break;
+        }
+      }
+      const nextLayout = placed.map((box, index) => index === dragState!.index ? candidate : box);
+      const validation = validateManualLayout(nextLayout, container);
+      const nextPosition = new THREE.Vector3(nextX, inToM(candidate.y) + halfHeight, nextZ);
+
+      dragState.nextLayout = nextLayout;
+      dragState.valid = validation.valid;
+      moveMesh(mesh, nextPosition);
+      highlightMesh(mesh, validation.valid ? 0x10b981 : 0xef4444);
+      setPlacementMessage(
+        validation.valid && Math.abs(candidate.y - current.y) > 0.05
+          ? candidate.y <= 0.05
+            ? "Valid position — cargo snapped safely to the container floor."
+            : "Valid position — cargo snapped safely onto a supported level."
+          : placementText(validation.reason),
+      );
+      renderScene();
+    };
+
+    const finishDrag = (event: PointerEvent, commit: boolean) => {
+      if (!dragState || dragState.pointerId !== event.pointerId) return;
+      const completedDrag = dragState;
+      dragState = null;
+      if (renderer.domElement.hasPointerCapture(event.pointerId)) {
+        renderer.domElement.releasePointerCapture(event.pointerId);
+      }
+      controls.enabled = true;
+      renderer.domElement.style.cursor = arrangeMode ? "grab" : "default";
+      highlightMesh(completedDrag.mesh, null);
+
+      const moved = completedDrag.startPosition.distanceTo(completedDrag.mesh.position) > 0.001;
+      if (commit && moved && completedDrag.valid && completedDrag.nextLayout) {
+        arrangementHistoryRef.current = [
+          ...arrangementHistoryRef.current,
+          placed.map((box) => ({ ...box })),
+        ].slice(-20);
+        setHistoryCount(arrangementHistoryRef.current.length);
+        setPlacementMessage("Cargo placed safely. You can undo or continue adjusting.");
+        onPlacedChange?.(completedDrag.nextLayout.map((box) => ({ ...box })));
+      } else {
+        moveMesh(completedDrag.mesh, completedDrag.startPosition);
+        if (moved && !completedDrag.valid) {
+          setPlacementMessage("Invalid move cancelled — the previous position was restored.");
+        }
+      }
+      renderScene();
+    };
+
+    const handlePointerUp = (event: PointerEvent) => finishDrag(event, true);
+    const handlePointerCancel = (event: PointerEvent) => finishDrag(event, false);
+
+    renderer.domElement.style.cursor = arrangeMode ? "grab" : "default";
+    renderer.domElement.addEventListener("pointerdown", handlePointerDown);
+    renderer.domElement.addEventListener("pointermove", handlePointerMove);
+    renderer.domElement.addEventListener("pointerup", handlePointerUp);
+    renderer.domElement.addEventListener("pointercancel", handlePointerCancel);
     controls.addEventListener("change", renderScene);
     renderScene();
 
@@ -663,7 +861,17 @@ function ContainerViewer3D({
     window.addEventListener("resize", handleResize);
 
     return () => {
+      cameraViewRef.current = {
+        containerId: container.id,
+        position: camera.position.toArray() as [number, number, number],
+        target: controls.target.toArray() as [number, number, number],
+      };
+      sceneRef.current = null;
       window.removeEventListener("resize", handleResize);
+      renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
+      renderer.domElement.removeEventListener("pointermove", handlePointerMove);
+      renderer.domElement.removeEventListener("pointerup", handlePointerUp);
+      renderer.domElement.removeEventListener("pointercancel", handlePointerCancel);
       controls.removeEventListener("change", renderScene);
       renderer.domElement.removeEventListener("webglcontextlost", handleContextLost);
       controls.dispose();
@@ -696,7 +904,7 @@ function ContainerViewer3D({
         el.removeChild(renderer.domElement);
       }
     };
-  }, [placed, container, unitSystem, showBranding, rendererAttempt, webglError]);
+  }, [placed, container, unitSystem, arrangeMode, rendererAttempt, webglError]);
 
   const fmt = (inches: number) => {
     if (unitSystem === "metric") return `${(inches * IN_TO_CM).toFixed(1)} cm`;
@@ -727,23 +935,64 @@ function ContainerViewer3D({
           data-testid="container-3d-viewer"
         >
           <div ref={mountRef} className="absolute inset-0" />
-          <div className="absolute top-3 left-3 flex items-center gap-2">
+          <div className="absolute top-3 left-3 right-3 flex items-center gap-2 flex-wrap">
             <div className="h-8 px-2.5 rounded-lg border border-white/80 bg-white/75 backdrop-blur text-[11px] font-semibold text-slate-700 shadow-sm flex items-center gap-1.5 pointer-events-none">
               <Box className="w-3.5 h-3.5 text-primary" />
               Interactive 3D
             </div>
-            <button
-              type="button"
-              onClick={() => setShowBranding((current) => !current)}
-              className="h-8 px-2.5 rounded-lg border border-white/80 bg-white/75 backdrop-blur text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white transition-colors flex items-center gap-1.5"
-              data-testid="button-toggle-container-branding"
-            >
-              {showBranding ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-              Branding
-            </button>
+            {onPlacedChange && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setArrangeMode((current) => !current);
+                    setPlacementMessage("Select a cargo item and drag it to a new position.");
+                  }}
+                  className={`h-8 px-2.5 rounded-lg border backdrop-blur text-[11px] font-semibold shadow-sm transition-colors flex items-center gap-1.5 ${
+                    arrangeMode
+                      ? "border-sky-500 bg-sky-600 text-white"
+                      : "border-white/80 bg-white/80 text-slate-700 hover:bg-white"
+                  }`}
+                  data-testid="button-arrange-cargo"
+                  aria-pressed={arrangeMode}
+                >
+                  <MousePointerClick className="w-3.5 h-3.5" />
+                  {arrangeMode ? "Finish arranging" : "Adjust layout"}
+                </button>
+                {arrangeMode && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={undoArrangement}
+                      disabled={historyCount === 0}
+                      className="h-8 px-2.5 rounded-lg border border-white/80 bg-white/80 backdrop-blur text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white disabled:opacity-45 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+                      data-testid="button-undo-cargo-move"
+                    >
+                      <Undo2 className="w-3.5 h-3.5" />
+                      Undo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={resetArrangement}
+                      className="h-8 px-2.5 rounded-lg border border-white/80 bg-white/80 backdrop-blur text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white transition-colors flex items-center gap-1.5"
+                      data-testid="button-reset-cargo-layout"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      Reset plan
+                    </button>
+                  </>
+                )}
+              </>
+            )}
           </div>
-          <div className="absolute bottom-3 right-3 rounded-md border border-white/80 bg-white/75 px-2 py-1 text-[10px] font-medium text-slate-600 shadow-sm backdrop-blur pointer-events-none">
-            Drag to rotate · Scroll to zoom
+          <div className={`absolute bottom-3 right-3 left-3 sm:left-auto sm:max-w-[75%] rounded-md border px-2.5 py-1.5 text-[10px] font-medium shadow-sm backdrop-blur pointer-events-none ${
+            arrangeMode
+              ? placementMessage.includes("overlap") || placementMessage.includes("without enough") || placementMessage.includes("cancelled")
+                ? "border-red-200 bg-red-50/90 text-red-700"
+                : "border-sky-200 bg-white/90 text-slate-700"
+              : "border-white/80 bg-white/75 text-slate-600"
+          }`}>
+            {arrangeMode ? placementMessage : "Drag to rotate · Scroll or pinch to zoom"}
           </div>
         </div>
       )}
@@ -957,6 +1206,18 @@ export default function ContainerCalculator() {
     setCargoItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
     );
+    if (field === "color") {
+      setMultiResult((current) => current ? {
+        ...current,
+        containers: current.containers.map((entry) => ({
+          ...entry,
+          result: {
+            ...entry.result,
+            placed: entry.result.placed.map((box) => box.cargoId === id ? { ...box, color: value } : box),
+          },
+        })),
+      } : current);
+    }
   }, []);
 
   const openImportModal = useCallback(() => {
@@ -3100,7 +3361,20 @@ export default function ContainerCalculator() {
                             <button onClick={() => toggleSelect(item.id)} className="shrink-0 text-slate-400 hover:text-primary" data-testid={`checkbox-cargo-${idx}`}>
                               {selectedIds.has(item.id) ? <CheckSquare className="w-3.5 h-3.5 text-primary" /> : <Square className="w-3.5 h-3.5" />}
                             </button>
-                            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                            <label
+                              className="relative w-7 h-7 rounded-md border border-slate-200 bg-white shadow-sm shrink-0 cursor-pointer overflow-hidden focus-within:ring-2 focus-within:ring-primary/30"
+                              title={`Choose a color for ${item.name || `Cargo ${idx + 1}`}`}
+                            >
+                              <span className="absolute inset-1 rounded" style={{ backgroundColor: item.color }} />
+                              <input
+                                type="color"
+                                value={item.color}
+                                onChange={(e) => updateItem(item.id, "color", e.target.value)}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                aria-label={`Color for ${item.name || `Cargo ${idx + 1}`}`}
+                                data-testid={`input-cargo-color-${idx}`}
+                              />
+                            </label>
                             <Input
                               placeholder={`Cargo ${idx + 1}`}
                               value={item.name}
@@ -3209,7 +3483,7 @@ export default function ContainerCalculator() {
                     <table className="w-full border-collapse table-fixed" data-testid="cargo-table">
                       <thead>
                         <tr className="border-b border-slate-200">
-                          <th className="px-0.5 py-2 text-left" style={{ width: 28 }}>
+                          <th className="px-0.5 py-2 text-left" style={{ width: 46 }}>
                             <button
                               onClick={toggleSelectAll}
                               className="text-slate-400 hover:text-primary transition-colors"
@@ -3283,10 +3557,20 @@ export default function ContainerCalculator() {
                                       <Square className="w-3.5 h-3.5" />
                                     )}
                                   </button>
-                                  <div
-                                    className="w-2 h-2 rounded-full shrink-0"
-                                    style={{ backgroundColor: item.color }}
-                                  />
+                                  <label
+                                    className="relative w-6 h-6 rounded-md border border-slate-200 bg-white shadow-sm shrink-0 cursor-pointer overflow-hidden focus-within:ring-2 focus-within:ring-primary/30"
+                                    title={`Choose a color for ${item.name || `Cargo ${idx + 1}`}`}
+                                  >
+                                    <span className="absolute inset-1 rounded-sm" style={{ backgroundColor: item.color }} />
+                                    <input
+                                      type="color"
+                                      value={item.color}
+                                      onChange={(e) => updateItem(item.id, "color", e.target.value)}
+                                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                      aria-label={`Color for ${item.name || `Cargo ${idx + 1}`}`}
+                                      data-testid={`input-cargo-color-${idx}`}
+                                    />
+                                  </label>
                                 </div>
                               </td>
                               <td className="px-0.5 py-1">
@@ -3566,6 +3850,19 @@ export default function ContainerCalculator() {
                                 container={cr.container}
                                 unitSystem={unitSystem}
                                 onReadyExport={ci === 0 ? (fn) => setSnapshotExportFn(() => fn) : undefined}
+                                onPlacedChange={(nextPlaced) => {
+                                  setMultiResult((current) => {
+                                    if (!current) return current;
+                                    return {
+                                      ...current,
+                                      containers: current.containers.map((entry, entryIndex) =>
+                                        entryIndex === ci
+                                          ? { ...entry, result: { ...entry.result, placed: nextPlaced } }
+                                          : entry,
+                                      ),
+                                    };
+                                  });
+                                }}
                               />
                             </div>
                           </CardContent>
