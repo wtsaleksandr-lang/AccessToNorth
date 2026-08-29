@@ -117,6 +117,9 @@ test.describe("tool pages load without runtime errors", () => {
 
     await expect(page.getByTestId("notice-all-fit")).toContainText("1 × 40' High Cube", { timeout: 10_000 });
     await expect(page.getByTestId("notice-container-recommendation")).toContainText("40' Standard");
+    await expect(page.getByTestId("container-comparison-panel")).toBeVisible();
+    await expect(page.getByTestId("container-comparison-20dc")).toContainText("2 containers");
+    await expect(page.getByTestId("container-comparison-40dc")).toContainText("Best fit");
     await expect(page.getByTestId("container-balance-panel")).toBeVisible();
     await expect(page.getByTestId("container-balance-panel")).toContainText("Weight Balance & Center of Gravity");
     await expect(page.getByTestId("button-toggle-container-branding")).toHaveCount(0);

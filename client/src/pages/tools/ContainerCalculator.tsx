@@ -69,6 +69,7 @@ import {
 import { mergeImportedCargoItems, type ImportedCargoRow } from "@/lib/containerImport";
 import { validateManualLayout, validateManualPlacement } from "@/lib/containerLayout";
 import { calculateContainerBalance } from "@/lib/containerBalance";
+import { compareContainerPlans, type ContainerPlanComparison } from "@/lib/containerComparison";
 
 const IN_TO_CM = 2.54;
 const CM_TO_IN = 1 / IN_TO_CM;
@@ -1322,6 +1323,127 @@ function ContainerBalancePanel({
   );
 }
 
+function ContainerComparisonPanel({
+  comparisons,
+  recommendedId,
+  activeId,
+  unitSystem,
+  onSelect,
+}: {
+  comparisons: ContainerPlanComparison[];
+  recommendedId: string | null;
+  activeId: string;
+  unitSystem: "imperial" | "metric";
+  onSelect: (containerId: string) => void;
+}) {
+  const inferredRecommendation = [...comparisons].sort((a, b) => {
+    if (a.complete !== b.complete) return a.complete ? -1 : 1;
+    if (!a.complete && a.piecesMissing !== b.piecesMissing) return a.piecesMissing - b.piecesMissing;
+    if (a.containerCount !== b.containerCount) return a.containerCount - b.containerCount;
+    return a.totalCapacityCuFt - b.totalCapacityCuFt;
+  })[0] ?? null;
+  const effectiveRecommendedId = recommendedId ?? inferredRecommendation?.container.id ?? null;
+  const recommended = comparisons.find((comparison) => comparison.container.id === effectiveRecommendedId) ?? null;
+  const metric = unitSystem === "metric";
+  const fmtVolume = (cuFt: number) => metric
+    ? `${(cuFt * 0.0283168).toFixed(0)} m³`
+    : `${Math.round(cuFt).toLocaleString()} ft³`;
+
+  return (
+    <Card className="border-slate-200 overflow-hidden" data-testid="container-comparison-panel">
+      <div className="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white px-5 py-4">
+        <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+          <Table className="w-4 h-4 text-primary" />
+          Why this container?
+        </h2>
+        <p className="text-xs text-slate-500 mt-1">Every standard option is calculated using the same cargo rules—not estimated from volume alone.</p>
+      </div>
+      <CardContent className="p-4">
+        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
+          {comparisons.map((comparison) => {
+            const isRecommended = comparison.container.id === effectiveRecommendedId;
+            const isActive = comparison.container.id === activeId;
+            const unusedDifference = recommended
+              ? Math.max(0, comparison.unusedVolumeCuFt - recommended.unusedVolumeCuFt)
+              : 0;
+            let explanation = comparison.complete
+              ? "All cargo fits."
+              : `${comparison.piecesMissing} piece${comparison.piecesMissing === 1 ? "" : "s"} cannot be placed.`;
+            if (isRecommended && comparison.complete) {
+              explanation = "Fewest containers with the lowest suitable capacity.";
+            } else if (comparison.complete && recommended) {
+              if (comparison.containerCount > recommended.containerCount) {
+                explanation = `Needs ${comparison.containerCount - recommended.containerCount} additional container${comparison.containerCount - recommended.containerCount === 1 ? "" : "s"}.`;
+              } else if (unusedDifference > 1) {
+                explanation = `${fmtVolume(unusedDifference)} more unused capacity.`;
+              }
+            }
+
+            return (
+              <div
+                key={comparison.container.id}
+                className={`relative rounded-xl border p-3.5 transition-colors ${
+                  isRecommended
+                    ? "border-primary/45 bg-primary/[0.035] shadow-sm"
+                    : isActive
+                      ? "border-slate-400 bg-slate-50"
+                      : "border-slate-200 bg-white"
+                }`}
+                data-testid={`container-comparison-${comparison.container.id}`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">{comparison.container.name}</p>
+                    <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+                      {comparison.containerCount} container{comparison.containerCount === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  {isRecommended && (
+                    <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                      Best fit
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="rounded-lg bg-slate-50 px-2 py-2">
+                    <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Space used</p>
+                    <p className="mt-0.5 text-sm font-bold text-slate-800">{comparison.volumeUtilPct.toFixed(1)}%</p>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-2 py-2">
+                    <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Weight used</p>
+                    <p className="mt-0.5 text-sm font-bold text-slate-800">{comparison.weightUtilPct.toFixed(1)}%</p>
+                  </div>
+                </div>
+
+                <p className={`mt-3 min-h-8 text-[11px] leading-4 ${comparison.complete ? "text-slate-600" : "font-medium text-rose-600"}`}>
+                  {explanation}
+                </p>
+
+                {isActive ? (
+                  <div className="mt-3 h-8 rounded-lg border border-emerald-200 bg-emerald-50 flex items-center justify-center text-[11px] font-semibold text-emerald-700">
+                    Current plan
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onSelect(comparison.container.id)}
+                    disabled={!comparison.complete}
+                    className="mt-3 h-8 w-full rounded-lg border border-slate-200 bg-white text-[11px] font-semibold text-slate-700 transition-colors hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-45"
+                    data-testid={`button-use-container-${comparison.container.id}`}
+                  >
+                    {comparison.complete ? "Use this container" : "Not suitable"}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function ContainerCalculator() {
   usePageMeta({
     title: "Free 3D Container Loading Calculator | AccessToNorth.com",
@@ -1404,6 +1526,11 @@ export default function ContainerCalculator() {
   const weightFactor = isMetric ? LB_TO_KG : 1;
   const dimUnit = isMetric ? "cm" : "in";
   const weightUnit = isMetric ? "kg" : "lbs";
+  const hasCalculatedResult = multiResult !== null;
+  const containerComparisons = useMemo(
+    () => hasCalculatedResult ? compareContainerPlans(cargoItems) : [],
+    [cargoItems, hasCalculatedResult],
+  );
 
   function toDisplay(valInches: number): string {
     if (!valInches) return "";
@@ -4049,6 +4176,18 @@ export default function ContainerCalculator() {
                       </div>
                     </div>
                   )}
+
+                  <ContainerComparisonPanel
+                    comparisons={containerComparisons}
+                    recommendedId={recommendation?.container.id ?? null}
+                    activeId={multiResult.containers[0]?.container.id ?? containerId}
+                    unitSystem={unitSystem}
+                    onSelect={(nextContainerId) => {
+                      setContainerSelectionMode("manual");
+                      setContainerId(nextContainerId);
+                      setPendingRecalc(true);
+                    }}
+                  />
 
                   {multiResult.totalContainers > 1 && (
                     <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-3" data-testid="notice-multi-container">
