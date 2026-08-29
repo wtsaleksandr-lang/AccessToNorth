@@ -124,6 +124,7 @@ test.describe("tool pages load without runtime errors", () => {
     await expect(page.getByTestId("container-comparison-40dc")).toContainText("Best fit");
     await expect(page.getByTestId("container-results-workspace")).toBeVisible();
     await expect(page.getByTestId("result-tab-plan")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("button-export-csv")).toBeVisible();
     await expect(page.getByTestId("container-guide-details")).not.toHaveAttribute("open", "");
     await expect(page.getByTestId("button-toggle-container-branding")).toHaveCount(0);
 
@@ -139,6 +140,9 @@ test.describe("tool pages load without runtime errors", () => {
     }
 
     await page.getByTestId("result-tab-overview").click();
+    await expect(page.getByTestId("plan-review-panel")).toBeVisible();
+    await expect(page.getByTestId("plan-review-fit")).toContainText("Ready");
+    await expect(page.getByTestId("plan-review-securement")).toContainText("Manual");
     await expect(page.getByTestId("container-balance-panel")).toBeVisible();
     await expect(page.getByTestId("container-balance-panel")).toContainText("Weight Balance & Center of Gravity");
     await page.getByTestId("button-toggle-container-balance").click();
@@ -147,6 +151,11 @@ test.describe("tool pages load without runtime errors", () => {
 
     await page.getByTestId("result-tab-details").click();
     await expect(page.getByTestId("table-loading-details-0")).toBeVisible();
+
+    // Any fit-affecting edit must invalidate the old plan so stale results
+    // cannot be mistaken for the result of the new cargo inputs.
+    await page.getByTestId("input-cargo-height-0").fill("150");
+    await expect(page.getByTestId("results-section")).toHaveCount(0);
 
     // Three.js often logs GPU warnings — filter those out but fail on real errors.
     const realErrors = errors.filter((e) => !/WebGL|GPU|THREE\./i.test(e));
