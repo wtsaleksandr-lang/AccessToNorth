@@ -107,10 +107,25 @@ test.describe("tool pages load without runtime errors", () => {
     await page.getByTestId("input-cargo-height-0").fill("154.94");
     await page.getByTestId("input-cargo-qty-0").fill("7");
     await page.getByTestId("input-cargo-weight-0").fill("5260");
+    await page.getByTestId("input-cargo-color-0").evaluate((input: HTMLInputElement) => {
+      input.value = "#155e75";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await expect(page.getByTestId("input-cargo-color-0")).toHaveValue("#155e75");
     await page.getByTestId("button-calculate").click();
 
     await expect(page.getByTestId("notice-all-fit")).toContainText("1 × 40' High Cube", { timeout: 10_000 });
     await expect(page.getByTestId("notice-container-recommendation")).toContainText("40' Standard");
+    await expect(page.getByTestId("button-toggle-container-branding")).toHaveCount(0);
+
+    // A browser with WebGL gets the guarded manual layout editor. Browsers
+    // without it retain the universal 2D fallback and all load-plan details.
+    if (await page.getByTestId("button-arrange-cargo").count()) {
+      await expect(page.getByTestId("button-arrange-cargo")).toBeVisible();
+      await page.getByTestId("button-arrange-cargo").click();
+      await expect(page.getByTestId("button-reset-cargo-layout")).toBeVisible();
+    }
 
     // Three.js often logs GPU warnings — filter those out but fail on real errors.
     const realErrors = errors.filter((e) => !/WebGL|GPU|THREE\./i.test(e));
