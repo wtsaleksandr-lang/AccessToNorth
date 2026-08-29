@@ -74,6 +74,12 @@ import { validateManualLayout, validateManualPlacement } from "@/lib/containerLa
 import { calculateContainerBalance, centerContainerCargoLayout } from "@/lib/containerBalance";
 import { compareContainerPlans, type ContainerPlanComparison } from "@/lib/containerComparison";
 import { consumePalletPlanTransfer } from "@/lib/palletTransfer";
+import {
+  buildContainerPlanReview,
+  diagnoseUnplacedCargo,
+  type PlanReviewItem,
+} from "@/lib/containerPlanInsights";
+import { buildContainerPlacementCsv } from "@/lib/containerPlanExport";
 
 const IN_TO_CM = 2.54;
 const CM_TO_IN = 1 / IN_TO_CM;
@@ -138,6 +144,45 @@ function CargoMixPanel({ placed, unitSystem }: { placed: PlacedBox[]; unitSystem
             <span className="min-w-16 text-right font-medium text-slate-700">{metric ? `${(group.weightLbs * LB_TO_KG).toFixed(0)} kg` : `${group.weightLbs.toFixed(0)} lb`}</span>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function PlanReviewPanel({ items }: { items: PlanReviewItem[] }) {
+  const appearance = {
+    pass: { icon: CheckCircle2, iconClass: "text-emerald-600", boxClass: "border-emerald-100 bg-emerald-50/55", label: "Ready" },
+    warning: { icon: AlertTriangle, iconClass: "text-amber-600", boxClass: "border-amber-100 bg-amber-50/55", label: "Review" },
+    action: { icon: X, iconClass: "text-rose-600", boxClass: "border-rose-100 bg-rose-50/60", label: "Action" },
+    manual: { icon: Settings2, iconClass: "text-sky-600", boxClass: "border-sky-100 bg-sky-50/55", label: "Manual" },
+  } as const;
+
+  return (
+    <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4" data-testid="plan-review-panel">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-bold text-slate-900">Plan review</h3>
+          <p className="mt-0.5 text-[11px] text-slate-500">Checks that matter before the plan is handed to a loading crew</p>
+        </div>
+        <Badge variant="outline" className="shrink-0 text-[10px]">4 operational checks</Badge>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {items.map((item) => {
+          const style = appearance[item.status];
+          const StatusIcon = style.icon;
+          return (
+            <div key={item.id} className={`rounded-lg border p-3 ${style.boxClass}`} data-testid={`plan-review-${item.id}`}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <StatusIcon className={`h-4 w-4 ${style.iconClass}`} />
+                  <p className="text-xs font-bold text-slate-800">{item.label}</p>
+                </div>
+                <span className={`text-[9px] font-bold uppercase tracking-wide ${style.iconClass}`}>{style.label}</span>
+              </div>
+              <p className="mt-1.5 text-[10px] leading-relaxed text-slate-600">{item.detail}</p>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -1248,11 +1293,15 @@ function ContainerBalancePanel({
   container,
   unitSystem,
   onPlacedChange,
+  undoPlaced,
+  onUndo,
 }: {
   placed: PlacedBox[];
   container: ContainerSpec;
   unitSystem: "imperial" | "metric";
-  onPlacedChange?: (placed: PlacedBox[]) => void;
+  onPlacedChange?: (placed: PlacedBox[], previousPlaced?: PlacedBox[]) => void;
+  undoPlaced?: PlacedBox[];
+  onUndo?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [adjustmentNote, setAdjustmentNote] = useState("");
@@ -1384,7 +1433,7 @@ function ContainerBalancePanel({
                   disabled={!centeredLayout.changed}
                   onClick={() => {
                     if (!centeredLayout.changed) return;
-                    onPlacedChange(centeredLayout.placed);
+                    onPlacedChange(centeredLayout.placed, placed);
                     const parts = [
                       Math.abs(centeredLayout.shiftXIn) > 0.1 ? `${fmtDim(Math.abs(centeredLayout.shiftXIn))} ${centeredLayout.shiftXIn > 0 ? "toward the doors" : "toward the closed end"}` : "",
                       Math.abs(centeredLayout.shiftZIn) > 0.1 ? `${fmtDim(Math.abs(centeredLayout.shiftZIn))} laterally` : "",
@@ -1410,6 +1459,21 @@ function ContainerBalancePanel({
         Planning estimate only. It does not calculate chassis axle loads, floor point loads, lashing forces, or regulatory compliance. Confirm the final plan with the carrier and loading facility.
       </p>
       {adjustmentNote && <p className="mt-2 rounded-lg bg-sky-50 px-3 py-2 text-[10px] leading-relaxed text-sky-700" data-testid="cog-adjustment-note">{adjustmentNote}</p>}
+      {undoPlaced && onUndo && (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            onUndo();
+            setAdjustmentNote("Safe centering was undone and the previous calculated layout was restored.");
+          }}
+          className="mt-2 h-8 gap-1.5 text-[11px] text-slate-600"
+          data-testid="button-undo-cog-adjustment"
+        >
+          <Undo2 className="h-3.5 w-3.5" /> Undo safe centering
+        </Button>
+      )}
       </div>}
     </div>
   );
@@ -1602,6 +1666,7 @@ export default function ContainerCalculator() {
   const [snapshotExportFn, setSnapshotExportFn] = useState<SnapshotExportFn | null>(null);
   const [activeResultTab, setActiveResultTab] = useState<ResultWorkspaceTab>("plan");
   const [activeResultContainer, setActiveResultContainer] = useState(0);
+  const [cogUndoLayouts, setCogUndoLayouts] = useState<Record<number, PlacedBox[]>>({});
 
   const [showImportModal, setShowImportModal] = useState(false);
   const [importStep, setImportStep] = useState<"upload" | "mapping" | "preview">("upload");
@@ -1643,6 +1708,7 @@ export default function ContainerCalculator() {
     setContainerSelectionMode("recommend");
     setMultiResult(null);
     setRecommendation(null);
+    setCogUndoLayouts({});
     toast({
       title: `${transfer.rows.reduce((sum, row) => sum + row.quantity, 0)} built pallet${transfer.rows.reduce((sum, row) => sum + row.quantity, 0) === 1 ? "" : "s"} filled in`,
       description: "Choose Calculate Loading Plan to get the recommended container and placement.",
@@ -1696,17 +1762,35 @@ export default function ContainerCalculator() {
     return CONTAINER_PRESETS.find((c) => c.id === containerId)!;
   }, [containerId, customContainer]);
 
+  const planReview = useMemo(
+    () => multiResult ? buildContainerPlanReview(cargoItems, multiResult) : [],
+    [cargoItems, multiResult],
+  );
+  const unplacedDiagnostics = useMemo(() => {
+    if (!multiResult || multiResult.totalPiecesLoaded >= multiResult.totalPiecesAll) return [];
+    const lastContainer = multiResult.containers[multiResult.containers.length - 1];
+    if (!lastContainer) return [];
+    return diagnoseUnplacedCargo(cargoItems, lastContainer.container, lastContainer.result.unplaced, unitSystem);
+  }, [cargoItems, multiResult, unitSystem]);
+
+  const invalidateCalculatedPlan = useCallback(() => {
+    setMultiResult(null);
+    setRecommendation(null);
+    setCogUndoLayouts({});
+    setSnapshotExportFn(null);
+  }, []);
+
   const handleUnitSwitch = useCallback((newUnit: "imperial" | "metric") => {
     if (newUnit === unitSystem) return;
     setUnitSystem(newUnit);
-    setMultiResult(null);
-    setRecommendation(null);
-  }, [unitSystem]);
+    invalidateCalculatedPlan();
+  }, [invalidateCalculatedPlan, unitSystem]);
 
   const addItem = useCallback(() => {
     const colorIdx = cargoItems.length;
     setCargoItems((prev) => [...prev, defaultCargoItem(colorIdx)]);
-  }, [cargoItems.length, defaultCargoItem]);
+    invalidateCalculatedPlan();
+  }, [cargoItems.length, defaultCargoItem, invalidateCalculatedPlan]);
 
   const duplicateItem = useCallback((id: string) => {
     setCargoItems((prev) => {
@@ -1718,7 +1802,8 @@ export default function ContainerCalculator() {
       next.splice(idx + 1, 0, copy);
       return next;
     });
-  }, []);
+    invalidateCalculatedPlan();
+  }, [invalidateCalculatedPlan]);
 
   const removeItem = useCallback((id: string) => {
     setCargoItems((prev) => prev.filter((i) => i.id !== id));
@@ -1727,25 +1812,35 @@ export default function ContainerCalculator() {
       next.delete(id);
       return next;
     });
-  }, []);
+    invalidateCalculatedPlan();
+  }, [invalidateCalculatedPlan]);
 
   const updateItem = useCallback((id: string, field: keyof CargoItem, value: any) => {
     setCargoItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
     );
-    if (field === "color") {
+    if (field === "color" || field === "name") {
       setMultiResult((current) => current ? {
         ...current,
         containers: current.containers.map((entry) => ({
           ...entry,
           result: {
             ...entry.result,
-            placed: entry.result.placed.map((box) => box.cargoId === id ? { ...box, color: value } : box),
+            placed: entry.result.placed.map((box) => box.cargoId === id
+              ? { ...box, ...(field === "color" ? { color: value } : { cargoName: value || "Cargo" }) }
+              : box),
           },
         })),
       } : current);
+      setCogUndoLayouts((current) => Object.fromEntries(
+        Object.entries(current).map(([index, layout]) => [index, layout.map((box) => box.cargoId === id
+          ? { ...box, ...(field === "color" ? { color: value } : { cargoName: value || "Cargo" }) }
+          : box)]),
+      ));
+    } else {
+      invalidateCalculatedPlan();
     }
-  }, []);
+  }, [invalidateCalculatedPlan]);
 
   const openImportModal = useCallback(() => {
     setImportStep("upload");
@@ -1971,14 +2066,13 @@ export default function ContainerCalculator() {
       }).items;
     });
     setUnitSystem(importUnits);
-    setMultiResult(null);
-    setRecommendation(null);
+    invalidateCalculatedPlan();
     setShowImportModal(false);
     toast({
       title: `${importedCount} item${importedCount > 1 ? "s" : ""} filled in`,
       description: "The extracted cargo fields are ready for review in the calculator.",
     });
-  }, [importItems, importUnits, bulkDefaults, toast]);
+  }, [importItems, importUnits, bulkDefaults, invalidateCalculatedPlan, toast]);
 
   const downloadSampleCSV = useCallback(() => {
     const csvContent = `Name,Length,Width,Height,Total Weight,Quantity,Stackable,Rotation,Priority,Palletized\nCardboard Box A,24,18,12,150,10,yes,all,normal,no\nPallet Load B,48,40,36,1000,4,no,fixed,first,yes\nSmall Carton C,12,10,8,125,25,yes,horizontal,last,no`;
@@ -2019,6 +2113,7 @@ export default function ContainerCalculator() {
         }
         setActiveResultContainer(0);
         setActiveResultTab("plan");
+        setCogUndoLayouts({});
         setMultiResult(selectedPlan);
         setRecommendation(bestPlan);
 
@@ -2071,7 +2166,8 @@ export default function ContainerCalculator() {
         selectedIds.has(item.id) ? { ...item, [field]: value } : item
       )
     );
-  }, [selectedIds]);
+    invalidateCalculatedPlan();
+  }, [invalidateCalculatedPlan, selectedIds]);
 
   const handleReset = useCallback(() => {
     setMultiResult(null);
@@ -2082,6 +2178,8 @@ export default function ContainerCalculator() {
     setSelectedIds(new Set());
     setActiveResultTab("plan");
     setActiveResultContainer(0);
+    setCogUndoLayouts({});
+    setSnapshotExportFn(null);
   }, [defaultCargoItem]);
 
   const handleExportPDF = useCallback(async () => {
@@ -2156,6 +2254,27 @@ export default function ContainerCalculator() {
       toast({ title: "PDF Export Failed", description: "Could not generate the report.", variant: "destructive" });
     }
   }, [multiResult, activeResultContainer, unitSystem, cargoItems, snapshotExportFn, toast]);
+
+  const handleExportCSV = useCallback(() => {
+    if (!multiResult || multiResult.containers.length === 0) return;
+    try {
+      const csv = buildContainerPlacementCsv(multiResult, unitSystem);
+      const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `AccessToNorth_LoadingPlan_${new Date().toISOString().slice(0, 10)}.csv`;
+      anchor.style.display = "none";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      toast({ title: "Placement CSV ready", description: "Every assigned item and container is included." });
+    } catch (error) {
+      console.error("CSV export error:", error);
+      toast({ title: "CSV Export Failed", description: "Could not generate the placement data.", variant: "destructive" });
+    }
+  }, [multiResult, unitSystem, toast]);
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
@@ -2235,11 +2354,10 @@ export default function ContainerCalculator() {
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => {
-                        setContainerSelectionMode("recommend");
-                        setMultiResult(null);
-                        setRecommendation(null);
+                      <button
+                        onClick={() => {
+                          setContainerSelectionMode("recommend");
+                          invalidateCalculatedPlan();
                       }}
                       className={`col-span-2 text-left p-3 rounded-lg border text-sm transition-all ${
                         containerSelectionMode === "recommend"
@@ -2269,7 +2387,7 @@ export default function ContainerCalculator() {
                           onClick={() => {
                             setContainerSelectionMode("manual");
                             setContainerId(ct.id);
-                            setMultiResult(null);
+                            invalidateCalculatedPlan();
                           }}
                           className={`text-left p-2.5 rounded-lg border text-sm transition-all ${
                             containerSelectionMode === "manual" && containerId === ct.id
@@ -2290,7 +2408,7 @@ export default function ContainerCalculator() {
                       onClick={() => {
                         setContainerSelectionMode("manual");
                         setContainerId("custom");
-                        setMultiResult(null);
+                        invalidateCalculatedPlan();
                       }}
                       className={`text-left p-2.5 rounded-lg border text-sm transition-all col-span-2 ${
                         containerSelectionMode === "manual" && containerId === "custom"
@@ -2316,12 +2434,13 @@ export default function ContainerCalculator() {
                             min={1}
                             step="0.1"
                             value={toDisplay(customContainer.lengthIn)}
-                            onChange={(e) =>
+                            onChange={(e) => {
                               setCustomContainer((p) => ({
                                 ...p,
                                 lengthIn: fromDisplay(e.target.value),
-                              }))
-                            }
+                              }));
+                              invalidateCalculatedPlan();
+                            }}
                             className="h-7 text-xs px-1.5"
                             data-testid="input-custom-length"
                           />
@@ -2333,12 +2452,13 @@ export default function ContainerCalculator() {
                             min={1}
                             step="0.1"
                             value={toDisplay(customContainer.widthIn)}
-                            onChange={(e) =>
+                            onChange={(e) => {
                               setCustomContainer((p) => ({
                                 ...p,
                                 widthIn: fromDisplay(e.target.value),
-                              }))
-                            }
+                              }));
+                              invalidateCalculatedPlan();
+                            }}
                             className="h-7 text-xs px-1.5"
                             data-testid="input-custom-width"
                           />
@@ -2350,12 +2470,13 @@ export default function ContainerCalculator() {
                             min={1}
                             step="0.1"
                             value={toDisplay(customContainer.heightIn)}
-                            onChange={(e) =>
+                            onChange={(e) => {
                               setCustomContainer((p) => ({
                                 ...p,
                                 heightIn: fromDisplay(e.target.value),
-                              }))
-                            }
+                              }));
+                              invalidateCalculatedPlan();
+                            }}
                             className="h-7 text-xs px-1.5"
                             data-testid="input-custom-height"
                           />
@@ -2367,12 +2488,13 @@ export default function ContainerCalculator() {
                             min={1}
                             step="1"
                             value={toDisplayWeight(customContainer.maxPayloadLbs)}
-                            onChange={(e) =>
+                            onChange={(e) => {
                               setCustomContainer((p) => ({
                                 ...p,
                                 maxPayloadLbs: fromDisplayWeight(e.target.value),
-                              }))
-                            }
+                              }));
+                              invalidateCalculatedPlan();
+                            }}
                             className="h-7 text-xs px-1.5"
                             data-testid="input-custom-payload"
                           />
@@ -3372,6 +3494,7 @@ export default function ContainerCalculator() {
                                       customPalletH: tempBulk.customPalletH,
                                     };
                                   }));
+                                  invalidateCalculatedPlan();
                                 }
                                 setShowBulkModal(false);
                                 const countMsg = bulkApplyScope === "all" ? `Updated ${cargoItems.length} items`
@@ -4317,6 +4440,34 @@ export default function ContainerCalculator() {
                     </div>
                   )}
 
+                  {multiResult.totalPiecesLoaded < multiResult.totalPiecesAll && (
+                    <div className="rounded-xl border border-rose-200 bg-rose-50 p-4" data-testid="notice-unplaced-cargo">
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-rose-900">Loading plan incomplete</p>
+                          <p className="mt-1 text-xs leading-relaxed text-rose-800">
+                            {multiResult.totalPiecesAll - multiResult.totalPiecesLoaded} of {multiResult.totalPiecesAll} pieces remain unassigned. They have no visual position; the CSV lists them separately as exceptions.
+                          </p>
+                          {multiResult.totalContainers >= 10 && (
+                            <p className="mt-1 text-[11px] font-semibold text-rose-700">
+                              The automatic calculation stops after 10 containers. Split very large shipments into smaller planning batches.
+                            </p>
+                          )}
+                          {unplacedDiagnostics.length > 0 && (
+                            <ul className="mt-3 space-y-2">
+                              {unplacedDiagnostics.map((diagnosis, index) => (
+                                <li key={`${diagnosis.name}-${index}`} className="rounded-lg border border-rose-100 bg-white/75 px-3 py-2 text-[11px] text-slate-700">
+                                  <span className="font-bold text-slate-900">{diagnosis.quantity} × {diagnosis.name}:</span> {diagnosis.reason}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <ContainerComparisonPanel
                     comparisons={containerComparisons}
                     recommendedId={recommendation?.container.id ?? null}
@@ -4329,7 +4480,7 @@ export default function ContainerCalculator() {
                     }}
                   />
 
-                  {multiResult.totalContainers > 1 && (
+                  {multiResult.totalContainers > 1 && multiResult.totalPiecesLoaded === multiResult.totalPiecesAll && (
                     <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-3" data-testid="notice-multi-container">
                       <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
                       <div className="text-sm">
@@ -4339,12 +4490,6 @@ export default function ContainerCalculator() {
                         <p className="text-amber-800 mt-1">
                           Your cargo requires <strong>{multiResult.totalContainers} containers</strong> to
                           fit all {multiResult.totalPiecesAll} pieces.
-                          {multiResult.totalPiecesLoaded < multiResult.totalPiecesAll && (
-                            <span className="block mt-1 text-red-700 font-medium">
-                              {multiResult.totalPiecesAll - multiResult.totalPiecesLoaded} piece(s) still
-                              could not be placed.
-                            </span>
-                          )}
                         </p>
                       </div>
                     </div>
@@ -4390,16 +4535,28 @@ export default function ContainerCalculator() {
                           );
                         })}
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1.5 self-start lg:self-auto"
-                        onClick={handleExportPDF}
-                        data-testid="button-export-pdf"
-                      >
-                        <FileDown className="w-4 h-4" />
-                        Export complete PDF
-                      </Button>
+                      <div className="flex items-center gap-2 self-start lg:self-auto">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5"
+                          onClick={handleExportCSV}
+                          data-testid="button-export-csv"
+                        >
+                          <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                          Placement CSV
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5"
+                          onClick={handleExportPDF}
+                          data-testid="button-export-pdf"
+                        >
+                          <FileDown className="w-4 h-4" />
+                          Complete PDF
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="bg-slate-50/70 p-3 overflow-x-auto">
@@ -4414,7 +4571,7 @@ export default function ContainerCalculator() {
                               onClick={() => setActiveResultContainer(index)}
                               data-testid={`result-container-card-${index}`}
                               aria-pressed={selected}
-                              className={`w-[250px] rounded-xl border bg-white p-3 text-left transition-all ${
+                              className={`w-[270px] rounded-xl border bg-white p-3 text-left transition-all ${
                                 selected
                                   ? "border-primary shadow-sm ring-2 ring-primary/10"
                                   : "border-slate-200 hover:border-slate-300 hover:shadow-sm"
@@ -4427,10 +4584,23 @@ export default function ContainerCalculator() {
                                 <div className="min-w-0 flex-1">
                                   <p className="font-bold text-sm text-slate-900 truncate">{entry.label}</p>
                                   <p className="text-xs text-slate-500 truncate">{entry.container.name}</p>
-                                  <p className="mt-1 text-xs font-semibold text-primary">
-                                    {entryResult.piecesLoaded} pieces · {entryResult.volumeUtil.toFixed(0)}% volume
-                                  </p>
+                                  <p className="mt-1 text-xs font-semibold text-primary">{entryResult.piecesLoaded} pieces assigned</p>
                                 </div>
+                              </div>
+                              <div className="mt-3 grid grid-cols-2 gap-3">
+                                {[
+                                  { label: "Volume", value: entryResult.volumeUtil, color: "bg-violet-500" },
+                                  { label: "Payload", value: entryResult.weightUtil, color: "bg-emerald-500" },
+                                ].map((metric) => (
+                                  <div key={metric.label}>
+                                    <div className="mb-1 flex items-center justify-between text-[9px] font-semibold text-slate-500">
+                                      <span>{metric.label}</span><span>{metric.value.toFixed(0)}%</span>
+                                    </div>
+                                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                                      <div className={`h-full rounded-full ${metric.color}`} style={{ width: `${Math.min(100, metric.value)}%` }} />
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             </button>
                           );
@@ -4470,6 +4640,11 @@ export default function ContainerCalculator() {
                                 unitSystem={unitSystem}
                                 onReadyExport={(fn) => setSnapshotExportFn(() => fn)}
                                 onPlacedChange={(nextPlaced) => {
+                                  setCogUndoLayouts((current) => {
+                                    const next = { ...current };
+                                    delete next[ci];
+                                    return next;
+                                  });
                                   setMultiResult((current) => {
                                     if (!current) return current;
                                     return {
@@ -4501,6 +4676,8 @@ export default function ContainerCalculator() {
                               )}
                             </h2>
 
+                            <PlanReviewPanel items={planReview} />
+
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
                               <StatCard
                                 icon={Package}
@@ -4526,7 +4703,7 @@ export default function ContainerCalculator() {
                               />
                               <StatCard
                                 icon={Ruler}
-                                label="Floor Area"
+                                label="Load Footprint"
                                 value={`${(isMetric ? cResult.floorArea * 0.092903 : cResult.floorArea).toFixed(1)} ${isMetric ? "m²" : "ft²"}`}
                                 sub={`of ${(isMetric ? cResult.containerFloorArea * 0.092903 : cResult.containerFloorArea).toFixed(isMetric ? 1 : 0)} ${isMetric ? "m²" : "ft²"}`}
                                 color="#f59e0b"
@@ -4553,7 +4730,10 @@ export default function ContainerCalculator() {
                               placed={cResult.placed}
                               container={cr.container}
                               unitSystem={unitSystem}
-                              onPlacedChange={(nextPlaced) => {
+                              onPlacedChange={(nextPlaced, previousPlaced) => {
+                                if (previousPlaced) {
+                                  setCogUndoLayouts((current) => ({ ...current, [ci]: previousPlaced }));
+                                }
                                 setMultiResult((current) => {
                                   if (!current) return current;
                                   return {
@@ -4564,6 +4744,27 @@ export default function ContainerCalculator() {
                                         : entry,
                                     ),
                                   };
+                                });
+                              }}
+                              undoPlaced={cogUndoLayouts[ci]}
+                              onUndo={() => {
+                                const previousPlaced = cogUndoLayouts[ci];
+                                if (!previousPlaced) return;
+                                setMultiResult((current) => {
+                                  if (!current) return current;
+                                  return {
+                                    ...current,
+                                    containers: current.containers.map((entry, entryIndex) =>
+                                      entryIndex === ci
+                                        ? { ...entry, result: { ...entry.result, placed: previousPlaced } }
+                                        : entry,
+                                    ),
+                                  };
+                                });
+                                setCogUndoLayouts((current) => {
+                                  const next = { ...current };
+                                  delete next[ci];
+                                  return next;
                                 });
                               }}
                             />
