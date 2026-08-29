@@ -28,6 +28,8 @@ import {
   FileUp,
   FileSpreadsheet,
   FileImage,
+  LayoutDashboard,
+  ListChecks,
   Sparkles,
   Table,
   Truck,
@@ -49,6 +51,7 @@ import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { consumePalletPlanTransfer } from "@/lib/palletTransfer";
 import { buildTruckSpatialPlan, createTruckPackingItems, type TruckSpatialPlan } from "@/lib/truckPacking";
+import { buildTruckPlacementCsv } from "@/lib/loadingPlanExports";
 import { TruckLoadPreview3D } from "./truck-planner/TruckLoadPreview3D";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
 
@@ -109,6 +112,7 @@ const TRUCK_CARGO_COLORS = ["#0f766e", "#2563eb", "#b45309", "#7c3aed", "#be123c
 type UnitSystem = "metric" | "imperial";
 type CargoMode = "cartons" | "pallets" | "bulk";
 type PlannerMode = "pro" | "beginner";
+type ResultTab = "plan" | "overview" | "details";
 type PackagingType = "loose" | "bags" | "drums" | "other";
 type RotationMode = "all" | "horizontal" | "fixed";
 
@@ -213,6 +217,19 @@ function UtilBar({ pct, label, color }: { pct: number; label: string; color: str
         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${clamped}%`, backgroundColor: color }} />
       </div>
     </div>
+  );
+}
+
+function TrailerLineIcon({ active = false, className = "h-10 w-20" }: { active?: boolean; className?: string }) {
+  const stroke = active ? "#0284c7" : "#64748b";
+  return (
+    <svg viewBox="0 0 110 56" className={className} aria-hidden="true" fill="none">
+      <path d="M8 13h76v31H8z" fill={active ? "#e0f2fe" : "#f8fafc"} stroke={stroke} strokeWidth="1.8" />
+      <path d="M84 24h12l8 9v11H84V24Z" fill={active ? "#dbeafe" : "#f1f5f9"} stroke={stroke} strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M90 27h5l5 6h-10v-6Z" fill="white" stroke={stroke} strokeWidth="1.2" />
+      <path d="M15 18v21M23 18v21M31 18v21M39 18v21M47 18v21M55 18v21M63 18v21M71 18v21" stroke={stroke} strokeWidth=".8" opacity=".45" />
+      <circle cx="25" cy="45" r="5" fill="#fff" stroke={stroke} strokeWidth="2" /><circle cx="92" cy="45" r="5" fill="#fff" stroke={stroke} strokeWidth="2" />
+    </svg>
   );
 }
 
@@ -321,6 +338,7 @@ export default function TruckLoadPlanner() {
   const [previewTrailerIndex, setPreviewTrailerIndex] = useState(0);
   const [visibleLoadingSteps, setVisibleLoadingSteps] = useState<number | "all">("all");
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [activeResultTab, setActiveResultTab] = useState<ResultTab>("plan");
 
   useEffect(() => {
     if (typeof window === "undefined" || new URLSearchParams(window.location.search).get("from") !== "pallet-builder") return;
@@ -982,6 +1000,7 @@ export default function TruckLoadPlanner() {
     setPreviewResultIndex(resultIndex);
     setPreviewTrailerIndex(0);
     setVisibleLoadingSteps("all");
+    setActiveResultTab("plan");
   }, []);
 
   const handleSelectPreviewTrailer = useCallback((trailerIndex: number) => {
@@ -994,13 +1013,15 @@ export default function TruckLoadPlanner() {
     setPdfLoading(true);
     try {
       const { generateTruckLoadingReportBlob } = await import("@/lib/truckPdf");
+      const { loadAccessToNorthLogoDataUrl } = await import("@/lib/loadingReportPdfBrand");
       const cargoRows = packingItems.map(item => ({
         name: item.name,
         dimensionsIn: [item.length, item.width, item.height] as [number, number, number],
         weightEachLbs: item.quantity > 0 ? item.weight / item.quantity : item.weight,
         quantity: item.quantity,
       }));
-      const blob = await generateTruckLoadingReportBlob({ plan: previewPlan, cargoRows, unitSystem });
+      const logoDataUrl = await loadAccessToNorthLogoDataUrl();
+      const blob = await generateTruckLoadingReportBlob({ plan: previewPlan, cargoRows, unitSystem, logoDataUrl });
       if (blob.size < 1000) throw new Error("The generated report was unexpectedly empty.");
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
@@ -1018,6 +1039,17 @@ export default function TruckLoadPlanner() {
       setPdfLoading(false);
     }
   }, [packingItems, previewPlan, toast, unitSystem]);
+
+  const handleExportLoadingCsv = useCallback(() => {
+    if (!previewPlan) return;
+    const url = URL.createObjectURL(new Blob([buildTruckPlacementCsv(previewPlan, unitSystem)], { type: "text/csv;charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `AccessToNorth_TruckPlacements_${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast({ title: "Placement CSV ready", description: "Trailer, loading step, position, dimensions, color, and weight are included." });
+  }, [previewPlan, toast, unitSystem]);
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
@@ -1085,8 +1117,10 @@ export default function TruckLoadPlanner() {
                               }`}
                               data-testid={`trailer-${t.id}`}
                             >
-                              <div className="font-semibold text-slate-900">{t.name}</div>
-                              <div className="text-[10px] text-slate-500 mt-0.5">
+                              <div className="flex items-center gap-2.5">
+                                <TrailerLineIcon active={!useCustomTrailer && selectedTrailerId === t.id} className="h-8 w-14 shrink-0" />
+                                <div className="min-w-0"><div className="truncate font-semibold text-slate-900">{t.name}</div>
+                              <div className="mt-0.5 text-[10px] text-slate-500">
                                 {isMetric
                                   ? `${(t.lengthIn * IN_TO_CM / 100).toFixed(1)}×${(t.widthIn * IN_TO_CM / 100).toFixed(1)}×${(t.heightIn * IN_TO_CM / 100).toFixed(1)} m`
                                   : `${(t.lengthIn / 12).toFixed(0)}'×${(t.widthIn / 12).toFixed(1)}'×${(t.heightIn / 12).toFixed(1)}'`
@@ -1096,7 +1130,7 @@ export default function TruckLoadPlanner() {
                                   ? `${Math.round(t.maxPayloadLbs * LB_TO_KG).toLocaleString()} kg`
                                   : `${t.maxPayloadLbs.toLocaleString()} lbs`
                                 }
-                              </div>
+                              </div></div></div>
                             </button>
                           ))}
                         </div>
@@ -1110,8 +1144,8 @@ export default function TruckLoadPlanner() {
                           }`}
                           data-testid="trailer-custom"
                         >
-                          <div className="font-semibold text-slate-900">Custom Trailer</div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">Enter your own dimensions</div>
+                          <div className="flex items-center gap-2.5"><TrailerLineIcon active={useCustomTrailer} className="h-8 w-14 shrink-0" /><div><div className="font-semibold text-slate-900">Custom Trailer</div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">Enter your own dimensions</div></div></div>
                         </button>
 
                         {useCustomTrailer && (
@@ -1607,68 +1641,48 @@ export default function TruckLoadPlanner() {
                       {previewResult && previewPlan && previewEntry && previewBalance && (
                         <Card className="overflow-hidden border-slate-200 shadow-[0_20px_60px_-38px_rgba(15,23,42,0.45)]" data-testid="truck-spatial-plan">
                           <CardContent className="p-0">
-                            <div className="flex flex-col gap-3 border-b border-slate-200 bg-gradient-to-r from-slate-950 via-slate-900 to-sky-950 p-5 text-white sm:flex-row sm:items-center sm:justify-between">
-                              <div>
-                                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-sky-300">Calculated placement</p>
-                                <h3 className="text-lg font-bold">3D Spatial Loading Plan</h3>
-                                <p className="mt-1 text-xs text-slate-300">{previewResult.trailer.name} · Trailer {previewTrailerIndex + 1} of {previewPlan.trailersRequired}</p>
+                            <div className="flex flex-col gap-3 border-b border-slate-200 bg-white p-3 sm:p-4">
+                              <div className="grid w-full grid-cols-3 gap-1" role="tablist" aria-label="Truck loading result views">
+                                {([
+                                  { id: "plan" as const, label: "Loading Plan", icon: Truck },
+                                  { id: "overview" as const, label: "Overview", icon: LayoutDashboard },
+                                  { id: "details" as const, label: "Cargo Details", icon: ListChecks },
+                                ]).map((tab) => {
+                                  const Icon = tab.icon;
+                                  const selected = activeResultTab === tab.id;
+                                  return <button key={tab.id} type="button" role="tab" aria-selected={selected} onClick={() => setActiveResultTab(tab.id)} className={`inline-flex min-w-0 items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-[10px] font-semibold whitespace-nowrap transition sm:gap-2 sm:px-3 sm:text-sm ${selected ? "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200" : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"}`} data-testid={`truck-result-tab-${tab.id}`}><Icon className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" /><span className="truncate">{tab.label}</span></button>;
+                                })}
                               </div>
-                              <div className="flex flex-wrap gap-2">
-                                {previewPlan.trailersRequired > 1 && (
-                                  <select value={previewTrailerIndex} onChange={event => handleSelectPreviewTrailer(Number(event.target.value))} className="h-9 rounded-md border border-white/20 bg-white/10 px-3 text-xs font-semibold text-white backdrop-blur" aria-label="Preview trailer" data-testid="select-preview-trailer">
-                                    {previewPlan.multi.containers.map((_, index) => <option key={index} value={index} className="text-slate-900">Trailer {index + 1}</option>)}
-                                  </select>
-                                )}
-                                <Button variant="outline" onClick={handleExportLoadingPdf} disabled={pdfLoading} className="h-9 gap-2 border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white" data-testid="button-truck-pdf">
-                                  {pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} PDF Report
-                                </Button>
+                              <div className="grid grid-cols-2 gap-2">
+                                <Button variant="outline" size="sm" onClick={handleExportLoadingCsv} className="gap-1.5 px-2 text-xs sm:text-sm" data-testid="button-truck-csv"><FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Placement CSV</Button>
+                                <Button variant="outline" size="sm" onClick={handleExportLoadingPdf} disabled={pdfLoading} className="gap-1.5 px-2 text-xs sm:text-sm" data-testid="button-truck-pdf">{pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Complete PDF</Button>
                               </div>
                             </div>
 
-                            <div className="space-y-5 p-4 sm:p-5">
+                            <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50/70 p-3 sm:p-4">
+                              <div className="rounded-xl bg-white p-1.5 shadow-sm ring-1 ring-slate-200"><TrailerLineIcon active className="h-10 w-20" /></div>
+                              <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-slate-900">{previewResult.trailer.name}</p><p className="mt-0.5 truncate text-[11px] text-slate-500">Trailer {previewTrailerIndex + 1} of {previewPlan.trailersRequired} · {previewEntry.result.piecesLoaded} pieces · {previewEntry.result.weightUtil.toFixed(0)}% payload</p></div>
+                              {previewPlan.trailersRequired > 1 && <select value={previewTrailerIndex} onChange={event => handleSelectPreviewTrailer(Number(event.target.value))} className="h-9 max-w-28 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold" aria-label="Preview trailer" data-testid="select-preview-trailer">{previewPlan.multi.containers.map((_, index) => <option key={index} value={index}>Trailer {index + 1}</option>)}</select>}
+                            </div>
+
+                            {activeResultTab === "plan" && <div className="space-y-5 p-4 sm:p-5">
+                              <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sky-600">Calculated placement</p><h3 className="mt-1 text-lg font-bold">3D spatial loading plan</h3></div>
                               <TruckLoadPreview3D placed={previewEntry.result.placed} trailer={previewResult.trailer} loadingSequence={previewSequence} visibleSteps={visibleLoadingSteps} />
-
                               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="truck-loading-sequence">
-                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                  <div>
-                                    <p className="text-xs font-bold text-slate-800">Nose-to-door loading sequence</p>
-                                    <p className="mt-0.5 text-[11px] text-slate-500">
-                                      {currentLoadingStep
-                                        ? `Step ${currentLoadingStep.step} of ${previewSequence.length}: ${currentLoadingStep.cargoName} at about ${toDisplay(currentLoadingStep.positionFromNoseIn)} ${dimUnit} from the nose.`
-                                        : `Full plan shown · ${previewSequence.length} placement step${previewSequence.length === 1 ? "" : "s"}.`}
-                                    </p>
-                                  </div>
-                                  <div className="flex flex-wrap items-center gap-2" data-testid="truck-loading-sequence-controls">
-                                    <Button variant="outline" size="sm" onClick={() => setVisibleLoadingSteps("all")} className="h-8 text-xs">Full plan</Button>
-                                    <Button variant="outline" size="sm" onClick={() => setVisibleLoadingSteps(1)} disabled={!previewSequence.length} className="h-8 gap-1 text-xs"><Play className="h-3 w-3" /> Start</Button>
-                                    <Button variant="outline" size="sm" onClick={() => setVisibleLoadingSteps(value => value === "all" ? Math.max(1, previewSequence.length - 1) : Math.max(1, value - 1))} disabled={!previewSequence.length || visibleLoadingSteps === 1} className="h-8 px-2" aria-label="Previous loading step"><ArrowLeft className="h-3.5 w-3.5" /></Button>
-                                    <Button variant="outline" size="sm" onClick={() => setVisibleLoadingSteps(value => value === "all" ? 1 : Math.min(previewSequence.length, value + 1))} disabled={!previewSequence.length || visibleLoadingSteps === previewSequence.length} className="h-8 px-2" aria-label="Next loading step"><ArrowRight className="h-3.5 w-3.5" /></Button>
-                                  </div>
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold text-slate-800">Nose-to-door loading sequence</p><p className="mt-0.5 text-[11px] text-slate-500">{currentLoadingStep ? `Step ${currentLoadingStep.step} of ${previewSequence.length}: ${currentLoadingStep.cargoName} at about ${toDisplay(currentLoadingStep.positionFromNoseIn)} ${dimUnit} from the nose.` : `Full plan shown · ${previewSequence.length} placement step${previewSequence.length === 1 ? "" : "s"}.`}</p></div>
+                                  <div className="flex flex-wrap items-center gap-2" data-testid="truck-loading-sequence-controls"><Button variant="outline" size="sm" onClick={() => setVisibleLoadingSteps("all")} className="h-8 text-xs">Full plan</Button><Button variant="outline" size="sm" onClick={() => setVisibleLoadingSteps(1)} disabled={!previewSequence.length} className="h-8 gap-1 text-xs"><Play className="h-3 w-3" /> Start</Button><Button variant="outline" size="sm" onClick={() => setVisibleLoadingSteps(value => value === "all" ? Math.max(1, previewSequence.length - 1) : Math.max(1, value - 1))} disabled={!previewSequence.length || visibleLoadingSteps === 1} className="h-8 px-2" aria-label="Previous loading step"><ArrowLeft className="h-3.5 w-3.5" /></Button><Button variant="outline" size="sm" onClick={() => setVisibleLoadingSteps(value => value === "all" ? 1 : Math.min(previewSequence.length, value + 1))} disabled={!previewSequence.length || visibleLoadingSteps === previewSequence.length} className="h-8 px-2" aria-label="Next loading step"><ArrowRight className="h-3.5 w-3.5" /></Button></div>
                                 </div>
                               </div>
+                            </div>}
 
-                              <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]" data-testid="truck-balance-panel">
-                                <div className="rounded-xl border border-slate-200 bg-white p-4">
-                                  <div className="mb-3 flex items-center justify-between">
-                                    <p className="text-xs font-bold text-slate-800">Cargo balance estimate</p>
-                                    <Badge className={previewBalance.status === "balanced" ? "border-0 bg-emerald-100 text-emerald-700" : previewBalance.status === "caution" ? "border-0 bg-amber-100 text-amber-700" : "border-0 bg-red-100 text-red-700"}>{previewBalance.status}</Badge>
-                                  </div>
-                                  <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
-                                    <div><dt className="text-slate-400">Cargo centre</dt><dd className="font-semibold text-slate-800">{toDisplay(previewBalance.distanceFromNoseIn)} {dimUnit} from nose</dd></div>
-                                    <div><dt className="text-slate-400">Centre position</dt><dd className="font-semibold text-slate-800">{previewBalance.longitudinalPct.toFixed(1)}% length · {previewBalance.lateralPct.toFixed(1)}% width</dd></div>
-                                    <div><dt className="text-slate-400">Nose / rear half</dt><dd className="font-semibold text-slate-800">{previewBalance.noseWeightPct.toFixed(1)}% / {previewBalance.doorWeightPct.toFixed(1)}%</dd></div>
-                                    <div><dt className="text-slate-400">Left / right half</dt><dd className="font-semibold text-slate-800">{previewBalance.sideAWeightPct.toFixed(1)}% / {previewBalance.sideBWeightPct.toFixed(1)}%</dd></div>
-                                  </dl>
-                                </div>
-                                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-                                  <p className="mb-2 text-xs font-bold text-amber-900">Dispatch review</p>
-                                  {previewBalance.guidance.length > 0 ? (
-                                    <ul className="mb-3 space-y-1.5 text-xs text-amber-900">{previewBalance.guidance.map(item => <li key={item} className="flex gap-2"><ChevronRight className="mt-0.5 h-3 w-3 shrink-0" />{item}</li>)}</ul>
-                                  ) : <p className="mb-3 text-xs text-amber-900">The geometric cargo centre is reasonably balanced within this trailer.</p>}
-                                  <p className="text-[11px] leading-relaxed text-amber-800"><strong>Not an axle-weight calculation.</strong> Legal axle loads also require tractor weight, fifth-wheel/kingpin location, axle positions, sliding tandem settings, fuel, and concentrated-load limits. Confirm with the carrier before dispatch.</p>
-                                </div>
-                              </div>
-                            </div>
+                            {activeResultTab === "overview" && <div className="space-y-5 p-4 sm:p-5">
+                              <div className={`flex items-start gap-3 rounded-2xl border p-4 ${previewBalance.status === "balanced" ? "border-emerald-200 bg-emerald-50" : previewBalance.status === "caution" ? "border-amber-200 bg-amber-50" : "border-red-200 bg-red-50"}`}><CheckCircle2 className={`mt-0.5 h-5 w-5 shrink-0 ${previewBalance.status === "balanced" ? "text-emerald-600" : previewBalance.status === "caution" ? "text-amber-600" : "text-red-600"}`} /><div><p className="text-sm font-bold text-slate-900">{previewBalance.status === "balanced" ? "Plan ready for dispatch review" : "Balance review recommended"}</p><p className="mt-1 text-xs leading-5 text-slate-600">All displayed positions are collision-free and follow the entered stacking and rotation rules. Securement, axle loads, and concentrated floor loads still require carrier confirmation.</p></div></div>
+                              <div className="grid grid-cols-2 gap-3 md:grid-cols-4"><StatCard icon={Package} label="Pieces loaded" value={`${previewEntry.result.piecesLoaded}/${previewEntry.result.piecesTotal}`} color="#3b82f6" /><StatCard icon={Weight} label="Placed weight" value={`${(previewEntry.result.totalWeight * weightFactor).toLocaleString(undefined, { maximumFractionDigits: 0 })} ${weightUnit}`} sub={`of ${(previewResult.trailer.maxPayloadLbs * weightFactor).toLocaleString(undefined, { maximumFractionDigits: 0 })} ${weightUnit}`} color="#22c55e" /><StatCard icon={Package} label="Volume use" value={`${previewEntry.result.volumeUtil.toFixed(1)}%`} color="#8b5cf6" /><StatCard icon={Truck} label="Equipment" value={`Trailer ${previewTrailerIndex + 1}`} sub={previewResult.trailer.category} color="#0284c7" /></div>
+                              <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]" data-testid="truck-balance-panel"><div className="rounded-xl border border-slate-200 bg-white p-4"><div className="mb-3 flex items-center justify-between"><p className="text-xs font-bold text-slate-800">Cargo balance estimate</p><Badge className={previewBalance.status === "balanced" ? "border-0 bg-emerald-100 text-emerald-700" : previewBalance.status === "caution" ? "border-0 bg-amber-100 text-amber-700" : "border-0 bg-red-100 text-red-700"}>{previewBalance.status}</Badge></div><dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs"><div><dt className="text-slate-400">Cargo centre</dt><dd className="font-semibold text-slate-800">{toDisplay(previewBalance.distanceFromNoseIn)} {dimUnit} from nose</dd></div><div><dt className="text-slate-400">Centre position</dt><dd className="font-semibold text-slate-800">{previewBalance.longitudinalPct.toFixed(1)}% length · {previewBalance.lateralPct.toFixed(1)}% width</dd></div><div><dt className="text-slate-400">Nose / rear half</dt><dd className="font-semibold text-slate-800">{previewBalance.noseWeightPct.toFixed(1)}% / {previewBalance.doorWeightPct.toFixed(1)}%</dd></div><div><dt className="text-slate-400">Left / right half</dt><dd className="font-semibold text-slate-800">{previewBalance.sideAWeightPct.toFixed(1)}% / {previewBalance.sideBWeightPct.toFixed(1)}%</dd></div></dl></div>
+                                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4"><p className="mb-2 text-xs font-bold text-amber-900">Dispatch review</p>{previewBalance.guidance.length > 0 ? <ul className="mb-3 space-y-1.5 text-xs text-amber-900">{previewBalance.guidance.map(item => <li key={item} className="flex gap-2"><ChevronRight className="mt-0.5 h-3 w-3 shrink-0" />{item}</li>)}</ul> : <p className="mb-3 text-xs text-amber-900">The geometric cargo centre is reasonably balanced within this trailer.</p>}<p className="text-[11px] leading-relaxed text-amber-800"><strong>Not an axle-weight calculation.</strong> Confirm tractor weight, kingpin and axle positions, sliding tandems, fuel, and concentrated-load limits with the carrier.</p></div></div>
+                            </div>}
+
+                            {activeResultTab === "details" && <div className="space-y-5 p-4 sm:p-5"><div><h3 className="text-sm font-bold text-slate-900">Cargo manifest</h3><p className="mt-1 text-[11px] text-slate-500">Rows used for this spatial calculation.</p></div><div className="space-y-2">{packingItems.map((item) => <div key={item.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-xs"><span className="h-4 w-4 rounded-md shadow-sm ring-1 ring-black/5" style={{ backgroundColor: item.color }} /><div className="min-w-0"><p className="truncate font-bold text-slate-800">{item.name}</p><p className="mt-0.5 text-[10px] text-slate-500">{toDisplay(item.length)} × {toDisplay(item.width)} × {toDisplay(item.height)} {dimUnit} · {toDisplayWeight(item.weight / Math.max(1, item.quantity))} {weightUnit} each</p></div><span className="font-bold text-slate-700">× {item.quantity}</span></div>)}</div><div><h3 className="text-sm font-bold text-slate-900">Trailer {previewTrailerIndex + 1} loading order</h3><div className="mt-3 space-y-2">{previewSequence.map((step) => <div key={step.step} className="flex items-center gap-3 rounded-xl bg-slate-50 p-3"><div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-xs font-extrabold text-sky-700 shadow-sm">{step.step}</div><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-slate-800">{step.cargoName}</p><p className="mt-0.5 text-[10px] text-slate-500">{toDisplay(step.positionFromNoseIn)} {dimUnit} from nose · {toDisplay(step.levelIn)} {dimUnit} above floor</p></div></div>)}</div></div></div>}
                           </CardContent>
                         </Card>
                       )}
@@ -1877,12 +1891,15 @@ export default function TruckLoadPlanner() {
           </motion.div>
         </div>
 
-        <section className="mt-16 border-t border-slate-200 bg-white/70 py-14" aria-labelledby="truck-planner-guide">
+        <section className="mt-16 border-t border-slate-200 bg-white/70 py-10" aria-labelledby="truck-planner-guide">
           <div className="container mx-auto px-4 md:px-6 max-w-5xl">
+            <details className="group rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 sm:p-6">
+                <h2 id="truck-planner-guide" className="text-lg font-bold font-display text-slate-900 sm:text-xl">How to choose a trailer for your cargo</h2>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-lg text-slate-500 transition group-open:rotate-45">+</span>
+              </summary>
+              <div className="border-t border-slate-100 p-5 sm:p-6">
             <div className="max-w-3xl mb-8">
-              <h2 id="truck-planner-guide" className="text-2xl md:text-3xl font-bold font-display text-slate-900 mb-3">
-                How to choose a trailer for your cargo
-              </h2>
               <p className="text-slate-600 leading-relaxed">
                 Enter the outside dimensions, total gross weight, quantity, stacking rules, and cargo type.
                 The planner compares the load against common dry van, reefer, flatbed, step-deck, and specialized
@@ -1939,6 +1956,8 @@ export default function TruckLoadPlanner() {
                 <p className="mt-3 text-sm text-slate-600">No. It means the entered cargo may exceed a common equipment or legal limit. Final permit needs depend on the complete vehicle configuration and route.</p>
               </details>
             </div>
+              </div>
+            </details>
           </div>
         </section>
       </main>
