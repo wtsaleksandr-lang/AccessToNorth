@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import type { CargoItem, ContainerSpec, LoadingResult } from "@/lib/containerPacking";
+import { calculateContainerBalance } from "@/lib/containerBalance";
 
 const IN_TO_CM = 2.54;
 const LB_TO_KG = 0.453592;
@@ -72,6 +73,7 @@ export async function generateBasicPackingReportBlob({
   const pageHeight = doc.internal.pageSize.getHeight();
   const contentWidth = pageWidth - 64;
   const includedItems = cargoItems.filter((item) => item.included && item.quantity > 0);
+  const balance = calculateContainerBalance(result.placed, containerSpec);
 
   addHeader(doc, "Container Packing Report", new Date().toLocaleString());
 
@@ -123,6 +125,41 @@ export async function generateBasicPackingReportBlob({
     doc.text(`${totalContainers} containers required for the complete load`, 40, y + 4);
     y += 24;
   }
+
+  doc.setTextColor(22, 163, 74);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("Weight Balance", 32, y);
+  y += 9;
+  const balanceColor = balance.status === "balanced"
+    ? [220, 252, 231] as const
+    : balance.status === "caution"
+      ? [254, 243, 199] as const
+      : [255, 228, 230] as const;
+  const balanceLabel = balance.status === "balanced"
+    ? "Well balanced"
+    : balance.status === "caution"
+      ? "Balance caution"
+      : balance.status === "review"
+        ? "Review balance"
+        : "No weight data";
+  doc.setFillColor(...balanceColor);
+  doc.roundedRect(32, y, contentWidth, 34, 4, 4, "F");
+  doc.setTextColor(15, 23, 42);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.text(balanceLabel, 40, y + 14);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(71, 85, 105);
+  doc.setFontSize(7);
+  doc.text(`CG from closed end: ${dim(balance.centerXIn)} (${balance.longitudinalPct.toFixed(0)}%)`, 145, y + 14);
+  doc.text(`From Side A: ${dim(balance.centerZIn)} (${balance.lateralPct.toFixed(0)}%)`, 315, y + 14);
+  doc.text(`End split: ${balance.closedEndWeightPct.toFixed(0)} / ${balance.doorEndWeightPct.toFixed(0)}%`, pageWidth - 40, y + 14, { align: "right" });
+  if (balance.guidance.length > 0) {
+    doc.setFontSize(6.5);
+    doc.text(balance.guidance.join(" "), 40, y + 26, { maxWidth: contentWidth - 16 });
+  }
+  y += 48;
 
   const drawManifestHeader = () => {
     doc.setFillColor(15, 23, 42);
@@ -219,6 +256,15 @@ export async function generateBasicPackingReportBlob({
       );
     }
   });
+
+  const cgX = planX + balance.centerXIn * scale;
+  const cgY = planY + balance.centerZIn * scale;
+  doc.setFillColor(255, 255, 255);
+  doc.setDrawColor(15, 23, 42);
+  doc.setLineWidth(1.2);
+  doc.circle(cgX, cgY, 5, "FD");
+  doc.setFillColor(15, 127, 229);
+  doc.circle(cgX, cgY, 1.8, "F");
 
   doc.setDrawColor(15, 127, 229);
   doc.setLineWidth(1.5);
