@@ -45,6 +45,8 @@ import {
   FileDown,
   MousePointerClick,
   Crosshair,
+  Play,
+  ChevronLeft,
 } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -219,6 +221,8 @@ function ContainerViewer3D({
   const [arrangeMode, setArrangeMode] = useState(false);
   const [historyCount, setHistoryCount] = useState(0);
   const [placementMessage, setPlacementMessage] = useState("Select a cargo item and drag it to a new position.");
+  const [sequenceMode, setSequenceMode] = useState(false);
+  const [sequenceStep, setSequenceStep] = useState(1);
   const arrangementHistoryRef = useRef<PlacedBox[][]>([]);
   const optimizedLayoutRef = useRef<PlacedBox[]>(placed.map((box) => ({ ...box })));
   const optimizedLayoutIdentityRef = useRef("");
@@ -232,8 +236,24 @@ function ContainerViewer3D({
     scene: THREE.Scene;
     camera: THREE.PerspectiveCamera;
     controls: OrbitControls;
+    cargoMeshes: THREE.Mesh[];
     render: () => void;
   } | null>(null);
+
+  const sequenceOrder = useMemo(
+    () => placed
+      .map((box, index) => ({ box, index }))
+      .sort((a, b) => (
+        a.box.x - b.box.x ||
+        a.box.y - b.box.y ||
+        a.box.z - b.box.z
+      ))
+      .map((entry) => entry.index),
+    [placed],
+  );
+  const sequenceCargo = sequenceStep > 0
+    ? placed[sequenceOrder[Math.min(sequenceStep, sequenceOrder.length) - 1]]
+    : null;
 
   const layoutIdentity = useMemo(
     () => `${container.id}:${placed.map((box) => `${box.cargoId}:${box.l}:${box.w}:${box.h}`).join("|")}`,
@@ -811,7 +831,7 @@ function ContainerViewer3D({
     controls.addEventListener("change", renderScene);
     renderScene();
 
-    sceneRef.current = { renderer, scene, camera, controls, render: renderScene };
+    sceneRef.current = { renderer, scene, camera, controls, cargoMeshes, render: renderScene };
 
     if (onReadyExport) {
       const exportSnapshots: SnapshotExportFn = () => {
@@ -821,6 +841,16 @@ function ContainerViewer3D({
 
         const savedPos = cam.position.clone();
         const savedTarget = ctrl.target.clone();
+        const savedVisibility = cargoMeshes.map((mesh) => ({
+          mesh,
+          visible: mesh.visible,
+          edge: mesh.userData.linkedEdges as THREE.LineSegments | undefined,
+          edgeVisible: (mesh.userData.linkedEdges as THREE.LineSegments | undefined)?.visible,
+        }));
+        savedVisibility.forEach(({ mesh, edge }) => {
+          mesh.visible = true;
+          if (edge) edge.visible = true;
+        });
 
         const centerX = cL / 2;
         const centerY = cH / 3;
@@ -844,6 +874,10 @@ function ContainerViewer3D({
         cam.lookAt(savedTarget.x, savedTarget.y, savedTarget.z);
         cam.updateProjectionMatrix();
         ctrl.update();
+        savedVisibility.forEach(({ mesh, visible, edge, edgeVisible }) => {
+          mesh.visible = visible;
+          if (edge) edge.visible = edgeVisible ?? visible;
+        });
         r.render(sc, cam);
 
         return { iso, top, sideA, front };
@@ -908,6 +942,24 @@ function ContainerViewer3D({
     };
   }, [placed, container, unitSystem, arrangeMode, rendererAttempt, webglError]);
 
+  useEffect(() => {
+    const sceneState = sceneRef.current;
+    if (!sceneState) return;
+    const visibleIndexes = new Set(sequenceOrder.slice(0, sequenceStep));
+    sceneState.cargoMeshes.forEach((mesh) => {
+      const index = mesh.userData.placedIndex as number;
+      const visible = !sequenceMode || visibleIndexes.has(index);
+      mesh.visible = visible;
+      const linkedEdges = mesh.userData.linkedEdges as THREE.LineSegments | undefined;
+      if (linkedEdges) linkedEdges.visible = visible;
+    });
+    sceneState.render();
+  }, [sequenceMode, sequenceStep, sequenceOrder]);
+
+  useEffect(() => {
+    setSequenceStep((current) => Math.min(Math.max(current, placed.length > 0 ? 1 : 0), placed.length));
+  }, [placed.length]);
+
   const fmt = (inches: number) => {
     if (unitSystem === "metric") return `${(inches * IN_TO_CM).toFixed(1)} cm`;
     return `${inches.toFixed(1)} in`;
@@ -947,6 +999,7 @@ function ContainerViewer3D({
                 <button
                   type="button"
                   onClick={() => {
+                    setSequenceMode(false);
                     setArrangeMode((current) => !current);
                     setPlacementMessage("Select a cargo item and drag it to a new position.");
                   }}
@@ -986,16 +1039,75 @@ function ContainerViewer3D({
                 )}
               </>
             )}
+            {placed.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setArrangeMode(false);
+                  setSequenceMode((current) => {
+                    if (!current) setSequenceStep(1);
+                    return !current;
+                  });
+                }}
+                className={`h-8 px-2.5 rounded-lg border backdrop-blur text-[11px] font-semibold shadow-sm transition-colors flex items-center gap-1.5 ${
+                  sequenceMode
+                    ? "border-indigo-500 bg-indigo-600 text-white"
+                    : "border-white/80 bg-white/80 text-slate-700 hover:bg-white"
+                }`}
+                data-testid="button-loading-sequence"
+                aria-pressed={sequenceMode}
+              >
+                <Play className="w-3.5 h-3.5" />
+                {sequenceMode ? "Exit sequence" : "Loading sequence"}
+              </button>
+            )}
           </div>
-          <div className={`absolute bottom-3 right-3 left-3 sm:left-auto sm:max-w-[75%] rounded-md border px-2.5 py-1.5 text-[10px] font-medium shadow-sm backdrop-blur pointer-events-none ${
-            arrangeMode
-              ? placementMessage.includes("overlap") || placementMessage.includes("without enough") || placementMessage.includes("cancelled")
-                ? "border-red-200 bg-red-50/90 text-red-700"
-                : "border-sky-200 bg-white/90 text-slate-700"
-              : "border-white/80 bg-white/75 text-slate-600"
-          }`}>
-            {arrangeMode ? placementMessage : "Drag to rotate · Scroll or pinch to zoom"}
-          </div>
+          {sequenceMode ? (
+            <div className="absolute bottom-3 left-3 right-3 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:min-w-[390px] rounded-xl border border-indigo-200 bg-white/92 p-2 shadow-lg backdrop-blur" data-testid="loading-sequence-controls">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSequenceStep((step) => Math.max(0, step - 1))}
+                  disabled={sequenceStep === 0}
+                  className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:border-indigo-300 hover:text-indigo-600 disabled:opacity-35 disabled:cursor-not-allowed"
+                  aria-label="Previous loading step"
+                  data-testid="button-sequence-previous"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <div className="min-w-0 flex-1 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-indigo-500">Loading step {sequenceStep} of {sequenceOrder.length}</p>
+                  <p className="truncate text-xs font-bold text-slate-900 mt-0.5">
+                    {sequenceCargo ? sequenceCargo.cargoName || "Cargo item" : "Empty container — begin loading"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSequenceStep((step) => Math.min(sequenceOrder.length, step + 1))}
+                  disabled={sequenceStep >= sequenceOrder.length}
+                  className="w-8 h-8 rounded-lg border border-indigo-200 bg-indigo-600 flex items-center justify-center text-white hover:bg-indigo-700 disabled:opacity-35 disabled:cursor-not-allowed"
+                  aria-label="Next loading step"
+                  data-testid="button-sequence-next"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="mt-2 h-1.5 rounded-full overflow-hidden bg-indigo-100">
+                <div className="h-full rounded-full bg-indigo-500 transition-[width] duration-200" style={{ width: `${sequenceOrder.length > 0 ? (sequenceStep / sequenceOrder.length) * 100 : 0}%` }} />
+              </div>
+              <p className="mt-1.5 text-center text-[9px] text-slate-500">Suggested order: closed end to doors, lower levels first</p>
+            </div>
+          ) : (
+            <div className={`absolute bottom-3 right-3 left-3 sm:left-auto sm:max-w-[75%] rounded-md border px-2.5 py-1.5 text-[10px] font-medium shadow-sm backdrop-blur pointer-events-none ${
+              arrangeMode
+                ? placementMessage.includes("overlap") || placementMessage.includes("without enough") || placementMessage.includes("cancelled")
+                  ? "border-red-200 bg-red-50/90 text-red-700"
+                  : "border-sky-200 bg-white/90 text-slate-700"
+                : "border-white/80 bg-white/75 text-slate-600"
+            }`}>
+              {arrangeMode ? placementMessage : "Drag to rotate · Scroll or pinch to zoom"}
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -127,6 +127,9 @@ test.describe("tool pages load without runtime errors", () => {
       await expect(page.getByTestId("button-arrange-cargo")).toBeVisible();
       await page.getByTestId("button-arrange-cargo").click();
       await expect(page.getByTestId("button-reset-cargo-layout")).toBeVisible();
+      await page.getByTestId("button-loading-sequence").click();
+      await expect(page.getByTestId("loading-sequence-controls")).toBeVisible();
+      await expect(page.getByTestId("loading-sequence-controls")).toContainText("Loading step 1 of 7");
     }
 
     // Three.js often logs GPU warnings — filter those out but fail on real errors.
