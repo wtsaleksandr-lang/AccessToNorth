@@ -140,7 +140,7 @@ test.describe("tool pages load without runtime errors", () => {
     expect(realErrors, `Uncaught errors on /tools/container-calculator: ${realErrors.join("\n")}`).toEqual([]);
   });
 
-  test("Truck Load Planner — tabs, trailer controls render", async ({ page }) => {
+  test("Truck Load Planner — builds a spatial pallet plan", async ({ page }) => {
     const errors = trackPageErrors(page);
     await page.goto("/tools/truck-load-planner");
 
@@ -148,6 +148,21 @@ test.describe("tool pages load without runtime errors", () => {
     await expect(page.getByTestId("mode-tabs")).toBeVisible();
     await expect(page.getByTestId("tab-mode-pro")).toBeVisible();
     await expect(page.getByTestId("tab-mode-beginner")).toBeVisible();
+
+    await page.getByTestId("tab-cargo-pallets").click();
+    await page.getByTestId("input-pallet-name-0").fill("Test pallets");
+    await page.getByTestId("select-pallet-type-0").selectOption("48x48");
+    await page.getByTestId("input-pallet-h-0").fill("61");
+    await page.getByTestId("input-pallet-wt-0").fill("1657");
+    await page.getByTestId("input-pallet-qty-0").fill("7");
+    await page.getByTestId("button-calculate").click();
+
+    await expect(page.getByTestId("fitment-result")).toContainText("Fits in one trailer");
+    await expect(page.getByTestId("truck-spatial-plan")).toBeVisible();
+    await expect(page.getByTestId("truck-3d-preview")).toBeVisible();
+    await expect(page.getByTestId("truck-loading-sequence-controls")).toBeVisible();
+    await expect(page.getByTestId("truck-balance-panel")).toContainText("Not an axle-weight calculation");
+    await expect(page.getByTestId("button-truck-pdf")).toBeVisible();
 
     const realErrors = errors.filter((e) => !/WebGL|GPU|THREE\./i.test(e));
     expect(realErrors, `Uncaught errors on /tools/truck-load-planner: ${realErrors.join("\n")}`).toEqual([]);

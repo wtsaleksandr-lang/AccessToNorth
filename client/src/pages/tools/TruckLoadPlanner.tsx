@@ -42,10 +42,14 @@ import {
   Clock,
   Route,
   Flag,
+  Download,
+  Play,
 } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { consumePalletPlanTransfer } from "@/lib/palletTransfer";
+import { buildTruckSpatialPlan, createTruckPackingItems, type TruckSpatialPlan } from "@/lib/truckPacking";
+import { TruckLoadPreview3D } from "./truck-planner/TruckLoadPreview3D";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
@@ -100,6 +104,8 @@ const KG_TO_LB = 1 / LB_TO_KG;
 const CUFT_TO_CUM = 0.0283168;
 const SQFT_TO_SQM = 0.092903;
 
+const TRUCK_CARGO_COLORS = ["#0f766e", "#2563eb", "#b45309", "#7c3aed", "#be123c", "#0e7490", "#475569", "#c2410c"];
+
 type UnitSystem = "metric" | "imperial";
 type CargoMode = "cartons" | "pallets" | "bulk";
 type PlannerMode = "pro" | "beginner";
@@ -152,6 +158,7 @@ interface CartonItem {
   rotation: RotationMode;
   priority: number;
   palletAssign: string;
+  color: string;
 }
 
 interface PalletItem {
@@ -166,6 +173,7 @@ interface PalletItem {
   stackable: boolean;
   rotation: RotationMode;
   priority: number;
+  color: string;
 }
 
 interface BulkCargo {
@@ -222,12 +230,16 @@ interface CalcResult {
   overweightWarning: boolean;
   recommendations: string[];
   score: number;
+  spatialPlan: TruckSpatialPlan | null;
+  trailersRequired: number;
+  piecesLoaded: number;
+  piecesTotal: number;
 }
 
 export default function TruckLoadPlanner() {
   usePageMeta({
     title: "Free Truck Load Planner & Trailer Calculator | AccessToNorth.com",
-    description: "Free truck load planner with trailer matching, volume and payload checks, and oversize or overweight warnings for dry vans, reefers, flatbeds, and step decks.",
+    description: "Free spatial truck load planner with smart trailer matching, collision-aware cargo placement, 3D loading plans, balance guidance, and PDF reports.",
     canonical: "/tools/truck-load-planner",
   });
 
@@ -274,16 +286,16 @@ export default function TruckLoadPlanner() {
   const [defaultStacking, setDefaultStacking] = useState<boolean>(true);
   const [defaultRotation, setDefaultRotation] = useState<RotationMode>("all");
 
-  const defaultCarton = useCallback((): CartonItem => ({
-    id: genId(), name: "", lengthIn: 0, widthIn: 0, heightIn: 0, weightLbs: 0, quantity: 1, stackable: defaultStacking, maxStackHeight: 0, rotation: defaultRotation, priority: 0, palletAssign: "none",
+  const defaultCarton = useCallback((colorIndex = 0): CartonItem => ({
+    id: genId(), name: "", lengthIn: 0, widthIn: 0, heightIn: 0, weightLbs: 0, quantity: 1, stackable: defaultStacking, maxStackHeight: 0, rotation: defaultRotation, priority: 0, palletAssign: "none", color: TRUCK_CARGO_COLORS[colorIndex % TRUCK_CARGO_COLORS.length],
   }), [defaultStacking, defaultRotation]);
 
-  const defaultPallet = useCallback((): PalletItem => ({
-    id: genId(), name: "", palletType: "48x40", customL: 48, customW: 40, heightIn: 0, weightLbs: 0, quantity: 1, stackable: defaultStacking, rotation: defaultRotation, priority: 0,
+  const defaultPallet = useCallback((colorIndex = 0): PalletItem => ({
+    id: genId(), name: "", palletType: "48x40", customL: 48, customW: 40, heightIn: 0, weightLbs: 0, quantity: 1, stackable: defaultStacking, rotation: defaultRotation, priority: 0, color: TRUCK_CARGO_COLORS[colorIndex % TRUCK_CARGO_COLORS.length],
   }), [defaultStacking, defaultRotation]);
 
-  const [cartons, setCartons] = useState<CartonItem[]>([defaultCarton(), defaultCarton()]);
-  const [pallets, setPallets] = useState<PalletItem[]>([defaultPallet()]);
+  const [cartons, setCartons] = useState<CartonItem[]>([defaultCarton(0), defaultCarton(1)]);
+  const [pallets, setPallets] = useState<PalletItem[]>([defaultPallet(0)]);
   const [bulk, setBulk] = useState<BulkCargo>({ totalWeightLbs: 0, totalVolumeCuFt: 0, packagingType: "loose", description: "" });
 
   const [selectedTrailerId, setSelectedTrailerId] = useState("dryvan53");
@@ -302,9 +314,13 @@ export default function TruckLoadPlanner() {
   const [importRawHeaders, setImportRawHeaders] = useState<string[]>([]);
   const [importRawRows, setImportRawRows] = useState<Record<string, string>[]>([]);
   const [importColMap, setImportColMap] = useState<Record<string, string>>({ name: "", length: "", width: "", height: "", weight: "", quantity: "" });
-  const [importItems, setImportItems] = useState<Array<{ name: string; length: number; width: number; height: number; weight: number; quantity: number; include: boolean }>>([]);
+  const [importItems, setImportItems] = useState<Array<{ name: string; length: number; width: number; height: number; weight: number; quantity: number; stackable?: boolean; rotationMode?: RotationMode; include: boolean }>>([]);
   const [importUnits, setImportUnits] = useState<UnitSystem>("imperial");
   const [dragOver, setDragOver] = useState(false);
+  const [previewResultIndex, setPreviewResultIndex] = useState(0);
+  const [previewTrailerIndex, setPreviewTrailerIndex] = useState(0);
+  const [visibleLoadingSteps, setVisibleLoadingSteps] = useState<number | "all">("all");
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined" || new URLSearchParams(window.location.search).get("from") !== "pallet-builder") return;
@@ -322,6 +338,7 @@ export default function TruckLoadPlanner() {
       stackable: false,
       rotation: "horizontal",
       priority: 0,
+      color: row.color,
     })));
     setCargoMode("pallets");
     setUnitSystem("imperial");
@@ -332,6 +349,12 @@ export default function TruckLoadPlanner() {
       description: "The pallet dimensions and gross weights are ready for trailer matching.",
     });
   }, [toast]);
+
+  const packingItems = useMemo(() => cargoMode === "bulk" ? [] : createTruckPackingItems({
+    cargoMode,
+    cartons,
+    pallets,
+  }), [cargoMode, cartons, pallets]);
 
   const activeTrailer = useMemo(() => {
     if (mode === "pro") {
@@ -345,29 +368,14 @@ export default function TruckLoadPlanner() {
     let totalVolumeCuFt = 0;
     let maxDimIn = { l: 0, w: 0, h: 0 };
 
-    if (cargoMode === "cartons") {
-      cartons.forEach(c => {
-        if (c.lengthIn > 0 && c.widthIn > 0 && c.heightIn > 0) {
-          const vol = (c.lengthIn * c.widthIn * c.heightIn * c.quantity) / 1728;
-          totalVolumeCuFt += vol;
-          totalWeightLbs += c.weightLbs * c.quantity;
-          maxDimIn.l = Math.max(maxDimIn.l, c.lengthIn);
-          maxDimIn.w = Math.max(maxDimIn.w, c.widthIn);
-          maxDimIn.h = Math.max(maxDimIn.h, c.heightIn);
-        }
-      });
-    } else if (cargoMode === "pallets") {
-      pallets.forEach(p => {
-        const pt = PALLET_TYPES[p.palletType];
-        const pl = p.palletType === "custom" ? p.customL : pt.l;
-        const pw = p.palletType === "custom" ? p.customW : pt.w;
-        if (pl > 0 && pw > 0 && p.heightIn > 0) {
-          const vol = (pl * pw * p.heightIn * p.quantity) / 1728;
-          totalVolumeCuFt += vol;
-          totalWeightLbs += p.weightLbs * p.quantity;
-          maxDimIn.l = Math.max(maxDimIn.l, pl);
-          maxDimIn.w = Math.max(maxDimIn.w, pw);
-          maxDimIn.h = Math.max(maxDimIn.h, p.heightIn);
+    if (cargoMode !== "bulk") {
+      packingItems.forEach(item => {
+        if (item.length > 0 && item.width > 0 && item.height > 0) {
+          totalVolumeCuFt += (item.length * item.width * item.height * item.quantity) / 1728;
+          totalWeightLbs += item.weight;
+          maxDimIn.l = Math.max(maxDimIn.l, item.length);
+          maxDimIn.w = Math.max(maxDimIn.w, item.width);
+          maxDimIn.h = Math.max(maxDimIn.h, item.height);
         }
       });
     } else {
@@ -376,13 +384,18 @@ export default function TruckLoadPlanner() {
     }
 
     return { totalWeightLbs, totalVolumeCuFt, maxDimIn };
-  }, [cargoMode, cartons, pallets, bulk]);
+  }, [cargoMode, packingItems, bulk]);
 
   const evaluateTrailer = useCallback((trailer: TrailerSpec, cargo: { totalWeightLbs: number; totalVolumeCuFt: number; maxDimIn: { l: number; w: number; h: number } }): CalcResult => {
     const trailerVolCuFt = (trailer.lengthIn * trailer.widthIn * trailer.heightIn) / 1728;
     const trailerFloorSqFt = (trailer.lengthIn * trailer.widthIn) / 144;
-    const volumeUtil = trailerVolCuFt > 0 ? (cargo.totalVolumeCuFt / trailerVolCuFt) * 100 : 0;
-    const weightUtil = trailer.maxPayloadLbs > 0 ? (cargo.totalWeightLbs / trailer.maxPayloadLbs) * 100 : 0;
+    const spatialPlan = cargoMode === "bulk" ? null : buildTruckSpatialPlan(packingItems, trailer);
+    const volumeUtil = spatialPlan
+      ? spatialPlan.averageVolumeUtilPct
+      : trailerVolCuFt > 0 ? (cargo.totalVolumeCuFt / trailerVolCuFt) * 100 : 0;
+    const weightUtil = spatialPlan
+      ? spatialPlan.averageWeightUtilPct
+      : trailer.maxPayloadLbs > 0 ? (cargo.totalWeightLbs / trailer.maxPayloadLbs) * 100 : 0;
 
     const oversizeWarnings: string[] = [];
     if (cargo.maxDimIn.w > 102) oversizeWarnings.push(`Cargo width (${(cargo.maxDimIn.w * dimFactor).toFixed(1)} ${dimUnit}) exceeds legal limit of 8'6" (102")`);
@@ -391,25 +404,37 @@ export default function TruckLoadPlanner() {
     if (cargo.maxDimIn.w > trailer.widthIn) oversizeWarnings.push(`Cargo width exceeds trailer width`);
     if (cargo.maxDimIn.h > trailer.heightIn) oversizeWarnings.push(`Cargo height exceeds trailer height`);
 
-    const overweightWarning = cargo.totalWeightLbs > trailer.maxPayloadLbs;
+    const overweightWarning = spatialPlan
+      ? !spatialPlan.complete && cargo.totalWeightLbs > trailer.maxPayloadLbs
+      : cargo.totalWeightLbs > trailer.maxPayloadLbs;
     const volumeFits = cargo.totalVolumeCuFt <= trailerVolCuFt;
-    const fits = volumeFits && !overweightWarning && oversizeWarnings.length === 0;
+    const fits = spatialPlan
+      ? spatialPlan.complete && oversizeWarnings.length === 0
+      : volumeFits && !overweightWarning && oversizeWarnings.length === 0;
 
     const recommendations: string[] = [];
     if (overweightWarning) {
       const excess = cargo.totalWeightLbs - trailer.maxPayloadLbs;
       recommendations.push(`Reduce weight by ${(excess * weightFactor).toFixed(0)} ${weightUnit} or use a higher-capacity trailer`);
     }
-    if (!volumeFits) {
+    if (!spatialPlan && !volumeFits) {
       recommendations.push("Reduce cargo volume or switch to a larger trailer");
+    }
+    if (spatialPlan?.complete && spatialPlan.trailersRequired > 1) {
+      recommendations.push(`The spatial plan requires ${spatialPlan.trailersRequired} × ${trailer.name} trailers.`);
+    }
+    if (spatialPlan && !spatialPlan.complete) {
+      recommendations.push(`${spatialPlan.piecesLoaded} of ${spatialPlan.piecesTotal} pieces could be placed. Review individual dimensions or select different equipment.`);
     }
     if (oversizeWarnings.length > 0 && !overweightWarning && volumeFits) {
       recommendations.push("Consider a flatbed or step deck for oversized cargo");
     }
 
-    const fitScore = fits ? 100 : 0;
+    const completionRatio = spatialPlan && spatialPlan.piecesTotal > 0 ? spatialPlan.piecesLoaded / spatialPlan.piecesTotal : fits ? 1 : 0;
+    const fitScore = fits ? 100000 : completionRatio * 50000;
+    const trailerCountPenalty = (spatialPlan?.trailersRequired || 1) * 1000;
     const utilScore = Math.max(0, 100 - Math.abs(volumeUtil - 85));
-    const score = fitScore * 0.6 + utilScore * 0.4;
+    const score = fitScore - trailerCountPenalty + utilScore;
 
     return {
       trailer,
@@ -425,8 +450,12 @@ export default function TruckLoadPlanner() {
       overweightWarning,
       recommendations,
       score,
+      spatialPlan,
+      trailersRequired: spatialPlan?.trailersRequired || 1,
+      piecesLoaded: spatialPlan?.piecesLoaded || 0,
+      piecesTotal: spatialPlan?.piecesTotal || 0,
     };
-  }, [dimFactor, dimUnit, weightFactor, weightUnit]);
+  }, [cargoMode, dimFactor, dimUnit, packingItems, weightFactor, weightUnit]);
 
   const calculate = useCallback(() => {
     const cargo = computeCargoTotals();
@@ -444,6 +473,9 @@ export default function TruckLoadPlanner() {
       setResults(allResults.slice(0, 3));
     }
     setShowResults(true);
+    setPreviewResultIndex(0);
+    setPreviewTrailerIndex(0);
+    setVisibleLoadingSteps("all");
   }, [mode, activeTrailer, computeCargoTotals, evaluateTrailer, toast]);
 
   const updateCarton = useCallback((id: string, field: keyof CartonItem, value: any) => {
@@ -510,19 +542,35 @@ export default function TruckLoadPlanner() {
         } catch { setImportError("Failed to parse Excel file."); setImportLoading(false); }
       };
       reader.readAsArrayBuffer(file);
-    } else if (["pdf", "jpg", "jpeg", "png"].includes(ext)) {
+    } else if (["pdf", "doc", "docx", "rtf", "odt", "ppt", "pptx", "txt", "text", "md", "json", "xml", "html", "htm", "eml", "jpg", "jpeg", "png", "webp", "gif"].includes(ext)) {
       try {
         const formData = new FormData();
         formData.append("file", file);
         const resp = await fetch("/api/cargo/extract", { method: "POST", body: formData });
         if (!resp.ok) throw new Error("Extraction failed");
         const data = await resp.json();
-        if (data.headers?.length && data.rows?.length) {
-          parseSpreadsheetToRows(data.headers, data.rows);
+        if (Array.isArray(data.items) && data.items.length > 0) {
+          setImportUnits(data.units === "metric" ? "metric" : "imperial");
+          setImportItems(data.items.map((item: any) => {
+            const quantity = Math.max(1, Math.round(Number(item.quantity) || 1));
+            return {
+              name: String(item.name || "").substring(0, 100),
+              length: Math.max(0, Number(item.length) || 0),
+              width: Math.max(0, Number(item.width) || 0),
+              height: Math.max(0, Number(item.height) || 0),
+              weight: Math.max(0, Number(item.weight) || 0) / quantity,
+              quantity,
+              stackable: item.stackable === true,
+              rotationMode: ["all", "horizontal", "fixed"].includes(item.rotationMode) ? item.rotationMode : "horizontal",
+              include: true,
+            };
+          }));
+          setImportStep("preview");
+          setImportLoading(false);
         } else { setImportError("Could not extract cargo data from this file."); setImportLoading(false); }
       } catch { setImportError("AI extraction failed. Try a CSV or Excel file instead."); setImportLoading(false); }
     } else {
-      setImportError("Unsupported file type. Use CSV, Excel, PDF, or image files.");
+      setImportError("Unsupported file type. Use a common spreadsheet, PDF, office document, email, text, or image file.");
       setImportLoading(false);
     }
   }, [parseSpreadsheetToRows]);
@@ -533,16 +581,24 @@ export default function TruckLoadPlanner() {
       setImportError("Please map at least one dimension column.");
       return;
     }
+    const weightHeader = wtKey.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const weightIsTotal = /(^| )(total|gross|row weight)( |$)/.test(weightHeader);
     const items = importRawRows
-      .map(r => ({
-        name: nKey ? String(r[nKey] || "").substring(0, 100) : "",
-        length: Math.max(0, parseFloat(lKey ? r[lKey] : "") || 0),
-        width: Math.max(0, parseFloat(wKey ? r[wKey] : "") || 0),
-        height: Math.max(0, parseFloat(hKey ? r[hKey] : "") || 0),
-        weight: Math.max(0, parseFloat(wtKey ? r[wtKey] : "") || 0),
-        quantity: Math.max(1, Math.round(parseFloat(qKey ? r[qKey] : "") || 1)),
-        include: true,
-      }))
+      .map(r => {
+        const quantity = Math.max(1, Math.round(parseFloat(qKey ? r[qKey] : "") || 1));
+        const rawWeight = Math.max(0, parseFloat(wtKey ? r[wtKey] : "") || 0);
+        return {
+          name: nKey ? String(r[nKey] || "").substring(0, 100) : "",
+          length: Math.max(0, parseFloat(lKey ? r[lKey] : "") || 0),
+          width: Math.max(0, parseFloat(wKey ? r[wKey] : "") || 0),
+          height: Math.max(0, parseFloat(hKey ? r[hKey] : "") || 0),
+          weight: weightIsTotal ? rawWeight / quantity : rawWeight,
+          quantity,
+          stackable: defaultStacking,
+          rotationMode: defaultRotation,
+          include: true,
+        };
+      })
       .filter(i => i.length > 0 || i.width > 0 || i.height > 0);
     if (!items.length) {
       setImportError("No valid data found with the selected mapping.");
@@ -551,7 +607,7 @@ export default function TruckLoadPlanner() {
     setImportError(null);
     setImportItems(items);
     setImportStep("preview");
-  }, [importColMap, importRawRows]);
+  }, [defaultRotation, defaultStacking, importColMap, importRawRows]);
 
   const confirmImport = useCallback(() => {
     const toAdd = importItems.filter(i => i.include && (i.length > 0 || i.width > 0 || i.height > 0));
@@ -559,7 +615,7 @@ export default function TruckLoadPlanner() {
     const isImportMetric = importUnits === "metric";
 
     if (cargoMode === "cartons") {
-      const newItems: CartonItem[] = toAdd.map(item => ({
+      const newItems: CartonItem[] = toAdd.map((item, index) => ({
         id: genId(),
         name: item.name,
         lengthIn: isImportMetric ? item.length * CM_TO_IN : item.length,
@@ -567,15 +623,16 @@ export default function TruckLoadPlanner() {
         heightIn: isImportMetric ? item.height * CM_TO_IN : item.height,
         weightLbs: isImportMetric ? item.weight * KG_TO_LB : item.weight,
         quantity: item.quantity,
-        stackable: defaultStacking,
+        stackable: item.stackable ?? defaultStacking,
         maxStackHeight: 0,
-        rotation: defaultRotation,
+        rotation: item.rotationMode || defaultRotation,
         priority: 0,
         palletAssign: "none",
+        color: TRUCK_CARGO_COLORS[(cartons.length + index) % TRUCK_CARGO_COLORS.length],
       }));
-      setCartons(prev => [...prev, ...newItems]);
+      setCartons(prev => prev.some(item => item.lengthIn > 0 || item.widthIn > 0 || item.heightIn > 0 || item.weightLbs > 0 || item.name.trim()) ? [...prev, ...newItems] : newItems);
     } else if (cargoMode === "pallets") {
-      const newItems: PalletItem[] = toAdd.map(item => ({
+      const newItems: PalletItem[] = toAdd.map((item, index) => ({
         id: genId(),
         name: item.name,
         palletType: "custom",
@@ -584,16 +641,17 @@ export default function TruckLoadPlanner() {
         heightIn: isImportMetric ? item.height * CM_TO_IN : item.height,
         weightLbs: isImportMetric ? item.weight * KG_TO_LB : item.weight,
         quantity: item.quantity,
-        stackable: defaultStacking,
-        rotation: defaultRotation,
+        stackable: item.stackable ?? defaultStacking,
+        rotation: item.rotationMode || defaultRotation,
         priority: 0,
+        color: TRUCK_CARGO_COLORS[(pallets.length + index) % TRUCK_CARGO_COLORS.length],
       }));
-      setPallets(prev => [...prev, ...newItems]);
+      setPallets(prev => prev.some(item => item.heightIn > 0 || item.weightLbs > 0 || item.name.trim()) ? [...prev, ...newItems] : newItems);
     }
 
     setShowImportModal(false);
-    toast({ title: `${toAdd.length} item${toAdd.length > 1 ? "s" : ""} imported`, description: "Items have been added to your cargo list." });
-  }, [importItems, importUnits, cargoMode, toast]);
+    toast({ title: `${toAdd.length} item${toAdd.length > 1 ? "s" : ""} imported`, description: "The extracted dimensions, weight, quantity, and names are filled into your cargo rows." });
+  }, [importItems, importUnits, cargoMode, toast, cartons.length, pallets.length, defaultRotation, defaultStacking]);
 
   const openImportModal = useCallback(() => {
     setImportStep("upload");
@@ -609,7 +667,7 @@ export default function TruckLoadPlanner() {
   }, [unitSystem]);
 
   const downloadSampleCSV = useCallback(() => {
-    const csvContent = `Name,Length,Width,Height,Weight,Quantity\nCardboard Box A,24,18,12,15,10\nPallet Load B,48,40,36,250,4\nSmall Carton C,12,10,8,5,25`;
+    const csvContent = `Name,Length,Width,Height,Weight Each,Quantity\nCardboard Box A,24,18,12,15,10\nPallet Load B,48,40,36,250,4\nSmall Carton C,12,10,8,5,25`;
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -622,8 +680,8 @@ export default function TruckLoadPlanner() {
   const handleReset = useCallback(() => {
     setResults(null);
     setShowResults(false);
-    setCartons([defaultCarton(), defaultCarton()]);
-    setPallets([defaultPallet()]);
+    setCartons([defaultCarton(0), defaultCarton(1)]);
+    setPallets([defaultPallet(0)]);
     setBulk({ totalWeightLbs: 0, totalVolumeCuFt: 0, packagingType: "loose", description: "" });
   }, [defaultCarton, defaultPallet]);
 
@@ -913,6 +971,54 @@ export default function TruckLoadPlanner() {
     }
   }, [originPlace, destPlace, calculateRoute]);
 
+  const previewResult = results?.[previewResultIndex] || results?.[0] || null;
+  const previewPlan = previewResult?.spatialPlan || null;
+  const previewEntry = previewPlan?.multi.containers[previewTrailerIndex] || null;
+  const previewBalance = previewPlan?.balances[previewTrailerIndex] || null;
+  const previewSequence = previewPlan?.loadingSequences[previewTrailerIndex] || [];
+  const currentLoadingStep = visibleLoadingSteps === "all" ? null : previewSequence[Math.max(0, visibleLoadingSteps - 1)] || null;
+
+  const handleSelectPreview = useCallback((resultIndex: number) => {
+    setPreviewResultIndex(resultIndex);
+    setPreviewTrailerIndex(0);
+    setVisibleLoadingSteps("all");
+  }, []);
+
+  const handleSelectPreviewTrailer = useCallback((trailerIndex: number) => {
+    setPreviewTrailerIndex(trailerIndex);
+    setVisibleLoadingSteps("all");
+  }, []);
+
+  const handleExportLoadingPdf = useCallback(async () => {
+    if (!previewPlan) return;
+    setPdfLoading(true);
+    try {
+      const { generateTruckLoadingReportBlob } = await import("@/lib/truckPdf");
+      const cargoRows = packingItems.map(item => ({
+        name: item.name,
+        dimensionsIn: [item.length, item.width, item.height] as [number, number, number],
+        weightEachLbs: item.quantity > 0 ? item.weight / item.quantity : item.weight,
+        quantity: item.quantity,
+      }));
+      const blob = await generateTruckLoadingReportBlob({ plan: previewPlan, cargoRows, unitSystem });
+      if (blob.size < 1000) throw new Error("The generated report was unexpectedly empty.");
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `truck-loading-plan-${previewPlan.trailer.id}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast({ title: "PDF report downloaded", description: "The loading plan, balance summary, and loading sequence are included." });
+    } catch (error) {
+      console.error("Truck PDF export failed", error);
+      toast({ title: "PDF export failed", description: "Please try again. Your loading plan is still available on screen.", variant: "destructive" });
+    } finally {
+      setPdfLoading(false);
+    }
+  }, [packingItems, previewPlan, toast, unitSystem]);
+
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
       <Navbar />
@@ -926,8 +1032,8 @@ export default function TruckLoadPlanner() {
               Truck Load Planner
             </h1>
             <p className="text-base text-slate-600 leading-relaxed">
-              Calculate truck load utilization, get trailer recommendations, and receive oversize/overweight warnings
-              for dry vans, reefers, flatbeds, step decks, and more.
+              Build a collision-aware loading plan, compare trailer options, preview every placement in 3D,
+              and export an operational loading sequence for dry vans, reefers, flatbeds, step decks, and more.
             </p>
           </div>
 
@@ -952,7 +1058,7 @@ export default function TruckLoadPlanner() {
                     data-testid="tab-mode-beginner"
                   >
                     <Star className="w-4 h-4" />
-                    Suggest Best Trailer
+                    Help Me Choose
                   </button>
                 </div>
               </div>
@@ -1108,7 +1214,10 @@ export default function TruckLoadPlanner() {
                           {cartons.map((item, idx) => (
                             <div key={item.id} className="p-3 rounded-lg border border-slate-200 bg-white" data-testid={`carton-row-${idx}`}>
                               <div className="flex items-center justify-between mb-2">
-                                <Input placeholder={`Carton ${idx + 1}`} value={item.name} onChange={e => updateCarton(item.id, "name", e.target.value)} className="h-7 text-xs font-medium max-w-[200px]" data-testid={`input-carton-name-${idx}`} />
+                                <div className="flex min-w-0 flex-1 items-center gap-2">
+                                  <input type="color" value={item.color} onChange={e => updateCarton(item.id, "color", e.target.value)} className="h-7 w-8 shrink-0 cursor-pointer rounded-md border border-slate-200 bg-white p-0.5" aria-label={`Carton ${idx + 1} color`} data-testid={`input-carton-color-${idx}`} />
+                                  <Input placeholder={`Carton ${idx + 1}`} value={item.name} onChange={e => updateCarton(item.id, "name", e.target.value)} className="h-7 max-w-[220px] text-xs font-medium" data-testid={`input-carton-name-${idx}`} />
+                                </div>
                                 {cartons.length > 1 && (
                                   <button onClick={() => setCartons(prev => prev.filter(c => c.id !== item.id))} className="text-slate-300 hover:text-red-500 transition-colors p-1" data-testid={`button-remove-carton-${idx}`}>
                                     <X className="w-3.5 h-3.5" />
@@ -1137,7 +1246,7 @@ export default function TruckLoadPlanner() {
                                   <Input type="number" min={1} value={item.quantity || ""} onChange={e => updateCarton(item.id, "quantity", parseInt(e.target.value) || 0)} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-carton-qty-${idx}`} />
                                 </div>
                               </div>
-                              <div className="grid grid-cols-5 gap-2 pt-2 border-t border-slate-100">
+                              <div className="grid grid-cols-4 gap-2 pt-2 border-t border-slate-100">
                                 <div>
                                   <Label className="text-[9px] text-slate-400 uppercase">Stack</Label>
                                   <button
@@ -1197,7 +1306,12 @@ export default function TruckLoadPlanner() {
                               </div>
                             </div>
                           ))}
-                          <Button variant="outline" size="sm" onClick={() => setCartons(prev => [...prev, defaultCarton()])} className="gap-1.5 w-full" data-testid="button-add-carton">
+                          {cartons.some(item => item.palletAssign !== "none") && (
+                            <p className="rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-[11px] leading-relaxed text-sky-800">
+                              Auto-build uses a 72 in / 2,500 lb loaded-pallet limit. For custom limits, mixed cartons, or layer controls, use the <Link href="/tools/pallet-builder" className="font-semibold underline">Pallet Builder</Link> first.
+                            </p>
+                          )}
+                          <Button variant="outline" size="sm" onClick={() => setCartons(prev => [...prev, defaultCarton(prev.length)])} className="gap-1.5 w-full" data-testid="button-add-carton">
                             <Plus className="w-3.5 h-3.5" /> Add Carton
                           </Button>
                         </div>
@@ -1208,7 +1322,10 @@ export default function TruckLoadPlanner() {
                           {pallets.map((item, idx) => (
                             <div key={item.id} className="p-3 rounded-lg border border-slate-200 bg-white" data-testid={`pallet-row-${idx}`}>
                               <div className="flex items-center justify-between mb-2">
-                                <Input placeholder={`Pallet ${idx + 1}`} value={item.name} onChange={e => updatePallet(item.id, "name", e.target.value)} className="h-7 text-xs font-medium max-w-[200px]" data-testid={`input-pallet-name-${idx}`} />
+                                <div className="flex min-w-0 flex-1 items-center gap-2">
+                                  <input type="color" value={item.color} onChange={e => updatePallet(item.id, "color", e.target.value)} className="h-7 w-8 shrink-0 cursor-pointer rounded-md border border-slate-200 bg-white p-0.5" aria-label={`Pallet ${idx + 1} color`} data-testid={`input-pallet-color-${idx}`} />
+                                  <Input placeholder={`Pallet ${idx + 1}`} value={item.name} onChange={e => updatePallet(item.id, "name", e.target.value)} className="h-7 max-w-[220px] text-xs font-medium" data-testid={`input-pallet-name-${idx}`} />
+                                </div>
                                 {pallets.length > 1 && (
                                   <button onClick={() => setPallets(prev => prev.filter(p => p.id !== item.id))} className="text-slate-300 hover:text-red-500 transition-colors p-1" data-testid={`button-remove-pallet-${idx}`}>
                                     <X className="w-3.5 h-3.5" />
@@ -1300,7 +1417,7 @@ export default function TruckLoadPlanner() {
                               </div>
                             </div>
                           ))}
-                          <Button variant="outline" size="sm" onClick={() => setPallets(prev => [...prev, defaultPallet()])} className="gap-1.5 w-full" data-testid="button-add-pallet">
+                          <Button variant="outline" size="sm" onClick={() => setPallets(prev => [...prev, defaultPallet(prev.length)])} className="gap-1.5 w-full" data-testid="button-add-pallet">
                             <Plus className="w-3.5 h-3.5" /> Add Pallet
                           </Button>
                         </div>
@@ -1342,7 +1459,7 @@ export default function TruckLoadPlanner() {
                       <div className="flex gap-2 mt-5">
                         <Button onClick={calculate} className="flex-1 h-10 gap-2 font-semibold" data-testid="button-calculate">
                           <BarChart3 className="w-4 h-4" />
-                          {mode === "pro" ? "Check Fitment" : "Find Best Trailers"}
+                          {mode === "pro" ? "Build Loading Plan" : "Find Best Trailers"}
                         </Button>
                         <Button variant="outline" onClick={handleReset} className="h-10 gap-1.5 text-xs" data-testid="button-reset">
                           <Trash2 className="w-3.5 h-3.5" /> Reset
@@ -1363,8 +1480,8 @@ export default function TruckLoadPlanner() {
                                 #{ri + 1}
                               </div>
                               <span className="text-sm font-bold text-slate-900">{r.trailer.name}</span>
-                              {r.fits && <Badge className="bg-green-100 text-green-700 border-0 text-[10px]">Fits</Badge>}
-                              {!r.fits && <Badge className="bg-red-100 text-red-700 border-0 text-[10px]">Does Not Fit</Badge>}
+                              {r.fits && <Badge className="bg-green-100 text-green-700 border-0 text-[10px]">{r.spatialPlan ? `${r.trailersRequired} trailer${r.trailersRequired === 1 ? "" : "s"}` : "Fits"}</Badge>}
+                              {!r.fits && <Badge className="bg-red-100 text-red-700 border-0 text-[10px]">Not suitable</Badge>}
                             </div>
                           )}
 
@@ -1381,12 +1498,18 @@ export default function TruckLoadPlanner() {
                                   )}
                                   <div>
                                     <p className={`font-bold ${r.fits ? "text-green-800" : "text-red-800"}`}>
-                                      {r.fits ? "Your cargo fits!" : "Cargo does not fit"}
+                                      {r.fits
+                                        ? r.trailersRequired === 1 ? "Fits in one trailer" : `Requires ${r.trailersRequired} trailers`
+                                        : r.spatialPlan ? "Some cargo cannot be placed" : "Cargo does not fit"}
                                     </p>
                                     <p className="text-xs text-slate-600 mt-0.5">
                                       {r.fits
-                                        ? `All cargo fits within the ${r.trailer.name} with room to spare.`
-                                        : "See warnings and recommendations below."
+                                        ? r.trailersRequired === 1
+                                          ? `All ${r.piecesTotal || "entered"} pieces have collision-free positions in the ${r.trailer.name}.`
+                                          : `All ${r.piecesTotal} pieces are placed across ${r.trailersRequired} × ${r.trailer.name}.`
+                                        : r.spatialPlan
+                                          ? `${r.piecesLoaded} of ${r.piecesTotal} pieces were placed. See the recommendations below.`
+                                          : "See warnings and recommendations below."
                                       }
                                     </p>
                                   </div>
@@ -1422,15 +1545,15 @@ export default function TruckLoadPlanner() {
                                 <StatCard
                                   icon={Truck}
                                   label="Trailer"
-                                  value={r.trailer.name}
+                                  value={r.spatialPlan ? `${r.trailersRequired} × ${r.trailer.name}` : r.trailer.name}
                                   sub={r.trailer.category}
                                   color="#3b82f6"
                                 />
                               </div>
 
                               <div className="space-y-3 mb-4">
-                                <UtilBar pct={r.volumeUtil} label="Volume Utilization" color="#8b5cf6" />
-                                <UtilBar pct={r.weightUtil} label="Weight Utilization" color="#22c55e" />
+                                <UtilBar pct={r.volumeUtil} label={r.trailersRequired > 1 ? "Average Volume Utilization" : "Volume Utilization"} color="#8b5cf6" />
+                                <UtilBar pct={r.weightUtil} label={r.trailersRequired > 1 ? "Average Payload Utilization" : "Payload Utilization"} color="#22c55e" />
                               </div>
 
                               {(r.oversizeWarnings.length > 0 || r.overweightWarning) && (
@@ -1470,10 +1593,85 @@ export default function TruckLoadPlanner() {
                                   </ul>
                                 </div>
                               )}
+
+                              {r.spatialPlan && r.spatialPlan.multi.containers.length > 0 && (
+                                <Button variant="outline" className="mt-4 w-full gap-2 border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100" onClick={() => handleSelectPreview(ri)} data-testid={`button-view-truck-plan-${ri}`}>
+                                  <Play className="h-4 w-4" /> View spatial loading plan
+                                </Button>
+                              )}
                             </CardContent>
                           </Card>
                         </motion.div>
                       ))}
+
+                      {previewResult && previewPlan && previewEntry && previewBalance && (
+                        <Card className="overflow-hidden border-slate-200 shadow-[0_20px_60px_-38px_rgba(15,23,42,0.45)]" data-testid="truck-spatial-plan">
+                          <CardContent className="p-0">
+                            <div className="flex flex-col gap-3 border-b border-slate-200 bg-gradient-to-r from-slate-950 via-slate-900 to-sky-950 p-5 text-white sm:flex-row sm:items-center sm:justify-between">
+                              <div>
+                                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-sky-300">Calculated placement</p>
+                                <h3 className="text-lg font-bold">3D Spatial Loading Plan</h3>
+                                <p className="mt-1 text-xs text-slate-300">{previewResult.trailer.name} · Trailer {previewTrailerIndex + 1} of {previewPlan.trailersRequired}</p>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {previewPlan.trailersRequired > 1 && (
+                                  <select value={previewTrailerIndex} onChange={event => handleSelectPreviewTrailer(Number(event.target.value))} className="h-9 rounded-md border border-white/20 bg-white/10 px-3 text-xs font-semibold text-white backdrop-blur" aria-label="Preview trailer" data-testid="select-preview-trailer">
+                                    {previewPlan.multi.containers.map((_, index) => <option key={index} value={index} className="text-slate-900">Trailer {index + 1}</option>)}
+                                  </select>
+                                )}
+                                <Button variant="outline" onClick={handleExportLoadingPdf} disabled={pdfLoading} className="h-9 gap-2 border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white" data-testid="button-truck-pdf">
+                                  {pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} PDF Report
+                                </Button>
+                              </div>
+                            </div>
+
+                            <div className="space-y-5 p-4 sm:p-5">
+                              <TruckLoadPreview3D placed={previewEntry.result.placed} trailer={previewResult.trailer} loadingSequence={previewSequence} visibleSteps={visibleLoadingSteps} />
+
+                              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="truck-loading-sequence">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                  <div>
+                                    <p className="text-xs font-bold text-slate-800">Nose-to-door loading sequence</p>
+                                    <p className="mt-0.5 text-[11px] text-slate-500">
+                                      {currentLoadingStep
+                                        ? `Step ${currentLoadingStep.step} of ${previewSequence.length}: ${currentLoadingStep.cargoName} at about ${toDisplay(currentLoadingStep.positionFromNoseIn)} ${dimUnit} from the nose.`
+                                        : `Full plan shown · ${previewSequence.length} placement step${previewSequence.length === 1 ? "" : "s"}.`}
+                                    </p>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-2" data-testid="truck-loading-sequence-controls">
+                                    <Button variant="outline" size="sm" onClick={() => setVisibleLoadingSteps("all")} className="h-8 text-xs">Full plan</Button>
+                                    <Button variant="outline" size="sm" onClick={() => setVisibleLoadingSteps(1)} disabled={!previewSequence.length} className="h-8 gap-1 text-xs"><Play className="h-3 w-3" /> Start</Button>
+                                    <Button variant="outline" size="sm" onClick={() => setVisibleLoadingSteps(value => value === "all" ? Math.max(1, previewSequence.length - 1) : Math.max(1, value - 1))} disabled={!previewSequence.length || visibleLoadingSteps === 1} className="h-8 px-2" aria-label="Previous loading step"><ArrowLeft className="h-3.5 w-3.5" /></Button>
+                                    <Button variant="outline" size="sm" onClick={() => setVisibleLoadingSteps(value => value === "all" ? 1 : Math.min(previewSequence.length, value + 1))} disabled={!previewSequence.length || visibleLoadingSteps === previewSequence.length} className="h-8 px-2" aria-label="Next loading step"><ArrowRight className="h-3.5 w-3.5" /></Button>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]" data-testid="truck-balance-panel">
+                                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                                  <div className="mb-3 flex items-center justify-between">
+                                    <p className="text-xs font-bold text-slate-800">Cargo balance estimate</p>
+                                    <Badge className={previewBalance.status === "balanced" ? "border-0 bg-emerald-100 text-emerald-700" : previewBalance.status === "caution" ? "border-0 bg-amber-100 text-amber-700" : "border-0 bg-red-100 text-red-700"}>{previewBalance.status}</Badge>
+                                  </div>
+                                  <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
+                                    <div><dt className="text-slate-400">Cargo centre</dt><dd className="font-semibold text-slate-800">{toDisplay(previewBalance.distanceFromNoseIn)} {dimUnit} from nose</dd></div>
+                                    <div><dt className="text-slate-400">Centre position</dt><dd className="font-semibold text-slate-800">{previewBalance.longitudinalPct.toFixed(1)}% length · {previewBalance.lateralPct.toFixed(1)}% width</dd></div>
+                                    <div><dt className="text-slate-400">Nose / rear half</dt><dd className="font-semibold text-slate-800">{previewBalance.noseWeightPct.toFixed(1)}% / {previewBalance.doorWeightPct.toFixed(1)}%</dd></div>
+                                    <div><dt className="text-slate-400">Left / right half</dt><dd className="font-semibold text-slate-800">{previewBalance.sideAWeightPct.toFixed(1)}% / {previewBalance.sideBWeightPct.toFixed(1)}%</dd></div>
+                                  </dl>
+                                </div>
+                                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                                  <p className="mb-2 text-xs font-bold text-amber-900">Dispatch review</p>
+                                  {previewBalance.guidance.length > 0 ? (
+                                    <ul className="mb-3 space-y-1.5 text-xs text-amber-900">{previewBalance.guidance.map(item => <li key={item} className="flex gap-2"><ChevronRight className="mt-0.5 h-3 w-3 shrink-0" />{item}</li>)}</ul>
+                                  ) : <p className="mb-3 text-xs text-amber-900">The geometric cargo centre is reasonably balanced within this trailer.</p>}
+                                  <p className="text-[11px] leading-relaxed text-amber-800"><strong>Not an axle-weight calculation.</strong> Legal axle loads also require tractor weight, fifth-wheel/kingpin location, axle positions, sliding tandem settings, fuel, and concentrated-load limits. Confirm with the carrier before dispatch.</p>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
 
                       <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
                         <CardContent className="p-5">
@@ -1688,7 +1886,8 @@ export default function TruckLoadPlanner() {
               <p className="text-slate-600 leading-relaxed">
                 Enter the outside dimensions, total gross weight, quantity, stacking rules, and cargo type.
                 The planner compares the load against common dry van, reefer, flatbed, step-deck, and specialized
-                trailer presets. It checks usable space and payload, then flags cargo that may be oversized or overweight.
+                trailer presets. For cartons and pallets it calculates collision-free positions, trailer count,
+                loading order, and a geometric balance estimate before flagging cargo that may be oversized or overweight.
               </p>
             </div>
 
@@ -1697,11 +1896,11 @@ export default function TruckLoadPlanner() {
                 <h3 className="text-lg font-bold text-slate-900 mb-3">Planning checks</h3>
                 <ul className="space-y-3 text-sm text-slate-700">
                   {[
-                    "Total cargo volume, floor area, and gross weight",
-                    "Piece dimensions against trailer deck and interior clearances",
+                    "Collision-aware placement for every carton or pallet",
+                    "Actual trailer count, utilization, and gross weight",
                     "Stacking, rotation, pallet, and load-priority restrictions",
                     "Trailer recommendation when you do not know which equipment to request",
-                    "Basic oversize and overweight warnings for early quoting",
+                    "3D/top-view preview, loading sequence, balance guidance, and PDF report",
                     "Route distance and jurisdictions when Google Maps is configured",
                   ].map((item) => (
                     <li key={item} className="flex gap-2">
@@ -1729,11 +1928,11 @@ export default function TruckLoadPlanner() {
               <h3 className="text-lg font-bold text-slate-900">Truck load planner FAQ</h3>
               <details className="rounded-xl border border-slate-200 bg-white p-4">
                 <summary className="cursor-pointer font-semibold text-slate-800">Can the planner suggest a trailer automatically?</summary>
-                <p className="mt-3 text-sm text-slate-600">Yes. Select “Suggest Best Trailer” and enter the cargo. The tool ranks matching presets by fit, volume, and payload.</p>
+                <p className="mt-3 text-sm text-slate-600">Yes. Select “Help Me Choose” and enter the cargo. The tool ranks presets by actual spatial fit, trailer count, utilization, and payload.</p>
               </details>
               <details className="rounded-xl border border-slate-200 bg-white p-4">
                 <summary className="cursor-pointer font-semibold text-slate-800">Can I upload a packing list?</summary>
-                <p className="mt-3 text-sm text-slate-600">Yes. CSV and spreadsheet rows can be mapped into the cargo table, and supported documents or images can be reviewed through the import flow.</p>
+                <p className="mt-3 text-sm text-slate-600">Yes. CSV and spreadsheet columns can be mapped, while supported documents, emails, text files, PDFs, and images use AI extraction. Confirm the preview and the tool fills every cargo input row for you.</p>
               </details>
               <details className="rounded-xl border border-slate-200 bg-white p-4">
                 <summary className="cursor-pointer font-semibold text-slate-800">Does the warning mean a permit is definitely required?</summary>
@@ -1896,7 +2095,7 @@ export default function TruckLoadPlanner() {
                       <>
                         <FileUp className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                         <p className="text-sm font-medium text-slate-700 mb-1">Drag & drop your file here</p>
-                        <p className="text-xs text-slate-500 mb-3">CSV, Excel, PDF, or image files</p>
+                        <p className="text-xs text-slate-500 mb-3">Spreadsheets, documents, emails, text, PDFs, or images</p>
                         <div className="flex justify-center gap-2 mb-3">
                           <Badge variant="outline" className="text-[10px] gap-1"><FileSpreadsheet className="w-3 h-3" /> CSV/Excel</Badge>
                           <Badge variant="outline" className="text-[10px] gap-1"><FileImage className="w-3 h-3" /> PDF/Image</Badge>
@@ -1904,7 +2103,7 @@ export default function TruckLoadPlanner() {
                         </div>
                         <label className="inline-block">
                           <span className="px-4 py-2 text-xs font-medium text-primary border border-primary rounded-lg cursor-pointer hover:bg-primary/5 transition-colors">Browse Files</span>
-                          <input type="file" accept=".csv,.xlsx,.xls,.pdf,.jpg,.jpeg,.png" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleImportFile(f); }} data-testid="import-file-input" />
+                          <input type="file" accept=".csv,.xlsx,.xls,.pdf,.doc,.docx,.rtf,.odt,.ppt,.pptx,.txt,.text,.md,.json,.xml,.html,.htm,.eml,.jpg,.jpeg,.png,.webp,.gif" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleImportFile(f); }} data-testid="import-file-input" />
                         </label>
                       </>
                     )}
@@ -1920,7 +2119,7 @@ export default function TruckLoadPlanner() {
                       </div>
                       <button onClick={downloadSampleCSV} className="text-[10px] text-primary hover:underline font-medium" data-testid="button-download-template">Download</button>
                     </div>
-                    <p className="text-xs text-slate-500 mb-2">Use headers like: Name, Length, Width, Height, Weight, Quantity</p>
+                    <p className="text-xs text-slate-500 mb-2">Use headers like: Name, Length, Width, Height, Weight Each, Quantity</p>
                     <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
                       <table className="w-full text-[11px]">
                         <thead>
@@ -1929,7 +2128,7 @@ export default function TruckLoadPlanner() {
                             <th className="px-2 py-1.5 text-right font-semibold">Length</th>
                             <th className="px-2 py-1.5 text-right font-semibold">Width</th>
                             <th className="px-2 py-1.5 text-right font-semibold">Height</th>
-                            <th className="px-2 py-1.5 text-right font-semibold">Weight</th>
+                            <th className="px-2 py-1.5 text-right font-semibold">Weight Each</th>
                             <th className="px-2 py-1.5 text-right font-semibold">Qty</th>
                           </tr>
                         </thead>
