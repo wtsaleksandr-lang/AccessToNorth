@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
+import { consumePalletPlanTransfer } from "@/lib/palletTransfer";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
@@ -304,6 +305,33 @@ export default function TruckLoadPlanner() {
   const [importItems, setImportItems] = useState<Array<{ name: string; length: number; width: number; height: number; weight: number; quantity: number; include: boolean }>>([]);
   const [importUnits, setImportUnits] = useState<UnitSystem>("imperial");
   const [dragOver, setDragOver] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || new URLSearchParams(window.location.search).get("from") !== "pallet-builder") return;
+    const transfer = consumePalletPlanTransfer();
+    if (!transfer) return;
+    setPallets(transfer.rows.map((row) => ({
+      id: genId(),
+      name: row.name,
+      palletType: "custom",
+      customL: row.lengthIn,
+      customW: row.widthIn,
+      heightIn: row.heightIn,
+      weightLbs: row.grossWeightLbs,
+      quantity: row.quantity,
+      stackable: false,
+      rotation: "horizontal",
+      priority: 0,
+    })));
+    setCargoMode("pallets");
+    setUnitSystem("imperial");
+    setResults(null);
+    setShowResults(false);
+    toast({
+      title: `${transfer.rows.reduce((sum, row) => sum + row.quantity, 0)} built pallet${transfer.rows.reduce((sum, row) => sum + row.quantity, 0) === 1 ? "" : "s"} filled in`,
+      description: "The pallet dimensions and gross weights are ready for trailer matching.",
+    });
+  }, [toast]);
 
   const activeTrailer = useMemo(() => {
     if (mode === "pro") {
