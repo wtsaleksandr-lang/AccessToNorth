@@ -239,7 +239,7 @@ const STATIC_ROUTES: RouteMeta[] = [
     schemaType: "WebApplication",
     title: "Free Truck Load Planner & Trailer Calculator | AccessToNorth.com",
     description:
-      "Free truck load planner with trailer matching, volume and payload checks, and oversize or overweight warnings for dry vans, reefers, flatbeds, and step decks.",
+      "Free spatial truck load planner with smart trailer matching, collision-aware cargo placement, 3D loading plans, balance guidance, and PDF reports.",
   },
   {
     path: "/tools/freight-quote",

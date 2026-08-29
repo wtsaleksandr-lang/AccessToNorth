@@ -45,7 +45,7 @@ const tools = [
   },
   {
     title: "Truck Load Planner",
-    description: "Plan truck loads with smart trailer matching. Calculate volume and weight utilization, get oversize/overweight warnings for dry vans, reefers, flatbeds, and more.",
+    description: "Build collision-aware truck loading plans with smart trailer matching, 3D placement, balance guidance, loading sequence, and a PDF report.",
     icon: Truck,
     href: "/tools/truck-load-planner",
     available: true,
