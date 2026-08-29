@@ -1,0 +1,23 @@
+{
+  "name": "AccessToNorth.com",
+  "short_name": "AccessToNorth",
+  "description": "Canadian registration, customs compliance, and free trade tools.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#007BFF",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

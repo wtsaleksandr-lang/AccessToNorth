@@ -8,6 +8,7 @@
     "build": "tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
+    "test:unit": "node --import tsx --test tests/unit/*.test.ts",
     "db:push": "drizzle-kit push",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install --with-deps chromium",

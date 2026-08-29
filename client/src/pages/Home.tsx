@@ -28,9 +28,9 @@ export default function Home() {
   const [, setLocation] = useLocation();
 
   usePageMeta({
-    title: "AccessToNorth.com | Canadian GST/HST & Business Registration Services",
-    description: "Expert Canadian business registration services. GST/HST, Business Numbers, CARM, customs clearance coordination, and non-resident compliance. Trusted by 10,000+ businesses.",
-    canonical: "https://www.accesstonorth.com",
+    title: "AccessToNorth.com — Canadian GST/HST & Business Registration",
+    description: "Flat-fee Canadian business registration. GST/HST, Business Numbers, CARM, customs clearance, and non-resident compliance. From CA$99. 5–10 business days.",
+    canonical: "/",
   });
 
   const handleOpenModal = (pkg: string) => {

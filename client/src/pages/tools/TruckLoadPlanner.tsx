@@ -225,9 +225,9 @@ interface CalcResult {
 
 export default function TruckLoadPlanner() {
   usePageMeta({
-    title: "Truck Load Planner | AccessToNorth.com",
-    description: "Plan truck loads with smart trailer matching. Calculate volume, weight utilization, and get oversize/overweight warnings for dry vans, reefers, flatbeds, and more.",
-    canonical: "https://www.accesstonorth.com/tools/truck-load-planner",
+    title: "Free Truck Load Planner & Trailer Calculator | AccessToNorth.com",
+    description: "Free truck load planner with trailer matching, volume and payload checks, and oversize or overweight warnings for dry vans, reefers, flatbeds, and step decks.",
+    canonical: "/tools/truck-load-planner",
   });
 
   const { toast } = useToast();
@@ -1650,6 +1650,70 @@ export default function TruckLoadPlanner() {
             </Card>
           </motion.div>
         </div>
+
+        <section className="mt-16 border-t border-slate-200 bg-white/70 py-14" aria-labelledby="truck-planner-guide">
+          <div className="container mx-auto px-4 md:px-6 max-w-5xl">
+            <div className="max-w-3xl mb-8">
+              <h2 id="truck-planner-guide" className="text-2xl md:text-3xl font-bold font-display text-slate-900 mb-3">
+                How to choose a trailer for your cargo
+              </h2>
+              <p className="text-slate-600 leading-relaxed">
+                Enter the outside dimensions, total gross weight, quantity, stacking rules, and cargo type.
+                The planner compares the load against common dry van, reefer, flatbed, step-deck, and specialized
+                trailer presets. It checks usable space and payload, then flags cargo that may be oversized or overweight.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-9">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 mb-3">Planning checks</h3>
+                <ul className="space-y-3 text-sm text-slate-700">
+                  {[
+                    "Total cargo volume, floor area, and gross weight",
+                    "Piece dimensions against trailer deck and interior clearances",
+                    "Stacking, rotation, pallet, and load-priority restrictions",
+                    "Trailer recommendation when you do not know which equipment to request",
+                    "Basic oversize and overweight warnings for early quoting",
+                    "Route distance and jurisdictions when Google Maps is configured",
+                  ].map((item) => (
+                    <li key={item} className="flex gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" aria-hidden="true" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 mb-3">Important limitation</h3>
+                <p className="text-sm text-slate-700 leading-relaxed mb-3">
+                  The result is a planning estimate, not a legal permit or axle analysis. Actual capacity changes with
+                  tractor weight, trailer configuration, axle spacing, fuel, accessories, cargo centre of gravity,
+                  and the laws of every jurisdiction on the route.
+                </p>
+                <p className="text-sm text-slate-700 leading-relaxed">
+                  Before dispatch, confirm the load with the carrier and permit provider—especially for overwidth,
+                  overheight, overweight, concentrated loads, or cross-border movements.
+                </p>
+              </div>
+            </div>
+
+            <div className="max-w-3xl space-y-3">
+              <h3 className="text-lg font-bold text-slate-900">Truck load planner FAQ</h3>
+              <details className="rounded-xl border border-slate-200 bg-white p-4">
+                <summary className="cursor-pointer font-semibold text-slate-800">Can the planner suggest a trailer automatically?</summary>
+                <p className="mt-3 text-sm text-slate-600">Yes. Select “Suggest Best Trailer” and enter the cargo. The tool ranks matching presets by fit, volume, and payload.</p>
+              </details>
+              <details className="rounded-xl border border-slate-200 bg-white p-4">
+                <summary className="cursor-pointer font-semibold text-slate-800">Can I upload a packing list?</summary>
+                <p className="mt-3 text-sm text-slate-600">Yes. CSV and spreadsheet rows can be mapped into the cargo table, and supported documents or images can be reviewed through the import flow.</p>
+              </details>
+              <details className="rounded-xl border border-slate-200 bg-white p-4">
+                <summary className="cursor-pointer font-semibold text-slate-800">Does the warning mean a permit is definitely required?</summary>
+                <p className="mt-3 text-sm text-slate-600">No. It means the entered cargo may exceed a common equipment or legal limit. Final permit needs depend on the complete vehicle configuration and route.</p>
+              </details>
+            </div>
+          </div>
+        </section>
       </main>
 
       {bulkSettingsOpen && (

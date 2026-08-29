@@ -120,6 +120,7 @@ function Router() {
         <Route path="/tools/truck-load-planner" component={TruckLoadPlanner} />
         <Route path="/resources" component={Resources} />
         <Route path="/resources/how-to-import-into-canada" component={HowToImportIntoCanada} />
+        <Route path="/resources/customs-clearance-under-3300" component={CustomsClearanceUnder2500} />
         <Route path="/resources/customs-clearance-under-2500" component={CustomsClearanceUnder2500} />
         <Route path="/resources/what-is-sima-duty" component={WhatIsSimaDuty} />
         <Route path="/resources/what-is-carm" component={WhatIsCarm} />

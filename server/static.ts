@@ -10,6 +10,35 @@ export function serveStatic(app: Express) {
     );
   }
 
+  app.use((req: Request, res: Response, next) => {
+    const normalizedPath = req.path.replace(/\/+$/, "") || "/";
+    if (normalizedPath === "/resources/customs-clearance-under-2500") {
+      return res.redirect(301, "https://accesstonorth.com/resources/customs-clearance-under-3300/");
+    }
+
+    const host = req.hostname.toLowerCase();
+    if (host === "www.accesstonorth.com") {
+      return res.redirect(308, `https://accesstonorth.com${req.originalUrl}`);
+    }
+
+    const privatePrefixes = [
+      "/admin",
+      "/portal",
+      "/checkout",
+      "/complete-order",
+      "/payment-success",
+      "/payment-cancel",
+      "/order-confirmation",
+      "/onboarding",
+      "/canadian-customs-clearance/checkout",
+    ];
+    if (privatePrefixes.some((prefix) => req.path === prefix || req.path.startsWith(`${prefix}/`))) {
+      res.setHeader("X-Robots-Tag", "noindex, nofollow");
+    }
+
+    next();
+  });
+
   app.use(express.static(distPath, { index: "index.html" }));
 
   // SPA fallthrough — prefer a prerendered per-route index.html if one

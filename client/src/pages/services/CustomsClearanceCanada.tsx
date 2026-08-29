@@ -23,7 +23,7 @@ export default function CustomsClearanceCanada() {
         href: "/customs-calculator",
       }}
       ctaService="customs_clearance"
-      additionalInfo="We offer three flat-rate clearance coordination packages: LVS Coordination (CA$145 for shipments under CA$2,500), Commercial Import Coordination (CA$295 for shipments over CA$2,500), and Clearance Coordination + Compliance Review (CA$395 for full audit). AccessToNorth is not a licensed customs broker; we coordinate with your broker (or introduce you to a vetted partner if you don't have one) who files the declaration with CBSA. Visit our Customs Clearance page for details."
+      additionalInfo="We offer three flat-rate clearance coordination packages: CLVS Coordination (CA$145 for eligible courier shipments up to CA$3,300), Commercial Import Coordination (CA$295 for shipments over CA$3,300 or requiring formal entry), and Clearance Coordination + Compliance Review (CA$395 for full audit). AccessToNorth is not a licensed customs broker; we coordinate with your broker (or introduce you to a vetted partner if you don't have one) who files the declaration with CBSA. Visit our Customs Clearance page for details."
     />
   );
 }

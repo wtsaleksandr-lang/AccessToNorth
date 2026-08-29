@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { BRAND_ICON, SITE_URL } from "@shared/seo";
 
 type JsonLdData = Record<string, unknown>;
 
@@ -35,8 +36,8 @@ export const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "AccessToNorth.com",
-  url: "https://www.accesstonorth.com",
-  logo: "https://www.accesstonorth.com/favicon.png",
+  url: `${SITE_URL}/`,
+  logo: BRAND_ICON,
   description:
     "Canadian business registration and customs setup for residents and non-residents. GST/HST, Business Number, CARM, customs clearance coordination, and HS classification.",
   email: "operations@accesstonorth.com",

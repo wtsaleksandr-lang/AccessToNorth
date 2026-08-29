@@ -43,7 +43,7 @@ const PACKAGES = [
     name: "Low Value Shipment (LVS) Coordination",
     price: 145,
     priceLabel: "$145",
-    subtitle: "For goods valued under CA$2,500 — paperwork prepared for filing by your licensed broker",
+    subtitle: "For eligible courier goods valued up to CA$3,300 — paperwork prepared for filing by your licensed broker",
     features: [
       "Customs entry paperwork prepared for your broker (EDI-ready)",
       "Duty & GST calculation",
@@ -51,7 +51,7 @@ const PACKAGES = [
       "Release coordination with your broker and carrier",
       "Standard tariff treatment (MFN)",
     ],
-    bestFor: "Regular importers, low-risk goods under CA$2,500",
+    bestFor: "Regular importers, eligible low-risk courier goods up to CA$3,300",
     highlighted: false,
   },
   {
@@ -59,7 +59,7 @@ const PACKAGES = [
     name: "Commercial Import Clearance Coordination",
     price: 295,
     priceLabel: "$295",
-    subtitle: "For any goods valued over CA$2,500 — declaration prepared for filing by your licensed broker",
+    subtitle: "For goods over CA$3,300 or shipments requiring formal entry — declaration prepared for filing by your licensed broker",
     features: [
       "Full customs declaration prepared for your broker to file",
       "Duty & tax calculation",
@@ -68,7 +68,7 @@ const PACKAGES = [
       "Standard tariff treatment",
       "Basic compliance screening",
     ],
-    bestFor: "All commercial shipments over CA$2,500",
+    bestFor: "Commercial shipments over CA$3,300 or outside CLVS",
     highlighted: false,
   },
   {
@@ -339,14 +339,14 @@ export default function CustomsClearance() {
           <div className="flex items-center justify-center gap-6 text-sm text-slate-500 mb-10">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-              <span>Under CA$2,500</span>
+              <span>Up to CA$3,300</span>
               <ArrowRight className="w-3 h-3" />
               <span className="font-medium text-slate-700">LVS</span>
             </div>
             <div className="w-px h-4 bg-slate-200"></div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-              <span>Over CA$2,500</span>
+              <span>Over CA$3,300</span>
               <ArrowRight className="w-3 h-3" />
               <span className="font-medium text-slate-700">Commercial</span>
             </div>

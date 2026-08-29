@@ -61,9 +61,9 @@ const tools = [
 
 export default function Tools() {
   usePageMeta({
-    title: "Trade Tools | AccessToNorth.com",
-    description: "Free Canadian trade tools: Customs Duty & Tax Calculator with HS code search, and CARM Security Calculator. Estimate costs before you import.",
-    canonical: "https://www.accesstonorth.com/tools",
+    title: "Free Trade Tools | AccessToNorth.com",
+    description: "Free tools for Canadian importers and exporters: HS code finder, duty calculator, CARM security calculator, 3D container planner, and truck load planner.",
+    canonical: "/tools",
   });
 
   return (

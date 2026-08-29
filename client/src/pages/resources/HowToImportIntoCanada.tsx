@@ -4,59 +4,97 @@ export default function HowToImportIntoCanada() {
   return (
     <ResourceArticlePage
       title="How to Import Into Canada"
-      metaTitle="How to Import Into Canada — Step-by-Step Guide | AccessToNorth.com"
-      metaDescription="Complete guide to importing goods into Canada. Business Number, CARM registration, customs clearance, HS codes, duties, and compliance requirements explained."
-      canonical="https://www.accesstonorth.com/resources/how-to-import-into-canada"
-      lastReviewed="2026-03-15"
-      intro="Importing commercial goods into Canada involves five distinct steps: getting a Business Number, registering on CARM, classifying your goods, understanding what you owe in duties and taxes, and arranging release at the border. This guide walks through each one in plain language, whether you're a Canadian resident or a foreign business selling into Canada."
+      metaTitle="How to Import Into Canada (2026) — Step-by-Step Guide"
+      metaDescription="How to import commercial goods into Canada in 2026: importer setup, BN and RM registration, CARM, HS codes, duties, documents, customs release, and RPP security."
+      canonical="/resources/how-to-import-into-canada"
+      datePublished="2026-03-15"
+      lastReviewed="2026-08-28"
+      intro="To import commercial goods into Canada, first confirm who will be the importer of record and whether the product is admissible. Then set up the importer account, classify and value the goods, prepare the shipping documents, and arrange customs release. The steps below reflect the current CARM process for Canadian and non-resident importers."
       outlinePoints={[
-        "Get a Business Number (BN) and an RM (import/export) program account from the CRA",
-        "Register on the CARM Client Portal with the CBSA and post financial security",
-        "Classify every product with the correct 10-digit Canadian HS code",
-        "Calculate duty, GST, and any provincial tax owed on landed value",
-        "Arrange release with a licensed customs broker or a self-filed clearance",
+        "Confirm the importer of record and check whether the product needs permits or special approval",
+        "Obtain a 9-digit Business Number (BN9) and enrol in the CBSA import-export RM program",
+        "Register the business in CARM and decide whether Release Prior to Payment (RPP) is needed",
+        "Determine the Canadian 10-digit tariff classification, origin, value for duty, and estimated taxes",
+        "Send complete documents to the carrier and customs broker before the shipment arrives",
       ]}
       sections={[
         {
-          heading: "1. Get a Business Number and an RM program account",
+          heading: "1. Confirm the importer of record and product admissibility",
           body: [
-            "The Business Number (BN) is a 9-digit identifier the Canada Revenue Agency assigns to every business operating in Canada. Before you can import commercially, you need a BN with an RM (import/export) program account extension — the full number looks like 12345 6789 RM0001.",
-            "If you are a non-resident business without a Canadian physical presence, you can still register for a BN. We handle these applications routinely for US and overseas sellers. Expect 5–10 business days for CRA to issue the account.",
+            "The importer of record is responsible for the customs declaration, duties and taxes, recordkeeping, and corrections after release. Under DDP terms, this may be the foreign seller acting as a non-resident importer. Under many other transactions, it is the Canadian buyer. Confirm this before booking freight.",
+            "Also check whether the goods are prohibited, controlled, or regulated by another government department. Food, plants, animals, vehicles, medical products, chemicals, firearms, and some steel or textile products may require permits, licences, certificates, or labelling before they ship.",
           ],
         },
         {
-          heading: "2. Register on the CARM Client Portal",
+          heading: "2. Obtain a Business Number and import-export RM account",
           body: [
-            "Since 2024, every commercial importer must onboard onto the CARM (CBSA Assessment and Revenue Management) portal before their first release. CARM is where you view statements of account, post security, pay duties, and delegate authority to your customs broker.",
-            "Onboarding has three parts: claim your RM business account inside the portal, post financial security (see step 4), and delegate access to your broker. Missing any step will delay or block your shipments at the border.",
-          ],
-          note: "CBSA no longer accepts posting security at the port of entry. If you have not posted security in CARM, your commercial shipment cannot be released — even if the broker is ready.",
-        },
-        {
-          heading: "3. Classify your goods with the correct HS code",
-          body: [
-            "Every product entering Canada needs a 10-digit classification under the Canadian Customs Tariff, which aligns with the World Customs Organization's Harmonized System. The first 6 digits are international; the last 4 are Canada-specific.",
-            "The HS code determines the duty rate, whether the goods are subject to Special Import Measures (SIMA), whether they need CFIA or Health Canada permits, and which statistical unit applies. Getting this wrong is the most common cause of penalties and re-assessments.",
+            "Commercial importers need a 9-digit Business Number and an import-export program account, commonly shown as BN9 + RM0001. Most new resident businesses that do not already have a BN can obtain one while registering through CARM. A non-resident business must normally obtain its BN9 from the CRA before registering in CARM.",
+            "The legal business name and address must match the records connected to the BN. Mismatches are a common reason for CARM registration delays.",
           ],
         },
         {
-          heading: "4. Calculate duty, GST, and provincial tax",
+          heading: "3. Register in CARM and decide whether to enrol in RPP",
           body: [
-            "Total landed cost for most imports is: value for duty × duty rate + GST (5%). Some provinces add HST or PST at the border. Goods under trade agreements like CUSMA, CPTPP, or CETA may qualify for preferential or zero-duty treatment — but you must hold a valid certificate of origin to claim it.",
-            "Financial security in CARM must be at least 50% of the highest monthly amount you'll owe in duties and taxes (the Release Prior to Payment minimum is CA$5,000 for bond-backed importers, CA$1,000 for cash deposits).",
+            "The business account manager must register the importer in the CARM Client Portal. A customs broker cannot register the business on the importer's behalf, although the importer can delegate access after registration.",
+            "Release Prior to Payment is optional, but it allows goods to be released before final payment of duties and taxes. RPP requires active financial security. A written security agreement is generally at least 50% of the highest monthly accounts receivable, subject to a CA$5,000 minimum per importer program account. A cash security deposit is generally 100% of the highest monthly amount. Without RPP, payment is required before release.",
+          ],
+          note: "CARM registration and RPP enrolment are separate steps. Being registered in the portal does not automatically activate release-before-payment privileges.",
+        },
+        {
+          heading: "4. Classify, value, and determine the origin of the goods",
+          body: [
+            "Every product needs a Canadian 10-digit tariff classification. The code determines the customs duty rate and may also trigger SIMA duties, permits, quotas, or other controls. A broad product name such as “parts” is not enough; use the material, function, model, and intended use.",
+            "Calculate the value for duty using the applicable customs valuation method and convert foreign currency using the CBSA exchange rate for the accounting date. Preferential duty under CUSMA, CETA, CPTPP, or another trade agreement depends on the origin rules and supporting certification—not simply the country the shipment departs from.",
           ],
         },
         {
-          heading: "5. Arrange clearance at the border",
+          heading: "5. Estimate duty, GST, and total landed cost",
           body: [
-            "You have two options: hire a licensed customs broker to file release on your behalf, or self-file if you have the expertise. Most importers use a broker because the documentation, valuation rules, and CBSA portals are unforgiving of mistakes.",
-            "For shipments under CA$2,500, the courier usually handles clearance automatically on the Low-Value Shipment (LVS) program. Above that threshold, a commercial entry is filed and your CARM security is drawn down.",
+            "A practical landed-cost estimate includes the product value, international freight and insurance, customs duty, import GST, excise or SIMA charges when applicable, brokerage, terminal or courier fees, and inland delivery. For most commercial imports, CBSA collects 5% GST on the value for tax; provincial tax treatment depends on the transaction and importer.",
+            "Use the customs duty calculator for an early estimate, but verify the tariff classification and origin documents before quoting a final landed cost to a customer.",
+          ],
+        },
+        {
+          heading: "6. Prepare the customs and shipping documents",
+          list: [
+            "Commercial invoice with buyer, seller, detailed goods description, quantity, currency, unit price, total price, and country of origin",
+            "Packing list with package count, dimensions, net weight, and gross weight",
+            "Bill of lading, air waybill, or courier waybill",
+            "Certificate or certification of origin when claiming preferential duty",
+            "Permits, licences, test reports, or product certificates when regulated",
+            "Purchase order, payment proof, assists, royalties, or freight invoices when needed to support customs value",
+          ],
+        },
+        {
+          heading: "7. Arrange reporting, customs release, and delivery",
+          body: [
+            "The carrier reports the cargo to CBSA, while the importer or licensed customs broker submits the release and accounting data. Send documents early enough for review before arrival. Missing descriptions, inconsistent values, or an inactive importer account can lead to holds and storage charges.",
+            "Eligible courier shipments with a value for duty not exceeding CA$3,300 may use the Courier Low Value Shipment program. This is a simplified release process, not a duty-free exemption, and regulated or excluded goods may still require formal processing.",
+          ],
+        },
+        {
+          heading: "8. Keep records and correct errors after release",
+          body: "Import responsibility continues after delivery. Keep invoices, origin support, classifications, valuation records, permits, and accounting documents for the required retention period. Review the customs entry after release and correct material errors within the applicable deadline instead of waiting for a CBSA verification.",
+        },
+        {
+          heading: "Frequently asked questions",
+          body: [
+            "Do I need a customs broker to import into Canada? A broker is not mandatory for every commercial import, but the importer remains responsible even when a broker files. First-time importers and regulated or high-value shipments usually benefit from professional review.",
+            "Can a US company import into Canada? Yes. A foreign business can act as a non-resident importer, but it needs the proper BN and RM setup, CARM registration, and a clear plan for tax, customs, and delivery obligations.",
+            "How long should setup take? Timing varies by entity type and whether the CRA or CBSA must correct existing records. Complete, matching company information is more important than relying on a fixed processing estimate.",
           ],
         },
       ]}
+      sourceLinks={[
+        { label: "CBSA — Get started with CARM", href: "https://www.canada.ca/en/border-services-agency/services/carm/register.html" },
+        { label: "CBSA — Commercial importing checklist", href: "https://www.cbsa-asfc.gc.ca/import/checklist-controle-eng.html" },
+        { label: "CBSA — RPP financial security requirements", href: "https://www.cbsa-asfc.gc.ca/services/carm-gcra/rpp-map/prepare-ready-eng.html" },
+        { label: "CBSA — Courier Low Value Shipment threshold", href: "https://www.cbsa-asfc.gc.ca/services/cusma-aceum/lvs-efv-eng.html" },
+      ]}
       relatedLinks={[
-        { label: "CARM Registration", href: "/services/carm-registration-canada" },
+        { label: "Canadian HS Code Finder", href: "/tools/hs-code-finder" },
         { label: "Customs Duty Calculator", href: "/customs-calculator" },
+        { label: "CARM Security Calculator", href: "/carm-security-calculator" },
         { label: "Customs Clearance", href: "/services/customs-clearance-canada" },
       ]}
       ctaService="carm_portal"

@@ -12,6 +12,12 @@
  * included.
  */
 import { getPublishedPosts } from "../client/src/data/blog/posts";
+import {
+  BRAND_ICON,
+  DEFAULT_OG_IMAGE,
+  SITE_URL as CANONICAL_SITE_URL,
+  canonicalUrl,
+} from "../shared/seo";
 
 export interface RouteMeta {
   path: string;
@@ -25,12 +31,19 @@ export interface RouteMeta {
   title: string;
   description: string;
   ogImage?: string;
+  /** Actual date of a meaningful page update. Omitted when unknown. */
+  lastmod?: string;
+  /** Optional crawl-visible schema emitted by the prerender step. */
+  schemaType?: "Article" | "BlogPosting" | "WebApplication";
+  datePublished?: string;
+  dateModified?: string;
 }
 
-const SITE = "https://www.accesstonorth.com";
-const DEFAULT_OG = `${SITE}/og-image.png`;
+const SITE = CANONICAL_SITE_URL;
+const DEFAULT_OG = DEFAULT_OG_IMAGE;
 
 export const SITE_URL = SITE;
+export { BRAND_ICON, canonicalUrl };
 
 const STATIC_ROUTES: RouteMeta[] = [
   {
@@ -87,7 +100,7 @@ const STATIC_ROUTES: RouteMeta[] = [
     changefreq: "monthly",
     title: "Free Trade Tools | AccessToNorth.com",
     description:
-      "Free tools for Canadian importers and exporters: HS code finder, duty calculator, CARM security calculator, container planner, and more.",
+      "Free tools for Canadian importers and exporters: HS code finder, duty calculator, CARM security calculator, 3D container planner, and truck load planner.",
   },
   {
     path: "/resources",
@@ -162,11 +175,21 @@ const STATIC_ROUTES: RouteMeta[] = [
     description:
       "Complete NRI setup for foreign businesses selling in Canada. GST/HST registration, BN setup, CARM onboarding, and simplified regime compliance.",
   },
+  {
+    path: "/canadian-customs-clearance",
+    priority: "0.8",
+    changefreq: "monthly",
+    title: "Canadian Customs Clearance Coordination | AccessToNorth.com",
+    description:
+      "Customs clearance coordination for Canadian imports, with transparent packages for CLVS shipments up to CA$3,300, commercial entries, and compliance review.",
+  },
 
   // Tools
   {
     path: "/tools/hs-code-finder",
     priority: "0.7",
+    changefreq: "monthly",
+    schemaType: "WebApplication",
     title: "HS Code Finder — Canadian Tariff Lookup | AccessToNorth.com",
     description:
       "Search Canadian HS codes by keyword. Find the right 10-digit classification for your product with duty rates and descriptions.",
@@ -174,6 +197,8 @@ const STATIC_ROUTES: RouteMeta[] = [
   {
     path: "/customs-calculator",
     priority: "0.7",
+    changefreq: "monthly",
+    schemaType: "WebApplication",
     title: "Canadian Customs Duty & Tax Calculator | AccessToNorth.com",
     description:
       "Estimate Canadian duty, GST, and PST on your imports. Free online calculator for Canadian importers.",
@@ -181,33 +206,42 @@ const STATIC_ROUTES: RouteMeta[] = [
   {
     path: "/carm-security-calculator",
     priority: "0.7",
+    changefreq: "monthly",
+    schemaType: "WebApplication",
     title: "CARM Financial Security Calculator | AccessToNorth.com",
     description:
       "Calculate your required RPP security amount for CARM enrollment. Get an estimate based on your monthly duty and tax exposure.",
   },
   {
     path: "/tools/container-calculator",
-    priority: "0.6",
-    title: "Container Load Calculator | AccessToNorth.com",
+    priority: "0.8",
+    changefreq: "monthly",
+    lastmod: "2026-08-28",
+    schemaType: "WebApplication",
+    title: "Free 3D Container Loading Calculator | AccessToNorth.com",
     description:
-      "Plan cargo loading in 20', 40', and 40' HC containers. 3D visualization with weight and volume optimization.",
+      "Free 3D container loading calculator for 20', 40', 40' HC, and 45' HC containers. Import cargo dimensions, get a best-fit recommendation, and export a PDF load plan.",
   },
   {
     path: "/tools/truck-load-planner",
-    priority: "0.6",
-    title: "Truck Load Planner | AccessToNorth.com",
+    priority: "0.7",
+    changefreq: "monthly",
+    schemaType: "WebApplication",
+    title: "Free Truck Load Planner & Trailer Calculator | AccessToNorth.com",
     description:
-      "Plan truckload cargo with capacity, weight, and stacking constraints. Free for Canadian shippers.",
+      "Free truck load planner with trailer matching, volume and payload checks, and oversize or overweight warnings for dry vans, reefers, flatbeds, and step decks.",
   },
   {
     path: "/tools/freight-quote",
     priority: "0.5",
+    sitemap: false,
     title: "Freight Quote Tool | AccessToNorth.com",
     description: "Get a shipping rate estimate for your Canadian imports and exports.",
   },
   {
     path: "/tools/shipment-tracking",
     priority: "0.5",
+    sitemap: false,
     title: "Shipment Tracking | AccessToNorth.com",
     description: "Track your Canadian import and export shipments in real time.",
   },
@@ -215,17 +249,27 @@ const STATIC_ROUTES: RouteMeta[] = [
   // Resources
   {
     path: "/resources/how-to-import-into-canada",
-    priority: "0.7",
-    title: "How to Import Into Canada — Step-by-Step Guide | AccessToNorth.com",
+    priority: "0.8",
+    changefreq: "monthly",
+    lastmod: "2026-08-28",
+    schemaType: "Article",
+    datePublished: "2026-03-15",
+    dateModified: "2026-08-28",
+    title: "How to Import Into Canada (2026) — Step-by-Step Guide",
     description:
-      "Complete guide to importing goods into Canada. Business Number, CARM registration, customs clearance, HS codes, duties, and compliance requirements explained.",
+      "How to import commercial goods into Canada in 2026: importer setup, BN and RM registration, CARM, HS codes, duties, documents, customs release, and RPP security.",
   },
   {
-    path: "/resources/customs-clearance-under-2500",
+    path: "/resources/customs-clearance-under-3300",
     priority: "0.7",
-    title: "LVS Customs Clearance Under CA$2,500 | AccessToNorth.com",
+    changefreq: "monthly",
+    lastmod: "2026-08-28",
+    schemaType: "Article",
+    datePublished: "2026-03-10",
+    dateModified: "2026-08-28",
+    title: "CLVS Customs Clearance Under CA$3,300 | AccessToNorth.com",
     description:
-      "How low-value shipments (LVS) under CA$2,500 are cleared through Canadian customs. Simplified process, documentation requirements, and when you still need a broker.",
+      "How eligible courier low-value shipments (CLVS) up to CA$3,300 are released in Canada, including documentation, duty and tax, exclusions, and broker involvement.",
   },
   {
     path: "/resources/what-is-sima-duty",
@@ -296,6 +340,14 @@ const STATIC_ROUTES: RouteMeta[] = [
     title: "Refund Policy | AccessToNorth.com",
     description: "Refund policy for AccessToNorth.com services.",
   },
+  {
+    path: "/security",
+    priority: "0.3",
+    changefreq: "yearly",
+    title: "Security Overview | AccessToNorth.com",
+    description:
+      "How AccessToNorth protects client documents and personal information through encryption, access controls, secure payments, and documented incident response.",
+  },
 ].map((r) => ({ ogImage: DEFAULT_OG, ...r } as RouteMeta));
 
 /**
@@ -318,6 +370,10 @@ export const ROUTES: RouteMeta[] = [
     path: `/blog/${post.slug}`,
     priority: "0.7",
     changefreq: "monthly",
+    lastmod: post.updatedDate ?? post.publishDate,
+    schemaType: "BlogPosting",
+    datePublished: post.publishDate,
+    dateModified: post.updatedDate ?? post.publishDate,
     title: post.metaTitle,
     description: post.metaDescription,
     ogImage: post.heroImageUrl ?? `${SITE}/blog/${post.slug}.svg`,

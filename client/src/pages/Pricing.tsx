@@ -53,8 +53,8 @@ const sections: PricingSection[] = [
     id: "clearance",
     title: "Customs Clearance Coordination",
     items: [
-      { name: "Low-Value Import Clearance Coordination", priceCAD: 145, note: "Under CA$2,500 — paperwork prepared for filing by your licensed broker", service: "clearance-lvs", isClearance: true },
-      { name: "Commercial Import Clearance Coordination", priceCAD: 295, note: "Over CA$2,500 — declaration prepared for filing by your licensed broker", service: "clearance-commercial", isClearance: true },
+      { name: "Low-Value Import Clearance Coordination", priceCAD: 145, note: "Eligible courier goods up to CA$3,300 — paperwork prepared for filing by your licensed broker", service: "clearance-lvs", isClearance: true },
+      { name: "Commercial Import Clearance Coordination", priceCAD: 295, note: "Over CA$3,300 or formal entry required — declaration prepared for filing by your licensed broker", service: "clearance-commercial", isClearance: true },
       { name: "Clearance Coordination + Compliance Review", priceCAD: 395, service: "clearance-compliance", isClearance: true },
     ],
   },

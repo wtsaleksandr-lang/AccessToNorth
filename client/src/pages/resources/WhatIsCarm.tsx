@@ -28,7 +28,7 @@ export default function WhatIsCarm() {
           heading: "Who must register",
           body: [
             "Every person or business that imports commercial goods into Canada — including non-resident importers — must onboard onto the CARM Client Portal. This includes one-off importers, e-commerce sellers, manufacturers, and anyone using the Non-Resident Importer (NRI) model.",
-            "Casual/personal imports are exempt. Courier LVS shipments under CA$2,500 where the courier acts as the importer are also handled differently, but most commercial operations still need CARM.",
+            "Casual or personal imports are handled differently. Eligible courier shipments up to CA$3,300 may use CLVS, but commercial importers remain responsible for their import obligations and may still need CARM depending on how the goods are accounted for.",
           ],
         },
         {

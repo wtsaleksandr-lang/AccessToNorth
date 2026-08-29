@@ -10,6 +10,7 @@ import { ArrowRight, Calendar, Clock } from "lucide-react";
 import { getPublishedPosts } from "@/data/blog/posts";
 import { CATEGORIES, CATEGORY_ORDER } from "@/data/blog/categories";
 import type { BlogCategory } from "@/data/blog/types";
+import { SITE_URL, canonicalUrl } from "@shared/seo";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-CA", {
@@ -32,20 +33,20 @@ export default function BlogIndex() {
     title: "Blog — Canadian Trade & Tax Insights | AccessToNorth.com",
     description:
       "Practical, no-fluff guides on Canadian GST/HST registration, CARM, customs clearance, HS classification, and non-resident trade compliance. Updated weekly.",
-    canonical: "https://www.accesstonorth.com/blog",
+    canonical: canonicalUrl("/blog"),
   });
 
   const blogJsonLd = {
     "@context": "https://schema.org",
     "@type": "Blog",
     name: "AccessToNorth Blog",
-    url: "https://www.accesstonorth.com/blog",
+    url: canonicalUrl("/blog"),
     description:
       "Weekly guides on Canadian trade, customs, and tax compliance for residents and non-residents.",
     publisher: {
       "@type": "Organization",
       name: "AccessToNorth.com",
-      url: "https://www.accesstonorth.com",
+      url: `${SITE_URL}/`,
     },
   };
 
