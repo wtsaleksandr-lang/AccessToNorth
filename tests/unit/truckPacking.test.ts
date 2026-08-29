@@ -79,6 +79,41 @@ test("seven 48 x 48 x 61 inch pallets at 5,260 kg fit one dry van", () => {
   assert.equal(plan.piecesLoaded, 7);
 });
 
+test("ignores untouched blank cargo rows when counting pieces and loading steps", () => {
+  const valid: TruckCartonCargo = {
+    id: "valid",
+    name: "Export pallet",
+    lengthIn: 48,
+    widthIn: 48,
+    heightIn: 61,
+    weightLbs: 1657,
+    quantity: 7,
+    color: "#0f766e",
+    stackable: false,
+    rotation: "horizontal",
+    priority: 0,
+    palletAssign: "none",
+  };
+  const blank: TruckCartonCargo = {
+    ...valid,
+    id: "blank",
+    name: "",
+    lengthIn: 0,
+    widthIn: 0,
+    heightIn: 0,
+    weightLbs: 0,
+    quantity: 1,
+  };
+
+  const items = createTruckPackingItems({ cargoMode: "cartons", cartons: [valid, blank], pallets: [] });
+  const plan = buildTruckSpatialPlan(items, dryVan);
+
+  assert.equal(items.length, 1);
+  assert.equal(plan.piecesTotal, 7);
+  assert.equal(plan.piecesLoaded, 7);
+  assert.equal(plan.loadingSequences[0].length, 7);
+});
+
 test("returns the actual number of trailers when one trailer is insufficient", () => {
   const plan = buildTruckSpatialPlan(palletCargo(27), dryVan);
   assert.equal(plan.complete, true);
