@@ -12,7 +12,9 @@ import {
   FileDown,
   FileSpreadsheet,
   FileUp,
+  LayoutDashboard,
   Layers3,
+  ListChecks,
   Loader2,
   PackagePlus,
   Plus,
@@ -42,10 +44,12 @@ import {
   type PalletSpec,
 } from "@/lib/palletPacking";
 import { savePalletPlanTransfer } from "@/lib/palletTransfer";
+import { buildPalletPlacementCsv } from "@/lib/loadingPlanExports";
 import { PalletPreview3D } from "./pallet-builder/PalletPreview3D";
 
 type UnitSystem = "imperial" | "metric";
 type BuilderMode = "quick" | "pro";
+type ResultTab = "plan" | "overview" | "details";
 
 const IN_TO_CM = 2.54;
 const LB_TO_KG = 0.453592;
@@ -93,6 +97,18 @@ function MetricCard({ icon: Icon, label, value, detail, tone = "sky" }: { icon: 
   );
 }
 
+function PalletLineIcon({ active = false, className = "h-10 w-16" }: { active?: boolean; className?: string }) {
+  const stroke = active ? "#0284c7" : "#64748b";
+  return (
+    <svg viewBox="0 0 84 52" className={className} aria-hidden="true" fill="none">
+      <path d="m11 28 31 9 31-9-31-9-31 9Z" fill={active ? "#e0f2fe" : "#f1f5f9"} stroke={stroke} strokeWidth="1.7" />
+      <path d="M11 28v7l31 9 31-9v-7M42 37v7" stroke={stroke} strokeWidth="1.7" strokeLinejoin="round" />
+      <path d="M18 37v5M66 37v5M27 40v5M57 40v5" stroke={stroke} strokeWidth="2.4" strokeLinecap="round" />
+      <path d="m21 25 21 6 21-6" stroke={stroke} strokeWidth="1.2" opacity=".65" />
+    </svg>
+  );
+}
+
 export default function PalletBuilder() {
   usePageMeta({
     title: "Free 3D Pallet Builder & Carton Calculator | AccessToNorth.com",
@@ -125,6 +141,7 @@ export default function PalletBuilder() {
   const [importError, setImportError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [activeResultTab, setActiveResultTab] = useState<ResultTab>("plan");
 
   const isMetric = unitSystem === "metric";
   const dimUnit = isMetric ? "cm" : "in";
@@ -266,7 +283,9 @@ export default function PalletBuilder() {
     setPdfLoading(true);
     try {
       const { generatePalletReportBlob } = await import("@/lib/palletPdf");
-      const blob = await generatePalletReportBlob({ plan, cartons: activeCartons, unitSystem });
+      const { loadAccessToNorthLogoDataUrl } = await import("@/lib/loadingReportPdfBrand");
+      const logoDataUrl = await loadAccessToNorthLogoDataUrl();
+      const blob = await generatePalletReportBlob({ plan, cartons: activeCartons, unitSystem, logoDataUrl });
       if (blob.size < 1000) throw new Error("Generated report was empty.");
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -282,6 +301,17 @@ export default function PalletBuilder() {
       setPdfLoading(false);
     }
   }, [activeCartons, plan, toast, unitSystem]);
+
+  const exportCsv = useCallback(() => {
+    if (plan.totalPallets === 0) return;
+    const url = URL.createObjectURL(new Blob([buildPalletPlacementCsv(plan, unitSystem)], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `AccessToNorth_PalletPlacements_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast({ title: "Placement CSV ready", description: "Every carton position, layer, rotation, and color is included." });
+  }, [plan, toast, unitSystem]);
 
   const continueToPlanner = useCallback((target: "container" | "truck") => {
     if (plan.totalPallets === 0) return;
@@ -403,14 +433,16 @@ export default function PalletBuilder() {
                   <h2 className="mt-1 text-xl font-bold">Pallet and limits</h2>
                   <div className="mt-5 grid gap-3 sm:grid-cols-2">
                     {PALLET_PRESETS.map((preset) => (
-                      <button key={preset.id} onClick={() => setPalletPresetId(preset.id)} className={`rounded-xl border p-3 text-left transition ${palletPresetId === preset.id ? "border-sky-400 bg-sky-50 ring-2 ring-sky-100" : "border-slate-200 bg-white hover:border-slate-300"}`}>
-                        <p className="text-xs font-bold text-slate-800">{preset.name}</p>
-                        <p className="mt-1 text-[10px] text-slate-500">{formattedDimension(preset.lengthIn)} × {formattedDimension(preset.widthIn)}</p>
+                      <button key={preset.id} onClick={() => setPalletPresetId(preset.id)} className={`flex items-center gap-3 rounded-xl border p-3 text-left transition ${palletPresetId === preset.id ? "border-sky-400 bg-sky-50 ring-2 ring-sky-100" : "border-slate-200 bg-white hover:border-slate-300"}`}>
+                        <PalletLineIcon active={palletPresetId === preset.id} className="h-9 w-14 shrink-0" />
+                        <div className="min-w-0"><p className="truncate text-xs font-bold text-slate-800">{preset.name}</p>
+                        <p className="mt-1 text-[10px] text-slate-500">{formattedDimension(preset.lengthIn)} × {formattedDimension(preset.widthIn)}</p></div>
                       </button>
                     ))}
-                    <button onClick={() => setPalletPresetId("custom")} className={`rounded-xl border p-3 text-left transition ${palletPresetId === "custom" ? "border-sky-400 bg-sky-50 ring-2 ring-sky-100" : "border-slate-200 bg-white hover:border-slate-300"}`}>
-                      <p className="text-xs font-bold text-slate-800">Custom pallet</p>
-                      <p className="mt-1 text-[10px] text-slate-500">Enter your exact base and tare</p>
+                    <button onClick={() => setPalletPresetId("custom")} className={`flex items-center gap-3 rounded-xl border p-3 text-left transition ${palletPresetId === "custom" ? "border-sky-400 bg-sky-50 ring-2 ring-sky-100" : "border-slate-200 bg-white hover:border-slate-300"}`}>
+                      <PalletLineIcon active={palletPresetId === "custom"} className="h-9 w-14 shrink-0" />
+                      <div><p className="text-xs font-bold text-slate-800">Custom pallet</p>
+                      <p className="mt-1 text-[10px] text-slate-500">Enter your exact base and tare</p></div>
                     </button>
                   </div>
 
@@ -443,48 +475,67 @@ export default function PalletBuilder() {
             <div className="space-y-6 lg:sticky lg:top-24 lg:self-start" data-testid="pallet-results">
               {currentPallet ? (
                 <>
-                  <Card className="overflow-hidden border-slate-200 shadow-lg">
+                  <Card className="overflow-hidden border-slate-200 shadow-lg" data-testid="pallet-results-workspace">
                     <CardContent className="p-0">
-                      <div className="flex flex-col justify-between gap-3 border-b border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:px-5">
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-teal-600">Live optimized result</p>
-                          <h2 className="mt-1 text-lg font-bold">3D pallet building preview</h2>
+                      <div className="flex flex-col gap-3 border-b border-slate-200 bg-white p-3 sm:p-4">
+                        <div className="grid w-full grid-cols-3 gap-1" role="tablist" aria-label="Pallet result views">
+                          {([
+                            { id: "plan" as const, label: "Build Plan", icon: Box },
+                            { id: "overview" as const, label: "Overview", icon: LayoutDashboard },
+                            { id: "details" as const, label: "Carton Details", icon: ListChecks },
+                          ]).map((tab) => {
+                            const Icon = tab.icon;
+                            const selected = activeResultTab === tab.id;
+                            return <button key={tab.id} type="button" role="tab" aria-selected={selected} onClick={() => setActiveResultTab(tab.id)} className={`inline-flex min-w-0 items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-[10px] font-semibold whitespace-nowrap transition sm:gap-2 sm:px-3 sm:text-sm ${selected ? "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200" : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"}`} data-testid={`pallet-result-tab-${tab.id}`}><Icon className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" /><span className="truncate">{tab.label}</span></button>;
+                          })}
                         </div>
-                        <Button variant="outline" size="sm" className="gap-1.5" disabled={pdfLoading} onClick={exportPdf}>{pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} PDF plan</Button>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button variant="outline" size="sm" className="gap-1.5 px-2 text-xs sm:text-sm" onClick={exportCsv}><FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Placement CSV</Button>
+                          <Button variant="outline" size="sm" className="gap-1.5 px-2 text-xs sm:text-sm" disabled={pdfLoading} onClick={exportPdf}>{pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Complete PDF</Button>
+                        </div>
                       </div>
-                      <div className="p-4 sm:p-5">
+                      <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50/70 p-3 sm:p-4">
+                        <div className="rounded-xl bg-white p-2 text-sky-700 shadow-sm ring-1 ring-slate-200"><PalletLineIcon active className="h-9 w-16" /></div>
+                        <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">Pallet {selectedPalletIndex + 1} of {plan.totalPallets}</p><p className="mt-0.5 truncate text-[11px] text-slate-500">{selectedPallet.name} · {currentPallet.cartonCount} cartons · {currentPallet.layers.length} layers</p></div>
+                        {plan.totalPallets > 1 && <select value={selectedPalletIndex} onChange={(event) => setSelectedPalletIndex(Number(event.target.value))} className="h-9 max-w-28 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold" aria-label="Selected pallet">{plan.pallets.map((_, index) => <option key={index} value={index}>Pallet {index + 1}</option>)}</select>}
+                      </div>
+
+                      {activeResultTab === "plan" && <div className="p-4 sm:p-5">
+                        <div className="mb-3"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-teal-600">Calculated placement</p><h2 className="mt-1 text-lg font-bold">3D pallet building preview</h2></div>
                         <PalletPreview3D builtPallet={currentPallet} pallet={selectedPallet} visibleLayer={visibleLayer} />
                         <div className="mt-3 flex flex-wrap items-center gap-2">
                           <button onClick={() => setVisibleLayer("all")} className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold ${visibleLayer === "all" ? "border-slate-800 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600"}`}>Full pallet</button>
                           {currentPallet.layers.map((layer) => <button key={layer.index} onClick={() => setVisibleLayer(layer.index)} className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold ${visibleLayer === layer.index ? "border-sky-600 bg-sky-600 text-white" : "border-slate-200 bg-white text-slate-600"}`}>Layer {layer.index}</button>)}
                         </div>
-                      </div>
+                      </div>}
+
+                      {activeResultTab === "overview" && <div className="space-y-4 p-4 sm:p-5">
+                        <div className={`flex items-start gap-3 rounded-2xl border p-4 ${currentPallet.stability === "good" && plan.warnings.length === 0 ? "border-emerald-200 bg-emerald-50" : currentPallet.stability === "risk" || plan.warnings.length > 0 ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50"}`}>
+                          {currentPallet.stability === "good" && plan.warnings.length === 0 ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" /> : <AlertTriangle className={`mt-0.5 h-5 w-5 shrink-0 ${currentPallet.stability === "risk" || plan.warnings.length > 0 ? "text-red-600" : "text-amber-600"}`} />}
+                          <div><p className="text-sm font-bold text-slate-900">{currentPallet.stability === "good" && plan.warnings.length === 0 ? "Plan ready for warehouse review" : "Review this pallet before building"}</p><p className="mt-1 text-xs leading-5 text-slate-600">The geometric plan respects the entered footprint, height, weight, rotation, and stacking rules. Confirm carton strength, pallet rating, wrap, and handling conditions.</p></div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <MetricCard icon={PackagePlus} label="Pallets required" value={String(plan.totalPallets)} detail={`${plan.averageCartonsPerPallet} cartons average`} tone="sky" />
+                          <MetricCard icon={Boxes} label="Cartons planned" value={`${plan.totalCartons}`} detail={`${currentPallet.layers.length} layers on selected pallet`} tone="teal" />
+                          <MetricCard icon={Scale} label="Selected gross" value={formattedWeight(currentPallet.grossWeightLbs)} detail={`Limit ${formattedWeight(maxGrossWeightLbs)}`} tone="violet" />
+                          <MetricCard icon={Layers3} label="Loaded height" value={formattedDimension(currentPallet.loadedHeightIn)} detail={`${currentPallet.averageLayerUtilizationPct}% average layer use`} tone="amber" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
+                          <div className="rounded-xl bg-slate-50 p-3"><p className="text-[9px] uppercase text-slate-400">Loaded size</p><p className="mt-1 font-bold">{formattedDimension(currentPallet.loadedLengthIn)} × {formattedDimension(currentPallet.loadedWidthIn)}</p></div>
+                          <div className="rounded-xl bg-slate-50 p-3"><p className="text-[9px] uppercase text-slate-400">Length balance</p><p className="mt-1 font-bold">{currentPallet.centerOfGravity.xPct}%</p></div>
+                          <div className="rounded-xl bg-slate-50 p-3"><p className="text-[9px] uppercase text-slate-400">Width balance</p><p className="mt-1 font-bold">{currentPallet.centerOfGravity.yPct}%</p></div>
+                          <div className="rounded-xl bg-slate-50 p-3"><p className="text-[9px] uppercase text-slate-400">Stability check</p><p className={`mt-1 font-bold ${currentPallet.stability === "good" ? "text-teal-600" : currentPallet.stability === "review" ? "text-amber-600" : "text-red-600"}`}>{currentPallet.stability === "good" ? "Good" : currentPallet.stability === "review" ? "Review" : "Risk"}</p></div>
+                        </div>
+                        {(plan.warnings.length > 0 || plan.recommendations.length > 0) && <div className="space-y-2">{plan.warnings.map((warning) => <div key={warning} className="flex gap-2 rounded-xl bg-red-50 p-3 text-xs text-red-800"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{warning}</div>)}{plan.recommendations.map((recommendation) => <div key={recommendation} className="flex gap-2 rounded-xl bg-amber-50 p-3 text-xs text-amber-900"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />{recommendation}</div>)}</div>}
+                      </div>}
+
+                      {activeResultTab === "details" && <div className="space-y-5 p-4 sm:p-5">
+                        <div><h3 className="text-sm font-bold text-slate-900">Carton manifest</h3><p className="mt-1 text-[11px] text-slate-500">Source rows used to calculate every pallet.</p></div>
+                        <div className="space-y-2">{activeCartons.filter((carton) => carton.included !== false && carton.quantity > 0).map((carton) => <div key={carton.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-xs"><span className="h-4 w-4 rounded-md shadow-sm ring-1 ring-black/5" style={{ backgroundColor: carton.color }} /><div className="min-w-0"><p className="truncate font-bold text-slate-800">{carton.name || "Carton"}</p><p className="mt-0.5 text-[10px] text-slate-500">{formattedDimension(carton.lengthIn)} × {formattedDimension(carton.widthIn)} × {formattedDimension(carton.heightIn)} · {formattedWeight(carton.weightLbs)} each</p></div><span className="font-bold text-slate-700">× {carton.quantity}</span></div>)}</div>
+                        <div><h3 className="text-sm font-bold text-slate-900">Selected pallet build sequence</h3><div className="mt-3 space-y-2">{currentPallet.layers.map((layer) => <div key={layer.index} className="flex items-center gap-3 rounded-xl bg-slate-50 p-3"><div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-xs font-extrabold text-sky-700 shadow-sm">{layer.index}</div><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-slate-800">{layer.cartonName}</p><p className="mt-0.5 text-[10px] text-slate-500">{layer.placements.length} cartons · {layer.pattern === "rows-lengthwise" ? "Lengthwise rows" : "Crosswise rows"}</p></div><span className="text-[11px] font-bold text-slate-600">{layer.utilizationPct}%</span></div>)}</div></div>
+                      </div>}
                     </CardContent>
                   </Card>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <MetricCard icon={PackagePlus} label="Pallets required" value={String(plan.totalPallets)} detail={`${plan.averageCartonsPerPallet} cartons average`} tone="sky" />
-                    <MetricCard icon={Boxes} label="Cartons planned" value={`${plan.totalCartons}`} detail={`${currentPallet.layers.length} layers on selected pallet`} tone="teal" />
-                    <MetricCard icon={Scale} label="Selected gross" value={formattedWeight(currentPallet.grossWeightLbs)} detail={`Limit ${formattedWeight(maxGrossWeightLbs)}`} tone="violet" />
-                    <MetricCard icon={Layers3} label="Loaded height" value={formattedDimension(currentPallet.loadedHeightIn)} detail={`${currentPallet.averageLayerUtilizationPct}% average layer use`} tone="amber" />
-                  </div>
-
-                  <Card className="border-slate-200 shadow-sm">
-                    <CardContent className="p-5">
-                      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-                        <div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Pallet details</p><h3 className="mt-1 font-bold">Pallet {selectedPalletIndex + 1} of {plan.totalPallets}</h3></div>
-                        {plan.totalPallets > 1 && <select value={selectedPalletIndex} onChange={(event) => setSelectedPalletIndex(Number(event.target.value))} className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold">{plan.pallets.map((_, index) => <option key={index} value={index}>Pallet {index + 1}</option>)}</select>}
-                      </div>
-                      <div className="mt-4 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
-                        <div className="rounded-xl bg-slate-50 p-3"><p className="text-[9px] uppercase text-slate-400">Loaded size</p><p className="mt-1 font-bold">{formattedDimension(currentPallet.loadedLengthIn)} × {formattedDimension(currentPallet.loadedWidthIn)}</p></div>
-                        <div className="rounded-xl bg-slate-50 p-3"><p className="text-[9px] uppercase text-slate-400">Length balance</p><p className="mt-1 font-bold">{currentPallet.centerOfGravity.xPct}%</p></div>
-                        <div className="rounded-xl bg-slate-50 p-3"><p className="text-[9px] uppercase text-slate-400">Width balance</p><p className="mt-1 font-bold">{currentPallet.centerOfGravity.yPct}%</p></div>
-                        <div className="rounded-xl bg-slate-50 p-3"><p className="text-[9px] uppercase text-slate-400">Stability check</p><p className={`mt-1 font-bold ${currentPallet.stability === "good" ? "text-teal-600" : currentPallet.stability === "review" ? "text-amber-600" : "text-red-600"}`}>{currentPallet.stability === "good" ? "Good" : currentPallet.stability === "review" ? "Review" : "Risk"}</p></div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {(plan.warnings.length > 0 || plan.recommendations.length > 0) && <Card className="border-slate-200 shadow-sm"><CardContent className="space-y-2 p-5">{plan.warnings.map((warning) => <div key={warning} className="flex gap-2 rounded-xl bg-red-50 p-3 text-xs text-red-800"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{warning}</div>)}{plan.recommendations.map((recommendation) => <div key={recommendation} className="flex gap-2 rounded-xl bg-amber-50 p-3 text-xs text-amber-900"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />{recommendation}</div>)}</CardContent></Card>}
 
                   <Card className="overflow-hidden border-0 bg-slate-950 text-white shadow-xl">
                     <CardContent className="p-5 sm:p-6">
@@ -503,11 +554,14 @@ export default function PalletBuilder() {
             </div>
           </div>
 
-          <section className="mx-auto mt-16 max-w-5xl border-t border-slate-200 pt-12">
-            <div className="grid gap-8 md:grid-cols-2">
-              <div><h2 className="text-2xl font-bold">How the pallet builder works</h2><p className="mt-3 text-sm leading-6 text-slate-600">The calculator tests compatible carton rotations and row patterns against the selected pallet footprint. It then creates layers while enforcing the loaded-height and gross-weight limits, keeping non-stackable cargo clear, and centering partial layers where possible.</p></div>
-              <div className="space-y-3">{["Use outside carton dimensions and gross weight per carton.", "Confirm the actual pallet rating and receiving-warehouse limits.", "Treat balance and stability results as planning checks—not a substitute for compression, wrapping, or engineering approval."].map((item) => <div key={item} className="flex gap-2 text-sm text-slate-600"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-teal-500" />{item}</div>)}</div>
-            </div>
+          <section className="mx-auto mt-16 max-w-5xl border-t border-slate-200 pt-8">
+            <details className="group rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 font-bold text-slate-900 sm:p-6"><span>How the pallet builder works</span><span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-lg text-slate-500 transition group-open:rotate-45">+</span></summary>
+              <div className="grid gap-8 border-t border-slate-100 p-5 sm:p-6 md:grid-cols-2">
+                <p className="text-sm leading-6 text-slate-600">The calculator tests compatible carton rotations and row patterns against the selected pallet footprint. It then creates layers while enforcing the loaded-height and gross-weight limits, keeping non-stackable cargo clear, and centering partial layers where possible.</p>
+                <div className="space-y-3">{["Use outside carton dimensions and gross weight per carton.", "Confirm the actual pallet rating and receiving-warehouse limits.", "Treat balance and stability results as planning checks—not a substitute for compression, wrapping, or engineering approval."].map((item) => <div key={item} className="flex gap-2 text-sm text-slate-600"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-teal-500" />{item}</div>)}</div>
+              </div>
+            </details>
             <div className="mt-9 flex flex-wrap gap-3 text-sm"><Link href="/tools/container-calculator" className="font-semibold text-sky-700 hover:underline">Container Loading Calculator</Link><span className="text-slate-300">·</span><Link href="/tools/truck-load-planner" className="font-semibold text-sky-700 hover:underline">Truck Load Planner</Link><span className="text-slate-300">·</span><Link href="/tools" className="font-semibold text-sky-700 hover:underline">All free tools</Link></div>
           </section>
         </div>
