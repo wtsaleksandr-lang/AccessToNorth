@@ -19,6 +19,13 @@ export interface ContainerBalance {
   guidance: string[];
 }
 
+export interface CenteredContainerLayout {
+  placed: PlacedBox[];
+  shiftXIn: number;
+  shiftZIn: number;
+  changed: boolean;
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
@@ -121,5 +128,38 @@ export function calculateContainerBalance(
     sideAWeightPct,
     sideBWeightPct: 100 - sideAWeightPct,
     guidance,
+  };
+}
+
+/**
+ * Moves the complete cargo block as one rigid layout toward the geometric
+ * centre of the container. A rigid translation preserves every existing
+ * collision, support, and stacking relationship while keeping all cargo
+ * inside the container bounds.
+ */
+export function centerContainerCargoLayout(
+  placed: PlacedBox[],
+  container: ContainerSpec,
+): CenteredContainerLayout {
+  if (placed.length === 0) return { placed, shiftXIn: 0, shiftZIn: 0, changed: false };
+
+  const balance = calculateContainerBalance(placed, container);
+  const minX = Math.min(...placed.map((box) => box.x));
+  const maxX = Math.max(...placed.map((box) => box.x + box.l));
+  const minZ = Math.min(...placed.map((box) => box.z));
+  const maxZ = Math.max(...placed.map((box) => box.z + box.w));
+  const requestedX = container.lengthIn / 2 - balance.centerXIn;
+  const requestedZ = container.widthIn / 2 - balance.centerZIn;
+  const shiftXIn = clamp(requestedX, -minX, container.lengthIn - maxX);
+  const shiftZIn = clamp(requestedZ, -minZ, container.widthIn - maxZ);
+  const changed = Math.abs(shiftXIn) > 0.1 || Math.abs(shiftZIn) > 0.1;
+
+  return {
+    placed: changed
+      ? placed.map((box) => ({ ...box, x: box.x + shiftXIn, z: box.z + shiftZIn }))
+      : placed,
+    shiftXIn,
+    shiftZIn,
+    changed,
   };
 }

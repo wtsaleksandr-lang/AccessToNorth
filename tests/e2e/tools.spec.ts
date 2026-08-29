@@ -118,10 +118,13 @@ test.describe("tool pages load without runtime errors", () => {
     await expect(page.getByTestId("notice-all-fit")).toContainText("1 × 40' High Cube", { timeout: 10_000 });
     await expect(page.getByTestId("notice-container-recommendation")).toContainText("40' Standard");
     await expect(page.getByTestId("container-comparison-panel")).toBeVisible();
+    await expect(page.getByTestId("container-comparison-20dc")).toHaveCount(0);
+    await page.getByTestId("button-toggle-container-comparison").click();
     await expect(page.getByTestId("container-comparison-20dc")).toContainText("2 containers");
     await expect(page.getByTestId("container-comparison-40dc")).toContainText("Best fit");
-    await expect(page.getByTestId("container-balance-panel")).toBeVisible();
-    await expect(page.getByTestId("container-balance-panel")).toContainText("Weight Balance & Center of Gravity");
+    await expect(page.getByTestId("container-results-workspace")).toBeVisible();
+    await expect(page.getByTestId("result-tab-plan")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("container-guide-details")).not.toHaveAttribute("open", "");
     await expect(page.getByTestId("button-toggle-container-branding")).toHaveCount(0);
 
     // A browser with WebGL gets the guarded manual layout editor. Browsers
@@ -134,6 +137,16 @@ test.describe("tool pages load without runtime errors", () => {
       await expect(page.getByTestId("loading-sequence-controls")).toBeVisible();
       await expect(page.getByTestId("loading-sequence-controls")).toContainText("Loading step 1 of 7");
     }
+
+    await page.getByTestId("result-tab-overview").click();
+    await expect(page.getByTestId("container-balance-panel")).toBeVisible();
+    await expect(page.getByTestId("container-balance-panel")).toContainText("Weight Balance & Center of Gravity");
+    await page.getByTestId("button-toggle-container-balance").click();
+    await expect(page.getByTestId("container-balance-panel")).toContainText("Treat this as guidance");
+    await expect(page.getByTestId("cargo-mix-panel")).toBeVisible();
+
+    await page.getByTestId("result-tab-details").click();
+    await expect(page.getByTestId("table-loading-details-0")).toBeVisible();
 
     // Three.js often logs GPU warnings — filter those out but fail on real errors.
     const realErrors = errors.filter((e) => !/WebGL|GPU|THREE\./i.test(e));
