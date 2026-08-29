@@ -65,6 +65,7 @@ import {
   type PlacedBox,
   type RotationMode,
 } from "@/lib/containerPacking";
+import { mergeImportedCargoItems, type ImportedCargoRow } from "@/lib/containerImport";
 
 const IN_TO_CM = 2.54;
 const CM_TO_IN = 1 / IN_TO_CM;
@@ -870,7 +871,7 @@ export default function ContainerCalculator() {
   const [importError, setImportError] = useState<string | null>(null);
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const [importUnits, setImportUnits] = useState<"imperial" | "metric">("imperial");
-  const [importItems, setImportItems] = useState<Array<{ name: string; length: number; width: number; height: number; weight: number; quantity: number; stackable?: boolean; rotationMode?: RotationMode; loadPriority?: LoadPriority; palletized?: boolean; include: boolean }>>([]);
+  const [importItems, setImportItems] = useState<ImportedCargoRow[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const importFileRef = useRef<HTMLInputElement>(null);
   const [importRawHeaders, setImportRawHeaders] = useState<string[]>([]);
@@ -1166,36 +1167,30 @@ export default function ContainerCalculator() {
   }, [handleImportFile]);
 
   const confirmImport = useCallback(() => {
-    const toAdd = importItems.filter((i) => i.include && (i.length > 0 || i.width > 0 || i.height > 0));
-    if (toAdd.length === 0) return;
-    const isImportMetric = importUnits === "metric";
-    const startIdx = cargoItems.length;
-    const newItems: CargoItem[] = toAdd.map((item, idx) => ({
-      id: generateId(),
-      name: item.name,
-      length: isImportMetric ? item.length * CM_TO_IN : item.length,
-      width: isImportMetric ? item.width * CM_TO_IN : item.width,
-      height: isImportMetric ? item.height * CM_TO_IN : item.height,
-      weight: isImportMetric ? item.weight * KG_TO_LB : item.weight,
-      quantity: item.quantity,
-      color: CARGO_COLORS[(startIdx + idx) % CARGO_COLORS.length],
-      stackable: item.stackable !== undefined ? item.stackable : bulkDefaults.stackable,
-      palletized: item.palletized !== undefined ? item.palletized : bulkDefaults.palletized,
-      palletType: bulkDefaults.palletType,
-      customPalletL: bulkDefaults.customPalletL,
-      customPalletW: bulkDefaults.customPalletW,
-      customPalletH: bulkDefaults.customPalletH,
-      rotationMode: item.rotationMode !== undefined ? item.rotationMode : bulkDefaults.rotationMode,
-      included: true,
-      loadPriority: item.loadPriority !== undefined ? item.loadPriority : bulkDefaults.loadPriority,
-    }));
-    setCargoItems((prev) => [...prev, ...newItems]);
+    const importedCount = importItems.filter((i) => (
+      i.include && (i.length > 0 || i.width > 0 || i.height > 0)
+    )).length;
+    if (importedCount === 0) return;
+
+    setCargoItems((previousItems) => {
+      return mergeImportedCargoItems({
+        previousItems,
+        importedRows: importItems,
+        units: importUnits,
+        defaults: bulkDefaults,
+        colors: CARGO_COLORS,
+        createId: generateId,
+      }).items;
+    });
+    setUnitSystem(importUnits);
+    setMultiResult(null);
+    setRecommendation(null);
     setShowImportModal(false);
     toast({
-      title: `${newItems.length} item${newItems.length > 1 ? "s" : ""} imported`,
-      description: "Items have been added to your packing list.",
+      title: `${importedCount} item${importedCount > 1 ? "s" : ""} filled in`,
+      description: "The extracted cargo fields are ready for review in the calculator.",
     });
-  }, [importItems, importUnits, cargoItems.length, bulkDefaults, toast]);
+  }, [importItems, importUnits, bulkDefaults, toast]);
 
   const downloadSampleCSV = useCallback(() => {
     const csvContent = `Name,Length,Width,Height,Total Weight,Quantity,Stackable,Rotation,Priority,Palletized\nCardboard Box A,24,18,12,150,10,yes,all,normal,no\nPallet Load B,48,40,36,1000,4,no,fixed,first,yes\nSmall Carton C,12,10,8,125,25,yes,horizontal,last,no`;
@@ -3058,7 +3053,7 @@ export default function ContainerCalculator() {
                                   data-testid="button-confirm-import"
                                 >
                                   <Plus className="w-4 h-4" />
-                                  Import {importItems.filter((i) => i.include).length} Item{importItems.filter((i) => i.include).length !== 1 ? "s" : ""}
+                                  Fill Calculator with {importItems.filter((i) => i.include).length} Item{importItems.filter((i) => i.include).length !== 1 ? "s" : ""}
                                 </Button>
                                 <Button
                                   variant="outline"
