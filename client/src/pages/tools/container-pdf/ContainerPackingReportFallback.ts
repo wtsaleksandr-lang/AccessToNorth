@@ -29,9 +29,9 @@ function resolveBrand(brand?: BasicPackingReportProps["brand"]) {
   return {
     name: brand?.name?.trim() || "AccessToNorth",
     domainSuffix: brand?.domainSuffix ?? ".com",
-    tagline: brand?.tagline ?? "Canadian Import & Business Registration Services",
+    tagline: brand?.tagline ?? "Container loading calculator",
     logoDataUrl: brand?.logoDataUrl,
-    accentColor: /^#[0-9a-f]{6}$/i.test(brand?.accentColor ?? "") ? brand!.accentColor! : "#0f7fe5",
+    accentColor: /^#[0-9a-f]{6}$/i.test(brand?.accentColor ?? "") ? brand!.accentColor! : "#007BFF",
   };
 }
 
@@ -82,7 +82,7 @@ function addHeader(doc: jsPDF, title: string, subtitle: string, brandInput?: Bas
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100, 116, 139);
   doc.setFontSize(7);
-  doc.text(brand.tagline, 78, 42);
+  if (brandInput?.tagline) doc.text(brand.tagline, 78, 42);
   doc.text(subtitle, pageWidth - 32, 41, { align: "right" });
 }
 
