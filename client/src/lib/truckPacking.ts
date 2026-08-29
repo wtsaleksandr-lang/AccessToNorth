@@ -153,35 +153,53 @@ export function createTruckPackingItems({
   pallets: TruckPalletCargo[];
 }): CargoItem[] {
   if (cargoMode === "cartons") {
-    return cartons.flatMap((carton) => {
-      if (carton.palletAssign !== "none") return autoPalletizeCarton(carton);
-      return [{
-        id: carton.id,
-        name: carton.name || "Carton",
-        length: carton.lengthIn,
-        width: carton.widthIn,
-        height: carton.heightIn,
-        weight: carton.weightLbs * carton.quantity,
-        quantity: carton.quantity,
-        color: carton.color,
-        stackable: carton.stackable,
-        palletized: false,
-        palletType: "none",
-        customPalletL: 48,
-        customPalletW: 40,
-        customPalletH: 0,
-        rotationMode: carton.rotation,
-        included: true,
-        loadPriority: priorityFromNumber(carton.priority),
-      } satisfies CargoItem];
-    });
+    return cartons
+      .filter((carton) => (
+        carton.quantity > 0 &&
+        carton.lengthIn > 0 &&
+        carton.widthIn > 0 &&
+        carton.heightIn > 0 &&
+        carton.weightLbs >= 0
+      ))
+      .flatMap((carton) => {
+        if (carton.palletAssign !== "none") return autoPalletizeCarton(carton);
+        return [{
+          id: carton.id,
+          name: carton.name || "Carton",
+          length: carton.lengthIn,
+          width: carton.widthIn,
+          height: carton.heightIn,
+          weight: carton.weightLbs * carton.quantity,
+          quantity: carton.quantity,
+          color: carton.color,
+          stackable: carton.stackable,
+          palletized: false,
+          palletType: "none",
+          customPalletL: 48,
+          customPalletW: 40,
+          customPalletH: 0,
+          rotationMode: carton.rotation,
+          included: true,
+          loadPriority: priorityFromNumber(carton.priority),
+        } satisfies CargoItem];
+      });
   }
 
-  return pallets.map((pallet) => {
-    const dimensions = pallet.palletType === "custom"
-      ? { lengthIn: pallet.customL, widthIn: pallet.customW }
-      : TRUCK_PALLET_DIMENSIONS[pallet.palletType] || { lengthIn: pallet.customL, widthIn: pallet.customW };
-    return {
+  return pallets
+    .map((pallet) => ({
+      pallet,
+      dimensions: pallet.palletType === "custom"
+        ? { lengthIn: pallet.customL, widthIn: pallet.customW }
+        : TRUCK_PALLET_DIMENSIONS[pallet.palletType] || { lengthIn: pallet.customL, widthIn: pallet.customW },
+    }))
+    .filter(({ pallet, dimensions }) => (
+      pallet.quantity > 0 &&
+      dimensions.lengthIn > 0 &&
+      dimensions.widthIn > 0 &&
+      pallet.heightIn > 0 &&
+      pallet.weightLbs >= 0
+    ))
+    .map(({ pallet, dimensions }) => ({
       id: pallet.id,
       name: pallet.name || "Pallet",
       length: dimensions.lengthIn,
@@ -199,8 +217,7 @@ export function createTruckPackingItems({
       rotationMode: pallet.rotation,
       included: true,
       loadPriority: priorityFromNumber(pallet.priority),
-    } satisfies CargoItem;
-  });
+    } satisfies CargoItem));
 }
 
 export function trailerAsPackingContainer(trailer: TruckTrailerLike): ContainerSpec {
