@@ -8,9 +8,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { RegistrationModal } from "@/components/RegistrationModal";
 import { DiyVsUsComparison } from "@/components/DiyVsUsComparison";
 import { HowItWorksSection } from "@/components/HowItWorks";
+import { HeroFilingWorkflow } from "@/components/HeroFilingWorkflow";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle2, Star, ShieldCheck, Award, Lock, BadgeCheck, Building2, Landmark, Shield, Calculator, Package, Globe, FileCheck, Search } from "lucide-react";
+import { ArrowRight, CheckCircle2, ShieldCheck, Award, Lock, Landmark, Shield, Calculator, Package, Globe, FileCheck, Search } from "lucide-react";
 
 export default function Home() {
   const [modalOpen, setModalOpen] = useState(false);
@@ -33,7 +34,7 @@ export default function Home() {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative pt-24 pb-12 md:pt-32 md:pb-20 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 maple-bg">
+      <section className="relative overflow-hidden pt-24 pb-12 md:pt-32 md:pb-20 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 maple-bg">
         <div className="container mx-auto px-4 md:px-6 relative z-10">
           <div className="flex flex-col lg:flex-row items-center gap-8 md:gap-12">
             <motion.div
@@ -70,28 +71,9 @@ export default function Home() {
                     <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>
                 </Link>
-                <div className="flex items-center gap-4 px-4">
-                  <div className="flex -space-x-3">
-                    {[1,2,3,4].map(i => (
-                      <div key={i} className="w-10 h-10 rounded-full border-2 border-white overflow-hidden shadow-sm">
-                        <img
-                          src={`/images/avatar-${i}.png`}
-                          alt=""
-                          aria-hidden="true"
-                          width={40}
-                          height={40}
-                          loading="lazy"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="text-sm">
-                    <div className="flex text-yellow-400">
-                      {[1,2,3,4,5].map(i => <Star key={i} className="w-4 h-4 fill-current" aria-hidden="true" />)}
-                    </div>
-                    <span className="text-slate-600 font-medium">Canadian &amp; non-resident clients</span>
-                  </div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-1 text-xs font-medium text-slate-600">
+                  <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-slate-500" aria-hidden="true" />Submitted under your authorization</span>
+                  <span className="inline-flex items-center gap-1.5"><Lock className="h-4 w-4 text-slate-500" aria-hidden="true" />Secure document handling</span>
                 </div>
               </div>
             </motion.div>
@@ -100,85 +82,12 @@ export default function Home() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="lg:w-1/2 relative"
+              className="relative w-full lg:w-1/2"
             >
               <div className="absolute -top-10 -right-10 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-2xl opacity-20" aria-hidden="true"></div>
               <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-2xl opacity-20" aria-hidden="true"></div>
 
-              <div className="relative">
-                <div className="relative z-10 glass-card rounded-2xl p-6 md:p-8 transform md:rotate-2 hover:rotate-0 transition-transform duration-500">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Sample Client</p>
-                      <p className="text-sm font-semibold text-slate-900">Maple Trade Co.</p>
-                    </div>
-                    <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <CheckCircle2 className="text-primary w-6 h-6" />
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    {[
-                      { title: "Business Number (BN)", detail: "BN 12345 6789 RC0001" },
-                      { title: "GST/HST Account", detail: "Registered — effective Apr 2026" },
-                      { title: "CARM Import Account", detail: "Active — RPP secured" },
-                    ].map((step) => (
-                      <div key={step.title} className="flex items-center gap-3 p-3 rounded-lg bg-slate-50">
-                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                          <CheckCircle2 className="w-4 h-4 text-green-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-slate-800 truncate">{step.title}</p>
-                          <p className="text-xs text-slate-500 truncate">{step.detail}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-6 pt-5 border-t border-slate-100 flex justify-between items-center">
-                    <span className="text-sm text-slate-500">Registration Status</span>
-                    <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm font-medium">Completed</span>
-                  </div>
-                </div>
-
-                <div className="absolute inset-0 z-20 pointer-events-none">
-                  <div className="absolute left-[-10px] lg:left-[-14px] top-[12%] flex flex-col gap-2.5 lg:gap-3">
-                    {[
-                      { icon: Landmark, label: "CRA", testId: "inst-badge-cra" },
-                      { icon: Building2, label: "CBSA", testId: "inst-badge-cbsa" },
-                      { icon: Shield, label: "IRS", testId: "inst-badge-irs" },
-                      { icon: BadgeCheck, label: "USPTO", testId: "inst-badge-uspto", hideOnSmall: true },
-                      { icon: Building2, label: "SBA", testId: "inst-badge-sba", hideOnSmall: true },
-                    ].map((badge, i) => (
-                      <div
-                        key={badge.testId}
-                        data-testid={badge.testId}
-                        className={`pointer-events-auto flex items-center gap-1.5 px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-[14px] border border-white/60 bg-white/80 backdrop-blur-md shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-slate-300 ${badge.hideOnSmall ? 'hidden sm:flex' : 'flex'}`}
-                        style={{ marginLeft: `${(i % 2) * 6}px` }}
-                      >
-                        <badge.icon className="w-4 h-4 text-primary shrink-0" />
-                        <span className="text-xs font-medium text-slate-700">{badge.label}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="absolute right-[-10px] lg:right-[-14px] top-[28%] flex flex-col gap-2.5 lg:gap-3 items-end">
-                    {[
-                      { icon: ShieldCheck, label: "CRA-authorized under your signed consent", testId: "trust-badge-cra" },
-                      { icon: Award, label: "Flat-fee, refund on unfiled work", testId: "trust-badge-guarantee" },
-                      { icon: Lock, label: "Encrypted document handling", testId: "trust-badge-secure" },
-                    ].map((badge, i) => (
-                      <div
-                        key={badge.testId}
-                        data-testid={badge.testId}
-                        className="pointer-events-auto flex items-center gap-1.5 px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-[14px] border border-white/60 bg-white/80 backdrop-blur-md shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-slate-300"
-                        style={{ marginRight: `${(i % 2) * 6}px` }}
-                      >
-                        <badge.icon className="w-4 h-4 text-primary shrink-0" />
-                        <span className="text-xs lg:text-sm font-medium text-slate-700 whitespace-nowrap">{badge.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <HeroFilingWorkflow />
             </motion.div>
           </div>
         </div>

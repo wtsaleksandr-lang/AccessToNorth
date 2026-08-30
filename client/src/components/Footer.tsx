@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { CreditCard, Shield, Clock, Star, Lock, Upload, Landmark, Building2, BadgeCheck, Mail, ChevronDown, Info } from "lucide-react";
+import { CreditCard, Shield, Clock, Star, Lock, Upload, Landmark, Building2, BadgeCheck, Mail, ChevronDown } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 
 const trustChips = [
@@ -51,12 +51,12 @@ export function Footer() {
             <Link href="/" className="group mb-4 inline-flex" data-testid="link-footer-home">
               <BrandLogo light accentClassName="text-sky-400" />
             </Link>
-            <details className="group max-w-lg rounded-xl border border-slate-700/70 bg-slate-800/35">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-xs font-semibold text-slate-200 transition-colors hover:bg-slate-800/60 [&::-webkit-details-marker]:hidden">
-                <span className="flex items-center gap-2"><Info className="h-4 w-4 text-sky-400" />Important disclaimer</span>
-                <ChevronDown className="h-4 w-4 text-slate-500 transition-transform duration-200 group-open:rotate-180" />
+            <details className="group max-w-lg border-t border-slate-800">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-2.5 text-[11px] font-medium text-slate-500 transition-colors hover:text-slate-400 [&::-webkit-details-marker]:hidden">
+                <span>Service disclaimer</span>
+                <ChevronDown className="h-3.5 w-3.5 text-slate-600 transition-transform duration-200 group-open:rotate-180" />
               </summary>
-              <div className="border-t border-slate-700/60 px-4 py-3 text-xs leading-relaxed text-slate-400">
+              <div className="border-t border-slate-800/70 py-3 text-[11px] leading-relaxed text-slate-500">
                 <p className="mb-3">
                   AccessToNorth coordinates Canadian CRA and CBSA administrative filings for resident
                   and non-resident businesses under signed authorization. We are not a law firm,

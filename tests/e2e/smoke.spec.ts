@@ -20,11 +20,30 @@ test.describe("public marketing surface", () => {
     await expect(page.getByTestId("footer")).toBeVisible();
     await expect(page.getByTestId("link-footer-home")).toContainText("AccessToNorth.com");
     await expect(page.getByText("Reference agencies only — not affiliated or endorsed.")).toHaveCount(0);
-    const disclaimer = page.getByText("Important disclaimer");
+    const disclaimer = page.getByText("Service disclaimer");
     await expect(disclaimer).toBeVisible();
     await expect(page.getByText("No legal, tax, accounting, or customs-brokerage advice.")).not.toBeVisible();
     await disclaimer.click();
     await expect(page.getByText("No legal, tax, accounting, or customs-brokerage advice.")).toBeVisible();
+  });
+
+  test("home filing workflow stays readable on a narrow mobile viewport", async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 800 });
+    await page.goto("/");
+
+    const workflow = page.getByTestId("hero-filing-workflow");
+    await expect(workflow).toBeVisible();
+    await expect(workflow).toContainText("How your filing progresses");
+    await expect(workflow).toContainText("What the client receives");
+    await expect(workflow).toContainText("not real client data");
+    await expect(page.getByTestId("inst-badge-cra")).toHaveCount(0);
+    await expect(page.getByTestId("trust-badge-cra")).toHaveCount(0);
+
+    const fitsViewport = await workflow.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.left >= 0 && rect.right <= document.documentElement.clientWidth + 1;
+    });
+    expect(fitsViewport, "Hero workflow must remain inside the mobile viewport").toBe(true);
   });
 
   test("pricing page shows CA$99 anchor and at least one Add to Cart button", async ({ page }) => {
