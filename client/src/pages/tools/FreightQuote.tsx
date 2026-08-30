@@ -12,22 +12,37 @@ import { Truck, ArrowLeft, Bell } from "lucide-react";
 export default function FreightQuote() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
 
   usePageMeta({
     title: "Freight Quote Tool (Coming Soon) | AccessToNorth.com",
-    description: "Get instant freight quotes for shipments to and from Canada. Compare carrier rates. Coming soon to AccessToNorth.com.",
+    description: "A structured freight quote request workflow for shipments to and from Canada is coming soon to AccessToNorth.com.",
     canonical: "https://www.accesstonorth.com/tools/freight-quote",
+    robots: "noindex,follow",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !email.includes("@")) {
       toast({ title: "Please enter a valid email", variant: "destructive" });
       return;
     }
-    setSubmitted(true);
-    toast({ title: "You're on the list!", description: "We'll notify you when the Freight Quote Tool launches." });
+    setSubmitting(true);
+    try {
+      const response = await fetch("/api/leads/tool-waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, tool: "freight-quote" }),
+      });
+      if (!response.ok) throw new Error("Could not save email");
+      setSubmitted(true);
+      toast({ title: "You're on the list!", description: "We'll notify you when the Freight Quote workflow launches." });
+    } catch {
+      toast({ title: "Could not save your email", description: "Please try again shortly.", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -48,7 +63,7 @@ export default function FreightQuote() {
             </h1>
             <span className="inline-block px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-sm font-medium mb-4">Coming Soon</span>
             <p className="text-lg text-slate-600">
-              Get instant freight quotes for shipments to and from Canada. Compare rates from multiple carriers and find the best option for your cargo.
+              Submit complete shipment details once and receive a structured quote without long email chains. Carrier-rate comparison will only be added where live contracted data is available.
             </p>
           </div>
 
@@ -71,8 +86,8 @@ export default function FreightQuote() {
                       onChange={(e) => setEmail(e.target.value)}
                       data-testid="input-freight-email"
                     />
-                    <Button type="submit" className="cursor-pointer shrink-0" data-testid="button-freight-notify">
-                      Notify Me
+                    <Button type="submit" disabled={submitting} className="cursor-pointer shrink-0" data-testid="button-freight-notify">
+                      {submitting ? "Saving…" : "Notify Me"}
                     </Button>
                   </form>
                 </>

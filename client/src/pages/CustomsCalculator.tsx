@@ -55,6 +55,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { usePageMeta } from "@/hooks/use-page-meta";
+import Papa from "papaparse";
 
 const DEEP_BLUE = "#0A2540";
 
@@ -116,6 +118,8 @@ interface BulkResult {
     provincialTaxAmount: number;
     totalForItem: number;
     error?: string;
+    warnings?: string[];
+    requiresManualReview?: boolean;
   }>;
   summary: {
     totalItems: number;
@@ -127,6 +131,8 @@ interface BulkResult {
     totalLandedCost: number;
     province: string;
     provinceName: string;
+    shipmentType: "commercial" | "personal";
+    originConfirmed: boolean;
   };
 }
 
@@ -228,6 +234,7 @@ export default function CustomsCalculator() {
   
 
   const [countries, setCountries] = useState<Country[]>([]);
+  const [tariffUnavailable, setTariffUnavailable] = useState<string | null>(null);
   const [selectedCountry, setSelectedCountry] = useState("");
   const [selectedProvince, setSelectedProvince] = useState("ON");
   const [goodsValue, setGoodsValue] = useState("");
@@ -243,6 +250,7 @@ export default function CustomsCalculator() {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [bulkResult, setBulkResult] = useState<BulkResult | null>(null);
   const [bulkCalculating, setBulkCalculating] = useState(false);
+  const [pdfExporting, setPdfExporting] = useState(false);
 
   const [measuresOpen, setMeasuresOpen] = useState(false);
   const [showLeadModal, setShowLeadModal] = useState(false);
@@ -263,6 +271,12 @@ export default function CustomsCalculator() {
   const { toast } = useToast();
   const [prefillSource, setPrefillSource] = useState<string | null>(null);
 
+  usePageMeta({
+    title: "Canadian Customs Duty & Tax Calculator | AccessToNorth.com",
+    description: "Estimate Canadian customs duty and border taxes using the current T2026 tariff, country of origin, shipment type, and destination province.",
+    canonical: "/customs-calculator",
+  });
+
   useEffect(() => {
     fetch("/api/customs/countries")
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
@@ -272,6 +286,7 @@ export default function CustomsCalculator() {
         // the next render with "countries.map is not a function".
         if (Array.isArray(data)) {
           setCountries(data);
+          setTariffUnavailable(null);
         } else {
           console.error("[CustomsCalculator] /api/customs/countries returned non-array:", data);
           setCountries([]);
@@ -280,6 +295,7 @@ export default function CustomsCalculator() {
       .catch((err) => {
         console.error("[CustomsCalculator] failed to load countries:", err);
         setCountries([]);
+        setTariffUnavailable("Canadian tariff data is temporarily unavailable. Calculations are paused so we do not show an unreliable estimate.");
       });
   }, []);
 
@@ -291,7 +307,7 @@ export default function CustomsCalculator() {
       setHsQuery(hsParam);
       setHsSearching(true);
       fetch(`/api/customs/hs-search?q=${encodeURIComponent(hsParam)}&limit=5`)
-        .then((r) => r.json())
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
         .then((data: HsCodeResult[]) => {
           const exact = data.find((d) => d.code === hsParam);
           if (exact) {
@@ -303,7 +319,7 @@ export default function CustomsCalculator() {
             setShowHsDropdown(data.length > 0);
           }
         })
-        .catch(() => {})
+        .catch(() => setTariffUnavailable("Canadian tariff data is temporarily unavailable. Please try again shortly."))
         .finally(() => setHsSearching(false));
       if (srcParam === "hsfinder") {
         setPrefillSource("hsfinder");
@@ -340,11 +356,13 @@ export default function CustomsCalculator() {
     searchTimeout.current = setTimeout(async () => {
       try {
         const res = await fetch(`/api/customs/hs-search?q=${encodeURIComponent(query)}&limit=15`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         setHsResults(data);
         setShowHsDropdown(data.length > 0);
       } catch {
         setHsResults([]);
+        setTariffUnavailable("Canadian tariff data is temporarily unavailable. Please try again shortly.");
       } finally {
         setHsSearching(false);
       }
@@ -381,38 +399,28 @@ export default function CustomsCalculator() {
     setResult(null);
     setBulkResult(null);
 
-    const timers = [
-      setTimeout(() => setCalcStep(1), 400),
-      setTimeout(() => setCalcStep(2), 800),
-      setTimeout(async () => {
-        try {
-          const qty = parseFloat(quantity) || 0;
-          const res = await apiRequest("POST", "/api/customs/calculate", {
-            hsCode: selectedHsCode.code,
-            countryOfOrigin: selectedCountry,
-            valueCAD: value,
-            quantity: qty,
-            province: selectedProvince,
-            shipmentType,
-            confirmedOrigin,
-          });
-          const data = await res.json();
-          setResult(data);
-          setCalcStep(3);
-
-          setTimeout(() => {
-            resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-          }, 100);
-        } catch (err: any) {
-          const msg = err?.message || "Calculation failed. Please try again.";
-          toast({ title: "Error", description: msg, variant: "destructive" });
-        } finally {
-          setIsCalculating(false);
-        }
-      }, 1200),
-    ];
-
-    return () => timers.forEach(clearTimeout);
+    setCalcStep(2);
+    try {
+      const qty = parseFloat(quantity) || 0;
+      const res = await apiRequest("POST", "/api/customs/calculate", {
+        hsCode: selectedHsCode.code,
+        countryOfOrigin: selectedCountry,
+        valueCAD: value,
+        quantity: qty,
+        province: selectedProvince,
+        shipmentType,
+        confirmedOrigin,
+      });
+      const data = await res.json();
+      setResult(data);
+      setCalcStep(3);
+      setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+    } catch (err: any) {
+      const msg = err?.message || "Calculation failed. Please try again.";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally {
+      setIsCalculating(false);
+    }
   };
 
   const handleCsvUpload = async () => {
@@ -424,23 +432,24 @@ export default function CustomsCalculator() {
 
     try {
       const text = await csvFile.text();
-      const lines = text.split("\n").filter((l) => l.trim());
-      if (lines.length < 2) {
-        toast({ title: "Invalid CSV", description: "CSV must have a header row and at least one data row.", variant: "destructive" });
+      const parsed = Papa.parse<Record<string, string>>(text, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (header) => header.trim().toLowerCase(),
+      });
+      if (parsed.errors.length || parsed.data.length === 0) {
+        const detail = parsed.errors[0]?.message || "CSV must have a header row and at least one data row.";
+        toast({ title: "Invalid CSV", description: detail, variant: "destructive" });
         return;
       }
 
-      const header = lines[0].toLowerCase();
-      const hasDescription = header.includes("description");
-
-      const items = lines.slice(1).map((line) => {
-        const cols = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+      const items = parsed.data.map((row) => {
         return {
-          hsCode: cols[0] || "",
-          countryOfOrigin: cols[1] || "Other / Unknown",
-          valueCAD: parseFloat(cols[2]) || 0,
-          quantity: parseFloat(cols[3]) || 0,
-          description: hasDescription ? cols[4] || undefined : undefined,
+          hsCode: row.hs_code?.trim() || "",
+          countryOfOrigin: row.country?.trim() || "Other / Unknown",
+          valueCAD: Number.parseFloat(row.value_cad) || 0,
+          quantity: Number.parseFloat(row.quantity) || 0,
+          description: row.description?.trim() || undefined,
         };
       }).filter((item) => item.hsCode && item.valueCAD > 0);
 
@@ -453,6 +462,7 @@ export default function CustomsCalculator() {
         items,
         province: selectedProvince,
         shipmentType,
+        confirmedOrigin,
       });
       const data = await res.json();
       setBulkResult(data);
@@ -467,102 +477,65 @@ export default function CustomsCalculator() {
     }
   };
 
-  const exportPDF = () => {
-    const data = result || bulkResult;
-    if (!data) return;
-
-    let html = `
-      <html><head><title>Customs Duty Estimate - AccessToNorth.com</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 40px; color: #1a1a1a; }
-        h1 { color: #0A2540; font-size: 24px; }
-        h2 { color: #0A2540; font-size: 18px; margin-top: 24px; }
-        .header { border-bottom: 2px solid #0A2540; padding-bottom: 16px; margin-bottom: 24px; }
-        .subtitle { color: #666; font-size: 14px; }
-        table { width: 100%; border-collapse: collapse; margin: 16px 0; }
-        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
-        th { background: #f8f9fa; font-weight: 600; color: #374151; }
-        .total-row td { font-weight: bold; border-top: 2px solid #0A2540; font-size: 16px; }
-        .highlight { background: #f0f9ff; }
-        .disclaimer { margin-top: 32px; padding: 16px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; font-size: 12px; color: #92400e; }
-        .footer { margin-top: 24px; font-size: 11px; color: #999; text-align: center; }
-      </style></head><body>
-      <div class="header">
-        <h1>Canadian Customs Duty & Tax Estimate</h1>
-        <p class="subtitle">Generated by AccessToNorth.com on ${new Date().toLocaleDateString("en-CA")}</p>
-      </div>
-    `;
-
-    if (result) {
-      html += `
-        <h2>Product Details</h2>
-        <table>
-          <tr><th>HS Code</th><td>${result.hsCode}</td></tr>
-          <tr><th>Description</th><td>${result.description}</td></tr>
-          <tr><th>Country of Origin</th><td>${result.countryOfOrigin}</td></tr>
-          <tr><th>Value (CAD)</th><td>${formatCurrency(result.valueCAD)}</td></tr>
-          <tr><th>Quantity</th><td>${result.quantity}</td></tr>
-          <tr><th>Province</th><td>${result.provinceName}</td></tr>
-          <tr><th>Applied Tariff Treatment</th><td>${result.appliedTreatmentName} (${result.appliedTreatment})</td></tr>
-        </table>
-        <h2>Duty & Tax Breakdown</h2>
-        <table>
-          <tr><th>Item</th><th>Rate</th><th>Amount (CAD)</th></tr>
-          <tr><td>Customs Duty</td><td>${result.dutyRate}</td><td>${formatCurrency(result.dutyAmount)}</td></tr>
-          <tr><td>${result.gstLabel}</td><td>${formatPercent(result.gstRate)}</td><td>${formatCurrency(result.gstAmount)}</td></tr>
-          ${result.provincialTaxAmount > 0 ? `<tr><td>${result.provincialTaxName}</td><td>${formatPercent(result.provincialTaxRate)}</td><td>${formatCurrency(result.provincialTaxAmount)}</td></tr>` : ""}
-          <tr class="total-row"><td>Total Duties & Taxes</td><td></td><td>${formatCurrency(result.totalDutiesAndTaxes)}</td></tr>
-          <tr class="total-row highlight"><td>Total Landed Cost</td><td></td><td>${formatCurrency(result.totalLandedCost)}</td></tr>
-        </table>
-      `;
-    }
-
-    if (bulkResult) {
-      html += `
-        <h2>Bulk Calculation Results</h2>
-        <table>
-          <tr><th>HS Code</th><th>Description</th><th>Origin</th><th>Value</th><th>Duty</th><th>GST/HST</th><th>Prov Tax</th><th>Total</th></tr>
-          ${bulkResult.items.map((item) => `
-            <tr>
-              <td>${item.hsCode}</td>
-              <td>${item.description}</td>
-              <td>${item.countryOfOrigin}</td>
-              <td>${formatCurrency(item.valueCAD)}</td>
-              <td>${item.error || formatCurrency(item.dutyAmount)}</td>
-              <td>${item.error || formatCurrency(item.gstAmount)}</td>
-              <td>${item.error || formatCurrency(item.provincialTaxAmount)}</td>
-              <td>${item.error || formatCurrency(item.totalForItem)}</td>
-            </tr>
-          `).join("")}
-          <tr class="total-row">
-            <td colspan="3">Totals</td>
-            <td>${formatCurrency(bulkResult.summary.totalValue)}</td>
-            <td>${formatCurrency(bulkResult.summary.totalDuty)}</td>
-            <td>${formatCurrency(bulkResult.summary.totalGST)}</td>
-            <td>${formatCurrency(bulkResult.summary.totalProvincialTax)}</td>
-            <td>${formatCurrency(bulkResult.summary.totalLandedCost)}</td>
-          </tr>
-        </table>
-      `;
-    }
-
-    html += `
-      <div class="disclaimer">
-        <strong>Important Disclaimer:</strong> This estimate is for informational purposes only and does not constitute professional customs brokerage advice.
-        Actual duties and taxes are determined by the Canada Border Services Agency (CBSA) at the time of importation.
-        Rates are based on the 2026 Canadian Customs Tariff (T2026). <strong>Not included:</strong> SIMA duties (anti-dumping &amp; countervailing),
-        excise duties/taxes, surtaxes, temporary safeguard measures, or any other special levies. Some goods may be subject to import permits, quotas, or prohibitions.
-        Preferential tariff rates require valid proof of origin documentation. Consult a licensed customs broker or CBSA for binding rulings.
-      </div>
-      <div class="footer">AccessToNorth.com &mdash; Canadian Tax & Business Registration Services</div>
-      </body></html>
-    `;
-
-    const printWindow = window.open("", "_blank");
-    if (printWindow) {
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.print();
+  const exportPDF = async () => {
+    if (!result && !bulkResult) return;
+    setPdfExporting(true);
+    try {
+      const [{ generateCustomsEstimatePdfBlob }, { loadAccessToNorthLogoDataUrl }] = await Promise.all([
+        import("@/lib/customsPdf"),
+        import("@/lib/loadingReportPdfBrand"),
+      ]);
+      const logoDataUrl = await loadAccessToNorthLogoDataUrl();
+      const pdfData = result
+        ? {
+            title: "Canadian Customs Estimate",
+            items: [{
+              hsCode: result.hsCode,
+              description: result.description,
+              countryOfOrigin: result.countryOfOrigin,
+              valueCAD: result.valueCAD,
+              quantity: result.quantity,
+              dutyRate: result.dutyRate,
+              dutyAmount: result.dutyAmount,
+              gstAmount: result.gstAmount,
+              provincialTaxAmount: result.provincialTaxAmount,
+              totalForItem: result.totalLandedCost,
+              warnings: result.warnings,
+            }],
+            summary: {
+              totalValue: result.valueCAD,
+              totalDuty: result.dutyAmount,
+              totalGST: result.gstAmount,
+              totalProvincialTax: result.provincialTaxAmount,
+              totalDutiesAndTaxes: result.totalDutiesAndTaxes,
+              totalLandedCost: result.totalLandedCost,
+              provinceName: result.provinceName,
+              shipmentType: result.shipmentType,
+            },
+            tariffTreatment: `${result.appliedTreatmentName} (${result.appliedTreatment})`,
+            warnings: result.warnings,
+            logoDataUrl,
+          }
+        : {
+            title: "Canadian Customs Bulk Estimate",
+            items: bulkResult!.items,
+            summary: { ...bulkResult!.summary, shipmentType },
+            warnings: bulkResult!.items.flatMap((item: any) => item.warnings || []),
+            logoDataUrl,
+          };
+      const blob = await generateCustomsEstimatePdfBlob(pdfData);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `AccessToNorth-customs-estimate-${new Date().toISOString().slice(0, 10)}.pdf`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "PDF report downloaded", description: "The calculation basis, assumptions, classifications, and border charges are included." });
+    } catch (error) {
+      console.error("Customs PDF export failed", error);
+      toast({ title: "PDF export failed", description: "Please try again. Your estimate is still available on screen.", variant: "destructive" });
+    } finally {
+      setPdfExporting(false);
     }
   };
 
@@ -625,7 +598,7 @@ export default function CustomsCalculator() {
                 Canadian Customs Duty & Tax Calculator
               </h1>
               <p className="text-base md:text-lg text-white/70 mb-8 max-w-lg" data-testid="text-customs-subheading">
-                Instantly estimate import duties, GST/HST, and provincial taxes for any product entering Canada. Based on the official 2026 CBSA tariff schedule.
+                Estimate customs duty and taxes normally payable at the Canadian border. Commercial and personal imports are calculated separately.
               </p>
               <div className="flex flex-col sm:flex-row items-start gap-3">
                 <Button
@@ -715,9 +688,9 @@ export default function CustomsCalculator() {
         <div className="container mx-auto px-4 md:px-6 max-w-5xl">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
             {[
-              { icon: Search, title: "7,050+ HS Codes", desc: "Full 2026 Canadian Customs Tariff" },
+              { icon: Search, title: "8 & 10-digit tariff", desc: "Full 2026 Canadian Customs Tariff" },
               { icon: Globe, title: "90+ Countries", desc: "CUSMA, CPTPP, CETA & more" },
-              { icon: MapPin, title: "All Provinces", desc: "GST, HST, PST & QST included" },
+              { icon: MapPin, title: "Import Type Aware", desc: "Commercial vs personal tax treatment" },
               { icon: Upload, title: "Bulk CSV Upload", desc: "Calculate multiple items at once" },
             ].map((feat) => (
               <div key={feat.title} className="text-center">
@@ -746,6 +719,15 @@ export default function CustomsCalculator() {
             </div>
 
             <div className="space-y-5">
+              {tariffUnavailable && (
+                <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4" role="alert" data-testid="alert-tariff-unavailable">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+                  <div>
+                    <p className="text-sm font-semibold text-red-900">Tariff service temporarily unavailable</p>
+                    <p className="mt-1 text-xs leading-5 text-red-700">{tariffUnavailable}</p>
+                  </div>
+                </div>
+              )}
               <div className="relative">
                 <Label className="text-sm font-medium mb-1.5 block">
                   HS Code Lookup
@@ -884,7 +866,7 @@ export default function CustomsCalculator() {
                   <Label htmlFor="country" className="text-sm font-medium mb-1.5 block">
                     Country of Origin
                   </Label>
-                  <Select value={selectedCountry} onValueChange={setSelectedCountry}>
+                  <Select value={selectedCountry} onValueChange={setSelectedCountry} disabled={Boolean(tariffUnavailable)}>
                     <SelectTrigger id="country" data-testid="select-country">
                       <SelectValue placeholder="Select country" />
                     </SelectTrigger>
@@ -937,7 +919,7 @@ export default function CustomsCalculator() {
 
                 <div>
                   <Label htmlFor="quantity" className="text-sm font-medium mb-1.5 block">
-                    Quantity (optional)
+                    Quantity{selectedHsCode?.unitOfMeasure ? ` (${selectedHsCode.unitOfMeasure})` : " (optional)"}
                   </Label>
                   <div className="relative">
                     <Package className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -1023,7 +1005,7 @@ export default function CustomsCalculator() {
                 className="w-full text-white font-semibold py-6 text-[23px] rounded-xl"
                 style={{ backgroundColor: DEEP_BLUE }}
                 onClick={handleCalculate}
-                disabled={isCalculating}
+                disabled={isCalculating || Boolean(tariffUnavailable)}
                 data-testid="button-calculate"
               >
                 {isCalculating ? (
@@ -1105,7 +1087,7 @@ export default function CustomsCalculator() {
                 />
                 <Button
                   onClick={handleCsvUpload}
-                  disabled={!csvFile || bulkCalculating}
+                      disabled={!csvFile || bulkCalculating || Boolean(tariffUnavailable)}
                   data-testid="button-upload-csv"
                 >
                   {bulkCalculating ? (
@@ -1133,9 +1115,9 @@ export default function CustomsCalculator() {
               >
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <h2 className="text-lg font-bold text-slate-900">Duty & Tax Breakdown</h2>
-                  <Button variant="outline" size="sm" onClick={exportPDF} data-testid="button-export-pdf">
-                    <Download className="w-4 h-4 mr-1" />
-                    Export PDF
+                  <Button variant="outline" size="sm" onClick={exportPDF} disabled={pdfExporting} data-testid="button-export-pdf">
+                    {pdfExporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
+                    Complete PDF
                   </Button>
                 </div>
 
@@ -1230,7 +1212,7 @@ export default function CustomsCalculator() {
                         </td>
                       </tr>
                       <tr style={{ backgroundColor: `${DEEP_BLUE}08` }} data-testid="row-total-landed">
-                        <td className="px-5 py-4 font-bold text-lg" style={{ color: DEEP_BLUE }}>Total Landed Cost</td>
+                        <td className="px-5 py-4 font-bold text-lg" style={{ color: DEEP_BLUE }}>Goods + Border Charges</td>
                         <td className="px-5 py-4"></td>
                         <td className="px-5 py-4 text-right font-bold text-lg" style={{ color: DEEP_BLUE }} data-testid="text-total-landed">
                           {formatCurrency(result.totalLandedCost)}
@@ -1398,9 +1380,9 @@ export default function CustomsCalculator() {
                   <h2 className="text-lg font-bold text-slate-900">
                     Bulk Results ({bulkResult.summary.totalItems} items)
                   </h2>
-                  <Button variant="outline" size="sm" onClick={exportPDF} data-testid="button-export-bulk-pdf">
-                    <Download className="w-4 h-4 mr-1" />
-                    Export PDF
+                  <Button variant="outline" size="sm" onClick={exportPDF} disabled={pdfExporting} data-testid="button-export-bulk-pdf">
+                    {pdfExporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
+                    Complete PDF
                   </Button>
                 </div>
 
@@ -1449,7 +1431,7 @@ export default function CustomsCalculator() {
                       <p className="font-semibold text-slate-800">{formatCurrency(bulkResult.summary.totalGST + bulkResult.summary.totalProvincialTax)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400">Total Landed Cost</p>
+                      <p className="text-xs text-slate-400">Goods + Border Charges</p>
                       <p className="font-bold text-lg" style={{ color: DEEP_BLUE }}>{formatCurrency(bulkResult.summary.totalLandedCost)}</p>
                     </div>
                   </div>
@@ -1511,10 +1493,9 @@ export default function CustomsCalculator() {
                 How is GST/HST calculated on imports?
               </AccordionTrigger>
               <AccordionContent className="text-sm text-slate-600 pb-4 text-left">
-                GST (5% federal) is applied to the value of goods plus any customs duty.
-                In provinces with HST (Ontario, Atlantic provinces), a single harmonized rate is charged instead.
-                In provinces with separate PST (BC, MB, SK) or QST (Quebec), the provincial tax is charged in addition to GST.
-                Alberta, Yukon, NWT, and Nunavut charge only the 5% GST.
+                Commercial imports are generally charged GST or the federal part of HST at the border on the value for tax plus applicable duties.
+                The provincial part is normally not collected at commercial importation, although later self-assessment can apply. Taxable personal imports
+                can be subject to HST or participating provincial taxes based on the importer and destination province.
               </AccordionContent>
             </AccordionItem>
 
@@ -1589,7 +1570,7 @@ export default function CustomsCalculator() {
             <DialogDescription className="text-sm text-slate-500">
               {leadSubmitted
                 ? "We've saved your estimate. Our team will reach out if you need help with your import."
-                : "Enter your email and we'll send you a detailed PDF breakdown of your calculation."}
+                : "Save your calculation details and ask our team to follow up if you need import help."}
             </DialogDescription>
           </DialogHeader>
 
@@ -1598,7 +1579,7 @@ export default function CustomsCalculator() {
               <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-100 mb-3">
                 <Check className="w-6 h-6 text-green-600" />
               </div>
-              <p className="text-sm text-slate-600 text-center">Check your email for your detailed estimate.</p>
+              <p className="text-sm text-slate-600 text-center">Your request is saved. You can download the complete PDF directly from the results.</p>
               <Button className="mt-4" onClick={() => setShowLeadModal(false)} data-testid="button-close-lead">
                 Close
               </Button>
@@ -1665,7 +1646,7 @@ export default function CustomsCalculator() {
                 ) : (
                   <Mail className="w-4 h-4 mr-2" />
                 )}
-                {leadSubmitting ? "Sending..." : "Send me the breakdown"}
+                {leadSubmitting ? "Saving..." : "Save and request follow-up"}
               </Button>
 
               <p className="text-xs text-slate-400 text-center">

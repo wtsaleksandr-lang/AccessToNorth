@@ -54,7 +54,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Third-Party Integrations
 - **Stripe**: Payment processing for tiered services (Business Number, GST/HST, Non-Resident, CARM, Complete Importer Bundle). Products are seeded and managed on the server.
-- **Tawk.to Chat Widget**: Embedded for live chat support.
+- **AccessToNorth Assistant**: First-party support launcher backed by the site chat API.
 - **Google Fonts**: CDN for website typography.
 - **OpenAI**: Used for AI-powered features in the admin panel, such as drafting HS classification reports, generating order summaries, client updates, missing document identification, next steps, import readiness snapshots, and broker handoff packs.
 

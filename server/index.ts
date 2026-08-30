@@ -25,6 +25,8 @@ import { WebhookHandlers } from './webhookHandlers';
 import { seedProducts } from './seedProducts';
 import { seedTaskTemplates } from './seedTaskTemplates';
 import { securityHeaders } from './middleware/securityHeaders';
+import { loadTariffData } from './tariffDataLoader';
+import { TARIFF_DATA_MINIMUMS } from './tariffCountryTreatments';
 
 import { pool } from './db';
 
@@ -59,6 +61,35 @@ async function ensureTrigramIndexes() {
   } catch (err: any) {
     console.error('Warning: Could not create trigram indexes:', err.message);
   } finally {
+    client.release();
+  }
+}
+
+async function ensureTariffDataset() {
+  const client = await pool.connect();
+  try {
+    // One deployment instance performs the repair while other instances wait.
+    await client.query("SELECT pg_advisory_lock(20260830)");
+    const status = await client.query(`
+      SELECT
+        (SELECT COUNT(*)::int FROM hs_codes) AS hs_count,
+        (SELECT COUNT(*)::int FROM tariff_countries) AS country_count
+    `);
+    const hsCount = Number(status.rows[0]?.hs_count || 0);
+    const countryCount = Number(status.rows[0]?.country_count || 0);
+    if (hsCount < TARIFF_DATA_MINIMUMS.classifications || countryCount < TARIFF_DATA_MINIMUMS.countries) {
+      log(`Tariff dataset incomplete (${hsCount} classifications, ${countryCount} countries); rebuilding...`, "tariff");
+      const loaded = await loadTariffData(client);
+      log(`Tariff dataset ready with ${loaded} searchable classifications`, "tariff");
+    } else {
+      log(`Tariff dataset healthy (${hsCount} classifications, ${countryCount} countries)`, "tariff");
+    }
+  } catch (error: any) {
+    // Keep the rest of the site online, but the API will return an explicit
+    // unavailable response instead of pretending an empty result is valid.
+    console.error("[tariff] Dataset health check failed:", error?.message || error);
+  } finally {
+    await client.query("SELECT pg_advisory_unlock(20260830)").catch(() => undefined);
     client.release();
   }
 }
@@ -378,6 +409,7 @@ app.use((req, res, next) => {
   } catch (err: any) {
     console.warn('Stripe initialization skipped (integration not connected):', err.message);
   }
+  await ensureTariffDataset();
   await ensureTrigramIndexes();
   registerPortalRoutes(app);
   registerAdminRoutes(app);

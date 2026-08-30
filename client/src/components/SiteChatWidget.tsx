@@ -71,6 +71,12 @@ export function SiteChatWidget() {
     saveMessages("website", messages);
   }, [messages]);
 
+  useEffect(() => {
+    const openChat = () => setOpen(true);
+    window.addEventListener("atn:open-chat", openChat);
+    return () => window.removeEventListener("atn:open-chat", openChat);
+  }, []);
+
   // Auto-scroll to bottom
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -132,19 +138,19 @@ export function SiteChatWidget() {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-40 h-14 px-5 rounded-full bg-primary text-white shadow-lg shadow-primary/30 hover:scale-105 hover:bg-primary/90 transition-all flex items-center gap-2 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          className="fixed bottom-4 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-white/30 bg-primary text-white shadow-md shadow-slate-900/15 transition-all hover:-translate-y-0.5 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:bottom-5 sm:right-5 sm:h-12 sm:w-12"
           aria-label="Open AccessToNorth assistant"
+          title="Ask AccessToNorth"
           data-testid="chat-launcher"
         >
-          <Sparkles className="w-4 h-4" aria-hidden="true" />
-          Ask AccessToNorth
+          <MessageCircle className="h-5 w-5" aria-hidden="true" />
         </button>
       )}
 
       {/* Panel */}
       {open && (
         <div
-          className="fixed bottom-6 right-6 z-40 w-[calc(100vw-3rem)] sm:w-[380px] h-[min(560px,calc(100vh-8rem))] bg-white border border-slate-200 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+          className="fixed bottom-3 right-3 z-40 h-[min(560px,calc(100vh-5rem))] w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:bottom-5 sm:right-5 sm:w-[380px] flex flex-col"
           role="dialog"
           aria-label="AccessToNorth assistant"
           data-testid="chat-panel"

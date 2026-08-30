@@ -2,24 +2,13 @@ import type { Express } from "express";
 import { storage } from "./storage";
 import { z } from "zod";
 import { insertCustomsLeadSchema } from "@shared/schema";
-
-const GST_RATE = 0.05;
-
-const PROVINCIAL_TAXES: Record<string, { name: string; rate: number; type: string }> = {
-  AB: { name: "Alberta", rate: 0, type: "GST" },
-  BC: { name: "British Columbia", rate: 0.07, type: "GST+PST" },
-  MB: { name: "Manitoba", rate: 0.07, type: "GST+PST" },
-  NB: { name: "New Brunswick", rate: 0.10, type: "HST" },
-  NL: { name: "Newfoundland and Labrador", rate: 0.10, type: "HST" },
-  NS: { name: "Nova Scotia", rate: 0.10, type: "HST" },
-  NT: { name: "Northwest Territories", rate: 0, type: "GST" },
-  NU: { name: "Nunavut", rate: 0, type: "GST" },
-  ON: { name: "Ontario", rate: 0.08, type: "HST" },
-  PE: { name: "Prince Edward Island", rate: 0.10, type: "HST" },
-  QC: { name: "Quebec", rate: 0.09975, type: "GST+QST" },
-  SK: { name: "Saskatchewan", rate: 0.06, type: "GST+PST" },
-  YT: { name: "Yukon", rate: 0, type: "GST" },
-};
+import {
+  calculateBorderTaxes,
+  calculateDutyAmount,
+  GST_RATE,
+  PROVINCIAL_TAXES,
+} from "@shared/customsEstimate";
+import { TARIFF_DATA_MINIMUMS } from "./tariffCountryTreatments";
 
 const TARIFF_TREATMENT_PRIORITY: Record<string, number> = {
   UST: 1,
@@ -49,84 +38,12 @@ const TARIFF_TREATMENT_PRIORITY: Record<string, number> = {
   "General Tariff": 25,
 };
 
-function parseRateToPercent(rateStr: string): { percent: number; perUnit: string | null; compound: boolean; isNA: boolean; description: string } {
-  if (!rateStr || rateStr === "N/A") {
-    return { percent: 0, perUnit: null, compound: false, isNA: true, description: "N/A" };
-  }
-
-  const cleaned = rateStr.trim();
-
-  if (cleaned === "Free" || cleaned === "free") {
-    return { percent: 0, perUnit: null, compound: false, isNA: false, description: "Free" };
-  }
-
-  const pctMatch = cleaned.match(/^([\d.]+)\s*%/);
-  if (pctMatch && !cleaned.includes("but not less than") && !cleaned.includes("but not more than") && !cleaned.includes("/")) {
-    return {
-      percent: parseFloat(pctMatch[1]),
-      perUnit: null,
-      compound: false,
-      isNA: false,
-      description: `${pctMatch[1]}%`,
-    };
-  }
-
-  if (cleaned.includes("but not less than") || cleaned.includes("but not more than")) {
-    const pct = pctMatch ? parseFloat(pctMatch[1]) : 0;
-    return {
-      percent: pct,
-      perUnit: null,
-      compound: true,
-      isNA: false,
-      description: cleaned,
-    };
-  }
-
-  const specificMatch = cleaned.match(/\$([\d.]+)\/(kg|litre|tonne)/);
-  if (specificMatch) {
-    return {
-      percent: 0,
-      perUnit: cleaned,
-      compound: false,
-      isNA: false,
-      description: cleaned,
-    };
-  }
-
-  const centMatch = cleaned.match(/([\d.]+)\s*¢\/(kg|dozen|litre)/);
-  if (centMatch) {
-    return {
-      percent: 0,
-      perUnit: cleaned,
-      compound: false,
-      isNA: false,
-      description: cleaned,
-    };
-  }
-
-  const centEachMatch = cleaned.match(/([\d.]+)\s*¢\s*(?:each)?$/);
-  if (centEachMatch) {
-    return {
-      percent: 0,
-      perUnit: cleaned,
-      compound: false,
-      isNA: false,
-      description: cleaned,
-    };
-  }
-
-  return {
-    percent: 0,
-    perUnit: null,
-    compound: false,
-    isNA: false,
-    description: cleaned || "Unknown",
-  };
-}
-
 function getBestTreatment(
   countryTreatments: string[],
-  dutyRates: Record<string, string>
+  dutyRates: Record<string, string>,
+  valueCAD: number,
+  quantity: number,
+  unitOfMeasure?: string | null,
 ): { treatment: string; rate: string; treatmentName: string } {
   const TREATMENT_NAMES: Record<string, string> = {
     MFN: "Most Favoured Nation",
@@ -156,35 +73,26 @@ function getBestTreatment(
     "General Tariff": "General Tariff",
   };
 
-  let bestTreatment = "MFN";
-  let bestRate = dutyRates["MFN"] || "N/A";
-  let bestParsed = parseRateToPercent(bestRate);
-  let bestPriority = TARIFF_TREATMENT_PRIORITY["MFN"];
+  const initialTreatment = countryTreatments.find((treatment) => dutyRates[treatment] && dutyRates[treatment] !== "N/A") || "MFN";
+  let bestTreatment = initialTreatment;
+  let bestRate = dutyRates[initialTreatment] || "N/A";
+  let bestCalculation = calculateDutyAmount(bestRate, valueCAD, quantity, unitOfMeasure);
+  let bestPriority = TARIFF_TREATMENT_PRIORITY[initialTreatment] || 99;
 
   for (const treatment of countryTreatments) {
     const rate = dutyRates[treatment];
     if (!rate || rate === "N/A") continue;
 
-    const parsed = parseRateToPercent(rate);
+    const calculation = calculateDutyAmount(rate, valueCAD, quantity, unitOfMeasure);
     const priority = TARIFF_TREATMENT_PRIORITY[treatment] || 99;
-
-    if (parsed.description === "Free") {
-      return {
-        treatment,
-        rate,
-        treatmentName: TREATMENT_NAMES[treatment] || treatment,
-      };
-    }
-
-    if (priority < bestPriority && !parsed.compound) {
+    const reliabilityImproved = bestCalculation.requiresManualReview && !calculation.requiresManualReview;
+    const sameReliability = bestCalculation.requiresManualReview === calculation.requiresManualReview;
+    const lowerEstimate = calculation.duty < bestCalculation.duty - 0.005;
+    const tiedEstimate = Math.abs(calculation.duty - bestCalculation.duty) <= 0.005;
+    if (reliabilityImproved || (sameReliability && (lowerEstimate || (tiedEstimate && priority < bestPriority)))) {
       bestTreatment = treatment;
       bestRate = rate;
-      bestParsed = parsed;
-      bestPriority = priority;
-    } else if (!parsed.compound && parsed.percent < bestParsed.percent && !bestParsed.compound) {
-      bestTreatment = treatment;
-      bestRate = rate;
-      bestParsed = parsed;
+      bestCalculation = calculation;
       bestPriority = priority;
     }
   }
@@ -196,107 +104,48 @@ function getBestTreatment(
   };
 }
 
-interface DutyResult {
-  duty: number;
-  warnings: string[];
-  requiresManualReview: boolean;
-}
-
 function calculateDuty(
   rateStr: string,
   valueCAD: number,
-  quantity: number
-): DutyResult {
-  const parsed = parseRateToPercent(rateStr);
-  const warnings: string[] = [];
-
-  if (parsed.isNA) {
-    return {
-      duty: 0,
-      warnings: ["Duty rate is N/A for this tariff item under the applied treatment. This item may require special authorization or quota allocation. Contact CBSA or a licensed customs broker."],
-      requiresManualReview: true,
-    };
-  }
-
-  if (parsed.description === "Free") return { duty: 0, warnings: [], requiresManualReview: false };
-
-  if (parsed.perUnit && quantity <= 0) {
-    warnings.push(`This item has a per-unit duty rate (${parsed.description}). Quantity is required for accurate calculation. The duty shown may be understated.`);
-    return {
-      duty: 0,
-      warnings,
-      requiresManualReview: true,
-    };
-  }
-
-  if (parsed.percent > 0 && !parsed.perUnit) {
-    let duty = valueCAD * (parsed.percent / 100);
-
-    if (parsed.compound) {
-      const minMatch = rateStr.match(/not less than \$([\d.]+)\/(kg|litre|tonne)/);
-      if (minMatch && quantity > 0) {
-        const perUnitMin = parseFloat(minMatch[1]);
-        let multiplier = quantity;
-        if (minMatch[2] === "tonne") multiplier = quantity / 1000;
-        const minDuty = perUnitMin * multiplier;
-        duty = Math.max(duty, minDuty);
-      }
-      const minCentMatch = rateStr.match(/not less than ([\d.]+)\s*¢\/(kg|each|dozen|litre)/);
-      if (minCentMatch && quantity > 0) {
-        const perUnitMin = parseFloat(minCentMatch[1]) / 100;
-        const minDuty = perUnitMin * quantity;
-        duty = Math.max(duty, minDuty);
-      }
-
-      const maxMatch = rateStr.match(/(?:or )?(?:not )?more than \$([\d.]+)\/(kg|litre|tonne)/);
-      if (maxMatch && quantity > 0) {
-        const perUnitMax = parseFloat(maxMatch[1]);
-        let multiplier = quantity;
-        if (maxMatch[2] === "tonne") multiplier = quantity / 1000;
-        const maxDuty = perUnitMax * multiplier;
-        duty = Math.min(duty, maxDuty);
-      }
-      const maxCentMatch = rateStr.match(/(?:or )?(?:not )?more than ([\d.]+)\s*¢\/(kg|each|dozen|litre)/);
-      if (maxCentMatch && quantity > 0) {
-        const perUnitMax = parseFloat(maxCentMatch[1]) / 100;
-        const maxDuty = perUnitMax * quantity;
-        duty = Math.min(duty, maxDuty);
-      }
-
-      if (quantity <= 0) {
-        warnings.push(`This item has a compound duty rate (${parsed.description}). Quantity is needed to verify the minimum/maximum floor. The estimate may differ from actual duty.`);
-      }
-    }
-
-    return { duty, warnings, requiresManualReview: false };
-  }
-
-  if (parsed.perUnit && quantity > 0) {
-    const dollarMatch = rateStr.match(/\$([\d.]+)\/(kg|litre|tonne)/);
-    if (dollarMatch) {
-      const rate = parseFloat(dollarMatch[1]);
-      let multiplier = quantity;
-      if (dollarMatch[2] === "tonne") multiplier = quantity / 1000;
-      return { duty: rate * multiplier, warnings, requiresManualReview: false };
-    }
-
-    const centMatch = rateStr.match(/([\d.]+)\s*¢\/(kg|dozen|each|litre)/);
-    if (centMatch) {
-      const rate = parseFloat(centMatch[1]) / 100;
-      return { duty: rate * quantity, warnings, requiresManualReview: false };
-    }
-
-    const centEachMatch = rateStr.match(/([\d.]+)\s*¢\s*each/);
-    if (centEachMatch) {
-      const rate = parseFloat(centEachMatch[1]) / 100;
-      return { duty: rate * quantity, warnings, requiresManualReview: false };
-    }
-  }
-
-  return { duty: valueCAD * (parsed.percent / 100), warnings, requiresManualReview: false };
+  quantity: number,
+  unitOfMeasure?: string | null,
+) {
+  return calculateDutyAmount(rateStr, valueCAD, quantity, unitOfMeasure);
 }
 
 export function registerCustomsRoutes(app: Express) {
+  const calculationRateLimit = new Map<string, number[]>();
+  const limitCalculations = (req: any, res: any, next: any) => {
+    const key = req.ip || "unknown";
+    const now = Date.now();
+    const recent = (calculationRateLimit.get(key) || []).filter((time) => now - time < 60_000);
+    if (recent.length >= 30) {
+      return res.status(429).json({ message: "Too many calculation requests. Please wait a minute and try again." });
+    }
+    recent.push(now);
+    calculationRateLimit.set(key, recent);
+    next();
+  };
+  const unavailable = (res: any) => res.status(503).json({
+    code: "TARIFF_DATA_UNAVAILABLE",
+    message: "The Canadian tariff dataset is temporarily unavailable. Please try again shortly.",
+  });
+
+  app.get("/api/customs/status", async (_req, res) => {
+    try {
+      const health = await storage.getTariffDataHealth();
+      const available = health.hsCodeCount >= TARIFF_DATA_MINIMUMS.classifications
+        && health.countryCount >= TARIFF_DATA_MINIMUMS.countries;
+      res.status(available ? 200 : 503).json({
+        available,
+        ...health,
+        tariffEdition: "T2026",
+      });
+    } catch {
+      unavailable(res);
+    }
+  });
+
   app.get("/api/hs-search", async (req, res) => {
     try {
       const query = (req.query.q as string) || "";
@@ -305,6 +154,9 @@ export function registerCustomsRoutes(app: Express) {
       if (query.length < 3) {
         return res.json([]);
       }
+
+      const health = await storage.getTariffDataHealth();
+      if (health.hsCodeCount < TARIFF_DATA_MINIMUMS.classifications) return unavailable(res);
 
       const results = await storage.searchHsCodesFuzzy(query, limit);
       res.json(
@@ -332,7 +184,12 @@ export function registerCustomsRoutes(app: Express) {
         return res.json([]);
       }
 
-      const results = await storage.searchHsCodes(query, limit);
+      const health = await storage.getTariffDataHealth();
+      if (health.hsCodeCount < TARIFF_DATA_MINIMUMS.classifications) return unavailable(res);
+      const numeric = /^[\d.]+$/.test(query.trim());
+      const results = numeric
+        ? (await storage.searchHsCodes(query, limit)).map((result) => ({ ...result, score: 1 }))
+        : await storage.searchHsCodesFuzzy(query, limit);
       res.json(
         results.map((r) => ({
           code: r.code,
@@ -340,6 +197,8 @@ export function registerCustomsRoutes(app: Express) {
           descriptionFull: r.descriptionFull || r.description,
           chapter: r.chapter,
           unitOfMeasure: r.unitOfMeasure,
+          score: r.score,
+          classificationLevel: r.code.replace(/\D/g, "").length === 10 ? "complete" : "tariff-item",
         }))
       );
     } catch (err) {
@@ -351,6 +210,7 @@ export function registerCustomsRoutes(app: Express) {
   app.get("/api/customs/countries", async (_req, res) => {
     try {
       const countries = await storage.getAllCountries();
+      if (countries.length < TARIFF_DATA_MINIMUMS.countries) return unavailable(res);
       res.json(countries);
     } catch (err) {
       console.error("Error fetching countries:", err);
@@ -372,7 +232,7 @@ export function registerCustomsRoutes(app: Express) {
     );
   });
 
-  app.post("/api/customs/calculate", async (req, res) => {
+  app.post("/api/customs/calculate", limitCalculations, async (req, res) => {
     try {
       const schema = z.object({
         hsCode: z.string().min(1, "HS code is required"),
@@ -406,31 +266,20 @@ export function registerCustomsRoutes(app: Express) {
       }
 
       const dutyRates = hsCode.dutyRates as Record<string, string>;
-      const bestTreatment = getBestTreatment(treatments, dutyRates);
-      const dutyCalc = calculateDuty(bestTreatment.rate, input.valueCAD, input.quantity);
+      const bestTreatment = getBestTreatment(treatments, dutyRates, input.valueCAD, input.quantity, hsCode.unitOfMeasure);
+      const dutyCalc = calculateDuty(bestTreatment.rate, input.valueCAD, input.quantity, hsCode.unitOfMeasure);
       const dutyAmount = dutyCalc.duty;
       warnings.push(...dutyCalc.warnings);
 
-      const provTax = PROVINCIAL_TAXES[input.province] || PROVINCIAL_TAXES["ON"];
-      const dutyPlusValue = input.valueCAD + dutyAmount;
+      const taxes = calculateBorderTaxes({
+        valueCAD: input.valueCAD,
+        dutyAmount,
+        province: input.province,
+        shipmentType: input.shipmentType,
+      });
+      warnings.push(...taxes.warnings);
 
-      let gstAmount = dutyPlusValue * GST_RATE;
-      let provincialTaxAmount = 0;
-      let provincialTaxName = "";
-
-      if (provTax.type === "HST") {
-        gstAmount = dutyPlusValue * (GST_RATE + provTax.rate);
-        provincialTaxName = "HST";
-      } else if (provTax.type === "GST+PST") {
-        provincialTaxAmount = dutyPlusValue * provTax.rate;
-        provincialTaxName = "PST";
-      } else if (provTax.type === "GST+QST") {
-        const gstOnImport = dutyPlusValue * GST_RATE;
-        provincialTaxAmount = (dutyPlusValue + gstOnImport) * provTax.rate;
-        provincialTaxName = "QST";
-      }
-
-      const totalDutiesAndTaxes = dutyAmount + gstAmount + provincialTaxAmount;
+      const totalDutiesAndTaxes = dutyAmount + taxes.totalTax;
       const totalLandedCost = input.valueCAD + totalDutiesAndTaxes;
 
       const allTreatmentRates: Record<string, { rate: string; duty: number }> = {};
@@ -438,7 +287,7 @@ export function registerCustomsRoutes(app: Express) {
       for (const t of allTreatments) {
         const rate = dutyRates[t];
         if (rate && rate !== "N/A") {
-          const calc = calculateDuty(rate, input.valueCAD, input.quantity);
+          const calc = calculateDuty(rate, input.valueCAD, input.quantity, hsCode.unitOfMeasure);
           allTreatmentRates[t] = {
             rate,
             duty: calc.duty,
@@ -448,13 +297,13 @@ export function registerCustomsRoutes(app: Express) {
 
       res.json({
         hsCode: hsCode.code,
-        description: hsCode.description,
+        description: hsCode.descriptionFull || hsCode.description,
         unitOfMeasure: hsCode.unitOfMeasure,
         countryOfOrigin: input.countryOfOrigin,
         valueCAD: input.valueCAD,
         quantity: input.quantity,
         province: input.province,
-        provinceName: provTax.name,
+        provinceName: taxes.provinceInfo.name,
         shipmentType: input.shipmentType,
 
         appliedTreatment: bestTreatment.treatment,
@@ -462,13 +311,13 @@ export function registerCustomsRoutes(app: Express) {
         dutyRate: bestTreatment.rate,
         dutyAmount: Math.round(dutyAmount * 100) / 100,
 
-        gstRate: provTax.type === "HST" ? GST_RATE + provTax.rate : GST_RATE,
-        gstAmount: Math.round(gstAmount * 100) / 100,
-        gstLabel: provTax.type === "HST" ? "HST" : "GST",
+        gstRate: taxes.gstRate,
+        gstAmount: Math.round(taxes.gstAmount * 100) / 100,
+        gstLabel: taxes.gstLabel,
 
-        provincialTaxRate: provTax.rate,
-        provincialTaxAmount: Math.round(provincialTaxAmount * 100) / 100,
-        provincialTaxName,
+        provincialTaxRate: taxes.provincialTaxRate,
+        provincialTaxAmount: Math.round(taxes.provincialTaxAmount * 100) / 100,
+        provincialTaxName: taxes.provincialTaxName,
 
         totalDutiesAndTaxes: Math.round(totalDutiesAndTaxes * 100) / 100,
         totalLandedCost: Math.round(totalLandedCost * 100) / 100,
@@ -493,7 +342,7 @@ export function registerCustomsRoutes(app: Express) {
     }
   });
 
-  app.post("/api/customs/calculate-bulk", async (req, res) => {
+  app.post("/api/customs/calculate-bulk", limitCalculations, async (req, res) => {
     try {
       const schema = z.object({
         items: z.array(
@@ -507,11 +356,12 @@ export function registerCustomsRoutes(app: Express) {
         ).min(1).max(100),
         province: z.string().min(2).max(2).default("ON"),
         shipmentType: z.enum(["commercial", "personal"]).default("commercial"),
+        confirmedOrigin: z.boolean().default(false),
       });
 
       const input = schema.parse(req.body);
       const countries = await storage.getAllCountries();
-      const provTax = PROVINCIAL_TAXES[input.province] || PROVINCIAL_TAXES["ON"];
+      const provTax = PROVINCIAL_TAXES[input.province as keyof typeof PROVINCIAL_TAXES] || PROVINCIAL_TAXES.ON;
       const results: any[] = [];
       let totalValue = 0;
       let totalDuty = 0;
@@ -532,23 +382,28 @@ export function registerCustomsRoutes(app: Express) {
         const country = countries.find(
           (c) => c.name.toLowerCase() === item.countryOfOrigin.toLowerCase()
         );
-        const treatments = country?.treatments || ["MFN"];
+        const availableTreatments = country?.treatments || ["MFN"];
+        const preferentialAvailable = availableTreatments.some(
+          (treatment) => treatment !== "MFN" && treatment !== "General Tariff",
+        );
+        const treatments = preferentialAvailable && !input.confirmedOrigin
+          ? ["MFN"]
+          : availableTreatments;
         const dutyRates = hsCode.dutyRates as Record<string, string>;
-        const bestTreatment = getBestTreatment(treatments, dutyRates);
-        const dutyCalc = calculateDuty(bestTreatment.rate, item.valueCAD, item.quantity);
+        const bestTreatment = getBestTreatment(treatments, dutyRates, item.valueCAD, item.quantity, hsCode.unitOfMeasure);
+        const dutyCalc = calculateDuty(bestTreatment.rate, item.valueCAD, item.quantity, hsCode.unitOfMeasure);
         const dutyAmount = dutyCalc.duty;
-        const dutyPlusValue = item.valueCAD + dutyAmount;
-
-        let gstAmount = dutyPlusValue * GST_RATE;
-        let provincialTaxAmount = 0;
-
-        if (provTax.type === "HST") {
-          gstAmount = dutyPlusValue * (GST_RATE + provTax.rate);
-        } else if (provTax.type === "GST+PST") {
-          provincialTaxAmount = dutyPlusValue * provTax.rate;
-        } else if (provTax.type === "GST+QST") {
-          const gstOnImport = dutyPlusValue * GST_RATE;
-          provincialTaxAmount = (dutyPlusValue + gstOnImport) * provTax.rate;
+        const taxes = calculateBorderTaxes({
+          valueCAD: item.valueCAD,
+          dutyAmount,
+          province: input.province,
+          shipmentType: input.shipmentType,
+        });
+        const gstAmount = taxes.gstAmount;
+        const provincialTaxAmount = taxes.provincialTaxAmount;
+        const itemWarnings = [...dutyCalc.warnings, ...taxes.warnings];
+        if (preferentialAvailable && !input.confirmedOrigin) {
+          itemWarnings.unshift("MFN applied because preferential rules-of-origin eligibility was not confirmed.");
         }
 
         totalValue += item.valueCAD;
@@ -558,7 +413,7 @@ export function registerCustomsRoutes(app: Express) {
 
         results.push({
           hsCode: hsCode.code,
-          description: item.description || hsCode.description,
+          description: item.description || hsCode.descriptionFull || hsCode.description,
           countryOfOrigin: item.countryOfOrigin,
           valueCAD: item.valueCAD,
           quantity: item.quantity,
@@ -568,7 +423,8 @@ export function registerCustomsRoutes(app: Express) {
           gstAmount: Math.round(gstAmount * 100) / 100,
           provincialTaxAmount: Math.round(provincialTaxAmount * 100) / 100,
           totalForItem: Math.round((item.valueCAD + dutyAmount + gstAmount + provincialTaxAmount) * 100) / 100,
-          warnings: dutyCalc.warnings,
+          warnings: itemWarnings,
+          requiresManualReview: dutyCalc.requiresManualReview,
         });
       }
 
@@ -584,6 +440,8 @@ export function registerCustomsRoutes(app: Express) {
           totalLandedCost: Math.round((totalValue + totalDuty + totalGST + totalProvTax) * 100) / 100,
           province: input.province,
           provinceName: provTax.name,
+          shipmentType: input.shipmentType,
+          originConfirmed: input.confirmedOrigin,
         },
       });
     } catch (err) {
@@ -598,18 +456,50 @@ export function registerCustomsRoutes(app: Express) {
 
   const customsLeadRateLimit = new Map<string, number[]>();
 
+  const acceptLeadRequest = (req: any, res: any) => {
+    const ip = req.ip || "unknown";
+    const now = Date.now();
+    const timestamps = customsLeadRateLimit.get(ip)?.filter((time) => now - time < 60_000) || [];
+    if (timestamps.length >= 5) {
+      res.status(429).json({ message: "Too many requests. Please try again later." });
+      return false;
+    }
+    timestamps.push(now);
+    customsLeadRateLimit.set(ip, timestamps);
+    return true;
+  };
+
+  app.post("/api/leads/tool-waitlist", async (req, res) => {
+    try {
+      if (!acceptLeadRequest(req, res)) return;
+      const input = z.object({
+        email: z.string().email(),
+        tool: z.enum(["freight-quote", "shipment-tracking"]),
+      }).parse(req.body);
+      const lead = await storage.createCustomsLead({
+        email: input.email,
+        companyName: null,
+        phone: null,
+        hsCode: null,
+        countryOfOrigin: null,
+        goodsValue: null,
+        calculatedDuty: null,
+        source: `${input.tool}-waitlist`,
+      });
+      res.status(201).json({ success: true, id: lead.id });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        res.status(400).json({ message: err.errors[0].message });
+      } else {
+        console.error("Error creating tool waitlist lead:", err);
+        res.status(500).json({ message: "Could not save your email. Please try again." });
+      }
+    }
+  });
+
   app.post("/api/leads/customs-calculator", async (req, res) => {
     try {
-      const ip = req.ip || "unknown";
-      const now = Date.now();
-      const windowMs = 60_000;
-      const maxRequests = 5;
-      const timestamps = customsLeadRateLimit.get(ip)?.filter((t) => now - t < windowMs) || [];
-      if (timestamps.length >= maxRequests) {
-        return res.status(429).json({ message: "Too many requests. Please try again later." });
-      }
-      timestamps.push(now);
-      customsLeadRateLimit.set(ip, timestamps);
+      if (!acceptLeadRequest(req, res)) return;
 
       const input = insertCustomsLeadSchema.parse({
         ...req.body,
