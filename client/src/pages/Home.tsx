@@ -11,7 +11,7 @@ import { HowItWorksSection } from "@/components/HowItWorks";
 import { HeroFilingWorkflow } from "@/components/HeroFilingWorkflow";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle2, ShieldCheck, Award, Lock, Landmark, Shield, Calculator, Package, Globe, FileCheck, Search } from "lucide-react";
+import { ArrowRight, CheckCircle2, Star, Award, Landmark, Shield, Calculator, Package, Globe, FileCheck, Search } from "lucide-react";
 
 export default function Home() {
   const [modalOpen, setModalOpen] = useState(false);
@@ -71,9 +71,20 @@ export default function Home() {
                     <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>
                 </Link>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-1 text-xs font-medium text-slate-600">
-                  <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-slate-500" aria-hidden="true" />Submitted under your authorization</span>
-                  <span className="inline-flex items-center gap-1.5"><Lock className="h-4 w-4 text-slate-500" aria-hidden="true" />Secure document handling</span>
+                <div className="flex items-center gap-3 px-1" data-testid="hero-client-proof">
+                  <div className="flex -space-x-2.5" aria-hidden="true">
+                    {[1, 2, 3, 4].map((index) => (
+                      <div key={index} className="h-9 w-9 overflow-hidden rounded-full border-2 border-white bg-slate-100 shadow-sm">
+                        <img src={`/images/avatar-${index}.png`} alt="" width={36} height={36} loading="lazy" className="h-full w-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex text-amber-400" aria-label="Five stars">
+                      {[1, 2, 3, 4, 5].map((index) => <Star key={index} className="h-3.5 w-3.5 fill-current" aria-hidden="true" />)}
+                    </div>
+                    <p className="mt-0.5 text-xs font-medium leading-tight text-slate-600">Canadian &amp; non-resident clients</p>
+                  </div>
                 </div>
               </div>
             </motion.div>

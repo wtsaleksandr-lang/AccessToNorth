@@ -36,8 +36,24 @@ test.describe("public marketing surface", () => {
     await expect(workflow).toContainText("How your filing progresses");
     await expect(workflow).toContainText("What the client receives");
     await expect(workflow).toContainText("not real client data");
-    await expect(page.getByTestId("inst-badge-cra")).toHaveCount(0);
-    await expect(page.getByTestId("trust-badge-cra")).toHaveCount(0);
+    await expect(page.getByTestId("hero-client-proof")).toBeVisible();
+    await expect(page.getByTestId("hero-client-proof")).toContainText("Canadian & non-resident clients");
+    await expect(page.getByTestId("hero-trust-signals")).toBeVisible();
+    await expect(page.getByTestId("trust-badge-cra")).toBeVisible();
+    await expect(page.getByTestId("trust-badge-guarantee")).toBeVisible();
+    await expect(page.getByTestId("trust-badge-secure")).toBeVisible();
+    await expect(page.getByTestId("hero-agency-row")).toBeVisible();
+    await expect(page.getByTestId("inst-badge-cra")).toBeVisible();
+    await expect(page.getByTestId("inst-badge-cbsa")).toBeVisible();
+    await expect(page.getByTestId("inst-badge-irs")).toBeVisible();
+
+    const workflowCardBox = await page.getByTestId("hero-workflow-card").boundingBox();
+    const trustSignalsBox = await page.getByTestId("hero-trust-signals").boundingBox();
+    expect(workflowCardBox).not.toBeNull();
+    expect(trustSignalsBox).not.toBeNull();
+    expect(trustSignalsBox!.y, "Trust badges must sit below—not over—the workflow card").toBeGreaterThanOrEqual(
+      workflowCardBox!.y + workflowCardBox!.height,
+    );
 
     const fitsViewport = await workflow.evaluate((element) => {
       const rect = element.getBoundingClientRect();
