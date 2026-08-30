@@ -34,6 +34,8 @@ This is the working backlog for accuracy, usefulness, and product polish across 
 
 - [x] Turn Freight Quote into a structured RFQ builder with shipment details, documents, and CRM handoff.
 - [x] Connect Shipment Tracking to portal orders and expose the maintained service milestones.
+- [ ] Add a no-subscription shipping estimate layer: Freightos-attributed market ranges first, Canada Post parcel rating second, and a prefilled verified-quote handoff. See `SHIPPING_RATE_API_RESEARCH.md`.
+- [ ] Add AccessToNorth rate management for uploaded carrier/agent tariffs, validity dates, surcharges, margins, and lane-specific overrides.
 - [ ] Add an invoice and packing-list validator for totals, currencies, Incoterms, parties, and missing customs fields.
 - [ ] Add a CBM and chargeable-weight calculator for air, LCL, parcel, and courier modes.
 - [ ] Add a CERS readiness checker and filing checklist.
