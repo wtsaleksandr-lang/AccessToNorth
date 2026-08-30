@@ -16,6 +16,7 @@ import { ArrowRight, CheckCircle2, Star, Award, Landmark, Shield, Calculator, Pa
 export default function Home() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState("gst-hst");
+  const [heroHelpRequested, setHeroHelpRequested] = useState(false);
   const [, setLocation] = useLocation();
 
   usePageMeta({
@@ -45,32 +46,45 @@ export default function Home() {
             >
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-medium">
                 <span className="inline-flex h-2 w-2 rounded-full bg-blue-500" aria-hidden="true"></span>
-                Coordinating Canadian tax &amp; customs filings
+                Canadian business and import registrations
               </div>
 
               <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold font-display text-slate-900 leading-[1.05] tracking-tight" data-testid="text-hero-title" style={{ letterSpacing: '-0.02em' }}>
-                Canadian{" "}
-                <span className="text-primary">Business Number &amp; GST/HST</span>
-                {" "}filings, coordinated for you.
+                Get your Canadian{" "}
+                <span className="text-primary">tax and import accounts</span>
+                {" "}set up correctly.
               </h1>
 
               <p className="text-base md:text-lg text-slate-600 max-w-lg leading-relaxed">
-                Flat fee from CA$99. We prepare and submit your CRA filings under signed authorization.
-                CRA typically issues accounts within 5&ndash;10 business days of filing. For Canadian
-                and non-resident businesses.
+                Choose what you need, upload your documents securely, and track the filing online.
+                Fixed pricing for Canadian and non-resident businesses.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 pt-2">
-                <Link href="/pricing">
+              <div className="flex flex-col gap-4 pt-2">
+                <div className="flex flex-col gap-3 sm:flex-row">
                   <Button
                     size="lg"
-                    className="bg-primary text-lg px-8 shadow-lg shadow-primary/25 cursor-pointer transition-all duration-300 ease-in-out hover:bg-[#0056b3] hover:shadow-xl hover:shadow-primary/30 hover:scale-105 active:scale-100"
+                    className="bg-primary text-base px-7 shadow-lg shadow-primary/25 cursor-pointer transition-all duration-300 ease-in-out hover:bg-[#0056b3] hover:shadow-xl hover:shadow-primary/30"
                     data-testid="button-start-registration"
+                    onClick={() => document.getElementById("filing-assistant")?.scrollIntoView({ behavior: "smooth", block: "start" })}
                   >
-                    View services &amp; pricing
+                    Choose your registration
                     <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>
-                </Link>
+                  <Button
+                    type="button"
+                    size="lg"
+                    variant="outline"
+                    className="border-slate-300 bg-white/70 text-base"
+                    onClick={() => {
+                      setHeroHelpRequested(true);
+                      document.getElementById("filing-assistant")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    data-testid="button-help-choose"
+                  >
+                    Help me choose
+                  </Button>
+                </div>
                 <div className="flex items-center gap-3 px-1" data-testid="hero-client-proof">
                   <div className="flex -space-x-2.5" aria-hidden="true">
                     {[1, 2, 3, 4].map((index) => (
@@ -98,7 +112,7 @@ export default function Home() {
               <div className="absolute -top-10 -right-10 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-2xl opacity-20" aria-hidden="true"></div>
               <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-2xl opacity-20" aria-hidden="true"></div>
 
-              <HeroFilingWorkflow />
+              <HeroFilingWorkflow onStart={handleOpenModal} helpRequested={heroHelpRequested} />
             </motion.div>
           </div>
         </div>
