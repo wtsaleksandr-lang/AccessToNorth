@@ -222,23 +222,27 @@ test.describe("tool pages load without runtime errors", () => {
     expect(realErrors, `Uncaught errors during pallet-builder transfer: ${realErrors.join("\n")}`).toEqual([]);
   });
 
-  test("Freight Quote — waitlist form renders (service marked coming soon)", async ({ page }) => {
+  test("Freight Quote — structured RFQ workflow renders", async ({ page }) => {
     const errors = trackPageErrors(page);
     await page.goto("/tools/freight-quote");
 
     await expect(page.getByTestId("text-freight-title")).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByTestId("input-freight-email")).toBeVisible();
-    await expect(page.getByTestId("button-freight-notify")).toBeVisible();
+    await expect(page.getByTestId("freight-step-shipment")).toBeVisible();
+    await expect(page.getByTestId("input-freight-origin")).toBeVisible();
+    await expect(page.getByTestId("input-freight-destination")).toBeVisible();
+    await expect(page.getByTestId("input-freight-commodity")).toBeVisible();
+    await expect(page.getByTestId("button-freight-next")).toBeVisible();
 
     expect(errors, `Uncaught errors on /tools/freight-quote: ${errors.join("\n")}`).toEqual([]);
   });
 
-  test("Shipment Tracking — tracking input + waitlist form render", async ({ page }) => {
+  test("Shipment Tracking — secure request lookup renders", async ({ page }) => {
     const errors = trackPageErrors(page);
     await page.goto("/tools/shipment-tracking");
 
     await expect(page.getByTestId("text-tracking-title")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("input-tracking-id")).toBeVisible();
+    await expect(page.getByTestId("input-tracking-email")).toBeVisible();
     await expect(page.getByTestId("button-track")).toBeVisible();
 
     expect(errors, `Uncaught errors on /tools/shipment-tracking: ${errors.join("\n")}`).toEqual([]);

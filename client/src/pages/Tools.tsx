@@ -52,17 +52,17 @@ const tools = [
   },
   {
     title: "Freight Quote",
-    description: "Get instant freight quotes for shipments to and from Canada. Compare rates from multiple carriers.",
+    description: "Build a structured freight quote request with routing, cargo dimensions, handling requirements, and supporting documents.",
     icon: Truck,
     href: "/tools/freight-quote",
-    available: false,
+    available: true,
   },
   {
     title: "Tracking",
-    description: "Track your customs clearance status and shipment progress in real time.",
+    description: "Securely check AccessToNorth order, document-review, customs-service, and freight RFQ milestones.",
     icon: Package,
     href: "/tools/shipment-tracking",
-    available: false,
+    available: true,
   },
 ];
 

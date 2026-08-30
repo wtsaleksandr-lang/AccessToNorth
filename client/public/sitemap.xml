@@ -123,6 +123,18 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://accesstonorth.com/tools/freight-quote/</loc>
+    <lastmod>2026-08-30</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://accesstonorth.com/tools/shipment-tracking/</loc>
+    <lastmod>2026-08-30</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://accesstonorth.com/resources/how-to-import-into-canada/</loc>
     <lastmod>2026-08-28</lastmod>
     <changefreq>monthly</changefreq>

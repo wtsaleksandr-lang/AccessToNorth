@@ -41,6 +41,28 @@ export interface ClassificationOrderData {
   deliveryTime: string;
 }
 
+export interface FreightQuoteOrderData {
+  requestType: "freight-quote";
+  mode: string;
+  direction: string;
+  serviceLevel: string;
+  origin: string;
+  destination: string;
+  readyDate: string;
+  incoterm: string;
+  commodity: string;
+  cargoLines: Array<Record<string, unknown>>;
+  cargoSummary: { packages: number; weightKg: number; volumeCbm: number };
+  stackable: boolean;
+  hazardous: boolean;
+  temperatureControlled: boolean;
+  temperatureC?: number | null;
+  notes: string;
+  companyName: string;
+  phone: string;
+  documentCount: number;
+}
+
 export const orders = pgTable(
   "orders",
   {
@@ -51,7 +73,7 @@ export const orders = pgTable(
     status: text("status").notNull().default("In Progress"),
     steps: jsonb("steps").notNull().$type<OrderStep[]>(),
     stripeSessionId: text("stripe_session_id"),
-    metadata: jsonb("metadata").$type<ClassificationOrderData>(),
+    metadata: jsonb("metadata").$type<ClassificationOrderData | FreightQuoteOrderData>(),
     confirmationEmailSentAt: timestamp("confirmation_email_sent_at"),
     internalEmailSentAt: timestamp("internal_email_sent_at"),
     reportFileId: text("report_file_id"),

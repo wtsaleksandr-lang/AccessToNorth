@@ -47,8 +47,8 @@ const toolLinks: MegaLink[] = [
   { name: "Pallet Builder", href: "/tools/pallet-builder", icon: PackageCheck, desc: "Build carton-by-carton pallet plans" },
   { name: "Container Loading Calculator", href: "/tools/container-calculator", icon: Ship, desc: "Build a 3D container loading plan" },
   { name: "Truck Load Planner", href: "/tools/truck-load-planner", icon: Truck, desc: "Build a spatial trailer load plan" },
-  { name: "Freight Quote", href: "/tools/freight-quote", icon: Truck, desc: "Get a shipping rate estimate", comingSoon: true },
-  { name: "Tracking", href: "/tools/shipment-tracking", icon: MapPin, desc: "Track your shipments in real time", comingSoon: true },
+  { name: "Freight Quote", href: "/tools/freight-quote", icon: Truck, desc: "Build a carrier-ready quote request" },
+  { name: "Tracking", href: "/tools/shipment-tracking", icon: MapPin, desc: "Check AccessToNorth request milestones" },
 ];
 
 function CurrencyToggle({ light }: { light?: boolean }) {

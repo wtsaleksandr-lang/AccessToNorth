@@ -15,20 +15,25 @@ This is the working backlog for accuracy, usefulness, and product polish across 
 - [x] Persist Freight Quote and Shipment Tracking waitlist submissions and keep unfinished tools out of search indexes.
 - [x] Remove the duplicated third-party chat bubble and use one compact first-party launcher.
 - [x] Parse quoted and multi-line CSV fields safely in tariff and bulk customs uploads.
+- [x] Replace the Freight Quote waitlist with a structured RFQ, document upload, request ID, CRM/admin record, and customer/operations notifications.
+- [x] Replace the Shipment Tracking placeholder with secure AccessToNorth order and RFQ milestone lookup.
+- [x] Add official Canadian/US truck-dimension screening references and jurisdiction permit links to route results.
+- [x] Correct open-deck road-height screening so the trailer deck height is included.
 
 ## Next accuracy and data work
 
 - [ ] Add a scheduled tariff-source update job with import validation, change summaries, and rollback.
 - [ ] Add SIMA, surtax, excise, quota, and permit flags from maintained official datasets.
 - [ ] Add binding-ruling and advance-ruling reference links to HS classification results.
-- [ ] Add audited axle, jurisdiction, and oversize/overweight permit rules to the truck planner.
-- [ ] Enable truck routing only after a supported maps key and route restrictions are configured.
+- [ ] Add a configurable axle-reaction model using tractor/trailer tare, kingpin, axle count, and axle spacing; require scale confirmation.
+- [ ] Add maintained seasonal restrictions and machine-readable province/state permit thresholds beyond the current official baseline links.
+- [x] Keep truck routing disabled until a supported Google Maps key is configured and label the route as ordinary driving directions, not truck-clearance routing.
 - [ ] Add golden calculation fixtures for representative commercial and personal imports.
 
 ## Next product tools
 
-- [ ] Turn Freight Quote into a structured RFQ builder with shipment details, documents, and CRM handoff.
-- [ ] Connect Shipment Tracking to portal orders and expose document, customs, release, and delivery milestones.
+- [x] Turn Freight Quote into a structured RFQ builder with shipment details, documents, and CRM handoff.
+- [x] Connect Shipment Tracking to portal orders and expose the maintained service milestones.
 - [ ] Add an invoice and packing-list validator for totals, currencies, Incoterms, parties, and missing customs fields.
 - [ ] Add a CBM and chargeable-weight calculator for air, LCL, parcel, and courier modes.
 - [ ] Add a CERS readiness checker and filing checklist.
