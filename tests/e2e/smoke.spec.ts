@@ -33,9 +33,14 @@ test.describe("public marketing surface", () => {
 
     const workflow = page.getByTestId("hero-filing-workflow");
     await expect(workflow).toBeVisible();
-    await expect(workflow).toContainText("How your filing progresses");
-    await expect(workflow).toContainText("What the client receives");
-    await expect(workflow).toContainText("not real client data");
+    await expect(workflow).toContainText("What do you need set up?");
+    await expect(workflow).toContainText("BN + GST/HST");
+    await expect(workflow).toContainText("CA$299");
+    await expect(page.getByTestId("hero-help-choose")).toBeVisible();
+    await page.getByTestId("hero-help-choose").click();
+    await expect(page.getByTestId("hero-choice-guide")).toBeVisible();
+    await page.getByTestId("hero-option-business-number").click();
+    await expect(page.getByTestId("hero-selected-service")).toContainText("CA$99");
     await expect(page.getByTestId("hero-client-proof")).toBeVisible();
     await expect(page.getByTestId("hero-client-proof")).toContainText("Canadian & non-resident clients");
     await expect(page.getByTestId("hero-trust-signals")).toBeVisible();
