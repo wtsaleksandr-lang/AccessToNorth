@@ -4,7 +4,6 @@ import type { Request, Response, NextFunction } from "express";
  * Baseline security headers — a minimal in-house equivalent of `helmet`,
  * tuned for this app's third-party surface:
  *   - Stripe.js  (checkout redirect)
- *   - Tawk.to    (live chat embed)
  *   - Google Fonts (Inter / Poppins / Playfair)
  *
  * Adjust the CSP carefully if you add new third-party scripts.
@@ -26,18 +25,18 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
 
   // A permissive CSP that still blocks inline evaluation (`unsafe-eval`).
   // We must allow `unsafe-inline` for style because Tailwind + shadcn emit
-  // runtime inline styles, and Tawk.to injects inline script tags.
+  // runtime inline styles.
   const csp = [
     "default-src 'self'",
     "base-uri 'self'",
     "frame-ancestors 'self'",
     "object-src 'none'",
     "img-src 'self' data: blob: https:",
-    "font-src 'self' data: https://fonts.gstatic.com https://embed.tawk.to",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://embed.tawk.to",
-    "script-src 'self' 'unsafe-inline' https://js.stripe.com https://checkout.stripe.com https://embed.tawk.to https://*.tawk.to",
-    "connect-src 'self' https://api.stripe.com https://checkout.stripe.com https://*.tawk.to wss://*.tawk.to",
-    "frame-src https://js.stripe.com https://checkout.stripe.com https://*.tawk.to",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "script-src 'self' 'unsafe-inline' https://js.stripe.com https://checkout.stripe.com",
+    "connect-src 'self' https://api.stripe.com https://checkout.stripe.com",
+    "frame-src https://js.stripe.com https://checkout.stripe.com",
     "form-action 'self' https://checkout.stripe.com",
   ].join("; ");
 

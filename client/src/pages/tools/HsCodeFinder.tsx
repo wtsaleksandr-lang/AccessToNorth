@@ -32,6 +32,8 @@ interface HsCodeResult {
   descriptionFull?: string;
   chapter: string;
   unitOfMeasure: string | null;
+  score?: number;
+  classificationLevel?: "complete" | "tariff-item";
 }
 
 const DEEP_BLUE = "#0A2540";
@@ -55,11 +57,11 @@ const FREQUENTLY_REVIEWED_CHAPTERS = new Set([
 const faqItems = [
   {
     q: "What is an HS code?",
-    a: "An HS (Harmonized System) code is a standardized numerical method of classifying traded products. It is used by customs authorities worldwide, including the Canada Border Services Agency (CBSA), to identify products for tariff and regulatory purposes. Canadian tariff item numbers are 10 digits long and based on the international 6-digit HS system.",
+    a: "An HS code is the international six-digit foundation used to classify traded products. Canada extends it to an eight-digit tariff item, where duty is assigned, and a complete ten-digit classification number used to report imported goods.",
   },
   {
     q: "What is the difference between HS, HTS, and Canadian tariff item?",
-    a: "The HS code is the international 6-digit standard maintained by the World Customs Organization. The HTS (Harmonized Tariff Schedule) is the U.S. version with additional digits. Canada uses its own 10-digit tariff item numbers based on the same HS framework, published in the Canadian Customs Tariff.",
+    a: "The HS code is the international 6-digit standard maintained by the World Customs Organization. The HTS is the U.S. version. Canada uses eight-digit tariff items plus a two-digit statistical suffix, creating a complete ten-digit classification number.",
   },
   {
     q: "Why does country of origin matter for HS classification?",
@@ -142,6 +144,7 @@ export default function HsCodeFinder() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -188,16 +191,20 @@ export default function HsCodeFinder() {
     }
 
     setSearching(true);
+    setSearchError(null);
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
 
     searchTimeout.current = setTimeout(async () => {
       try {
         const res = await fetch(`/api/customs/hs-search?q=${encodeURIComponent(q)}&limit=20`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         setResults(data);
         setHasSearched(true);
       } catch {
         setResults([]);
+        setHasSearched(true);
+        setSearchError("The Canadian tariff dataset is temporarily unavailable. Please try again shortly.");
       } finally {
         setSearching(false);
       }
@@ -218,18 +225,6 @@ export default function HsCodeFinder() {
     navigate(`/customs-calculator?hs=${encodeURIComponent(code)}&src=hsfinder&q=${encodeURIComponent(q)}`);
   };
 
-  const getConfidenceTag = (index: number): { label: string; color: string; variant: "default" | "secondary" | "outline" } => {
-    if (index < 3) return { label: "High", color: "text-emerald-600", variant: "default" };
-    if (index < 10) return { label: "Medium", color: "text-amber-600", variant: "secondary" };
-    return { label: "Low", color: "text-red-500", variant: "outline" };
-  };
-
-  const getConfidenceDot = (index: number) => {
-    if (index < 3) return "bg-emerald-500";
-    if (index < 10) return "bg-amber-500";
-    return "bg-red-500";
-  };
-
   const getRiskFlags = (item: HsCodeResult): string[] => {
     const flags: string[] = [];
     const ch = item.chapter?.padStart(2, "0") || item.code.substring(0, 2);
@@ -243,10 +238,11 @@ export default function HsCodeFinder() {
     setResults([]);
     setHasSearched(false);
     setExpandedCode(null);
+    setSearchError(null);
     inputRef.current?.focus();
   };
 
-  const hasMediumOrLowConfidence = hasSearched && results.length > 3;
+  const showClassificationAdvisory = hasSearched && results.length > 0;
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
@@ -346,12 +342,10 @@ export default function HsCodeFinder() {
                     <h3 className="text-base font-semibold text-slate-800">
                       {results.length} suggested code{results.length !== 1 ? "s" : ""} found
                     </h3>
-                    <p className="text-xs text-slate-500">Ranked by relevance to your search</p>
+                    <p className="text-xs text-slate-500">Search relevance is not classification certainty</p>
                   </div>
                   <div className="space-y-3" data-testid="list-hs-results">
                     {results.map((item, index) => {
-                      const conf = getConfidenceTag(index);
-                      const dotColor = getConfidenceDot(index);
                       const isExpanded = expandedCode === item.code;
                       const fullDesc = item.descriptionFull || item.description;
                       const shortDesc =
@@ -379,12 +373,12 @@ export default function HsCodeFinder() {
                                     >
                                       {item.code}
                                     </span>
-                                    <div className="flex items-center gap-1.5">
-                                      <span className={`w-2 h-2 rounded-full ${dotColor}`} />
-                                      <Badge variant={conf.variant} data-testid={`badge-confidence-${item.code}`}>
-                                        {conf.label}
-                                      </Badge>
-                                    </div>
+                                    <Badge variant="outline" data-testid={`badge-level-${item.code}`}>
+                                      {item.classificationLevel === "complete" ? "Complete 10-digit" : "8-digit duty level"}
+                                    </Badge>
+                                    {typeof item.score === "number" && (
+                                      <span className="text-[11px] text-slate-400">{Math.round(item.score * 100)}% search match</span>
+                                    )}
                                     {item.unitOfMeasure && (
                                       <span className="text-xs text-slate-400">({item.unitOfMeasure})</span>
                                     )}
@@ -458,8 +452,8 @@ export default function HsCodeFinder() {
                     })}
                   </div>
 
-                  {/* Advisory box for Medium/Low confidence */}
-                  {hasMediumOrLowConfidence && (
+                  {/* Search relevance is not legal classification confidence. */}
+                  {showClassificationAdvisory && (
                     <motion.div
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -492,11 +486,19 @@ export default function HsCodeFinder() {
                   )}
                 </>
               ) : (
-                <Card className="p-6 text-center">
-                  <p className="text-slate-500 mb-2">No matching HS codes found for "{query}".</p>
-                  <p className="text-sm text-slate-400">
-                    Try different keywords, check spelling, or use more general terms.
-                  </p>
+                <Card className={`p-6 text-center ${searchError ? "border-red-200 bg-red-50" : ""}`}>
+                  {searchError ? (
+                    <>
+                      <AlertTriangle className="mx-auto mb-3 h-7 w-7 text-red-600" />
+                      <p className="mb-2 font-semibold text-red-900">Tariff search is temporarily unavailable</p>
+                      <p className="text-sm text-red-700">{searchError}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-slate-500 mb-2">No matching HS codes found for "{query}".</p>
+                      <p className="text-sm text-slate-400">Try tariff terms, material, product use, or a broader product name.</p>
+                    </>
+                  )}
                 </Card>
               )}
             </div>

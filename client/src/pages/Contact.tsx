@@ -1,13 +1,3 @@
-declare global {
-  interface Window {
-    Tawk_API?: {
-      maximize?: () => void;
-      minimize?: () => void;
-      toggle?: () => void;
-    };
-  }
-}
-
 import { Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -128,11 +118,7 @@ export default function Contact() {
               type="button"
               className="block text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl"
               onClick={() => {
-                if (typeof window !== "undefined" && window.Tawk_API?.maximize) {
-                  window.Tawk_API.maximize();
-                } else {
-                  window.location.href = "mailto:operations@accesstonorth.com";
-                }
+                window.dispatchEvent(new Event("atn:open-chat"));
               }}
               data-testid="contact-card-chat"
             >

@@ -181,7 +181,10 @@ function injectMetaForRoute(html: string, route: RouteMeta): string {
   out = out.replace(/\s*<link rel="alternate" hreflang="[^"]+"[^>]*>/gi, "");
 
   // 6. Explicit public-page crawl directives and route-specific JSON-LD.
-  const robotsTag = '<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">';
+  const robotsContent = route.sitemap === false
+    ? "noindex,follow"
+    : "index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1";
+  const robotsTag = `<meta name="robots" content="${robotsContent}">`;
   if (/<meta name="robots"[^>]*>/i.test(out)) {
     out = out.replace(/<meta name="robots"[^>]*>/i, robotsTag);
   } else {

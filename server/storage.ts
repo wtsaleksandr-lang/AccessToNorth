@@ -33,6 +33,39 @@ import {
 } from "@shared/schema";
 import { eq, and, desc, ilike, or, sql, lt, isNull, isNotNull } from "drizzle-orm";
 
+const HS_SEARCH_SYNONYMS: Record<string, string[]> = {
+  sweater: ["jersey", "pullover", "cardigan"],
+  sweaters: ["jerseys", "pullovers", "cardigans"],
+  bolt: ["bolt", "screw"],
+  bolts: ["bolts", "screws"],
+  tshirt: ["t-shirt", "singlet"],
+  tshirts: ["t-shirts", "singlets"],
+  cellphone: ["telephone", "smartphone"],
+  cellphones: ["telephones", "smartphones"],
+  auto: ["motor vehicle"],
+  car: ["motor vehicle"],
+};
+
+function hsSearchTerms(query: string) {
+  const words = query.toLowerCase().split(/[^a-z0-9]+/).filter((word) => word.length >= 2);
+  return [...new Set([
+    query.trim().toLowerCase(),
+    ...words,
+    ...words.flatMap((word) => HS_SEARCH_SYNONYMS[word] || []),
+  ].filter(Boolean))];
+}
+
+function hsSearchScore(query: string, row: Pick<HsCode, "code" | "description" | "descriptionFull">) {
+  const words = query.toLowerCase().split(/[^a-z0-9]+/).filter((word) => word.length >= 2);
+  const expanded = words.map((word) => [word, ...(HS_SEARCH_SYNONYMS[word] || [])]);
+  const haystack = `${row.description} ${row.descriptionFull || ""}`.toLowerCase();
+  const matches = expanded.filter((alternatives) => alternatives.some((term) => haystack.includes(term))).length;
+  const coverage = words.length ? matches / words.length : 0;
+  const phraseBonus = haystack.includes(query.toLowerCase().trim()) ? 0.18 : 0;
+  const completeBonus = row.code.replace(/\D/g, "").length === 10 ? 0.04 : 0;
+  return Math.min(0.99, 0.25 + coverage * 0.52 + phraseBonus + completeBonus);
+}
+
 export interface IStorage {
   createRegistration(registration: InsertRegistration): Promise<Registration>;
   getRegistrationsByEmail(email: string): Promise<Registration[]>;
@@ -56,6 +89,7 @@ export interface IStorage {
   searchHsCodesFuzzy(query: string, limit?: number): Promise<Array<HsCode & { score: number }>>;
   getHsCodeByCode(code: string): Promise<HsCode | undefined>;
   getAllCountries(): Promise<TariffCountry[]>;
+  getTariffDataHealth(): Promise<{ hsCodeCount: number; countryCount: number }>;
   createCustomsLead(lead: InsertCustomsLead): Promise<CustomsLead>;
   createOrderItem(item: InsertOrderItem): Promise<OrderItem>;
   getOrderItemsByOrderId(orderId: string): Promise<OrderItem[]>;
@@ -211,31 +245,32 @@ export class DatabaseStorage implements IStorage {
     const isCodeSearch = /^[\d.]+$/.test(trimmed);
 
     if (isCodeSearch) {
+      const digits = trimmed.replace(/\D/g, "");
       return await db
         .select()
         .from(hsCodes)
-        .where(ilike(hsCodes.code, `${trimmed}%`))
+        .where(sql`regexp_replace(${hsCodes.code}, '[^0-9]', '', 'g') LIKE ${`${digits}%`}`)
+        .orderBy(sql`length(regexp_replace(${hsCodes.code}, '[^0-9]', '', 'g')) DESC`)
         .limit(limit);
     }
 
-    const ilikeResults = await db
+    const terms = hsSearchTerms(trimmed);
+    const conditions = terms.flatMap((term) => [
+      ilike(hsCodes.description, `%${term}%`),
+      ilike(hsCodes.descriptionFull, `%${term}%`),
+    ]);
+    const candidates = await db
       .select()
       .from(hsCodes)
-      .where(
-        or(
-          ilike(hsCodes.description, `%${trimmed}%`),
-          ilike(hsCodes.descriptionFull, `%${trimmed}%`)
-        )
-      )
-      .limit(limit);
+      .where(or(...conditions))
+      .limit(Math.max(limit * 8, 80));
 
-    if (ilikeResults.length >= limit) return ilikeResults;
+    const ranked = candidates.sort((a, b) => hsSearchScore(trimmed, b) - hsSearchScore(trimmed, a));
+    if (ranked.length >= limit) return ranked.slice(0, limit);
 
-    const remaining = limit - ilikeResults.length;
-    const existingCodes = ilikeResults.map(r => r.code);
-
+    const remaining = limit - ranked.length;
     if (trimmed.length >= 3 && remaining > 0) {
-      const existingCodeSet = new Set(existingCodes);
+      const existingCodeSet = new Set(ranked.map((result) => result.code));
       const fuzzyResults = await db.execute(sql`
         SELECT *
         FROM hs_codes
@@ -244,7 +279,7 @@ export class DatabaseStorage implements IStorage {
           similarity(description, ${trimmed}),
           similarity(COALESCE(description_full, ''), ${trimmed})
         ) DESC
-        LIMIT ${remaining + ilikeResults.length}
+        LIMIT ${remaining + ranked.length}
       `);
       const fuzzyRows = (fuzzyResults.rows || fuzzyResults) as Array<any>;
       const deduped: HsCode[] = [];
@@ -262,81 +297,24 @@ export class DatabaseStorage implements IStorage {
           existingCodeSet.add(r.code);
         }
       }
-      return [...ilikeResults, ...deduped];
+      return [...ranked, ...deduped];
     }
 
-    return ilikeResults;
+    return ranked;
   }
 
   async searchHsCodesFuzzy(query: string, limit: number = 20): Promise<Array<HsCode & { score: number }>> {
-    const trimmed = query.trim();
-    if (!trimmed || trimmed.length < 3) return [];
-
-    const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const compoundPattern = '\\m\\w{0,6}' + escaped;
-    const ilikePattern = '%' + trimmed + '%';
-    const ilikeResults = await db.execute(sql`
-      SELECT *,
-        CASE
-          WHEN description ILIKE ${trimmed} THEN 1.0
-          WHEN description ILIKE ${trimmed + '%'} THEN 0.95
-          WHEN description ~* ${compoundPattern} THEN 0.9
-          WHEN description_full ~* ${compoundPattern} THEN 0.85
-          WHEN description ILIKE ${ilikePattern} THEN 0.6
-          WHEN description_full ILIKE ${ilikePattern} THEN 0.55
-          ELSE 0.5
-        END AS score
-      FROM hs_codes
-      WHERE description ~* ${compoundPattern}
-         OR description_full ~* ${compoundPattern}
-         OR description ILIKE ${ilikePattern}
-         OR description_full ILIKE ${ilikePattern}
-      ORDER BY score DESC, description ASC
-      LIMIT ${limit}
-    `);
-
-    let results = (ilikeResults.rows || ilikeResults) as Array<any>;
-
-    if (results.length < 10) {
-      const existingCodeSet = new Set(results.map((r: any) => r.code));
-      const remaining = limit - results.length;
-
-      const fuzzyResults = await db.execute(sql`
-        SELECT *, GREATEST(
-          similarity(description, ${trimmed}),
-          similarity(COALESCE(description_full, ''), ${trimmed})
-        ) AS score
-        FROM hs_codes
-        WHERE (description % ${trimmed} OR description_full % ${trimmed})
-        ORDER BY score DESC
-        LIMIT ${remaining + results.length}
-      `);
-      const fuzzyRows = (fuzzyResults.rows || fuzzyResults) as Array<any>;
-      for (const row of fuzzyRows) {
-        if (!existingCodeSet.has(row.code) && results.length < limit && parseFloat(row.score) >= 0.2) {
-          results.push(row);
-          existingCodeSet.add(row.code);
-        }
-      }
-    }
-
-    return results.map((r: any) => ({
-      id: r.id,
-      code: r.code,
-      description: r.description,
-      descriptionFull: r.description_full,
-      chapter: r.chapter,
-      unitOfMeasure: r.unit_of_measure,
-      dutyRates: r.duty_rates,
-      score: parseFloat(r.score),
-    }));
+    const results = await this.searchHsCodes(query, limit);
+    return results.map((result) => ({ ...result, score: hsSearchScore(query, result) }));
   }
 
   async getHsCodeByCode(code: string): Promise<HsCode | undefined> {
+    const digits = code.replace(/\D/g, "");
     const [result] = await db
       .select()
       .from(hsCodes)
-      .where(eq(hsCodes.code, code));
+      .where(sql`regexp_replace(${hsCodes.code}, '[^0-9]', '', 'g') = ${digits}`)
+      .limit(1);
     return result;
   }
 
@@ -345,6 +323,19 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(tariffCountries)
       .orderBy(tariffCountries.name);
+  }
+
+  async getTariffDataHealth(): Promise<{ hsCodeCount: number; countryCount: number }> {
+    const result = await db.execute(sql`
+      SELECT
+        (SELECT COUNT(*)::int FROM hs_codes) AS hs_code_count,
+        (SELECT COUNT(*)::int FROM tariff_countries) AS country_count
+    `);
+    const row = ((result.rows || result) as Array<any>)[0] || {};
+    return {
+      hsCodeCount: Number(row.hs_code_count || 0),
+      countryCount: Number(row.country_count || 0),
+    };
   }
 
   async createCustomsLead(insertLead: InsertCustomsLead): Promise<CustomsLead> {

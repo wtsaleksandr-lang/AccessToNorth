@@ -13,12 +13,14 @@ export default function ShipmentTracking() {
   const [trackingId, setTrackingId] = useState("");
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
 
   usePageMeta({
     title: "Shipment Tracking (Coming Soon) | AccessToNorth.com",
     description: "Track your customs clearance status and shipment progress in real time. Coming soon to AccessToNorth.com.",
     canonical: "https://www.accesstonorth.com/tools/shipment-tracking",
+    robots: "noindex,follow",
   });
 
   const handleTrack = (e: React.FormEvent) => {
@@ -29,14 +31,27 @@ export default function ShipmentTracking() {
     });
   };
 
-  const handleNotify = (e: React.FormEvent) => {
+  const handleNotify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !email.includes("@")) {
       toast({ title: "Please enter a valid email", variant: "destructive" });
       return;
     }
-    setSubmitted(true);
-    toast({ title: "You're on the list!", description: "We'll notify you when shipment tracking launches." });
+    setSubmitting(true);
+    try {
+      const response = await fetch("/api/leads/tool-waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, tool: "shipment-tracking" }),
+      });
+      if (!response.ok) throw new Error("Could not save email");
+      setSubmitted(true);
+      toast({ title: "You're on the list!", description: "We'll notify you when shipment status tracking launches." });
+    } catch {
+      toast({ title: "Could not save your email", description: "Please try again shortly.", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -57,7 +72,7 @@ export default function ShipmentTracking() {
             </h1>
             <span className="inline-block px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-sm font-medium mb-4">Coming Soon</span>
             <p className="text-lg text-slate-600">
-              Track your customs clearance status and shipment progress in real time.
+              Follow AccessToNorth order, document, customs filing, release, and delivery milestones in one clear timeline.
             </p>
           </div>
 
@@ -100,8 +115,8 @@ export default function ShipmentTracking() {
                       onChange={(e) => setEmail(e.target.value)}
                       data-testid="input-tracking-email"
                     />
-                    <Button type="submit" className="cursor-pointer shrink-0" data-testid="button-tracking-notify">
-                      Notify Me
+                    <Button type="submit" disabled={submitting} className="cursor-pointer shrink-0" data-testid="button-tracking-notify">
+                      {submitting ? "Saving…" : "Notify Me"}
                     </Button>
                   </form>
                 </>

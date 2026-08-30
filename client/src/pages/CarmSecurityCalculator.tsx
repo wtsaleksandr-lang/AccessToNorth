@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Card } from "@/components/ui/card";
@@ -49,6 +49,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { calculateCarmSecurity } from "@shared/customsEstimate";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 type SecurityType = "both" | "bond" | "cash";
 type Frequency = "occasional" | "regular" | "high-volume";
@@ -81,13 +83,12 @@ export default function CarmSecurityCalculator() {
   const [isNonResident, setIsNonResident] = useState(false);
   const [inputError, setInputError] = useState("");
 
-  const [isCalculating, setIsCalculating] = useState(false);
-  const [calcStep, setCalcStep] = useState(0);
   const [showResults, setShowResults] = useState(false);
   const [bondEstimate, setBondEstimate] = useState(0);
   const [cashEstimate, setCashEstimate] = useState(0);
   const [annualPremium, setAnnualPremium] = useState(0);
   const [minimumApplied, setMinimumApplied] = useState(false);
+  const [maximumApplied, setMaximumApplied] = useState(false);
 
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [leadEmail, setLeadEmail] = useState("");
@@ -104,27 +105,11 @@ export default function CarmSecurityCalculator() {
   const faqRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    document.title = "CARM Financial Security Calculator (Bond vs Cash) – Canada Importers | AccessToNorth";
-    const metaDesc = document.querySelector('meta[name="description"]');
-    const ogTitle = document.querySelector('meta[property="og:title"]');
-    const ogDesc = document.querySelector('meta[property="og:description"]');
-    if (metaDesc) metaDesc.setAttribute("content", "Free CARM financial security calculator. Estimate your surety bond vs cash deposit for Release Prior to Payment. Designed for Canadian importers.");
-    if (ogTitle) ogTitle.setAttribute("content", "CARM Financial Security Calculator (Bond vs Cash) – Canada Importers");
-    if (ogDesc) ogDesc.setAttribute("content", "Estimate your CARM financial security: surety bond (50%) vs cash deposit (100%). Free calculator for Canadian importers.");
-    return () => {
-      document.title = "AccessToNorth.com - Expert GST/HST & Business Number Registration in Canada";
-      if (metaDesc) metaDesc.setAttribute("content", "Free CARM Financial Security calculator for Canadian importers. Estimate required bond or cash deposit against your projected monthly duty & tax.");
-      if (ogTitle) ogTitle.setAttribute("content", "AccessToNorth.com - GST/HST & Business Registration Canada");
-      if (ogDesc) ogDesc.setAttribute("content", "Register your business with the CRA correctly. From Business Numbers to Non-Resident GST/HST, we handle the paperwork.");
-    };
-  }, []);
-
-  const calcSteps = [
-    "Reading your numbers...",
-    "Applying CBSA estimate rules...",
-    "Generating security estimate...",
-  ];
+  usePageMeta({
+    title: "CARM Financial Security Calculator (Bond vs Cash) | AccessToNorth.com",
+    description: "Estimate CARM RPP written security and cash deposits from the highest monthly CBSA accounts receivable for each BN15 importer account.",
+    canonical: "/carm-security-calculator",
+  });
 
   const handleMonthlyPayableChange = (val: string) => {
     const cleaned = val.replace(/[^0-9.,]/g, "");
@@ -148,35 +133,19 @@ export default function CarmSecurityCalculator() {
     }
     setInputError("");
     setShowResults(false);
-    setIsCalculating(true);
-    setCalcStep(0);
 
-    const timers = [
-      setTimeout(() => setCalcStep(1), 500),
-      setTimeout(() => setCalcStep(2), 1000),
-      setTimeout(() => {
-        const baseSecurity = 0.5 * amount;
-        const wasMinApplied = baseSecurity < 5000;
-        const requiredSecurity = wasMinApplied ? 5000 : Math.round(baseSecurity / 100) * 100;
-        const cashDeposit = Math.round(Math.max(amount, 5000) / 100) * 100;
+    const premiumRate = isNonResident ? 0.0225 : 0.015;
+    const calculation = calculateCarmSecurity(amount, premiumRate);
+    setBondEstimate(calculation.writtenSecurity);
+    setCashEstimate(calculation.cashSecurity);
+    setAnnualPremium(calculation.estimatedAnnualPremium);
+    setMinimumApplied(calculation.minimumApplied);
+    setMaximumApplied(calculation.maximumApplied);
+    setShowResults(true);
 
-        const premiumRate = isNonResident ? 0.0225 : 0.015;
-        const premium = Math.round(requiredSecurity * premiumRate);
-
-        setBondEstimate(requiredSecurity);
-        setCashEstimate(cashDeposit);
-        setAnnualPremium(premium);
-        setMinimumApplied(wasMinApplied);
-        setIsCalculating(false);
-        setShowResults(true);
-
-        setTimeout(() => {
-          resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-        }, 100);
-      }, 1500),
-    ];
-
-    return () => timers.forEach(clearTimeout);
+    requestAnimationFrame(() => {
+      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   const validateLeadForm = () => {
@@ -202,7 +171,7 @@ export default function CarmSecurityCalculator() {
         highestMonthlyPayable: monthlyPayable,
         bondEstimate: bondEstimate.toString(),
         cashEstimate: cashEstimate.toString(),
-        applyMinimum: true,
+        applyMinimum: minimumApplied,
         frequency: frequency || undefined,
         isNonResident,
       });
@@ -213,7 +182,7 @@ export default function CarmSecurityCalculator() {
       if (isLowPriority) {
         toast({
           title: "Request received",
-          description: "We'll send the checklist. For low-volume importers, self-serve guidance is usually enough.",
+          description: "Your request is saved. For low-volume importers, self-serve guidance is usually enough.",
         });
       }
     } catch {
@@ -250,7 +219,7 @@ export default function CarmSecurityCalculator() {
                 CARM Financial Security Estimate
               </h1>
               <p className="text-base md:text-lg text-white/70 mb-8 max-w-lg" data-testid="text-calc-subheading">
-                Estimate your bond vs cash security based on your highest monthly duties + GST payable.
+                Estimate written security versus cash using your highest monthly CBSA accounts receivable.
               </p>
               <div className="flex flex-col sm:flex-row items-start gap-3">
                 <Button
@@ -343,7 +312,7 @@ export default function CarmSecurityCalculator() {
             <div className="space-y-6">
               <div>
                 <Label htmlFor="monthly-payable" className="text-sm font-medium mb-1.5 block">
-                  Highest monthly duties + GST you owed (last 12 months) <span className="text-red-500">*</span>
+                  Highest monthly CBSA accounts receivable (last 12 months) <span className="text-red-500">*</span>
                 </Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">CAD $</span>
@@ -360,7 +329,7 @@ export default function CarmSecurityCalculator() {
                 <div className="flex items-start gap-1.5 mt-1.5">
                   <Info className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
                   <p className="text-xs text-slate-500">
-                    Use your highest monthly amount payable to CBSA (duties + GST). If unsure, use your broker statement or CARM statement.
+                    Include GST, duties, and surtax for one importer program account (BN15). Check the CARM portal or your broker statement.
                   </p>
                 </div>
               </div>
@@ -449,7 +418,7 @@ export default function CarmSecurityCalculator() {
                 <div className="flex items-start gap-2">
                   <Info className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
                   <p className="text-xs text-slate-500">
-                    CBSA requires a minimum $5,000 financial security. This minimum is automatically applied to all estimates.
+                    Written security has a $5,000 minimum and a standard $10 million maximum per BN15. A cash deposit is 100% of the calculated requirement and has no $5,000 floor.
                   </p>
                 </div>
               </div>
@@ -458,64 +427,13 @@ export default function CarmSecurityCalculator() {
                 size="lg"
                 className="w-full text-white font-semibold py-6 text-[23px] bg-[#0f3b35] rounded-xl"
                 onClick={handleCalculate}
-                disabled={isCalculating}
                 data-testid="button-calculate"
               >
-                {isCalculating ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                    Calculating...
-                  </>
-                ) : (
-                  <>
-                    <Calculator className="w-5 h-5 mr-2" />
-                    Calculate my estimate
-                  </>
-                )}
+                <Calculator className="w-5 h-5 mr-2" />
+                Calculate my estimate
               </Button>
             </div>
           </Card>
-
-          <AnimatePresence>
-            {isCalculating && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="mt-8"
-              >
-                <Card className="p-6 md:p-8" data-testid="card-calculating">
-                  <div className="space-y-4">
-                    {calcSteps.map((step, i) => (
-                      <div key={i} className="flex items-center gap-3">
-                        {calcStep > i ? (
-                          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                          </motion.div>
-                        ) : calcStep === i ? (
-                          <Loader2 className="w-5 h-5 animate-spin" style={{ color: DEEP_GREEN }} />
-                        ) : (
-                          <div className="w-5 h-5 rounded-full border-2 border-slate-200" />
-                        )}
-                        <span className={`text-sm ${calcStep >= i ? "text-slate-800 font-medium" : "text-slate-400"}`}>
-                          {step}
-                        </span>
-                      </div>
-                    ))}
-                    <div className="mt-4 h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <motion.div
-                        className="h-full rounded-full"
-                        style={{ backgroundColor: DEEP_GREEN }}
-                        initial={{ width: "0%" }}
-                        animate={{ width: `${((calcStep + 1) / 3) * 100}%` }}
-                        transition={{ duration: 0.4, ease: "easeOut" }}
-                      />
-                    </div>
-                  </div>
-                </Card>
-              </motion.div>
-            )}
-          </AnimatePresence>
 
           <AnimatePresence>
             {showResults && (
@@ -546,6 +464,20 @@ export default function CarmSecurityCalculator() {
                   </motion.div>
                 )}
 
+                {maximumApplied && (
+                  <div className="p-4 rounded-lg bg-blue-50 border border-blue-200" data-testid="alert-maximum-applied">
+                    <div className="flex items-start gap-2.5">
+                      <Info className="w-5 h-5 text-blue-700 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-blue-900">Standard written-security maximum applied</p>
+                        <p className="text-xs text-blue-800 mt-0.5">
+                          CBSA lists a $10 million maximum per BN15, although an importer may choose to post more when receivables exceed it. Cash remains calculated at 100%.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className={`grid gap-6 ${securityType === "both" ? "md:grid-cols-2" : "md:grid-cols-1 max-w-md mx-auto"}`}>
                   {(securityType === "both" || securityType === "bond") && (
                     <Card className="p-6 border-2 border-emerald-200 bg-emerald-50/50" data-testid="card-bond-result">
@@ -568,7 +500,7 @@ export default function CarmSecurityCalculator() {
                         </span>
                       </motion.div>
                       <p className="text-sm text-slate-600 mb-3">
-                        You do NOT pay the full security amount. You typically pay only the annual bond premium.
+                        The provider charges an annual premium; underwriting, collateral, and final pricing depend on the provider.
                       </p>
                       <div className="space-y-2">
                         <div className="flex items-center gap-1.5 text-xs text-slate-500">
@@ -629,7 +561,7 @@ export default function CarmSecurityCalculator() {
                   <div className="flex items-start gap-2">
                     <Info className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
                     <p className="text-xs text-slate-500">
-                      Security amount is the financial guarantee required by CBSA. Bond premium is the actual yearly cost you pay to the surety provider.
+                      CARM updates the requirement each October 20 using the October 20–October 19 review period. Required increases must be posted by January 15.
                     </p>
                   </div>
                 </div>
@@ -641,7 +573,7 @@ export default function CarmSecurityCalculator() {
                   </h3>
                   <div className="space-y-4">
                     {[
-                      { step: 1, title: "Confirm your highest monthly payable", desc: "Review your CBSA or broker statements for the last 12 months. Use the single highest month." },
+                      { step: 1, title: "Confirm your highest monthly receivable", desc: "Review the CARM or broker statements for this BN15 and use the single highest month." },
                       { step: 2, title: "Check your CARM portal security status", desc: "Log into your CARM portal to see your current Release Prior to Payment (RPP) security requirements." },
                       { step: 3, title: "Post bond or cash via your provider", desc: "Work with a surety bond provider or post cash through your CARM portal." },
                     ].map((item) => (
@@ -667,9 +599,9 @@ export default function CarmSecurityCalculator() {
                       <Mail className="w-7 h-7" style={{ color: DEEP_GREEN }} />
                     </div>
                     <div className="text-center md:text-left flex-1">
-                      <h3 className="font-semibold text-lg">Get the full summary + checklist</h3>
+                      <h3 className="font-semibold text-lg">Request help with CARM security</h3>
                       <p className="text-sm text-slate-600 mt-1">
-                        We'll email you a detailed breakdown with your estimates, next steps, and a compliance checklist.
+                        Save this estimate with your contact details and ask our team to follow up about setup.
                       </p>
                     </div>
                     <Button
@@ -680,7 +612,7 @@ export default function CarmSecurityCalculator() {
                       data-testid="button-email-summary"
                     >
                       <Mail className="w-4 h-4 mr-2" />
-                      Email me the summary
+                      Request follow-up
                       <ChevronRight className="w-4 h-4 ml-1" />
                     </Button>
                   </div>
@@ -704,11 +636,11 @@ export default function CarmSecurityCalculator() {
                   },
                   {
                     q: "What's the difference between a bond and a cash deposit?",
-                    a: "A surety bond requires 50% of your highest monthly payable and is issued by a bonding company (with an annual premium, typically 1-3% of the bond value). A cash deposit requires 100% of your highest monthly payable but has no ongoing premium. Bonds preserve cash flow; cash deposits are simpler but tie up your capital.",
+                    a: "A written security agreement generally covers at least 50% of the system-calculated requirement, subject to the $5,000 minimum and standard $10 million maximum per BN15. A cash deposit is 100% of the highest monthly accounts receivable. Provider premiums, underwriting, and collateral requirements vary.",
                   },
                   {
                     q: "What number should I enter in the calculator?",
-                    a: "Enter the single highest monthly amount you owed to CBSA over the last 12 months, including duties and GST. You can find this on your CBSA/CARM statement or ask your customs broker for a summary.",
+                    a: "Enter the highest monthly accounts receivable for one BN15 importer account over the last 12 months, including GST, duties, and surtax. Find it in CARM or ask your customs broker.",
                   },
                   {
                     q: "Can AccessToNorth help me set this up?",
@@ -749,14 +681,14 @@ export default function CarmSecurityCalculator() {
                         <ul className="space-y-1">
                           <li>
                             <a
-                              href="https://www.cbsa-asfc.gc.ca/prog/carm-gcra/menu-eng.html"
+                              href="https://www.canada.ca/en/border-services-agency/services/carm/release-prior-payment/get-ready-enrol.html"
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-xs hover:underline flex items-center gap-1"
                               style={{ color: DEEP_GREEN }}
                               data-testid="link-cbsa-carm"
                             >
-                              CBSA CARM / Financial Security Info
+                              CBSA CARM financial security rules
                               <ExternalLink className="w-3 h-3" />
                             </a>
                           </li>
@@ -787,16 +719,16 @@ export default function CarmSecurityCalculator() {
       <Dialog open={showLeadModal} onOpenChange={setShowLeadModal}>
         <DialogContent className="sm:max-w-md" data-testid="modal-lead-form">
           <DialogHeader>
-            <DialogTitle>Email me the full summary</DialogTitle>
+            <DialogTitle>Request CARM security follow-up</DialogTitle>
             <DialogDescription>
-              We'll send your estimate details and a CARM compliance checklist to your inbox.
+              Save your estimate and contact details so our team can follow up about setup.
             </DialogDescription>
           </DialogHeader>
 
           {leadSubmitted ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-8 text-center">
               <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto mb-3" />
-              <h3 className="font-semibold text-lg" data-testid="text-lead-success">Sent! Check your inbox.</h3>
+              <h3 className="font-semibold text-lg" data-testid="text-lead-success">Request saved</h3>
               <p className="text-sm text-slate-500 mt-1">
                 We've received your request and will follow up shortly.
               </p>
@@ -897,12 +829,12 @@ export default function CarmSecurityCalculator() {
                 {leadSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Sending...
+                    Saving...
                   </>
                 ) : (
                   <>
                     <Mail className="w-4 h-4 mr-2" />
-                    Send me the summary
+                    Save and request follow-up
                   </>
                 )}
               </Button>

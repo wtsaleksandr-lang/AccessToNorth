@@ -12,6 +12,7 @@
     "db:push": "drizzle-kit push",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install --with-deps chromium",
+    "tariff:load": "tsx scripts/loadTariffData.ts",
     "create-admin": "tsx script/createAdminUser.ts"
   },
   "dependencies": {

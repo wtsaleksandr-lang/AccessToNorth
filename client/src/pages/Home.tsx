@@ -1,13 +1,3 @@
-declare global {
-  interface Window {
-    Tawk_API?: {
-      maximize?: () => void;
-      minimize?: () => void;
-      toggle?: () => void;
-    };
-  }
-}
-
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import businessTeamImg from "@/assets/images/business-team.jpg";

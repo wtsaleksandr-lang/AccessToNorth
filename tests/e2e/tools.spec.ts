@@ -77,9 +77,7 @@ test.describe("tool pages load without runtime errors", () => {
     await page.getByTestId("input-monthly-payable").fill("50000");
     await page.getByTestId("button-calculate").click();
 
-    // The "calculating" overlay (data-testid=card-calculating) runs a
-    // 3-step framer-motion animation before section-results mounts. That
-    // takes about 1.2–1.5s on a cold JIT. Give it 8s to be safe.
+    // The calculation is local and should reveal results immediately.
     await expect(page.getByTestId("section-results")).toBeVisible({ timeout: 8_000 });
 
     expect(errors, `Uncaught errors on /carm-security-calculator: ${errors.join("\n")}`).toEqual([]);

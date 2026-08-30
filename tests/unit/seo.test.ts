@@ -61,6 +61,10 @@ test("prerender emits crawl-visible article and application metadata", async () 
       join(outDir, "tools", "container-calculator", "index.html"),
       "utf8",
     );
+    const comingSoon = await readFile(
+      join(outDir, "tools", "freight-quote", "index.html"),
+      "utf8",
+    );
 
     assert(article.includes('<link rel="canonical" href="https://accesstonorth.com/resources/how-to-import-into-canada/">'));
     assert(article.includes('<meta property="og:type" content="article">'));
@@ -68,6 +72,7 @@ test("prerender emits crawl-visible article and application metadata", async () 
     assert(!article.includes("hreflang"));
     assert(calculator.includes('"@type":"WebApplication"'));
     assert(calculator.includes('"price":"0"'));
+    assert(comingSoon.includes('<meta name="robots" content="noindex,follow">'));
   } finally {
     await rm(outDir, { recursive: true, force: true });
   }
