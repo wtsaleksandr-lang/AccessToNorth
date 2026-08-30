@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { freightQuoteSchema, normalizeAccessToNorthId, summarizeFreightCargo } from "../../shared/freight";
+import { freightEstimateRequestSchema, freightQuoteSchema, normalizeAccessToNorthId, summarizeFreightCargo } from "../../shared/freight";
+import { buildFreightosEstimateUrl, parseFreightosEstimate } from "../../server/freightMarketEstimate";
 
 const validRequest = {
   mode: "ocean",
@@ -59,4 +60,63 @@ test("summarizes mixed freight units in kilograms and cubic metres", () => {
 
 test("normalizes AccessToNorth references", () => {
   assert.equal(normalizeAccessToNorthId(" rfq-ab12cd "), "RFQ-AB12CD");
+});
+
+test("builds a server-side Freightos LCL request from aggregate cargo", () => {
+  const input = freightEstimateRequestSchema.parse({
+    mode: "ocean",
+    origin: validRequest.origin,
+    destination: validRequest.destination,
+    service: "lcl",
+    equipmentQuantity: 1,
+    cargoLines: validRequest.cargoLines,
+    hazardous: false,
+    temperatureControlled: false,
+  });
+  const url = new URL(buildFreightosEstimateUrl(input));
+  assert.equal(url.hostname, "ship.freightos.com");
+  assert.equal(url.searchParams.get("mode"), "LCL");
+  assert.equal(url.searchParams.get("loadtype"), "pallets");
+  assert.equal(url.searchParams.get("weight"), "5260.00kg");
+  assert.match(url.searchParams.get("volume") || "", /^16\.1\d{2}cbm$/);
+});
+
+test("parses Freightos price and transit ranges defensively", () => {
+  const estimates = parseFreightosEstimate({
+    response: {
+      estimatedFreightRates: {
+        mode: {
+          mode: "LCL",
+          price: {
+            min: { moneyAmount: { amount: "1400", currency: "USD" } },
+            max: { moneyAmount: { amount: 1850, currency: "USD" } },
+          },
+          transitTimes: { min: "23", max: 31, unit: "days" },
+        },
+      },
+    },
+  });
+  assert.deepEqual(estimates, [{
+    mode: "LCL",
+    priceMin: 1400,
+    priceMax: 1850,
+    currency: "USD",
+    transitMinDays: 23,
+    transitMaxDays: 31,
+  }]);
+});
+
+test("rejects specialized cargo and mismatched estimate services", () => {
+  const baseEstimate = {
+    mode: "ocean",
+    origin: validRequest.origin,
+    destination: validRequest.destination,
+    service: "lcl",
+    equipmentQuantity: 1,
+    cargoLines: validRequest.cargoLines,
+    hazardous: false,
+    temperatureControlled: false,
+  };
+  assert.equal(freightEstimateRequestSchema.safeParse({ ...baseEstimate, hazardous: true }).success, false);
+  assert.equal(freightEstimateRequestSchema.safeParse({ ...baseEstimate, service: "air" }).success, false);
 });
