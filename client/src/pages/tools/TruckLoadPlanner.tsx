@@ -54,6 +54,7 @@ import { consumePalletPlanTransfer } from "@/lib/palletTransfer";
 import { buildTruckSpatialPlan, createTruckPackingItems, type TruckSpatialPlan } from "@/lib/truckPacking";
 import { buildTruckPlacementCsv } from "@/lib/loadingPlanExports";
 import { TruckLoadPreview3D } from "./truck-planner/TruckLoadPreview3D";
+import { TrailerTypeIcon } from "./truck-planner/TrailerTypeIcon";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
 import { evaluateOpenDeckEnvelope, getTruckJurisdictionGuidance } from "@shared/truckCompliance";
 
@@ -219,19 +220,6 @@ function UtilBar({ pct, label, color }: { pct: number; label: string; color: str
         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${clamped}%`, backgroundColor: color }} />
       </div>
     </div>
-  );
-}
-
-function TrailerLineIcon({ active = false, className = "h-10 w-20" }: { active?: boolean; className?: string }) {
-  const stroke = active ? "#0284c7" : "#64748b";
-  return (
-    <svg viewBox="0 0 110 56" className={className} aria-hidden="true" fill="none">
-      <path d="M8 13h76v31H8z" fill={active ? "#e0f2fe" : "#f8fafc"} stroke={stroke} strokeWidth="1.8" />
-      <path d="M84 24h12l8 9v11H84V24Z" fill={active ? "#dbeafe" : "#f1f5f9"} stroke={stroke} strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M90 27h5l5 6h-10v-6Z" fill="white" stroke={stroke} strokeWidth="1.2" />
-      <path d="M15 18v21M23 18v21M31 18v21M39 18v21M47 18v21M55 18v21M63 18v21M71 18v21" stroke={stroke} strokeWidth=".8" opacity=".45" />
-      <circle cx="25" cy="45" r="5" fill="#fff" stroke={stroke} strokeWidth="2" /><circle cx="92" cy="45" r="5" fill="#fff" stroke={stroke} strokeWidth="2" />
-    </svg>
   );
 }
 
@@ -1130,7 +1118,7 @@ export default function TruckLoadPlanner() {
                               data-testid={`trailer-${t.id}`}
                             >
                               <div className="flex items-center gap-2.5">
-                                <TrailerLineIcon active={!useCustomTrailer && selectedTrailerId === t.id} className="h-8 w-14 shrink-0" />
+                                <TrailerTypeIcon category={t.category} name={t.name} active={!useCustomTrailer && selectedTrailerId === t.id} className="h-9 w-16 shrink-0" />
                                 <div className="min-w-0"><div className="truncate font-semibold text-slate-900">{t.name}</div>
                               <div className="mt-0.5 text-[10px] text-slate-500">
                                 {isMetric
@@ -1156,7 +1144,7 @@ export default function TruckLoadPlanner() {
                           }`}
                           data-testid="trailer-custom"
                         >
-                          <div className="flex items-center gap-2.5"><TrailerLineIcon active={useCustomTrailer} className="h-8 w-14 shrink-0" /><div><div className="font-semibold text-slate-900">Custom Trailer</div>
+                          <div className="flex items-center gap-2.5"><TrailerTypeIcon custom active={useCustomTrailer} className="h-9 w-16 shrink-0" /><div><div className="font-semibold text-slate-900">Custom Trailer</div>
                           <div className="text-[10px] text-slate-500 mt-0.5">Enter your own dimensions</div></div></div>
                         </button>
 
@@ -1672,7 +1660,7 @@ export default function TruckLoadPlanner() {
                             </div>
 
                             <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50/70 p-3 sm:p-4">
-                              <div className="rounded-xl bg-white p-1.5 shadow-sm ring-1 ring-slate-200"><TrailerLineIcon active className="h-10 w-20" /></div>
+                              <div className="rounded-xl bg-white p-1.5 shadow-sm ring-1 ring-slate-200"><TrailerTypeIcon category={previewResult.trailer.category} name={previewResult.trailer.name} custom={previewResult.trailer.id === "custom"} active className="h-11 w-24" /></div>
                               <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-slate-900">{previewResult.trailer.name}</p><p className="mt-0.5 truncate text-[11px] text-slate-500">Trailer {previewTrailerIndex + 1} of {previewPlan.trailersRequired} · {previewEntry.result.piecesLoaded} pieces · {previewEntry.result.weightUtil.toFixed(0)}% payload</p></div>
                               {previewPlan.trailersRequired > 1 && <select value={previewTrailerIndex} onChange={event => handleSelectPreviewTrailer(Number(event.target.value))} className="h-9 max-w-28 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold" aria-label="Preview trailer" data-testid="select-preview-trailer">{previewPlan.multi.containers.map((_, index) => <option key={index} value={index}>Trailer {index + 1}</option>)}</select>}
                             </div>

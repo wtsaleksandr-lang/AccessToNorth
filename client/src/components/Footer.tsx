@@ -1,5 +1,6 @@
 import { Link } from "wouter";
-import { CreditCard, Shield, Clock, Star, Lock, Upload, Landmark, Building2, BadgeCheck, Mail } from "lucide-react";
+import { CreditCard, Shield, Clock, Star, Lock, Upload, Landmark, Building2, BadgeCheck, Mail, ChevronDown, Info } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 
 const trustChips = [
   { icon: Lock, label: "Secure Stripe Checkout" },
@@ -42,28 +43,32 @@ export function Footer() {
               </div>
             ))}
           </div>
-          <p className="text-[10px] text-slate-600 text-center mt-2">Reference agencies only — not affiliated or endorsed.</p>
         </div>
 
         {/* B) MIDDLE ROW — 3 COLUMNS */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-10 mb-8">
           <div className="md:col-span-2">
-            <span className="text-lg font-bold font-display text-white block mb-3">AccessToNorth</span>
-            <p className="text-xs text-slate-400 leading-relaxed mb-3 max-w-md">
-              Administrative services firm coordinating Canadian CRA and CBSA filings for resident
-              and non-resident businesses. We prepare and submit your filings under a signed
-              authorization — we are not a law firm, a customs broker, or an accounting firm.
-            </p>
-            <ul className="space-y-0.5 text-xs text-slate-500 mb-3">
-              <li>No legal, tax, or customs-brokerage advice.</li>
-              <li>No approval guarantees — processing decisions are made by the CRA / CBSA.</li>
-              <li>Not affiliated with any government agency.</li>
-            </ul>
-            <div className="space-y-0.5 text-xs text-slate-500">
-              <p>Operates via affiliated entities in the US &amp; Canada.</p>
-              <p>US entity: MR Holdings &amp; Trade LLC</p>
-              <p>Toronto, Canada</p>
-            </div>
+            <Link href="/" className="group mb-4 inline-flex" data-testid="link-footer-home">
+              <BrandLogo light accentClassName="text-sky-400" />
+            </Link>
+            <details className="group max-w-lg rounded-xl border border-slate-700/70 bg-slate-800/35">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-xs font-semibold text-slate-200 transition-colors hover:bg-slate-800/60 [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center gap-2"><Info className="h-4 w-4 text-sky-400" />Important disclaimer</span>
+                <ChevronDown className="h-4 w-4 text-slate-500 transition-transform duration-200 group-open:rotate-180" />
+              </summary>
+              <div className="border-t border-slate-700/60 px-4 py-3 text-xs leading-relaxed text-slate-400">
+                <p className="mb-3">
+                  AccessToNorth coordinates Canadian CRA and CBSA administrative filings for resident
+                  and non-resident businesses under signed authorization. We are not a law firm,
+                  accounting firm, or licensed customs broker.
+                </p>
+                <ul className="space-y-1 text-slate-500">
+                  <li>No legal, tax, accounting, or customs-brokerage advice.</li>
+                  <li>No approval guarantees — decisions are made by the CRA, CBSA, and other authorities.</li>
+                  <li>AccessToNorth is not affiliated with or endorsed by any government agency.</li>
+                </ul>
+              </div>
+            </details>
           </div>
 
           <div>
@@ -130,6 +135,11 @@ export function Footer() {
           </p>
           <p className="text-center text-xs text-slate-600 pb-4">
             &copy; {new Date().getFullYear()} AccessToNorth.com
+          </p>
+          <p className="border-t border-slate-800/70 pt-3 text-center text-[10px] leading-relaxed tracking-wide text-slate-700">
+            AccessToNorth operates through affiliated entities in the United States and Canada
+            <span className="mx-1.5">•</span>US entity: MR Holdings &amp; Trade LLC
+            <span className="mx-1.5">•</span>Toronto, Canada
           </p>
         </div>
       </div>
