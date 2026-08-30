@@ -68,6 +68,12 @@ Do not describe an estimated range as a live or guaranteed carrier quote.
 - Do not scrape carrier websites or consumer calculators.
 - Store source name, request fingerprint, raw response reference, and calculation version for auditability.
 
+## Optional AI-assisted market context
+
+OpenAI web search can cheaply add current lane context, disruption notices, general rate-increase announcements, and cited market articles. It should not be treated as the primary quote source: most bookable carrier rates sit behind authenticated forms, and search results commonly omit origin/destination charges and accessorials.
+
+At the prices published on 2026-08-30, one web-search action costs USD $0.01 plus model input/output tokens. A tightly constrained request using a low-cost model should normally cost about USD $0.011–$0.013 in total. Multiple search actions increase that roughly linearly. The recommended production policy is one search action only on a cache miss or unsupported/suspicious lane, with a normalized 12–24 hour cache and a visible source list.
+
 ## Official references
 
 - Freightos public estimate API: https://ship.freightos.com/api/shippingCalculator
@@ -80,3 +86,5 @@ Do not describe an estimated range as a live or guaranteed carrier quote.
 - Shippo API pricing: https://goshippo.com/pricing/api
 - EasyPost billing: https://support.easypost.com/hc/en-us/articles/360042414212-Billing-Payments
 - Maersk developer portal: https://developer.maersk.com/
+- OpenAI API pricing: https://developers.openai.com/api/docs/pricing
+- OpenAI web search guide: https://developers.openai.com/api/docs/guides/tools-web-search
