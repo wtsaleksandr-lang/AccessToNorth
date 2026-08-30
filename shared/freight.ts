@@ -13,6 +13,46 @@ export const freightCargoLineSchema = z.object({
   weightUnit: z.enum(["lb", "kg"]),
 });
 
+export const freightEstimateServiceSchema = z.enum([
+  "lcl",
+  "fcl20",
+  "fcl40",
+  "fcl40hc",
+  "fcl45hc",
+  "air",
+  "ltl",
+  "ftl",
+  "express",
+]);
+
+export const freightEstimateRequestSchema = z.object({
+  mode: z.enum(["ocean", "air", "truck", "courier"]),
+  origin: z.string().trim().min(2, "Origin is required").max(240),
+  destination: z.string().trim().min(2, "Destination is required").max(240),
+  service: freightEstimateServiceSchema,
+  equipmentQuantity: z.coerce.number().int().min(1).max(20).default(1),
+  cargoLines: z.array(freightCargoLineSchema).min(1).max(30),
+  hazardous: z.boolean().default(false),
+  temperatureControlled: z.boolean().default(false),
+}).superRefine((input, context) => {
+  const allowedByMode = {
+    ocean: ["lcl", "fcl20", "fcl40", "fcl40hc", "fcl45hc"],
+    air: ["air"],
+    truck: ["ltl", "ftl"],
+    courier: ["express"],
+  } as const;
+  if (!(allowedByMode[input.mode] as readonly string[]).includes(input.service)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["service"], message: "The selected service does not match the transport mode." });
+  }
+  if (input.hazardous || input.temperatureControlled) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: [input.hazardous ? "hazardous" : "temperatureControlled"],
+      message: "Specialized cargo requires a verified quote because public market estimates exclude key accessorials.",
+    });
+  }
+});
+
 export const freightQuoteSchema = z.object({
   mode: z.enum(["ocean", "air", "truck", "rail", "courier"]),
   direction: z.enum(["import", "export", "domestic", "cross-border"]),
@@ -42,6 +82,25 @@ export const shipmentTrackingSchema = z.object({
 
 export type FreightQuoteInput = z.infer<typeof freightQuoteSchema>;
 export type FreightCargoLine = z.infer<typeof freightCargoLineSchema>;
+export type FreightEstimateRequest = z.infer<typeof freightEstimateRequestSchema>;
+
+export interface FreightMarketEstimate {
+  mode: string;
+  priceMin: number;
+  priceMax: number;
+  currency: string;
+  transitMinDays: number | null;
+  transitMaxDays: number | null;
+}
+
+export interface FreightMarketEstimateResponse {
+  source: "Freightos";
+  estimates: FreightMarketEstimate[];
+  retrievedAt: string;
+  cached: boolean;
+  attributionUrl: string;
+  disclaimer: string;
+}
 
 export function normalizeAccessToNorthId(value: string) {
   return value.trim().toUpperCase();

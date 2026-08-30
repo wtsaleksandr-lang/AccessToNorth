@@ -239,6 +239,13 @@ test.describe("tool pages load without runtime errors", () => {
     await expect(page.getByTestId("input-freight-commodity")).toBeVisible();
     await expect(page.getByTestId("button-freight-next")).toBeVisible();
 
+    await page.getByTestId("input-freight-origin").fill("Shanghai, China");
+    await page.getByTestId("input-freight-destination").fill("Toronto, Ontario, Canada");
+    await page.getByTestId("input-freight-commodity").fill("Consumer goods");
+    await page.getByTestId("button-freight-next").click();
+    await expect(page.getByTestId("freight-market-estimator")).toBeVisible();
+    await expect(page.getByTestId("button-freight-estimate")).toBeVisible();
+
     expect(errors, `Uncaught errors on /tools/freight-quote: ${errors.join("\n")}`).toEqual([]);
   });
 

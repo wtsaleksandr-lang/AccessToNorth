@@ -2,7 +2,8 @@ import crypto from "crypto";
 import type { Express, NextFunction, Request, Response } from "express";
 import multer from "multer";
 import { z } from "zod";
-import { freightQuoteSchema, normalizeAccessToNorthId, shipmentTrackingSchema, summarizeFreightCargo } from "@shared/freight";
+import { freightEstimateRequestSchema, freightQuoteSchema, normalizeAccessToNorthId, shipmentTrackingSchema, summarizeFreightCargo } from "@shared/freight";
+import type { FreightEstimateRequest } from "@shared/freight";
 import type { FreightQuoteOrderData, OrderStep } from "@shared/schema";
 import { storage } from "./storage";
 import { getUploadBackend } from "./storage/uploadStorage";
@@ -11,6 +12,7 @@ import {
   buildFreightQuoteInternalEmail,
   sendEmail,
 } from "./emailService";
+import { fetchFreightMarketEstimate } from "./freightMarketEstimate";
 
 const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
 const MAX_DOCUMENTS = 5;
@@ -34,6 +36,45 @@ const upload = multer({
     callback(new Error("Unsupported document type. Upload PDF, image, CSV, Excel, or Word files."));
   },
 });
+
+const ESTIMATE_CACHE_TTL_MS = 12 * 60 * 60 * 1_000;
+const ESTIMATE_CACHE_MAX_ENTRIES = 500;
+const estimateCache = new Map<string, { expiresAt: number; value: Awaited<ReturnType<typeof fetchFreightMarketEstimate>> }>();
+let externalEstimateCalls: number[] = [];
+
+function estimateCacheKey(input: FreightEstimateRequest) {
+  const cargo = summarizeFreightCargo(input.cargoLines);
+  const normalized = {
+    mode: input.mode,
+    origin: input.origin.trim().toLowerCase(),
+    destination: input.destination.trim().toLowerCase(),
+    service: input.service,
+    equipmentQuantity: input.equipmentQuantity,
+    weightKg: cargo.weightKg.toFixed(1),
+    volumeCbm: cargo.volumeCbm.toFixed(2),
+  };
+  return crypto.createHash("sha256").update(JSON.stringify(normalized)).digest("hex");
+}
+
+function reserveExternalEstimateCall() {
+  const cutoff = Date.now() - 60 * 60 * 1_000;
+  externalEstimateCalls = externalEstimateCalls.filter((time) => time > cutoff);
+  if (externalEstimateCalls.length >= 90) return false;
+  externalEstimateCalls.push(Date.now());
+  return true;
+}
+
+function setCachedEstimate(key: string, value: Awaited<ReturnType<typeof fetchFreightMarketEstimate>>) {
+  const now = Date.now();
+  for (const [cacheKey, entry] of estimateCache) {
+    if (entry.expiresAt <= now) estimateCache.delete(cacheKey);
+  }
+  if (estimateCache.size >= ESTIMATE_CACHE_MAX_ENTRIES) {
+    const oldestKey = estimateCache.keys().next().value;
+    if (oldestKey) estimateCache.delete(oldestKey);
+  }
+  estimateCache.set(key, { expiresAt: now + ESTIMATE_CACHE_TTL_MS, value });
+}
 
 function createRateLimiter(maxRequests: number, windowMs = 60_000) {
   const requests = new Map<string, number[]>();
@@ -62,6 +103,7 @@ async function generateRequestId() {
 
 export function registerFreightRoutes(app: Express) {
   const acceptQuoteRequest = createRateLimiter(4);
+  const acceptEstimateRequest = createRateLimiter(8);
   const acceptTrackingRequest = createRateLimiter(15);
 
   const limitQuoteUpload = (req: Request, res: Response, next: NextFunction) => {
@@ -80,6 +122,42 @@ export function registerFreightRoutes(app: Express) {
       next();
     });
   };
+
+  app.post("/api/freight-estimate", async (req, res) => {
+    try {
+      if (!acceptEstimateRequest(req, res)) return;
+      const input = freightEstimateRequestSchema.parse(req.body);
+      const cacheKey = estimateCacheKey(input);
+      const cached = estimateCache.get(cacheKey);
+      if (cached && cached.expiresAt > Date.now()) {
+        res.setHeader("Cache-Control", "private, max-age=300");
+        return res.json({ ...cached.value, cached: true });
+      }
+      if (!reserveExternalEstimateCall()) {
+        return res.status(503).json({
+          message: "The public market feed has reached its hourly capacity. Submit the shipment for a verified quote or try again later.",
+          canRequestQuote: true,
+        });
+      }
+      const result = await fetchFreightMarketEstimate(input);
+      setCachedEstimate(cacheKey, result);
+      res.setHeader("Cache-Control", "private, max-age=300");
+      res.json(result);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: error.errors[0].message,
+          field: error.errors[0].path.join("."),
+          canRequestQuote: true,
+        });
+      }
+      console.error("Freight market estimate failed:", error);
+      res.status(502).json({
+        message: "A public market estimate is not available for this route right now. You can still submit the shipment for a verified quote.",
+        canRequestQuote: true,
+      });
+    }
+  });
 
   app.post("/api/freight-quote", limitQuoteUpload, receiveQuoteDocuments, async (req, res) => {
     try {
