@@ -1,4 +1,4 @@
-import { Check, FileCheck2, Landmark, LockKeyhole } from "lucide-react";
+import { Award, BadgeCheck, Building2, Check, FileCheck2, Landmark, Lock, LockKeyhole, Shield, ShieldCheck } from "lucide-react";
 
 const filingSteps = [
   { title: "Details reviewed", detail: "Company information and documents checked" },
@@ -9,11 +9,25 @@ const filingSteps = [
 
 const deliverables = ["Business Number confirmation", "GST/HST account details", "Secure portal record"];
 
+const trustSignals = [
+  { icon: ShieldCheck, label: "Submitted to CRA under your signed authorization", testId: "trust-badge-cra" },
+  { icon: Award, label: "Flat fee · refund before filing", testId: "trust-badge-guarantee" },
+  { icon: Lock, label: "Encrypted document handling", testId: "trust-badge-secure" },
+];
+
+const agencies = [
+  { icon: Landmark, label: "CRA", testId: "inst-badge-cra" },
+  { icon: Building2, label: "CBSA", testId: "inst-badge-cbsa" },
+  { icon: Shield, label: "IRS", testId: "inst-badge-irs" },
+  { icon: BadgeCheck, label: "USPTO", testId: "inst-badge-uspto" },
+  { icon: Building2, label: "SBA", testId: "inst-badge-sba" },
+];
+
 export function HeroFilingWorkflow() {
   return (
     <div className="relative mx-auto w-full max-w-[590px]" data-testid="hero-filing-workflow">
       <div className="absolute inset-x-6 -bottom-4 top-8 rounded-[28px] bg-slate-200/60 blur-xl" aria-hidden="true" />
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_28px_70px_-38px_rgba(15,23,42,0.5)]">
+      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_28px_70px_-38px_rgba(15,23,42,0.5)]" data-testid="hero-workflow-card">
         <div className="bg-slate-950 px-5 py-5 text-white sm:px-6 sm:py-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
@@ -75,6 +89,29 @@ export function HeroFilingWorkflow() {
           <div className="mt-4 flex items-start gap-2 border-t border-slate-100 pt-4 text-[10px] leading-relaxed text-slate-400">
             <LockKeyhole className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <p>Illustrative workflow—not real client data. Government processing times and final decisions remain with the CRA.</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3" data-testid="hero-trust-signals">
+        {trustSignals.map((signal) => (
+          <div key={signal.testId} data-testid={signal.testId} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2.5 shadow-sm backdrop-blur-sm sm:items-start">
+            <signal.icon className="h-4 w-4 shrink-0 text-primary sm:mt-0.5" aria-hidden="true" />
+            <span className="text-[11px] font-medium leading-snug text-slate-600">{signal.label}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="relative mt-2.5 rounded-xl border border-slate-200/90 bg-white/75 px-3 py-2.5 backdrop-blur-sm" data-testid="hero-agency-row">
+        <div className="flex flex-col items-center justify-between gap-2 sm:flex-row">
+          <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">Canada &amp; US filing environments</p>
+          <div className="flex flex-wrap items-center justify-center gap-x-3.5 gap-y-1.5 sm:justify-end">
+            {agencies.map((agency) => (
+              <span key={agency.testId} data-testid={agency.testId} className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500">
+                <agency.icon className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
+                {agency.label}
+              </span>
+            ))}
           </div>
         </div>
       </div>
