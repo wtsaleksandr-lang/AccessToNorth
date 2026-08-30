@@ -18,6 +18,13 @@ test.describe("public marketing surface", () => {
 
     // Footer rendered
     await expect(page.getByTestId("footer")).toBeVisible();
+    await expect(page.getByTestId("link-footer-home")).toContainText("AccessToNorth.com");
+    await expect(page.getByText("Reference agencies only — not affiliated or endorsed.")).toHaveCount(0);
+    const disclaimer = page.getByText("Important disclaimer");
+    await expect(disclaimer).toBeVisible();
+    await expect(page.getByText("No legal, tax, accounting, or customs-brokerage advice.")).not.toBeVisible();
+    await disclaimer.click();
+    await expect(page.getByText("No legal, tax, accounting, or customs-brokerage advice.")).toBeVisible();
   });
 
   test("pricing page shows CA$99 anchor and at least one Add to Cart button", async ({ page }) => {

@@ -176,6 +176,12 @@ test.describe("tool pages load without runtime errors", () => {
     await expect(page.getByTestId("mode-tabs")).toBeVisible();
     await expect(page.getByTestId("tab-mode-pro")).toBeVisible();
     await expect(page.getByTestId("tab-mode-beginner")).toBeVisible();
+    await expect(page.getByTestId("trailer-dryvan53").getByRole("img")).toHaveAttribute("aria-label", "Dry van trailer");
+    await expect(page.getByTestId("trailer-reefer53").getByRole("img")).toHaveAttribute("aria-label", "Refrigerated trailer");
+    await expect(page.getByTestId("trailer-curtain53").getByRole("img")).toHaveAttribute("aria-label", "Curtain-side trailer");
+    await expect(page.getByTestId("trailer-flatbed53").getByRole("img")).toHaveAttribute("aria-label", "Flatbed trailer");
+    await expect(page.getByTestId("trailer-stepdeck53").getByRole("img")).toHaveAttribute("aria-label", "Step-deck trailer");
+    await expect(page.getByTestId("trailer-rgn").getByRole("img")).toHaveAttribute("aria-label", "RGN lowboy trailer");
 
     await page.getByTestId("tab-cargo-pallets").click();
     await page.getByTestId("input-pallet-name-0").fill("Test pallets");

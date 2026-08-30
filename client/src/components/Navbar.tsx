@@ -12,6 +12,7 @@ import { useCurrency } from "@/contexts/CurrencyContext";
 import { useCart } from "@/contexts/CartContext";
 import { useLocale } from "@/contexts/LocaleContext";
 import { LocaleToggle } from "@/components/LocaleToggle";
+import { BrandLogo } from "@/components/BrandLogo";
 import type { LucideIcon } from "lucide-react";
 
 interface NavbarProps {
@@ -257,16 +258,8 @@ export function Navbar({ darkHero = false }: NavbarProps) {
     >
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2 group" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-            <div className="bg-primary p-1.5 rounded-lg group-hover:scale-105 transition-transform">
-              <ShieldCheck className="h-6 w-6 text-white" />
-            </div>
-            <span
-              className={`text-xl font-extrabold tracking-tight transition-colors duration-300 ${useLight ? "text-white" : "text-slate-900"}`}
-              style={{ fontFamily: "'Inter', sans-serif", letterSpacing: "-0.03em" }}
-            >
-              AccessToNorth<span className={useLight ? "text-white/80" : "text-primary"}>.com</span>
-            </span>
+          <Link href="/" className="group" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+            <BrandLogo light={useLight} />
           </Link>
 
           <div className="hidden lg:flex items-center gap-1">
