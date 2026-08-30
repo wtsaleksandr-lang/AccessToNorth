@@ -17,6 +17,7 @@ import { registerOnboardingRoutes } from "./onboardingRoutes";
 import { registerAdminCrmRoutes } from "./adminCrmRoutes";
 import { registerChatRoutes } from "./chatRoutes";
 import { registerVapiRoutes } from "./vapiRoutes";
+import { registerFreightRoutes } from "./freightRoutes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { runMigrations } from 'stripe-replit-sync';
@@ -423,6 +424,7 @@ app.use((req, res, next) => {
   registerAdminCrmRoutes(app);
   registerChatRoutes(app);
   registerVapiRoutes(app);
+  registerFreightRoutes(app);
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {

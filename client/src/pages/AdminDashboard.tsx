@@ -45,6 +45,7 @@ import {
   FileCheck,
   Briefcase,
   History,
+  Truck,
 } from "lucide-react";
 import type { OrderStep } from "@shared/schema";
 
@@ -62,6 +63,30 @@ interface ClassificationMetadata {
   deliveryTime?: string;
 }
 
+interface FreightQuoteMetadata {
+  requestType: "freight-quote";
+  mode: string;
+  direction: string;
+  serviceLevel: string;
+  origin: string;
+  destination: string;
+  readyDate: string;
+  incoterm: string;
+  commodity: string;
+  cargoLines: Array<Record<string, unknown>>;
+  cargoSummary: { packages: number; weightKg: number; volumeCbm: number };
+  stackable: boolean;
+  hazardous: boolean;
+  temperatureControlled: boolean;
+  temperatureC?: number | null;
+  notes: string;
+  companyName: string;
+  phone: string;
+  documentCount: number;
+}
+
+type OrderMetadata = ClassificationMetadata & Partial<FreightQuoteMetadata>;
+
 interface OrderSummary {
   id: string;
   customerEmail: string;
@@ -73,7 +98,7 @@ interface OrderSummary {
   updatedAt: string;
   messageCount: number;
   uploadCount: number;
-  metadata: ClassificationMetadata | null;
+  metadata: OrderMetadata | null;
   latestMessage: { sender: string; message: string; createdAt: string } | null;
   aiDraftReport: string | null;
   aiGeneratedAt: string | null;
@@ -574,6 +599,34 @@ function OrderDetailView({ orderId, onBack }: { orderId: string; onBack: () => v
                 <p className="text-sm">{order.metadata.additionalNotes}</p>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {order.metadata?.requestType === "freight-quote" && (
+        <Card data-testid="card-freight-quote-metadata">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Truck className="w-4 h-4 text-primary" />
+              Freight RFQ Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="col-span-2">
+                <p className="text-muted-foreground text-xs">Route</p>
+                <p className="font-medium">{order.metadata.origin} → {order.metadata.destination}</p>
+              </div>
+              <div><p className="text-muted-foreground text-xs">Mode</p><p className="font-medium capitalize">{order.metadata.mode}</p></div>
+              <div><p className="text-muted-foreground text-xs">Movement</p><p className="font-medium capitalize">{order.metadata.direction}</p></div>
+              <div><p className="text-muted-foreground text-xs">Service level</p><p className="font-medium capitalize">{order.metadata.serviceLevel}</p></div>
+              <div><p className="text-muted-foreground text-xs">Ready date</p><p className="font-medium">{order.metadata.readyDate || "Not specified"}</p></div>
+              <div><p className="text-muted-foreground text-xs">Commodity</p><p className="font-medium">{order.metadata.commodity}</p></div>
+              <div><p className="text-muted-foreground text-xs">Incoterm</p><p className="font-medium uppercase">{order.metadata.incoterm || "Unsure"}</p></div>
+              <div><p className="text-muted-foreground text-xs">Cargo</p><p className="font-medium">{order.metadata.cargoSummary?.packages || 0} packages · {order.metadata.cargoSummary?.weightKg?.toLocaleString(undefined, { maximumFractionDigits: 0 }) || 0} kg · {order.metadata.cargoSummary?.volumeCbm?.toFixed(2) || "0.00"} m³</p></div>
+              <div><p className="text-muted-foreground text-xs">Handling</p><p className="font-medium">{[order.metadata.stackable ? "Stackable" : "Non-stackable", order.metadata.hazardous ? "Hazardous" : "Non-hazardous", order.metadata.temperatureControlled ? `Temp. controlled${order.metadata.temperatureC != null ? ` ${order.metadata.temperatureC}°C` : ""}` : "Ambient"].join(" · ")}</p></div>
+            </div>
+            {order.metadata.notes && <div className="border-t pt-3"><p className="text-muted-foreground text-xs mb-1">Notes</p><p className="whitespace-pre-wrap text-sm">{order.metadata.notes}</p></div>}
           </CardContent>
         </Card>
       )}

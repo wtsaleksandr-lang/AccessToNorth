@@ -25,7 +25,7 @@ test("public SEO route registry is unique and excludes obsolete URLs", () => {
   assert(paths.includes("/canadian-customs-clearance"));
 });
 
-test("generated sitemap uses canonical URLs and omits coming-soon tools", async () => {
+test("generated sitemap uses canonical URLs and includes launched tools", async () => {
   const outDir = await mkdtemp(join(tmpdir(), "atn-seo-"));
   try {
     await generateSeoFiles(outDir);
@@ -35,8 +35,8 @@ test("generated sitemap uses canonical URLs and omits coming-soon tools", async 
     assert(!sitemap.includes("https://www.accesstonorth.com"));
     assert(sitemap.includes("https://accesstonorth.com/resources/how-to-import-into-canada/"));
     assert(sitemap.includes("https://accesstonorth.com/resources/customs-clearance-under-3300/"));
-    assert(!sitemap.includes("/tools/freight-quote/"));
-    assert(!sitemap.includes("/tools/shipment-tracking/"));
+    assert(sitemap.includes("/tools/freight-quote/"));
+    assert(sitemap.includes("/tools/shipment-tracking/"));
     assert(robots.includes("Sitemap: https://accesstonorth.com/sitemap.xml"));
   } finally {
     await rm(outDir, { recursive: true, force: true });
@@ -61,7 +61,7 @@ test("prerender emits crawl-visible article and application metadata", async () 
       join(outDir, "tools", "container-calculator", "index.html"),
       "utf8",
     );
-    const comingSoon = await readFile(
+    const freightQuote = await readFile(
       join(outDir, "tools", "freight-quote", "index.html"),
       "utf8",
     );
@@ -72,7 +72,8 @@ test("prerender emits crawl-visible article and application metadata", async () 
     assert(!article.includes("hreflang"));
     assert(calculator.includes('"@type":"WebApplication"'));
     assert(calculator.includes('"price":"0"'));
-    assert(comingSoon.includes('<meta name="robots" content="noindex,follow">'));
+    assert(freightQuote.includes('<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">'));
+    assert(freightQuote.includes('"@type":"WebApplication"'));
   } finally {
     await rm(outDir, { recursive: true, force: true });
   }

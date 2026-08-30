@@ -1,4 +1,5 @@
 import type { ClassificationOrderData } from "@shared/schema";
+import type { FreightQuoteInput } from "@shared/freight";
 
 const BRAND_COLOR = "#007BFF";
 const BRAND_DARK = "#0A2540";
@@ -6,6 +7,15 @@ const BASE_URL = process.env.REPLIT_DEV_DOMAIN
   ? `https://${process.env.REPLIT_DEV_DOMAIN}`
   : "https://www.accesstonorth.com";
 const OPS_EMAIL = "operations@accesstonorth.com";
+
+function escapeEmailHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
 function log(msg: string) {
   const ts = new Date().toLocaleTimeString();
@@ -697,6 +707,83 @@ export function buildStatusUpdateEmail(
   return {
     to: "",
     subject: `HS Classification Order Update – ${orderId}`,
+    html,
+  };
+}
+
+export function buildFreightQuoteCustomerEmail(
+  requestId: string,
+  input: FreightQuoteInput,
+  documentCount: number,
+): SendEmailParams {
+  const html = emailWrapper(`
+<div class="body">
+<h2>Freight quote request received</h2>
+<p>Hi ${escapeEmailHtml(input.contactName)},</p>
+<p>We saved your shipment details under reference <strong style="font-family:monospace;color:${BRAND_COLOR}">${escapeEmailHtml(requestId)}</strong>. Our operations team will review the routing, cargo, and handling requirements before preparing a quote.</p>
+
+<table class="detail-table">
+<tr><td>Route</td><td>${escapeEmailHtml(input.origin)} &rarr; ${escapeEmailHtml(input.destination)}</td></tr>
+<tr><td>Mode</td><td>${escapeEmailHtml(input.mode.toUpperCase())}</td></tr>
+<tr><td>Commodity</td><td>${escapeEmailHtml(input.commodity)}</td></tr>
+<tr><td>Cargo lines</td><td>${input.cargoLines.length}</td></tr>
+<tr><td>Documents</td><td>${documentCount}</td></tr>
+</table>
+
+<div class="highlight-box">
+<p>This is a quote request confirmation, not a booked rate. We may contact you if carrier-ready details are missing.</p>
+</div>
+
+<p style="text-align:center;margin:24px 0">
+<a href="${BASE_URL}/tools/shipment-tracking" class="btn">Check request status</a>
+</p>
+<p style="font-size:12px;color:#718096">Use your email address and request ID ${escapeEmailHtml(requestId)} to view progress. You can also use the same details in the client portal.</p>
+</div>`);
+
+  return {
+    to: input.email,
+    subject: `Freight quote request received – ${requestId}`,
+    html,
+  };
+}
+
+export function buildFreightQuoteInternalEmail(
+  requestId: string,
+  input: FreightQuoteInput,
+  summary: { packages: number; weightKg: number; volumeCbm: number },
+  documentCount: number,
+): SendEmailParams {
+  const requirements = [
+    input.stackable ? "Stackable" : "Non-stackable",
+    input.hazardous ? "Hazardous goods" : "Non-hazardous",
+    input.temperatureControlled ? `Temperature controlled${input.temperatureC != null ? ` (${input.temperatureC}&deg;C)` : ""}` : "Ambient",
+  ].join(" · ");
+  const html = emailWrapper(`
+<div class="body">
+<h2>New freight quote request</h2>
+<table class="detail-table">
+<tr><td>Request ID</td><td style="font-family:monospace;color:${BRAND_COLOR}">${escapeEmailHtml(requestId)}</td></tr>
+<tr><td>Customer</td><td>${escapeEmailHtml(input.contactName)}${input.companyName ? ` — ${escapeEmailHtml(input.companyName)}` : ""}</td></tr>
+<tr><td>Email</td><td>${escapeEmailHtml(input.email)}</td></tr>
+<tr><td>Route</td><td>${escapeEmailHtml(input.origin)} &rarr; ${escapeEmailHtml(input.destination)}</td></tr>
+<tr><td>Mode / direction</td><td>${escapeEmailHtml(input.mode)} / ${escapeEmailHtml(input.direction)}</td></tr>
+<tr><td>Service level</td><td>${escapeEmailHtml(input.serviceLevel)}</td></tr>
+<tr><td>Ready date</td><td>${escapeEmailHtml(input.readyDate || "Not specified")}</td></tr>
+<tr><td>Incoterm</td><td>${escapeEmailHtml(input.incoterm || "Unsure")}</td></tr>
+<tr><td>Commodity</td><td>${escapeEmailHtml(input.commodity)}</td></tr>
+<tr><td>Packages</td><td>${summary.packages.toLocaleString()}</td></tr>
+<tr><td>Approx. weight</td><td>${summary.weightKg.toLocaleString(undefined, { maximumFractionDigits: 1 })} kg</td></tr>
+<tr><td>Approx. volume</td><td>${summary.volumeCbm.toLocaleString(undefined, { maximumFractionDigits: 2 })} m&sup3;</td></tr>
+<tr><td>Requirements</td><td>${requirements}</td></tr>
+<tr><td>Documents</td><td>${documentCount}</td></tr>
+</table>
+${input.notes ? `<div class="highlight-box"><p><strong>Notes:</strong><br>${escapeEmailHtml(input.notes).replace(/\n/g, "<br>")}</p></div>` : ""}
+<p style="text-align:center;margin:24px 0"><a href="${BASE_URL}/admin" class="btn">Open in Admin</a></p>
+</div>`);
+
+  return {
+    to: OPS_EMAIL,
+    subject: `[Freight RFQ] ${requestId} – ${input.origin} to ${input.destination}`.replace(/[\r\n]+/g, " "),
     html,
   };
 }

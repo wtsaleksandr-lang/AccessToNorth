@@ -46,6 +46,7 @@ import {
   Flag,
   Download,
   Play,
+  ExternalLink,
 } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -54,6 +55,7 @@ import { buildTruckSpatialPlan, createTruckPackingItems, type TruckSpatialPlan }
 import { buildTruckPlacementCsv } from "@/lib/loadingPlanExports";
 import { TruckLoadPreview3D } from "./truck-planner/TruckLoadPreview3D";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
+import { evaluateOpenDeckEnvelope, getTruckJurisdictionGuidance } from "@shared/truckCompliance";
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
@@ -415,9 +417,17 @@ export default function TruckLoadPlanner() {
       ? spatialPlan.averageWeightUtilPct
       : trailer.maxPayloadLbs > 0 ? (cargo.totalWeightLbs / trailer.maxPayloadLbs) * 100 : 0;
 
-    const oversizeWarnings: string[] = [];
-    if (cargo.maxDimIn.w > 102) oversizeWarnings.push(`Cargo width (${(cargo.maxDimIn.w * dimFactor).toFixed(1)} ${dimUnit}) exceeds legal limit of 8'6" (102")`);
-    if (cargo.maxDimIn.h > 162) oversizeWarnings.push(`Cargo height (${(cargo.maxDimIn.h * dimFactor).toFixed(1)} ${dimUnit}) exceeds legal limit of 13'6" (162")`);
+    const placedCargoHeightIn = spatialPlan
+      ? Math.max(cargo.maxDimIn.h, ...spatialPlan.multi.containers.flatMap((entry) => entry.result.placed.map((box) => box.y + box.h)))
+      : cargo.maxDimIn.h;
+    const roadEnvelope = evaluateOpenDeckEnvelope({
+      trailerCategory: trailer.category,
+      trailerWidthIn: trailer.widthIn,
+      deckHeightIn: trailer.deckHeightIn,
+      cargoWidthIn: cargo.maxDimIn.w,
+      cargoHeightIn: placedCargoHeightIn,
+    });
+    const oversizeWarnings: string[] = [...roadEnvelope.screeningWarnings];
     if (cargo.maxDimIn.l > trailer.lengthIn) oversizeWarnings.push(`Cargo length exceeds trailer length`);
     if (cargo.maxDimIn.w > trailer.widthIn) oversizeWarnings.push(`Cargo width exceeds trailer width`);
     if (cargo.maxDimIn.h > trailer.heightIn) oversizeWarnings.push(`Cargo height exceeds trailer height`);
@@ -445,7 +455,9 @@ export default function TruckLoadPlanner() {
       recommendations.push(`${spatialPlan.piecesLoaded} of ${spatialPlan.piecesTotal} pieces could be placed. Review individual dimensions or select different equipment.`);
     }
     if (oversizeWarnings.length > 0 && !overweightWarning && volumeFits) {
-      recommendations.push("Consider a flatbed or step deck for oversized cargo");
+      recommendations.push(roadEnvelope.isOpenDeck
+        ? "Confirm the complete vehicle, axle weights, route clearances, and permits before dispatch"
+        : "Consider a flatbed or step deck, then verify loaded road dimensions and permits");
     }
 
     const completionRatio = spatialPlan && spatialPlan.piecesTotal > 0 ? spatialPlan.piecesLoaded / spatialPlan.piecesTotal : fits ? 1 : 0;
@@ -1823,12 +1835,13 @@ export default function TruckLoadPlanner() {
                                 <th className="px-4 py-2.5 text-left font-semibold text-slate-700 w-8">#</th>
                                 <th className="px-4 py-2.5 text-left font-semibold text-slate-700">Jurisdiction</th>
                                 <th className="px-4 py-2.5 text-left font-semibold text-slate-700">Country</th>
-                                <th className="px-4 py-2.5 text-left font-semibold text-slate-700">Notes</th>
+                                <th className="px-4 py-2.5 text-left font-semibold text-slate-700">Rules &amp; permits</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {jurisdictions.map((j, idx) => (
-                                <tr key={j.code} className="border-b border-slate-100 last:border-0" data-testid={`jurisdiction-row-${idx}`}>
+                              {jurisdictions.map((j, idx) => {
+                                const guidance = getTruckJurisdictionGuidance(j);
+                                return <tr key={j.code} className="border-b border-slate-100 last:border-0" data-testid={`jurisdiction-row-${idx}`}>
                                   <td className="px-4 py-2.5 text-slate-400 text-xs font-medium">{idx + 1}</td>
                                   <td className="px-4 py-2.5 font-medium text-slate-900">
                                     <div className="flex items-center gap-2">
@@ -1843,21 +1856,25 @@ export default function TruckLoadPlanner() {
                                       {j.country === "Canada" ? "CA" : j.country === "United States" ? "US" : j.country}
                                     </Badge>
                                   </td>
-                                  <td className="px-4 py-2.5 text-slate-400 text-xs italic">
-                                    {/* TODO: Add weight limits and permit info from rules dataset */}
-                                    —
+                                  <td className="px-4 py-2.5 text-xs">
+                                    <p className="font-medium text-slate-700">{guidance.summary}</p>
+                                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                                      {guidance.rulesUrl && <a href={guidance.rulesUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">{guidance.rulesLabel}<ExternalLink className="h-3 w-3" /></a>}
+                                      {guidance.permitUrl && <a href={guidance.permitUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">{guidance.permitLabel}<ExternalLink className="h-3 w-3" /></a>}
+                                    </div>
                                   </td>
                                 </tr>
-                              ))}
+                              })}
                             </tbody>
                           </table>
                         </div>
 
                         {/* Mobile cards */}
                         <div className="sm:hidden space-y-2" data-testid="jurisdictions-cards">
-                          {jurisdictions.map((j, idx) => (
-                            <div key={j.code} className="p-3 rounded-lg border border-slate-200 bg-white" data-testid={`jurisdiction-card-${idx}`}>
-                              <div className="flex items-center justify-between">
+                          {jurisdictions.map((j, idx) => {
+                            const guidance = getTruckJurisdictionGuidance(j);
+                            return <div key={j.code} className="p-3 rounded-lg border border-slate-200 bg-white" data-testid={`jurisdiction-card-${idx}`}>
+                              <div className="flex items-start justify-between gap-3">
                                 <div className="flex items-center gap-2">
                                   <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
                                     {idx + 1}
@@ -1869,18 +1886,14 @@ export default function TruckLoadPlanner() {
                                     </p>
                                   </div>
                                 </div>
-                                <span className="text-[10px] text-slate-400 italic">
-                                  {/* TODO: Add weight limits and permit info from rules dataset */}
-                                  —
-                                </span>
+                                <div className="text-right text-[10px]"><p className="max-w-44 text-slate-600">{guidance.summary}</p>{guidance.permitUrl && <a href={guidance.permitUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 font-semibold text-primary">{guidance.permitLabel}<ExternalLink className="h-2.5 w-2.5" /></a>}</div>
                               </div>
                             </div>
-                          ))}
+                          })}
                         </div>
 
-                        <p className="mt-3 text-[11px] text-slate-400 italic">
-                          {/* TODO: Future: overweight detection + permit estimates will appear here */}
-                          Weight limits and permit requirements will be added in a future update.
+                        <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+                          These are official planning references, not permit approval. Gross and axle legality depends on the tractor, axle count and spacing, registered weight, seasonal restrictions, exact roads, and local permit conditions. Scale the assembled vehicle before dispatch.
                         </p>
                       </motion.div>
                     )}
