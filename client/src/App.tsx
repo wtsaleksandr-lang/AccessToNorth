@@ -10,17 +10,19 @@ import { LocaleProvider } from "@/contexts/LocaleContext";
 import { CartPanel } from "@/components/CartPanel";
 import { SiteChatWidget } from "@/components/SiteChatWidget";
 
-// Eagerly loaded — every user sees these first
+// Eagerly loaded — the homepage is the primary entry point and should not
+// wait for a second route chunk before it can paint.
 import Home from "@/pages/Home";
-import Services from "@/pages/Services";
-import Pricing from "@/pages/Pricing";
-import FAQ from "@/pages/FAQ";
-import Contact from "@/pages/Contact";
-import About from "@/pages/About";
-import Tools from "@/pages/Tools";
-import Resources from "@/pages/Resources";
 
-// Lazy — heavy bundles (three.js, pdf, canvas) or rarely-visited routes
+// Every other page is route-split. The build prerender supplies crawlable
+// HTML immediately, while visitors download only the page they requested.
+const Services = lazy(() => import("@/pages/Services"));
+const Pricing = lazy(() => import("@/pages/Pricing"));
+const FAQ = lazy(() => import("@/pages/FAQ"));
+const Contact = lazy(() => import("@/pages/Contact"));
+const About = lazy(() => import("@/pages/About"));
+const Tools = lazy(() => import("@/pages/Tools"));
+const Resources = lazy(() => import("@/pages/Resources"));
 const Request = lazy(() => import("@/pages/Request"));
 const ClientPortal = lazy(() => import("@/pages/ClientPortal"));
 const PaymentSuccess = lazy(() => import("@/pages/PaymentSuccess"));
@@ -39,15 +41,15 @@ const CustomsClearance = lazy(() => import("@/pages/CustomsClearance"));
 const ClearanceCheckout = lazy(() => import("@/pages/ClearanceCheckout"));
 const Checkout = lazy(() => import("@/pages/Checkout"));
 const CompleteOrder = lazy(() => import("@/pages/CompleteOrder"));
-import BusinessNumberBN from "@/pages/services/BusinessNumberBN";
-import GstHstRegistration from "@/pages/services/GstHstRegistration";
-import CustomsClearanceCanada from "@/pages/services/CustomsClearanceCanada";
-import ImportComplianceReview from "@/pages/services/ImportComplianceReview";
-import HsCodeClassification from "@/pages/services/HsCodeClassification";
-import CarmRegistration from "@/pages/services/CarmRegistration";
-import RppBondCoordination from "@/pages/services/RppBondCoordination";
-import B13ExportDeclaration from "@/pages/services/B13ExportDeclaration";
-import NonResidentImporter from "@/pages/services/NonResidentImporter";
+const BusinessNumberBN = lazy(() => import("@/pages/services/BusinessNumberBN"));
+const GstHstRegistration = lazy(() => import("@/pages/services/GstHstRegistration"));
+const CustomsClearanceCanada = lazy(() => import("@/pages/services/CustomsClearanceCanada"));
+const ImportComplianceReview = lazy(() => import("@/pages/services/ImportComplianceReview"));
+const HsCodeClassification = lazy(() => import("@/pages/services/HsCodeClassification"));
+const CarmRegistration = lazy(() => import("@/pages/services/CarmRegistration"));
+const RppBondCoordination = lazy(() => import("@/pages/services/RppBondCoordination"));
+const B13ExportDeclaration = lazy(() => import("@/pages/services/B13ExportDeclaration"));
+const NonResidentImporter = lazy(() => import("@/pages/services/NonResidentImporter"));
 import NotFound from "@/pages/not-found";
 
 // Blog — split out since these are new, rarely-visited on first load

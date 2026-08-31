@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -91,4 +91,23 @@ test("favicon PNG is a 512px square matching the brand asset slot", async () => 
   assert.equal(png.toString("ascii", 1, 4), "PNG");
   assert.equal(png.readUInt32BE(16), 512);
   assert.equal(png.readUInt32BE(20), 512);
+});
+
+test("homepage proof avatars stay lightweight WebP assets", async () => {
+  for (let index = 1; index <= 4; index++) {
+    const path = `client/public/images/avatar-${index}.webp`;
+    const image = await readFile(path);
+    const metadata = await stat(path);
+    assert.equal(image.toString("ascii", 0, 4), "RIFF");
+    assert.equal(image.toString("ascii", 8, 12), "WEBP");
+    assert(metadata.size < 20_000, `${path} should stay below 20 KB`);
+  }
+});
+
+test("Google Fonts are requested once without an unused serif family", async () => {
+  const html = await readFile("client/index.html", "utf8");
+  const css = await readFile("client/src/index.css", "utf8");
+  assert.equal((html.match(/fonts\.googleapis\.com\/css2/g) ?? []).length, 1);
+  assert(!css.includes("fonts.googleapis.com"));
+  assert(!html.includes("Playfair+Display"));
 });
