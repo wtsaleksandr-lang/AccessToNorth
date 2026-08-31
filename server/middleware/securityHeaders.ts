@@ -34,9 +34,10 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
     "img-src 'self' data: blob: https:",
     "font-src 'self' data: https://fonts.gstatic.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "script-src 'self' 'unsafe-inline' https://js.stripe.com https://checkout.stripe.com",
-    "connect-src 'self' https://api.stripe.com https://checkout.stripe.com",
-    "frame-src https://js.stripe.com https://checkout.stripe.com",
+    "script-src 'self' 'unsafe-inline' https://js.stripe.com https://checkout.stripe.com https://maps.googleapis.com https://maps.gstatic.com",
+    "connect-src 'self' https://api.stripe.com https://checkout.stripe.com https://maps.googleapis.com https://maps.gstatic.com",
+    "frame-src https://js.stripe.com https://checkout.stripe.com https://www.google.com https://maps.google.com",
+    "worker-src 'self' blob:",
     "form-action 'self' https://checkout.stripe.com",
   ].join("; ");
 
