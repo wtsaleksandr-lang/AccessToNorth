@@ -58,21 +58,32 @@ import { TrailerTypeIcon } from "./truck-planner/TrailerTypeIcon";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
 import { evaluateOpenDeckEnvelope, getTruckJurisdictionGuidance } from "@shared/truckCompliance";
 
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+const BUILD_TIME_GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
 let googleMapsLoaderPromise: Promise<void> | null = null;
 let optionsSet = false;
+async function getGoogleMapsApiKey(): Promise<string> {
+  if (BUILD_TIME_GOOGLE_MAPS_API_KEY) return BUILD_TIME_GOOGLE_MAPS_API_KEY;
+  const response = await fetch("/api/maps/browser-config", { credentials: "same-origin" });
+  if (!response.ok) throw new Error("Google Maps configuration could not be loaded.");
+  const data = await response.json().catch(() => ({}));
+  return typeof data.apiKey === "string" ? data.apiKey.trim() : "";
+}
+
 function loadGoogleMaps(): Promise<void> {
   if (googleMapsLoaderPromise) return googleMapsLoaderPromise;
-  if (!optionsSet) {
-    setOptions({ key: GOOGLE_MAPS_API_KEY, v: "weekly" });
-    optionsSet = true;
-  }
-  googleMapsLoaderPromise = Promise.all([
-    importLibrary("maps"),
-    importLibrary("places"),
-    importLibrary("geometry"),
-  ]).then(() => {});
+  googleMapsLoaderPromise = getGoogleMapsApiKey().then(async (apiKey) => {
+    if (!apiKey) throw new Error("GOOGLE_MAPS_NOT_CONFIGURED");
+    if (!optionsSet) {
+      setOptions({ key: apiKey, v: "weekly" });
+      optionsSet = true;
+    }
+    await Promise.all([
+      importLibrary("maps"),
+      importLibrary("places"),
+      importLibrary("geometry"),
+    ]);
+  });
   return googleMapsLoaderPromise;
 }
 
@@ -713,6 +724,7 @@ export default function TruckLoadPlanner() {
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [gmapsReady, setGmapsReady] = useState(false);
+  const [mapsConfigured, setMapsConfigured] = useState<boolean | null>(null);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -723,11 +735,14 @@ export default function TruckLoadPlanner() {
   const destAutocompleteRef = useRef<any>(null);
 
   useEffect(() => {
-    if (!GOOGLE_MAPS_API_KEY) return;
     loadGoogleMaps().then(() => {
+      setMapsConfigured(true);
       setGmapsReady(true);
-    }).catch(() => {
-      setRouteError("Failed to load Google Maps. Please check API key.");
+    }).catch((error) => {
+      setMapsConfigured(false);
+      if (!(error instanceof Error && error.message === "GOOGLE_MAPS_NOT_CONFIGURED")) {
+        setRouteError("Failed to load Google Maps. Please check the API configuration.");
+      }
     });
   }, []);
 
@@ -1720,7 +1735,12 @@ export default function TruckLoadPlanner() {
                   Enter origin and destination to calculate route distance, driving time, and jurisdictions crossed.
                 </p>
 
-                {!GOOGLE_MAPS_API_KEY ? (
+                {mapsConfigured === null ? (
+                  <div className="flex items-center gap-2 p-4 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-600">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Loading route planner…
+                  </div>
+                ) : !mapsConfigured ? (
                   <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
                     <AlertTriangle className="w-4 h-4 inline mr-1" />
                     Google Maps API key is not configured. Route planning is unavailable.
