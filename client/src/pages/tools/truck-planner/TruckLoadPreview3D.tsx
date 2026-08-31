@@ -72,8 +72,7 @@ export function TruckLoadPreview3D({
       setFailed(false);
       const scene = new THREE.Scene();
       scene.fog = new THREE.Fog(0xf4f7fb, trailer.lengthIn * 1.3, trailer.lengthIn * 2.4);
-      const camera = new THREE.PerspectiveCamera(32, 1, 0.1, trailer.lengthIn * 4);
-      camera.position.set(trailer.lengthIn * 0.82, trailer.heightIn * 1.35, trailer.widthIn * 2.25);
+      const camera = new THREE.PerspectiveCamera(34, 1, 0.1, trailer.lengthIn * 5);
 
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
@@ -92,11 +91,8 @@ export function TruckLoadPreview3D({
         if (!disposed && renderer) renderer.render(scene, camera);
       };
       controls = new OrbitControls(camera, renderer.domElement);
-      controls.target.set(0, trailer.heightIn * 0.35, 0);
       controls.enableDamping = false;
       controls.enablePan = false;
-      controls.minDistance = Math.max(180, trailer.widthIn * 1.3);
-      controls.maxDistance = trailer.lengthIn * 2;
       controls.maxPolarAngle = Math.PI * 0.49;
       controls.addEventListener("change", render);
 
@@ -112,39 +108,114 @@ export function TruckLoadPreview3D({
       group.position.set(-trailer.lengthIn / 2, 0, -trailer.widthIn / 2);
       scene.add(group);
 
+      const floorY = Math.min(15, Math.max(10, trailer.widthIn * 0.125));
+      const deckThickness = 2.4;
       const deckMaterial = new THREE.MeshStandardMaterial({ color: trailer.hasDeck ? 0x334155 : 0xd7dee8, roughness: 0.7, metalness: 0.24 });
-      const deck = new THREE.Mesh(new THREE.BoxGeometry(trailer.lengthIn, 2.2, trailer.widthIn), deckMaterial);
-      deck.position.set(trailer.lengthIn / 2, 1.1, trailer.widthIn / 2);
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(trailer.lengthIn, deckThickness, trailer.widthIn), deckMaterial);
+      deck.position.set(trailer.lengthIn / 2, floorY, trailer.widthIn / 2);
       group.add(deck);
+
+      const chassisMaterial = new THREE.MeshStandardMaterial({ color: 0x172033, roughness: 0.42, metalness: 0.62 });
+      const hardwareMaterial = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.36, metalness: 0.7 });
+      const tireMaterial = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.88, metalness: 0.05 });
+      const hubMaterial = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.3, metalness: 0.82 });
+      const lightMaterial = new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0xf59e0b, emissiveIntensity: 0.6, roughness: 0.3 });
+
+      for (const side of [trailer.widthIn * 0.24, trailer.widthIn * 0.76]) {
+        const frameRail = new THREE.Mesh(new THREE.BoxGeometry(trailer.lengthIn * 0.9, 3.2, 2.2), chassisMaterial);
+        frameRail.position.set(trailer.lengthIn * 0.51, floorY - 3.5, side);
+        group.add(frameRail);
+      }
+
+      const wheelRadius = Math.min(10.5, floorY * 0.78);
+      const wheelWidth = 5.2;
+      const wheelGeometry = new THREE.CylinderGeometry(wheelRadius, wheelRadius, wheelWidth, 18);
+      wheelGeometry.rotateX(Math.PI / 2);
+      const hubGeometry = new THREE.CylinderGeometry(wheelRadius * 0.34, wheelRadius * 0.34, wheelWidth + 0.3, 16);
+      hubGeometry.rotateX(Math.PI / 2);
+      for (const axleX of [trailer.lengthIn * 0.72, trailer.lengthIn * 0.81]) {
+        const axle = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, trailer.widthIn + 6, 10), hardwareMaterial);
+        axle.rotation.x = Math.PI / 2;
+        axle.position.set(axleX, wheelRadius, trailer.widthIn / 2);
+        group.add(axle);
+        for (const sideZ of [-wheelWidth * 0.25, trailer.widthIn + wheelWidth * 0.25]) {
+          const wheel = new THREE.Mesh(wheelGeometry, tireMaterial);
+          wheel.position.set(axleX, wheelRadius, sideZ);
+          group.add(wheel);
+          const hub = new THREE.Mesh(hubGeometry, hubMaterial);
+          hub.position.copy(wheel.position);
+          group.add(hub);
+        }
+      }
+
+      for (const sideZ of [trailer.widthIn * 0.34, trailer.widthIn * 0.66]) {
+        const landingLeg = new THREE.Mesh(new THREE.BoxGeometry(2.4, floorY - 1.5, 2.4), hardwareMaterial);
+        landingLeg.position.set(trailer.lengthIn * 0.17, (floorY - 1.5) / 2, sideZ);
+        group.add(landingLeg);
+        const foot = new THREE.Mesh(new THREE.BoxGeometry(7, 1.2, 5), hardwareMaterial);
+        foot.position.set(trailer.lengthIn * 0.17, 0.6, sideZ);
+        group.add(foot);
+      }
+
+      const rearBumper = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3, trailer.widthIn * 0.88), hardwareMaterial);
+      rearBumper.position.set(trailer.lengthIn + 2.2, 4.8, trailer.widthIn / 2);
+      group.add(rearBumper);
+      for (const sideZ of [trailer.widthIn * 0.08, trailer.widthIn * 0.92]) {
+        const bumperPost = new THREE.Mesh(new THREE.BoxGeometry(2, 8, 2), hardwareMaterial);
+        bumperPost.position.set(trailer.lengthIn + 1.5, 8, sideZ);
+        group.add(bumperPost);
+      }
+
+      for (const sideZ of [-0.8, trailer.widthIn + 0.8]) {
+        for (const markerX of [trailer.lengthIn * 0.2, trailer.lengthIn * 0.48, trailer.lengthIn * 0.9]) {
+          const marker = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.4, 0.8), lightMaterial);
+          marker.position.set(markerX, floorY - 0.2, sideZ);
+          group.add(marker);
+        }
+      }
 
       if (!trailer.hasDeck) {
         const wallMaterial = new THREE.MeshPhysicalMaterial({ color: 0xe7edf5, transparent: true, opacity: 0.2, roughness: 0.3, metalness: 0.04, side: THREE.DoubleSide, depthWrite: false });
         const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(trailer.lengthIn, trailer.heightIn), wallMaterial);
-        leftWall.position.set(trailer.lengthIn / 2, trailer.heightIn / 2, 0);
+        leftWall.position.set(trailer.lengthIn / 2, floorY + trailer.heightIn / 2, 0);
         group.add(leftWall);
         const rightWall = leftWall.clone();
         rightWall.position.z = trailer.widthIn;
         group.add(rightWall);
         const roof = new THREE.Mesh(new THREE.PlaneGeometry(trailer.lengthIn, trailer.widthIn), wallMaterial);
         roof.rotation.x = Math.PI / 2;
-        roof.position.set(trailer.lengthIn / 2, trailer.heightIn, trailer.widthIn / 2);
+        roof.position.set(trailer.lengthIn / 2, floorY + trailer.heightIn, trailer.widthIn / 2);
         group.add(roof);
         const nose = new THREE.Mesh(new THREE.PlaneGeometry(trailer.widthIn, trailer.heightIn), wallMaterial);
         nose.rotation.y = Math.PI / 2;
-        nose.position.set(0, trailer.heightIn / 2, trailer.widthIn / 2);
+        nose.position.set(0, floorY + trailer.heightIn / 2, trailer.widthIn / 2);
         group.add(nose);
+
+        const doorMaterial = new THREE.MeshPhysicalMaterial({ color: 0xdbeafe, transparent: true, opacity: 0.25, roughness: 0.28, metalness: 0.12, side: THREE.DoubleSide, depthWrite: false });
+        for (const sideZ of [trailer.widthIn * 0.25, trailer.widthIn * 0.75]) {
+          const rearDoor = new THREE.Mesh(new THREE.PlaneGeometry(trailer.widthIn / 2 - 1.2, trailer.heightIn - 2), doorMaterial);
+          rearDoor.rotation.y = Math.PI / 2;
+          rearDoor.position.set(trailer.lengthIn, floorY + trailer.heightIn / 2, sideZ);
+          group.add(rearDoor);
+          const lockingBar = new THREE.Mesh(new THREE.BoxGeometry(1.1, trailer.heightIn * 0.72, 1.1), hardwareMaterial);
+          lockingBar.position.set(trailer.lengthIn + 0.8, floorY + trailer.heightIn * 0.5, sideZ);
+          group.add(lockingBar);
+        }
 
         const frameMaterial = new THREE.LineBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.8 });
         const frame = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(trailer.lengthIn, trailer.heightIn, trailer.widthIn)), frameMaterial);
-        frame.position.set(trailer.lengthIn / 2, trailer.heightIn / 2, trailer.widthIn / 2);
+        frame.position.set(trailer.lengthIn / 2, floorY + trailer.heightIn / 2, trailer.widthIn / 2);
         group.add(frame);
       } else {
         const railMaterial = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.48, metalness: 0.48 });
         for (const side of [0, trailer.widthIn]) {
           const rail = new THREE.Mesh(new THREE.BoxGeometry(trailer.lengthIn, 1.3, 1.3), railMaterial);
-          rail.position.set(trailer.lengthIn / 2, 3.2, side);
+          rail.position.set(trailer.lengthIn / 2, floorY + 2.1, side);
           group.add(rail);
         }
+        const frontApron = new THREE.Mesh(new THREE.BoxGeometry(trailer.lengthIn * 0.16, 1.4, trailer.widthIn * 0.62), hardwareMaterial);
+        frontApron.position.set(trailer.lengthIn * 0.08, floorY - 2, trailer.widthIn / 2);
+        group.add(frontApron);
       }
 
       const materialCache = new Map<string, THREE.MeshStandardMaterial>();
@@ -156,7 +227,7 @@ export function TruckLoadPreview3D({
         }
         const geometry = new THREE.BoxGeometry(Math.max(0.2, cargo.l - 0.24), Math.max(0.2, cargo.h - 0.24), Math.max(0.2, cargo.w - 0.24));
         const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.set(cargo.x + cargo.l / 2, cargo.y + cargo.h / 2 + 2.2, cargo.z + cargo.w / 2);
+        mesh.position.set(cargo.x + cargo.l / 2, cargo.y + cargo.h / 2 + floorY + deckThickness / 2, cargo.z + cargo.w / 2);
         group.add(mesh);
         if (visiblePlaced.length <= 90) {
           const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 35), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 }));
@@ -170,20 +241,42 @@ export function TruckLoadPreview3D({
         new THREE.MeshStandardMaterial({ color: 0xe8edf3, roughness: 0.96, transparent: true, opacity: 0.72 }),
       );
       ground.rotation.x = -Math.PI / 2;
-      ground.position.y = -0.2;
+      ground.position.y = -0.35;
       scene.add(ground);
+
+      const bounds = new THREE.Box3().setFromObject(group);
+      const center = bounds.getCenter(new THREE.Vector3());
+      const size = bounds.getSize(new THREE.Vector3());
+      let cameraFitted = false;
+
+      const fitCamera = (width: number, height: number) => {
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        if (cameraFitted) return;
+        const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+        const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * camera.aspect);
+        const widthDistance = size.x / (2 * Math.tan(horizontalFov / 2));
+        const heightDistance = Math.max(size.y * 1.2, size.z * 0.95) / (2 * Math.tan(verticalFov / 2));
+        const distance = Math.max(widthDistance, heightDistance) * 1.08;
+        const direction = new THREE.Vector3(0.42, 0.42, 0.9).normalize();
+        controls!.target.copy(center).add(new THREE.Vector3(0, size.y * 0.03, 0));
+        camera.position.copy(controls!.target).add(direction.multiplyScalar(distance));
+        controls!.minDistance = Math.max(trailer.widthIn * 0.8, distance * 0.42);
+        controls!.maxDistance = distance * 2.4;
+        cameraFitted = true;
+        controls!.update();
+      };
 
       resizeObserver = new ResizeObserver(() => {
         if (!renderer || disposed) return;
         const width = Math.max(1, host.clientWidth);
         const height = Math.max(1, host.clientHeight);
         renderer.setSize(width, height, false);
-        camera.aspect = width / height;
-        camera.updateProjectionMatrix();
+        fitCamera(width, height);
         render();
       });
       resizeObserver.observe(host);
-      controls.update();
+      fitCamera(Math.max(1, host.clientWidth), Math.max(1, host.clientHeight));
       render();
 
       return () => {
