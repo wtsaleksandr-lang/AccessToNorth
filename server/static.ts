@@ -2,6 +2,8 @@ import express, { type Express, type Request, type Response } from "express";
 import fs from "fs";
 import path from "path";
 
+const INDEXNOW_KEY = "594c4ba0a45b102189a47cff194f3fd7";
+
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "public");
   if (!fs.existsSync(distPath)) {
@@ -38,6 +40,12 @@ export function serveStatic(app: Express) {
     }
 
     next();
+  });
+
+  // Serve the verification key explicitly so it remains available even when
+  // a hosting platform omits uncommon static file extensions from a deploy.
+  app.get(`/${INDEXNOW_KEY}.txt`, (_req: Request, res: Response) => {
+    res.type("text/plain").send(INDEXNOW_KEY);
   });
 
   app.use(express.static(distPath, { index: "index.html" }));
