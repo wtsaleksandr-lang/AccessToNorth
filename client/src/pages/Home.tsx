@@ -1,17 +1,20 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Link, useLocation } from "wouter";
 import businessTeamImg from "@/assets/images/business-team.jpg";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { RegistrationModal } from "@/components/RegistrationModal";
 import { DiyVsUsComparison } from "@/components/DiyVsUsComparison";
 import { HowItWorksSection } from "@/components/HowItWorks";
 import { HeroFilingWorkflow } from "@/components/HeroFilingWorkflow";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { motion } from "framer-motion";
 import { ArrowRight, CheckCircle2, Star, Award, Landmark, Shield, Calculator, Package, Globe, FileCheck, Search } from "lucide-react";
+
+const RegistrationModal = lazy(() =>
+  import("@/components/RegistrationModal").then((module) => ({ default: module.RegistrationModal })),
+);
 
 export default function Home() {
   const [modalOpen, setModalOpen] = useState(false);
@@ -89,7 +92,7 @@ export default function Home() {
                   <div className="flex -space-x-2.5" aria-hidden="true">
                     {[1, 2, 3, 4].map((index) => (
                       <div key={index} className="h-9 w-9 overflow-hidden rounded-full border-2 border-white bg-slate-100 shadow-sm">
-                        <img src={`/images/avatar-${index}.png`} alt="" width={36} height={36} loading="lazy" className="h-full w-full object-cover" />
+                        <img src={`/images/avatar-${index}.webp`} alt="" width={36} height={36} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                       </div>
                     ))}
                   </div>
@@ -281,11 +284,15 @@ export default function Home() {
 
       <Footer />
 
-      <RegistrationModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        defaultPackage={selectedPackage}
-      />
+      {modalOpen && (
+        <Suspense fallback={null}>
+          <RegistrationModal
+            isOpen={modalOpen}
+            onClose={() => setModalOpen(false)}
+            defaultPackage={selectedPackage}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

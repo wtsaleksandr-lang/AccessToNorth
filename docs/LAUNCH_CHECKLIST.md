@@ -256,7 +256,7 @@ Currently `client/src/pages/Home.tsx` references `/images/avatar-1..4.png`. Thos
 
 Either:
 - Remove the avatar cluster (simplest), OR
-- Add 4 real avatar images at `client/public/images/avatar-1.png` through `avatar-4.png`.
+- Keep the four optimized client avatars at `client/public/images/avatar-1.webp` through `avatar-4.webp`.
 
 Your call. If you remove them, it's a 5-line edit in Home.tsx — let me know if you want me to do that.
 
