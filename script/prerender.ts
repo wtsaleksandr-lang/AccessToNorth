@@ -8,23 +8,21 @@ import {
   canonicalUrl,
   type RouteMeta,
 } from "./routeMetadata";
+import { renderStaticSeoContent, STATIC_SEO_STYLE } from "./staticSeoContent";
 
 /**
- * Zero-dep "meta-shell" prerender.
+ * Zero-dependency static SEO prerender.
  *
  * For each public route, copy the built index.html and inject per-route
  * <title>, <meta description>, canonical, Open Graph, Twitter card, and
- * a WebPage JSON-LD block. The body stays the same React SPA bundle —
- * content hydrates client-side as before.
+ * a primary JSON-LD block and crawlable semantic fallback content. React
+ * replaces the fallback when the application starts, so the interactive UI
+ * behaves exactly as before while search engines and no-JS clients receive
+ * useful page content immediately.
  *
- * Why this and not full SSR? Full React SSR requires running the React
- * tree at build time with working route data, which is fragile for a SPA
- * that uses useEffect-driven meta, lazy routes, framer-motion, and
- * third-party scripts. The meta-shell approach gives Googlebot the
- * things it reads on first paint (title, description, canonical, OG,
- * JSON-LD) without touching the client runtime.
- *
- * Upgrade path: replace with vite-react-ssg or react-snap when ready.
+ * This is intentionally deterministic rather than browser-snapshot based:
+ * build output never depends on APIs, authentication, WebGL, or third-party
+ * scripts. A future framework migration can replace it with React SSR/SSG.
  */
 
 function escapeAttr(s: string): string {
@@ -51,7 +49,15 @@ function buildPrimaryJsonLd(route: RouteMeta): string {
     inLanguage: "en-CA",
   };
 
-  const data = route.schemaType === "WebApplication"
+  const data = route.path === "/"
+    ? {
+        ...base,
+        "@type": "WebSite",
+        name: "AccessToNorth.com",
+        alternateName: "Access To North",
+        publisher: { "@id": `${SITE_URL}/#organization` },
+      }
+    : route.schemaType === "WebApplication"
     ? {
         ...base,
         "@type": "WebApplication",
@@ -191,10 +197,18 @@ function injectMetaForRoute(html: string, route: RouteMeta): string {
     extraTags.push(robotsTag);
   }
   extraTags.push(buildPrimaryJsonLd(route));
+  extraTags.push(STATIC_SEO_STYLE);
 
   // Inject any missing tags right before </head>
   if (extraTags.length > 0) {
     out = out.replace(/<\/head>/i, `${extraTags.join("\n    ")}\n  </head>`);
+  }
+
+  const staticContent = renderStaticSeoContent(route);
+  if (/<div id="root"><\/div>/i.test(out)) {
+    out = out.replace(/<div id="root"><\/div>/i, `<div id="root">${staticContent}</div>`);
+  } else {
+    throw new Error(`Could not find an empty #root element while prerendering ${route.path}`);
   }
 
   return out;

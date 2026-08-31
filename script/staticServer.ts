@@ -4,7 +4,7 @@
  * stack. Serves `dist/public` with SPA fallthrough:
  *
  *   /foo/bar        → dist/public/foo/bar/index.html   (if prerendered)
- *                   → dist/public/index.html           (fallthrough)
+ *                   → dist/public/index.html           (404 fallthrough)
  *
  * API calls under /api/* are rejected with 503 so tests can distinguish
  * "backend not wired" from "client crashed".
@@ -81,14 +81,14 @@ const server = createServer(async (req, res) => {
     }
   }
 
-  // 3. SPA fallthrough
+  // 3. Branded SPA 404 fallthrough
   const buf = await tryServe(resolve(ROOT, "index.html"));
   if (!buf) {
     res.writeHead(500);
     res.end("dist/public/index.html not found. Did you run vite build?");
     return;
   }
-  res.writeHead(200, { "Content-Type": MIME[".html"] });
+  res.writeHead(404, { "Content-Type": MIME[".html"] });
   res.end(buf);
 });
 

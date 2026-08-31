@@ -151,10 +151,10 @@ export default function HsCodeFinder() {
   const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
 
   usePageMeta({
-    title: "HS Code Finder (Canada) — Search Tariff Codes by Product Name | AccessToNorth.com",
+    title: "Canadian HS Code Finder — Free Tariff Lookup | AccessToNorth.com",
     description:
       "Search Canadian HS codes by product name or code number. Find suggested tariff classifications, then calculate duty and tax in one click. Free tool by AccessToNorth.com.",
-    canonical: "https://www.accesstonorth.com/tools/hs-code-finder",
+    canonical: "/tools/hs-code-finder",
   });
 
   useEffect(() => {

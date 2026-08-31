@@ -29,6 +29,7 @@ export function serveStatic(app: Express) {
       "/payment-success",
       "/payment-cancel",
       "/order-confirmation",
+      "/order",
       "/onboarding",
       "/canadian-customs-clearance/checkout",
     ];
@@ -42,8 +43,8 @@ export function serveStatic(app: Express) {
   app.use(express.static(distPath, { index: "index.html" }));
 
   // SPA fallthrough — prefer a prerendered per-route index.html if one
-  // exists (built by script/prerender.ts); otherwise fall back to the
-  // root shell.
+  // exists (built by script/prerender.ts). Unknown URLs receive a real 404
+  // while still rendering the branded client-side NotFound page.
   app.use("/{*path}", (req: Request, res: Response) => {
     const urlPath = req.path.replace(/^\/+/, "").replace(/\/+$/, "");
     if (urlPath) {
@@ -56,6 +57,12 @@ export function serveStatic(app: Express) {
         return res.sendFile(routeIndex);
       }
     }
-    res.sendFile(path.resolve(distPath, "index.html"));
+    // Tokenized onboarding links are valid dynamic SPA routes and must retain
+    // a 200 response. They are already protected with X-Robots-Tag above.
+    if (req.path.startsWith("/onboarding/")) {
+      return res.sendFile(path.resolve(distPath, "index.html"));
+    }
+
+    res.status(404).sendFile(path.resolve(distPath, "index.html"));
   });
 }

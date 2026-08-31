@@ -7,14 +7,24 @@ type JsonLdData = Record<string, unknown>;
  * Injects a <script type="application/ld+json"> into <head>.
  * Each instance MUST have a unique `id` so re-mounts replace rather than duplicate.
  *
- * Important: because meta tags set by React only apply *after* hydration,
- * Googlebot may crawl the page before this script exists. Combine with the
- * static JSON-LD in index.html for the Organization entry, and rely on
- * Google's two-pass rendering for page-level schema. For full SSR coverage,
- * add a prerender build step (tracked as a follow-up).
+ * Production pages already contain their primary route schema from the build
+ * prerender. When the client asks for the same schema type, keep that static
+ * entry instead of adding a duplicate. Development mode still receives the
+ * client entry because no prerendered primary script exists there.
  */
 export function JsonLd({ id, data }: { id: string; data: JsonLdData | JsonLdData[] }) {
   useEffect(() => {
+    const requestedType = Array.isArray(data) ? undefined : data["@type"];
+    const primary = document.querySelector<HTMLScriptElement>('script[type="application/ld+json"][data-prerender="primary"]');
+    if (primary && requestedType) {
+      try {
+        const primaryData = JSON.parse(primary.textContent || "{}") as JsonLdData;
+        if (primaryData["@type"] === requestedType) return;
+      } catch {
+        // A malformed static block should not prevent the valid client block.
+      }
+    }
+
     let el = document.getElementById(id) as HTMLScriptElement | null;
     if (!el) {
       el = document.createElement("script");

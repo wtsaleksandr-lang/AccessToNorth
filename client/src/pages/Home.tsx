@@ -20,7 +20,7 @@ export default function Home() {
   const [, setLocation] = useLocation();
 
   usePageMeta({
-    title: "AccessToNorth.com — Canadian GST/HST & Business Registration",
+    title: "AccessToNorth.com | Canadian Business & Import Registration",
     description: "Flat-fee Canadian business registration. GST/HST, Business Numbers, CARM, customs clearance, and non-resident compliance. From CA$99. 5–10 business days.",
     canonical: "/",
   });
@@ -46,7 +46,7 @@ export default function Home() {
             >
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-medium">
                 <span className="inline-flex h-2 w-2 rounded-full bg-blue-500" aria-hidden="true"></span>
-                Canadian business and import registrations
+                AccessToNorth.com · Canadian business and import registrations
               </div>
 
               <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold font-display text-slate-900 leading-[1.05] tracking-tight" data-testid="text-hero-title" style={{ letterSpacing: '-0.02em' }}>
@@ -169,6 +169,19 @@ export default function Home() {
               </Button>
             </Link>
           </div>
+
+          <nav className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm" aria-label="Featured free trade tools">
+            <span className="font-semibold text-slate-700">Free planning tools:</span>
+            <Link href="/tools/hs-code-finder" className="font-medium text-primary hover:underline">
+              Canadian HS Code Finder
+            </Link>
+            <Link href="/tools/container-calculator" className="font-medium text-primary hover:underline">
+              3D Container Loading Calculator
+            </Link>
+            <Link href="/customs-calculator" className="font-medium text-primary hover:underline">
+              Customs Duty Calculator
+            </Link>
+          </nav>
         </div>
       </section>
 
