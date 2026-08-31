@@ -1,0 +1,336 @@
+import { canonicalUrl, type RouteMeta } from "./routeMetadata";
+
+type SeoSection = {
+  heading: string;
+  paragraphs?: string[];
+  bullets?: string[];
+};
+
+type SeoPageContent = {
+  eyebrow?: string;
+  heading: string;
+  intro: string;
+  sections: SeoSection[];
+  links?: Array<{ label: string; href: string }>;
+};
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+const PRIORITY_CONTENT: Record<string, SeoPageContent> = {
+  "/": {
+    eyebrow: "AccessToNorth.com",
+    heading: "Canadian business, tax, and import registration support",
+    intro:
+      "AccessToNorth helps Canadian and non-resident businesses prepare Business Number, GST/HST, CARM, customs, and import-compliance registrations with clear fixed pricing. Importers can also use our free planning and tariff tools before requesting professional support.",
+    sections: [
+      {
+        heading: "Canadian registrations and import setup",
+        paragraphs: [
+          "Choose the registration or customs service you need, upload the supporting documents securely, and follow the work online. Services include CRA Business Number and GST/HST registration, CARM onboarding, non-resident importer setup, HS classification, customs-clearance coordination, and import-compliance review.",
+          "AccessToNorth is an independent administrative-services firm. We prepare and coordinate filings under signed authorization and work with licensed customs professionals where a regulated filing requires one.",
+        ],
+      },
+      {
+        heading: "Free tools for importers, exporters, and freight teams",
+        bullets: [
+          "Search Canadian tariff classifications with the Canadian HS Code Finder.",
+          "Test pallets, cartons, and mixed cargo in the free 3D Container Loading Calculator.",
+          "Estimate duties and taxes with the Canadian Customs Duty Calculator.",
+          "Build pallet and truck loading plans with visual reports.",
+        ],
+      },
+    ],
+    links: [
+      { label: "View all services", href: "/services" },
+      { label: "Canadian HS Code Finder", href: "/tools/hs-code-finder" },
+      { label: "3D Container Loading Calculator", href: "/tools/container-calculator" },
+      { label: "How to Import Into Canada", href: "/resources/how-to-import-into-canada" },
+    ],
+  },
+  "/tools": {
+    eyebrow: "Free trade tools",
+    heading: "Canadian import and freight planning calculators",
+    intro:
+      "Use AccessToNorth's free tools to research Canadian HS codes, estimate import duty and tax, calculate CARM financial security, and build practical pallet, container, and truck loading plans.",
+    sections: [
+      {
+        heading: "Tariff and landed-cost tools",
+        bullets: [
+          "Canadian HS Code Finder: search tariff classifications by product name or code.",
+          "Customs Duty and Tax Calculator: estimate duty, GST, and applicable provincial tax.",
+          "CARM Security Calculator: estimate Release Prior to Payment financial security.",
+        ],
+      },
+      {
+        heading: "Cargo loading and freight tools",
+        bullets: [
+          "3D Container Loading Calculator for 20-foot, 40-foot, 40-foot high-cube, and 45-foot high-cube equipment.",
+          "Pallet Builder for carton patterns, height, weight, and stability checks.",
+          "Truck Load Planner with trailer matching, collision-aware placement, and balance guidance.",
+          "Freight Quote Request builder and secure shipment-status lookup.",
+        ],
+      },
+    ],
+    links: [
+      { label: "Canadian HS Code Finder", href: "/tools/hs-code-finder" },
+      { label: "Container Loading Calculator", href: "/tools/container-calculator" },
+      { label: "Pallet Builder", href: "/tools/pallet-builder" },
+      { label: "Truck Load Planner", href: "/tools/truck-load-planner" },
+    ],
+  },
+  "/resources": {
+    eyebrow: "Importer resources",
+    heading: "Practical guides for importing into Canada",
+    intro:
+      "Read current, plain-language guidance about CARM, Canadian customs clearance, HS classification, duties, Incoterms, export declarations, CFIA requirements, and non-resident importing.",
+    sections: [
+      {
+        heading: "Start with the complete import guide",
+        paragraphs: [
+          "The step-by-step import guide explains importer-of-record responsibility, Business Number and RM setup, CARM registration, RPP security, product admissibility, tariff classification, valuation, origin, shipping documents, customs release, and post-entry recordkeeping.",
+        ],
+      },
+      {
+        heading: "Research before shipping",
+        bullets: [
+          "Confirm whether the goods are admissible or need permits before they leave the supplier.",
+          "Determine the Canadian ten-digit tariff classification and origin treatment.",
+          "Estimate duty, GST, freight, brokerage, terminal fees, and inland delivery.",
+          "Prepare consistent commercial invoices, packing lists, transport documents, and origin support.",
+        ],
+      },
+    ],
+    links: [
+      { label: "How to Import Into Canada", href: "/resources/how-to-import-into-canada" },
+      { label: "Canadian HS Code Finder", href: "/tools/hs-code-finder" },
+      { label: "Customs Duty Calculator", href: "/customs-calculator" },
+    ],
+  },
+  "/tools/container-calculator": {
+    eyebrow: "Free 3D planning tool",
+    heading: "Container Loading Calculator",
+    intro:
+      "Plan pallets, crates, cartons, and mixed cargo in standard ocean containers. Enter or import cargo dimensions and total gross weight, let the planner recommend the smallest practical container type, inspect the arrangement in 3D, and export a loading-plan PDF.",
+    sections: [
+      {
+        heading: "What the container calculator checks",
+        bullets: [
+          "Physical placement inside the container rather than volume alone.",
+          "Quantity, outside dimensions, gross weight, stacking, rotation, and loading priority.",
+          "Usable internal length, width, height, door clearance, and payload limits.",
+          "The number of containers required when the complete shipment cannot fit one unit.",
+          "Volume, floor-area, and weight utilization for each proposed loading plan.",
+        ],
+      },
+      {
+        heading: "Supported shipping containers",
+        paragraphs: [
+          "Compare 20-foot dry containers, 40-foot dry containers, 40-foot high-cube containers, 45-foot high-cube containers, and custom equipment. Preset dimensions are planning values because actual internal dimensions and payload limits vary by manufacturer, age, and shipping line.",
+        ],
+      },
+      {
+        heading: "Worked example: seven 48 × 48 × 61 inch pallets",
+        paragraphs: [
+          "Seven square pallets measuring 48 by 48 by 61 inches with a combined gross weight of 5,260 kilograms do not fit in a single 20-foot dry container when loaded one pallet across: the seven pallet lengths require about 336 inches, while a typical 20-foot container has about 232 inches of usable internal length.",
+          "The same cargo fits lengthwise in one standard 40-foot dry container, subject to the carrier's exact internal dimensions, door clearance, floor loading, and safe blocking and bracing. A 40-foot high cube is not required solely for 61-inch cargo height. This illustrates why the recommendation must evaluate actual placement before selecting equipment.",
+        ],
+      },
+      {
+        heading: "Packing-list and document import",
+        paragraphs: [
+          "Upload a supported spreadsheet, document, or image to extract cargo rows for review. The calculator prefills the detected item name, dimensions, quantity, and weight fields so the user can verify the information before calculating the plan. Ambiguous or missing values remain clearly marked for confirmation.",
+        ],
+      },
+      {
+        heading: "Planning limitations",
+        paragraphs: [
+          "A calculated fit is a planning estimate, not a loading certificate. Confirm lifting access, door opening, weight concentration, cargo compatibility, dangerous-goods segregation, blocking and bracing, moisture protection, and the carrier's actual equipment specification before loading.",
+        ],
+      },
+    ],
+    links: [
+      { label: "Open the container calculator", href: "/tools/container-calculator" },
+      { label: "Build a pallet", href: "/tools/pallet-builder" },
+      { label: "Plan a truck load", href: "/tools/truck-load-planner" },
+      { label: "Canadian HS Code Finder", href: "/tools/hs-code-finder" },
+    ],
+  },
+  "/tools/hs-code-finder": {
+    eyebrow: "Free Canadian tariff research tool",
+    heading: "Canadian HS Code Finder",
+    intro:
+      "Search Canadian Harmonized System classifications by product description or code number. Review suggested tariff items and descriptions, then send a selected code to the customs duty and tax calculator for an early landed-cost estimate.",
+    sections: [
+      {
+        heading: "How Canadian tariff classification works",
+        paragraphs: [
+          "The international Harmonized System establishes the first six digits. Canada extends that structure to an eight-digit tariff item, where duty is assigned, and a ten-digit classification number used to report imported goods. Classification depends on the product's material, function, form, composition, and intended use—not only its commercial name.",
+        ],
+      },
+      {
+        heading: "How to get a better suggested match",
+        bullets: [
+          "Describe the product precisely, such as 'men's knitted cotton T-shirt' instead of 'clothing'.",
+          "Include the principal material, composition percentage, function, and whether it is a complete product or a part.",
+          "For machinery and electronics, include the model, technical purpose, power source, and how the item operates.",
+          "Check whether the product is a set, kit, mixture, unfinished article, or accessory because special interpretation rules may apply.",
+        ],
+      },
+      {
+        heading: "HS code, origin, and duty rate are different decisions",
+        paragraphs: [
+          "The HS classification identifies the product. Country of origin and the applicable tariff treatment determine whether MFN duty or a preferential rate under CUSMA, CETA, CPTPP, or another agreement may apply. Shipping from an agreement country does not by itself prove originating status.",
+        ],
+      },
+      {
+        heading: "Verify important classifications",
+        paragraphs: [
+          "The finder provides research suggestions, not an official CBSA decision. Verify high-value, regulated, unfamiliar, or frequently imported goods against the current Canadian Customs Tariff. Consider a professional classification review or CBSA advance ruling when the financial or compliance risk is material.",
+        ],
+      },
+    ],
+    links: [
+      { label: "Open the Canadian HS Code Finder", href: "/tools/hs-code-finder" },
+      { label: "Calculate Canadian duty and tax", href: "/customs-calculator" },
+      { label: "Professional HS classification", href: "/services/hs-code-classification-canada" },
+      { label: "How to Import Into Canada", href: "/resources/how-to-import-into-canada" },
+    ],
+  },
+  "/resources/how-to-import-into-canada": {
+    eyebrow: "Reviewed August 28, 2026",
+    heading: "How to Import Into Canada",
+    intro:
+      "To import commercial goods into Canada, confirm the importer of record and product admissibility, establish the importer account, classify and value the goods, prepare complete shipping documents, and arrange customs release. These steps reflect the current CARM process for Canadian and non-resident importers.",
+    sections: [
+      {
+        heading: "1. Confirm the importer of record and product admissibility",
+        paragraphs: [
+          "The importer of record is responsible for the customs declaration, duties and taxes, recordkeeping, and corrections after release. Under DDP terms this may be a foreign seller acting as a non-resident importer; under many other transactions it is the Canadian buyer. Confirm responsibility before booking freight.",
+          "Check whether the goods are prohibited, controlled, or regulated. Food, plants, animals, vehicles, medical products, chemicals, firearms, and some steel or textile goods may require permits, licences, certificates, or labelling before shipment.",
+        ],
+      },
+      {
+        heading: "2. Obtain a Business Number and import-export RM account",
+        paragraphs: [
+          "Commercial importers need a nine-digit Business Number and an import-export program account, commonly displayed as BN9 plus RM0001. Legal names and addresses must match the records connected to the BN because mismatches commonly delay CARM registration.",
+        ],
+      },
+      {
+        heading: "3. Register in CARM and decide whether RPP is needed",
+        paragraphs: [
+          "The business account manager registers the importer in the CARM Client Portal and can then delegate access to a customs broker. Release Prior to Payment is separate from portal registration and requires active financial security. Without RPP, payment is generally required before release.",
+        ],
+      },
+      {
+        heading: "4. Classify, value, and determine origin",
+        paragraphs: [
+          "Every product needs a Canadian ten-digit tariff classification. The code determines customs duty and may trigger SIMA duties, permits, quotas, or controls. Determine value for duty using the applicable valuation method, and support preferential tariff treatment with evidence that the goods satisfy the relevant agreement's origin rules.",
+        ],
+      },
+      {
+        heading: "5. Estimate duty, GST, and total landed cost",
+        paragraphs: [
+          "Include product value, freight and insurance, customs duty, import GST, excise or SIMA charges where applicable, brokerage, terminal or courier fees, and inland delivery. Verify classification and origin documents before giving a final landed-cost commitment.",
+        ],
+      },
+      {
+        heading: "6. Prepare documents before arrival",
+        bullets: [
+          "A detailed commercial invoice with buyer, seller, goods, quantity, currency, prices, and origin.",
+          "A packing list with package count, dimensions, net weight, and gross weight.",
+          "The bill of lading, air waybill, or courier waybill.",
+          "Origin certification, permits, licences, test reports, and product certificates where required.",
+        ],
+      },
+      {
+        heading: "7. Arrange customs release and delivery",
+        paragraphs: [
+          "The carrier reports the cargo while the importer or licensed customs broker submits release and accounting data. Send documents early. Inactive importer accounts, vague descriptions, inconsistent values, and missing permits can lead to holds and storage charges.",
+        ],
+      },
+      {
+        heading: "8. Keep records and correct errors",
+        paragraphs: [
+          "Import responsibility continues after delivery. Retain invoices, origin support, classifications, valuation records, permits, and accounting documents. Review the entry after release and correct material errors within the applicable deadline.",
+        ],
+      },
+    ],
+    links: [
+      { label: "Canadian HS Code Finder", href: "/tools/hs-code-finder" },
+      { label: "Customs Duty Calculator", href: "/customs-calculator" },
+      { label: "CARM Security Calculator", href: "/carm-security-calculator" },
+      { label: "Customs Clearance Services", href: "/services/customs-clearance-canada" },
+    ],
+  },
+};
+
+function renderSections(sections: SeoSection[]): string {
+  return sections
+    .map((section) => {
+      const paragraphs = (section.paragraphs ?? [])
+        .map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`)
+        .join("");
+      const bullets = section.bullets?.length
+        ? `<ul>${section.bullets.map((bullet) => `<li>${escapeHtml(bullet)}</li>`).join("")}</ul>`
+        : "";
+      return `<section><h2>${escapeHtml(section.heading)}</h2>${paragraphs}${bullets}</section>`;
+    })
+    .join("");
+}
+
+export function renderStaticSeoContent(route: RouteMeta): string {
+  const content = PRIORITY_CONTENT[route.path] ?? {
+    eyebrow: "AccessToNorth.com",
+    heading: route.title.replace(/\s*[|—-]\s*AccessToNorth\.com.*$/i, ""),
+    intro: route.description,
+    sections: [],
+    links: [
+      { label: "AccessToNorth home", href: "/" },
+      { label: "Services", href: "/services" },
+      { label: "Free trade tools", href: "/tools" },
+      { label: "Importer resources", href: "/resources" },
+    ],
+  } satisfies SeoPageContent;
+
+  const links = (content.links ?? [])
+    .map((link) => `<a href="${escapeHtml(canonicalUrl(link.href))}">${escapeHtml(link.label)}</a>`)
+    .join("");
+
+  return `<div data-prerender-content>
+    <header><a class="brand" href="${canonicalUrl("/")}">AccessToNorth<span>.com</span></a></header>
+    <main>
+      ${content.eyebrow ? `<p class="eyebrow">${escapeHtml(content.eyebrow)}</p>` : ""}
+      <h1>${escapeHtml(content.heading)}</h1>
+      <p class="intro">${escapeHtml(content.intro)}</p>
+      ${renderSections(content.sections)}
+      ${links ? `<nav aria-label="Related pages">${links}</nav>` : ""}
+      <noscript><p class="notice">Interactive features require JavaScript, but the guidance and page links above remain available.</p></noscript>
+    </main>
+  </div>`;
+}
+
+export const STATIC_SEO_STYLE = `<style data-prerender="fallback">
+  [data-prerender-content]{min-height:100vh;background:#f8fafc;color:#0f172a;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.65}
+  [data-prerender-content] header{background:#fff;border-bottom:1px solid #e2e8f0;padding:18px max(24px,calc((100vw - 1080px)/2))}
+  [data-prerender-content] .brand{color:#0f172a;font-size:24px;font-weight:800;text-decoration:none;letter-spacing:-.04em}
+  [data-prerender-content] .brand span{color:#0784f9}
+  [data-prerender-content] main{box-sizing:border-box;max-width:860px;margin:0 auto;padding:64px 24px 80px}
+  [data-prerender-content] .eyebrow{color:#0879df;font-size:13px;font-weight:750;letter-spacing:.12em;text-transform:uppercase;margin:0 0 10px}
+  [data-prerender-content] h1{font-size:clamp(32px,5vw,52px);line-height:1.1;letter-spacing:-.035em;margin:0 0 20px}
+  [data-prerender-content] .intro{font-size:20px;color:#475569;margin:0 0 44px}
+  [data-prerender-content] section{margin:34px 0}
+  [data-prerender-content] h2{font-size:23px;line-height:1.25;margin:0 0 12px}
+  [data-prerender-content] p,[data-prerender-content] li{color:#475569}
+  [data-prerender-content] ul{padding-left:22px}
+  [data-prerender-content] nav{display:flex;flex-wrap:wrap;gap:10px;margin-top:44px;padding-top:24px;border-top:1px solid #e2e8f0}
+  [data-prerender-content] nav a{border:1px solid #bfdbfe;border-radius:999px;background:#fff;color:#086dcc;padding:9px 14px;text-decoration:none;font-weight:650}
+  [data-prerender-content] .notice{font-size:13px;margin-top:28px}
+  @media(max-width:640px){[data-prerender-content] main{padding-top:40px}[data-prerender-content] .intro{font-size:17px}}
+</style>`;

@@ -76,8 +76,7 @@ test.describe("public marketing surface", () => {
 
   test("404 page is branded, not the Replit dev placeholder", async ({ page }) => {
     const res = await page.goto("/this-route-does-not-exist");
-    // SPA — returns 200 with NotFound component rendered client-side
-    expect(res?.status()).toBe(200);
+    expect(res?.status()).toBe(404);
     await expect(page.getByText(/Page not found/i)).toBeVisible();
     // The dev placeholder should NOT appear
     await expect(page.getByText(/forget to add the page/i)).toHaveCount(0);

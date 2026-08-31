@@ -22,7 +22,9 @@ test("public SEO route registry is unique and excludes obsolete URLs", () => {
   assert(paths.includes("/resources/customs-clearance-under-3300"));
   assert(!paths.includes("/resources/customs-clearance-under-2500"));
   assert(paths.includes("/security"));
-  assert(paths.includes("/canadian-customs-clearance"));
+    assert(paths.includes("/canadian-customs-clearance"));
+    assert(paths.includes("/request"));
+    assert.equal(ROUTES.find((route) => route.path === "/request")?.sitemap, false);
 });
 
 test("generated sitemap uses canonical URLs and includes launched tools", async () => {
@@ -72,6 +74,11 @@ test("prerender emits crawl-visible article and application metadata", async () 
     assert(!article.includes("hreflang"));
     assert(calculator.includes('"@type":"WebApplication"'));
     assert(calculator.includes('"price":"0"'));
+    assert(calculator.includes("Worked example: seven 48 × 48 × 61 inch pallets"));
+    assert(calculator.includes("Seven square pallets"));
+    assert(!calculator.includes('<div id="root"></div>'));
+    assert(article.includes("Confirm the importer of record and product admissibility"));
+    assert(!article.includes('<div id="root"></div>'));
     assert(freightQuote.includes('<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">'));
     assert(freightQuote.includes('"@type":"WebApplication"'));
   } finally {

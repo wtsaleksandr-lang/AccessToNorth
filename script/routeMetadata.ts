@@ -50,7 +50,7 @@ const STATIC_ROUTES: RouteMeta[] = [
     path: "/",
     priority: "1.0",
     changefreq: "weekly",
-    title: "AccessToNorth.com — Canadian GST/HST & Business Registration",
+    title: "AccessToNorth.com | Canadian Business & Import Registration",
     description:
       "Flat-fee Canadian business registration. GST/HST, Business Numbers, CARM, customs clearance, and non-resident compliance. From CA$99. 5–10 business days.",
   },
@@ -190,7 +190,7 @@ const STATIC_ROUTES: RouteMeta[] = [
     priority: "0.7",
     changefreq: "monthly",
     schemaType: "WebApplication",
-    title: "HS Code Finder — Canadian Tariff Lookup | AccessToNorth.com",
+    title: "Canadian HS Code Finder — Free Tariff Lookup | AccessToNorth.com",
     description:
       "Search Canadian HS codes by keyword. Find the right 10-digit classification for your product with duty rates and descriptions.",
   },
@@ -258,6 +258,93 @@ const STATIC_ROUTES: RouteMeta[] = [
     schemaType: "WebApplication",
     title: "Track an AccessToNorth Order or Freight RFQ | AccessToNorth.com",
     description: "Securely check AccessToNorth order, document-review, customs-service, and freight quote milestones using your reference and email.",
+  },
+
+  // Conversion, account, and payment routes need valid SPA entry points but
+  // should not appear in search results or the public sitemap.
+  {
+    path: "/request",
+    priority: "0.1",
+    sitemap: false,
+    title: "Request AccessToNorth Services",
+    description: "Send the information needed to request an AccessToNorth registration, customs, or compliance service.",
+  },
+  {
+    path: "/order/hs-classification",
+    priority: "0.1",
+    sitemap: false,
+    title: "HS Classification Order | AccessToNorth.com",
+    description: "Secure HS classification order form.",
+  },
+  {
+    path: "/order-confirmation",
+    priority: "0.1",
+    sitemap: false,
+    title: "Order Confirmation | AccessToNorth.com",
+    description: "AccessToNorth order confirmation.",
+  },
+  {
+    path: "/portal",
+    priority: "0.1",
+    sitemap: false,
+    title: "Client Portal | AccessToNorth.com",
+    description: "Secure AccessToNorth client portal.",
+  },
+  {
+    path: "/payment-success",
+    priority: "0.1",
+    sitemap: false,
+    title: "Payment Received | AccessToNorth.com",
+    description: "Payment confirmation.",
+  },
+  {
+    path: "/payment-cancel",
+    priority: "0.1",
+    sitemap: false,
+    title: "Payment Cancelled | AccessToNorth.com",
+    description: "Payment cancellation page.",
+  },
+  {
+    path: "/checkout",
+    priority: "0.1",
+    sitemap: false,
+    title: "Secure Checkout | AccessToNorth.com",
+    description: "Secure AccessToNorth checkout.",
+  },
+  {
+    path: "/complete-order",
+    priority: "0.1",
+    sitemap: false,
+    title: "Complete Your Order | AccessToNorth.com",
+    description: "Complete an AccessToNorth service order.",
+  },
+  {
+    path: "/canadian-customs-clearance/checkout",
+    priority: "0.1",
+    sitemap: false,
+    title: "Customs Clearance Checkout | AccessToNorth.com",
+    description: "Secure customs-clearance checkout.",
+  },
+  {
+    path: "/admin",
+    priority: "0.1",
+    sitemap: false,
+    title: "Administration | AccessToNorth.com",
+    description: "Restricted administration area.",
+  },
+  {
+    path: "/admin/crm",
+    priority: "0.1",
+    sitemap: false,
+    title: "CRM Administration | AccessToNorth.com",
+    description: "Restricted administration area.",
+  },
+  {
+    path: "/admin/view-as-client",
+    priority: "0.1",
+    sitemap: false,
+    title: "Client View Administration | AccessToNorth.com",
+    description: "Restricted administration area.",
   },
 
   // Resources
