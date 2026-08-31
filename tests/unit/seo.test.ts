@@ -104,10 +104,13 @@ test("homepage proof avatars stay lightweight WebP assets", async () => {
   }
 });
 
-test("Google Fonts are requested once without an unused serif family", async () => {
+test("Google Fonts load non-blocking with a noscript fallback", async () => {
   const html = await readFile("client/index.html", "utf8");
   const css = await readFile("client/src/index.css", "utf8");
-  assert.equal((html.match(/fonts\.googleapis\.com\/css2/g) ?? []).length, 1);
+  const withoutNoscript = html.replace(/<noscript>[\s\S]*?<\/noscript>/g, "");
+  assert.equal((withoutNoscript.match(/fonts\.googleapis\.com\/css2/g) ?? []).length, 1);
+  assert(html.includes('rel="stylesheet" media="print" onload="this.media=\'all\'"'));
+  assert(html.includes("<noscript>"));
   assert(!css.includes("fonts.googleapis.com"));
   assert(!html.includes("Playfair+Display"));
 });

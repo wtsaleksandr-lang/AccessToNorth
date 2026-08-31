@@ -9,8 +9,10 @@
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
     "test:unit": "node --import tsx --test tests/unit/*.test.ts",
+    "test:seo": "node --import tsx --test tests/unit/seo.test.ts tests/unit/seoQuality.test.ts",
     "db:push": "drizzle-kit push",
     "test:e2e": "playwright test",
+    "seo:indexnow": "tsx script/submitIndexNow.ts",
     "test:e2e:install": "playwright install --with-deps chromium",
     "tariff:load": "tsx scripts/loadTariffData.ts",
     "create-admin": "tsx script/createAdminUser.ts"

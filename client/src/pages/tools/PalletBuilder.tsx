@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { ToolWorkedExample } from "@/components/ToolWorkedExample";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -566,6 +567,7 @@ export default function PalletBuilder() {
           </section>
         </div>
       </main>
+      <ToolWorkedExample kind="pallet" />
       <Footer />
     </div>
   );

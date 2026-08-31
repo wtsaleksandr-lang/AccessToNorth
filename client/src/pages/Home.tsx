@@ -36,6 +36,7 @@ export default function Home() {
   return (
     <div className="min-h-screen font-sans bg-slate-50 selection:bg-primary/20 selection:text-primary">
       <Navbar />
+      <main>
 
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-24 pb-12 md:pt-32 md:pb-20 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 maple-bg">
@@ -281,6 +282,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      </main>
 
       <Footer />
 

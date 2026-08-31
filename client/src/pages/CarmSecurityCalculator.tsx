@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { ToolWorkedExample } from "@/components/ToolWorkedExample";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -842,7 +843,7 @@ export default function CarmSecurityCalculator() {
           )}
         </DialogContent>
       </Dialog>
-
+      <ToolWorkedExample kind="carm" />
       <Footer />
     </div>
   );

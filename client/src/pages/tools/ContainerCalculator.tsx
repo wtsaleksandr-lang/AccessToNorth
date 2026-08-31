@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { ToolWorkedExample } from "@/components/ToolWorkedExample";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5199,6 +5200,7 @@ export default function ContainerCalculator() {
           </div>
         </section>
       </main>
+      <ToolWorkedExample kind="container" />
       <Footer />
     </div>
   );

@@ -118,7 +118,7 @@ export default function Pricing() {
   usePageMeta({
     title: "Pricing | AccessToNorth.com",
     description: "Transparent, flat-rate pricing for Canadian business registration, GST/HST, CARM, customs clearance coordination, and export services. From CA$99. No hidden fees.",
-    canonical: "https://www.accesstonorth.com/pricing",
+    canonical: "/pricing",
   });
 
   const toggleSection = (id: string) => {

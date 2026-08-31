@@ -71,7 +71,7 @@ export default function About() {
     title: "About | AccessToNorth.com",
     description:
       "AccessToNorth is an administrative services firm coordinating Canadian CRA and CBSA filings for resident and non-resident businesses. Operating under signed authorization; not a law firm or customs broker.",
-    canonical: "https://www.accesstonorth.com/about",
+    canonical: "/about",
   });
 
   return (
@@ -160,6 +160,35 @@ export default function About() {
                 </Card>
               ))}
             </div>
+          </section>
+
+          <section id="editorial-standards" className="mb-12 scroll-mt-28" aria-labelledby="editorial-standards-title">
+            <Card className="border-slate-200">
+              <CardContent className="p-6 md:p-8">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Editorial standards</p>
+                <h2 id="editorial-standards-title" className="mt-2 text-xl font-bold font-display text-slate-900">
+                  How our guides and calculators are reviewed
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  AccessToNorth tool guidance is maintained by our operations and editorial team. Regulatory claims are checked against primary sources such as CRA, CBSA, Justice Laws, provincial authorities, official tariff schedules, carrier equipment specifications, and published transport rules. Each substantive guide shows a review date; calculator assumptions and limitations are displayed beside the result.
+                </p>
+                <div className="mt-5 grid gap-4 sm:grid-cols-3">
+                  {[
+                    ["Primary sources", "Government and standards references take priority over third-party summaries."],
+                    ["Visible assumptions", "Estimates separate user inputs, default assumptions, calculated outputs, and review warnings."],
+                    ["Corrections", "Material regulatory or methodology changes are reviewed promptly and during the quarterly content audit."],
+                  ].map(([title, description]) => (
+                    <div key={title} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">{description}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-5 text-xs leading-5 text-slate-500">
+                  AccessToNorth is an administrative-services firm, not a law firm, accounting firm, engineering firm, or customs broker. Where regulated professional judgment is required, the page directs users to the appropriate licensed professional or authority.
+                </p>
+              </CardContent>
+            </Card>
           </section>
 
           {/* Practice areas */}

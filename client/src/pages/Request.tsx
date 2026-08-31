@@ -45,7 +45,7 @@ export default function Request() {
   usePageMeta({
     title: "Start Your Registration | AccessToNorth.com",
     description: "Begin your Canadian business registration, GST/HST filing, CARM onboarding, or customs compliance request. Secure online application with Stripe checkout.",
-    canonical: "https://www.accesstonorth.com/request",
+    canonical: "/request",
   });
 
   useEffect(() => {

@@ -118,15 +118,14 @@ export function HeroFilingWorkflow({ onStart, helpRequested = false }: HeroFilin
               const active = option.id === selected.id;
               const Icon = option.icon;
               return (
-                <button
-                  key={option.id}
-                  type="button"
-                  role="listitem"
-                  aria-pressed={active}
-                  onClick={() => { setSelectedId(option.id); setShowHelp(false); }}
-                  className={`min-w-0 rounded-2xl border p-3 text-left transition-all sm:p-3.5 ${active ? "border-primary bg-blue-50 shadow-[0_8px_22px_-16px_rgba(0,113,227,0.8)] ring-1 ring-primary/15" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"}`}
-                  data-testid={`hero-option-${option.id}`}
-                >
+                <div key={option.id} role="listitem">
+                  <button
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => { setSelectedId(option.id); setShowHelp(false); }}
+                    className={`h-full w-full min-w-0 rounded-2xl border p-3 text-left transition-all sm:p-3.5 ${active ? "border-primary bg-blue-50 shadow-[0_8px_22px_-16px_rgba(0,113,227,0.8)] ring-1 ring-primary/15" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"}`}
+                    data-testid={`hero-option-${option.id}`}
+                  >
                   <div className="flex items-start justify-between gap-2">
                     <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${active ? "bg-primary text-white" : "bg-slate-100 text-slate-500"}`}>
                       <Icon className="h-4 w-4" aria-hidden="true" />
@@ -135,7 +134,8 @@ export function HeroFilingWorkflow({ onStart, helpRequested = false }: HeroFilin
                   </div>
                   <span className="mt-2.5 block text-xs font-bold leading-tight text-slate-900 sm:text-sm">{option.title}</span>
                   <span className="mt-1 block text-[10px] leading-snug text-slate-500 sm:text-[11px]">{option.short}</span>
-                </button>
+                  </button>
+                </div>
               );
             })}
           </div>

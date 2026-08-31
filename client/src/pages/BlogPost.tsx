@@ -48,7 +48,12 @@ export default function BlogPost() {
     author: {
       "@type": "Organization",
       name: post.author.name,
-      url: `${SITE_URL}/`,
+      url: `${SITE_URL}/about#editorial-standards`,
+    },
+    reviewedBy: {
+      "@type": "Organization",
+      name: "AccessToNorth Editorial Team",
+      url: `${SITE_URL}/about#editorial-standards`,
     },
     publisher: {
       "@type": "Organization",
@@ -121,6 +126,14 @@ export default function BlogPost() {
               {post.readingTime} min read
             </span>
           </div>
+
+          <p className="mb-5 text-xs leading-5 text-slate-500">
+            Written and reviewed by the{" "}
+            <Link href="/about#editorial-standards" className="font-semibold text-slate-700 hover:text-primary hover:underline">
+              AccessToNorth Editorial Team
+            </Link>
+            . Regulatory statements are checked against the primary sources cited or linked in the guide.
+          </p>
 
           <h1
             className="text-2xl md:text-4xl font-extrabold font-display text-slate-900 mb-4 leading-tight"
