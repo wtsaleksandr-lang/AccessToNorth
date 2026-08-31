@@ -71,7 +71,6 @@ export function TruckLoadPreview3D({
     try {
       setFailed(false);
       const scene = new THREE.Scene();
-      scene.fog = new THREE.Fog(0xf4f7fb, trailer.lengthIn * 1.3, trailer.lengthIn * 2.4);
       const camera = new THREE.PerspectiveCamera(34, 1, 0.1, trailer.lengthIn * 5);
 
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
