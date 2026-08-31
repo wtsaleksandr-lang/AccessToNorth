@@ -42,7 +42,7 @@ export default function OrderConfirmation() {
   usePageMeta({
     title: "Order Confirmed | AccessToNorth.com",
     description: "Your HS code classification order has been confirmed.",
-    canonical: "https://www.accesstonorth.com/order-confirmation",
+    canonical: "/order-confirmation",
   });
 
   useEffect(() => {

@@ -19,7 +19,7 @@ export default function Security() {
     title: "Security Overview | AccessToNorth.com",
     description:
       "How AccessToNorth protects client documents and personal information. Encryption, access controls, sub-processor list, and breach-notification commitments.",
-    canonical: "https://www.accesstonorth.com/security",
+    canonical: "/security",
   });
 
   return (

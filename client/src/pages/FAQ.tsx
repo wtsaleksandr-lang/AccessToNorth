@@ -80,7 +80,7 @@ export default function FAQ() {
   usePageMeta({
     title: "Frequently Asked Questions | AccessToNorth.com",
     description: "Answers to common questions about GST/HST registration, Business Numbers, CARM, non-resident compliance, customs clearance, and HS classification in Canada.",
-    canonical: "https://www.accesstonorth.com/faq",
+    canonical: "/faq",
   });
 
   const faqJsonLd = {

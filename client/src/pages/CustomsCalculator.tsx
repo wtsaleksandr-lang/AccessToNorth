@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { Link } from "wouter";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { ToolWorkedExample } from "@/components/ToolWorkedExample";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1558,7 +1559,7 @@ export default function CustomsCalculator() {
           </div>
         </div>
       </section>
-
+      <ToolWorkedExample kind="customs" />
       <Footer />
 
       <Dialog open={showLeadModal} onOpenChange={setShowLeadModal}>

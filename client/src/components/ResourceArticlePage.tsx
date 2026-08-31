@@ -79,8 +79,13 @@ export function ResourceArticlePage({
     description: metaDescription,
     author: {
       "@type": "Organization",
-      name: "AccessToNorth.com",
-      url: `${SITE_URL}/`,
+      name: "AccessToNorth Editorial Team",
+      url: `${SITE_URL}/about#editorial-standards`,
+    },
+    reviewedBy: {
+      "@type": "Organization",
+      name: "AccessToNorth Editorial Team",
+      url: `${SITE_URL}/about#editorial-standards`,
     },
     publisher: {
       "@type": "Organization",
@@ -134,6 +139,14 @@ export function ResourceArticlePage({
               })}
             </p>
           )}
+
+          <p className="mb-6 text-xs leading-5 text-slate-500">
+            Written and reviewed by the{" "}
+            <Link href="/about#editorial-standards" className="font-semibold text-slate-700 hover:text-primary hover:underline">
+              AccessToNorth Editorial Team
+            </Link>
+            . Regulatory statements are checked against the primary government or standards sources listed below.
+          </p>
 
           {intro && (
             <p className="text-base md:text-lg text-slate-700 leading-relaxed mb-6">

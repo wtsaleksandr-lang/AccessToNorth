@@ -195,6 +195,12 @@ const PRIORITY_CONTENT: Record<string, SeoPageContent> = {
           "The finder provides research suggestions, not an official CBSA decision. Verify high-value, regulated, unfamiliar, or frequently imported goods against the current Canadian Customs Tariff. Consider a professional classification review or CBSA advance ruling when the financial or compliance risk is material.",
         ],
       },
+      {
+        heading: "Worked example: stainless-steel water bottle",
+        paragraphs: [
+          "Search for a vacuum-insulated reusable drinking bottle made from stainless steel, 750 millilitres, and not electric. Material, construction, capacity, and function create a much safer shortlist than the generic word bottle. Inspect every candidate's legal description and tariff notes before selecting a Canadian ten-digit number.",
+        ],
+      },
     ],
     links: [
       { label: "Open the Canadian HS Code Finder", href: "/tools/hs-code-finder" },
@@ -202,6 +208,46 @@ const PRIORITY_CONTENT: Record<string, SeoPageContent> = {
       { label: "Professional HS classification", href: "/services/hs-code-classification-canada" },
       { label: "How to Import Into Canada", href: "/resources/how-to-import-into-canada" },
     ],
+  },
+  "/customs-calculator": {
+    eyebrow: "Free landed-cost planning tool",
+    heading: "Canadian Customs Duty and Tax Calculator",
+    intro: "Estimate Canadian customs duty and import tax using a declared customs value, duty-rate assumption, origin treatment, destination, and shipment context. The result separates user inputs, assumptions, calculated charges, and items that still need verification.",
+    sections: [
+      { heading: "Worked example: CA$10,000 commercial import", paragraphs: ["For a CA$10,000 customs value and a 6.5% duty assumption, estimated duty is CA$650 before import GST/HST and any brokerage, freight, excise, SIMA, permit, inspection, storage, or delivery charges. Confirm classification and origin before relying on the estimate."] },
+      { heading: "What to verify", bullets: ["Canadian tariff classification and current duty rate.", "Country of origin and evidence for any preferential tariff treatment.", "Value-for-duty method, currency conversion, assists, royalties, and related-party adjustments.", "SIMA, excise, quotas, permits, and other government-department requirements."] },
+    ],
+    links: [{ label: "Open the customs calculator", href: "/customs-calculator" }, { label: "Canadian HS Code Finder", href: "/tools/hs-code-finder" }, { label: "How to Import Into Canada", href: "/resources/how-to-import-into-canada" }],
+  },
+  "/carm-security-calculator": {
+    eyebrow: "Free CARM planning tool",
+    heading: "CARM Financial Security Calculator",
+    intro: "Estimate Release Prior to Payment financial security using the highest monthly duty-and-tax exposure. Compare planning values for written security, a cash deposit, and estimated annual surety premium without confusing those separate amounts.",
+    sections: [
+      { heading: "Worked example: CA$20,000 highest month", paragraphs: ["Using a 50% written-security planning assumption, CA$20,000 of highest monthly duty-and-tax exposure produces a CA$10,000 preliminary written-security amount before current CBSA minimums, maximums, portal values, and surety underwriting are confirmed."] },
+      { heading: "Use the correct exposure", bullets: ["Use the highest month, not the annual average.", "Separate bond face amount from annual surety premium.", "Review coverage after material volume or product-mix changes.", "Confirm the final requirement in CARM and with the surety or licensed broker."] },
+    ],
+    links: [{ label: "Open the CARM calculator", href: "/carm-security-calculator" }, { label: "CARM bond vs cash guide", href: "/blog/carm-bond-vs-cash-security" }],
+  },
+  "/tools/pallet-builder": {
+    eyebrow: "Free pallet pattern tool",
+    heading: "3D Pallet Builder and Carton Calculator",
+    intro: "Test compatible carton rotations and layer patterns against standard or custom pallet footprints. Calculate pallet count, loaded height, gross weight, utilization, balance, stability warnings, and a warehouse-ready report.",
+    sections: [
+      { heading: "Worked example: 24 cartons", paragraphs: ["Enter 24 cartons at 16 × 12 × 10 inches and 18 pounds each, a 48 × 40 inch pallet, and a 60 inch maximum loaded height. The builder evaluates permitted rotations, complete and partial layers, pallet tare, gross weight, and centring rather than relying on volume division."] },
+      { heading: "Planning checks", bullets: ["Use outside carton dimensions and gross weight per carton.", "Include pallet deck height and tare weight.", "Respect non-stackable, fragile, orientation, overhang, compression, and warehouse limits.", "Verify wrapping, edge protection, stability, and handling before release."] },
+    ],
+    links: [{ label: "Open the pallet builder", href: "/tools/pallet-builder" }, { label: "How many pallets fit", href: "/blog/how-many-pallets-fit-container-trailer" }, { label: "Container Loading Calculator", href: "/tools/container-calculator" }],
+  },
+  "/tools/truck-load-planner": {
+    eyebrow: "Free spatial trailer planner",
+    heading: "Truck Load Planner and Trailer Calculator",
+    intro: "Compare dry van, reefer, flatbed, step-deck, and specialized trailer presets using actual cargo dimensions, payload, stacking, rotation, loading priority, balance guidance, and route context.",
+    sections: [
+      { heading: "Worked example: 26 standard pallets", paragraphs: ["Enter 26 non-stackable pallets at 48 × 40 × 54 inches and 1,500 pounds each for a common 53-foot dry-van scenario. The planner tests a collision-free two-across pattern, total payload, loading order, and geometric balance. The assembled vehicle must still be scaled before dispatch."] },
+      { heading: "Dispatch checks", bullets: ["Confirm the carrier's exact internal dimensions and payload.", "Keep axle legality separate from geometric centre-of-gravity guidance.", "Plan unloading order, securement, segregation, and handling access.", "For open-deck loads, confirm route-specific permits using the complete vehicle configuration."] },
+    ],
+    links: [{ label: "Open the truck load planner", href: "/tools/truck-load-planner" }, { label: "Trailer load planning guide", href: "/blog/trailer-load-planning-guide" }, { label: "Build pallets first", href: "/tools/pallet-builder" }],
   },
   "/resources/how-to-import-into-canada": {
     eyebrow: "Reviewed August 28, 2026",

@@ -167,7 +167,7 @@ export default function HsClassificationOrder() {
     title: "Order HS Code Classification Review | AccessToNorth.com",
     description:
       "Order a professional HS code classification review. Choose from Basic ($29), Business ($99), or Pro ($249) packages. Accurate tariff classification for Canadian imports.",
-    canonical: "https://www.accesstonorth.com/order/hs-classification",
+    canonical: "/order/hs-classification",
   });
 
   useEffect(() => {

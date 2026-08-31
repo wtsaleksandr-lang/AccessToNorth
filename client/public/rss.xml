@@ -6,7 +6,83 @@
     <atom:link href="https://accesstonorth.com/rss.xml" rel="self" type="application/rss+xml" />
     <description>Weekly guides on Canadian GST/HST, CARM, customs clearance, and import compliance.</description>
     <language>en-CA</language>
-    <lastBuildDate>Fri, 28 Aug 2026 21:45:10 GMT</lastBuildDate>
+    <lastBuildDate>Mon, 31 Aug 2026 20:08:27 GMT</lastBuildDate>
+    <item>
+      <title>Trailer Load Planning: Fit, Weight, Balance and Loading Sequence</title>
+      <link>https://accesstonorth.com/blog/trailer-load-planning-guide/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/trailer-load-planning-guide/</guid>
+      <pubDate>Mon, 31 Aug 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>Advanced Trade Topics</category>
+      <description>A trailer can have enough cubic space and still be the wrong equipment. Dispatch planning must combine collision-free placement with payload, axle reality, cargo concentration, securement, unloading order and route restrictions.
+
+Key takeaways:
+- Select equipment by cargo geometry and operating constraints, not volume alone.
+- A geometric centre-of-gravity estimate is useful but does not replace axle scaling.
+- Reefer units lose usable interior space to insulation and refrigeration equipment.
+- Open-deck dimensional compliance depends on the complete vehicle and route jurisdictions.</description>
+    </item>
+    <item>
+      <title>Canadian HS Code Examples: How Product Details Change Classification</title>
+      <link>https://accesstonorth.com/blog/canadian-hs-code-examples/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/canadian-hs-code-examples/</guid>
+      <pubDate>Mon, 31 Aug 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>HS Codes &amp; Classification</category>
+      <description>A product name is rarely enough to classify imported goods. The Canadian tariff may separate products by material, function, manufacturing method, user, capacity or whether the item is a part. These examples show how to build a useful description before searching and what must still be verified.
+
+Key takeaways:
+- Start with function, material, construction and intended use—not a marketing name.
+- Canada reports commercial imports using a complete ten-digit classification number.
+- Origin affects tariff treatment and duty rate, but does not replace product classification.
+- For material risk or recurring imports, verify against the official tariff or seek an advance ruling.</description>
+    </item>
+    <item>
+      <title>How Many Pallets Fit in a Container or Trailer?</title>
+      <link>https://accesstonorth.com/blog/how-many-pallets-fit-container-trailer/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/how-many-pallets-fit-container-trailer/</guid>
+      <pubDate>Mon, 31 Aug 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>Advanced Trade Topics</category>
+      <description>Published pallet-count tables are useful starting points, but they are not loading plans. Real capacity changes with pallet footprint, overhang, height, weight, rotation, stackability, internal obstructions and the working room needed to secure the load.
+
+Key takeaways:
+- A common 53 ft dry-van floor plan carries 26 non-stackable 48 × 40 in pallets, subject to weight and equipment limits.
+- Container counts vary by pallet standard and orientation; mixed pallet sizes must be planned individually.
+- Pallet count never overrides payload, axle, floor-loading or cargo-securement limits.
+- Use outside loaded dimensions, including overhang and wrapping.</description>
+    </item>
+    <item>
+      <title>20 ft vs. 40 ft Container: Which Size Does Your Cargo Need?</title>
+      <link>https://accesstonorth.com/blog/20ft-vs-40ft-container/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/20ft-vs-40ft-container/</guid>
+      <pubDate>Mon, 31 Aug 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>Advanced Trade Topics</category>
+      <description>The smallest container with enough cubic volume is not automatically the right container. Floor geometry, pallet orientation, door opening, payload and loading access can all change the answer. This guide provides a repeatable selection method and a worked pallet example.
+
+Key takeaways:
+- Use internal and door-opening dimensions—not nominal outside dimensions.
+- A 40 ft high cube adds height, not extra floor length or width compared with a regular 40 ft container.
+- Heavy dense cargo can reach payload before it fills the available volume.
+- Test each pallet or package spatially before booking equipment.</description>
+    </item>
+    <item>
+      <title>Certificate of Origin Requirements Under CUSMA</title>
+      <link>https://accesstonorth.com/blog/certificate-of-origin-cusma-requirements/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/certificate-of-origin-cusma-requirements/</guid>
+      <pubDate>Mon, 31 Aug 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>Compliance &amp; Duties</category>
+      <description>Under CUSMA there&apos;s no specific Certificate of Origin form. But there&apos;s also no flexibility on the data you must capture — nine specific elements, in writing, signed, dated. Here&apos;s exactly what your Certificate of Origin needs to look like to withstand a CBSA audit.
+
+Key takeaways:
+- CUSMA replaced NAFTA Form B232 — no prescribed form now exists
+- The 9 data elements must be on ANY document you issue
+- Can be printed on the commercial invoice or a separate paper
+- 5-year record retention is the practical standard (4-year audit window + 1 buffer)
+- Missing ONE element disqualifies the shipment — CBSA denies preferential treatment and assesses MFN duty</description>
+    </item>
     <item>
       <title>CBSA AMPS Penalties: Top Violations and Average Fines</title>
       <link>https://accesstonorth.com/blog/amps-penalties-canada/</link>

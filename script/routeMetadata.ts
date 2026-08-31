@@ -427,19 +427,19 @@ const STATIC_ROUTES: RouteMeta[] = [
     path: "/terms",
     priority: "0.3",
     title: "Terms of Service | AccessToNorth.com",
-    description: "Terms of service for AccessToNorth.com.",
+    description: "Read the AccessToNorth terms governing online tools, administrative services, payments, client responsibilities, limitations, and acceptable website use.",
   },
   {
     path: "/privacy",
     priority: "0.3",
     title: "Privacy Policy | AccessToNorth.com",
-    description: "Privacy policy for AccessToNorth.com.",
+    description: "Learn what personal and business information AccessToNorth collects, why it is used, how it is protected, and the privacy choices available to clients.",
   },
   {
     path: "/refunds",
     priority: "0.3",
     title: "Refund Policy | AccessToNorth.com",
-    description: "Refund policy for AccessToNorth.com services.",
+    description: "Review AccessToNorth refund eligibility, cancellation timing, unfiled-work protection, processing expectations, and exclusions for completed services.",
   },
   {
     path: "/security",

@@ -47,7 +47,7 @@ export default function Services() {
   usePageMeta({
     title: "Services | AccessToNorth.com",
     description: "Canadian business registration, GST/HST, CARM, customs clearance coordination, HS classification, export declaration preparation, and import compliance services. Flat-rate pricing.",
-    canonical: "https://www.accesstonorth.com/services",
+    canonical: "/services",
   });
 
   return (

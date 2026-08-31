@@ -22,7 +22,7 @@ export default function Resources() {
   usePageMeta({
     title: "Resources | AccessToNorth.com",
     description: "Guides and articles on Canadian importing, customs clearance, CARM, HS codes, tariff treatments, export declarations, and trade compliance.",
-    canonical: "https://www.accesstonorth.com/resources",
+    canonical: "/resources",
   });
 
   return (

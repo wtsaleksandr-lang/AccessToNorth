@@ -10,7 +10,7 @@ export default function Privacy() {
     title: "Privacy Policy | AccessToNorth.com",
     description:
       "How AccessToNorth collects, uses, protects, and retains your personal information. PIPEDA-compliant data-handling policy for Canadian and non-resident clients.",
-    canonical: "https://www.accesstonorth.com/privacy",
+    canonical: "/privacy",
   });
 
   return (
