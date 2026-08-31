@@ -26,6 +26,12 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  app.get("/api/maps/browser-config", (_req, res) => {
+    const apiKey = (process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY || "").trim();
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.json({ apiKey });
+  });
   
   app.post(api.registrations.create.path, async (req, res) => {
     try {
