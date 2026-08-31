@@ -334,7 +334,7 @@ export default function PalletBuilder() {
                   <Badge className="border-white/10 bg-white/10 text-sky-100 hover:bg-white/10"><Sparkles className="mr-1 h-3 w-3" /> Smart pallet optimization</Badge>
                   <Badge className="border-white/10 bg-white/10 text-slate-200 hover:bg-white/10">Free · No account</Badge>
                 </div>
-                <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl" data-testid="text-pallet-builder-title">Pallet Builder & Carton Loading Plan</h1>
+                <h1 className="font-display text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl" data-testid="text-pallet-builder-title">Pallet Builder & Carton Loading Plan</h1>
                 <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">Turn carton dimensions into an optimized, layer-by-layer pallet plan. Check height, weight, balance, utilization, then send the finished pallets straight into a container or truck plan.</p>
               </div>
               <div className="flex rounded-xl border border-white/10 bg-white/5 p-1 backdrop-blur" data-testid="unit-toggle">
@@ -539,7 +539,7 @@ export default function PalletBuilder() {
 
                   <Card className="overflow-hidden border-0 bg-slate-950 text-white shadow-xl">
                     <CardContent className="p-5 sm:p-6">
-                      <div className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-teal-400" /><h3 className="font-bold">Continue with the finished pallets</h3></div>
+                      <div className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-teal-400" /><h3 className="font-bold text-white">Continue with the finished pallets</h3></div>
                       <p className="mt-2 text-xs leading-5 text-slate-400">Dimensions, gross weight, quantity, and colors will be filled into the next planner automatically.</p>
                       <div className="mt-4 grid gap-2 sm:grid-cols-2">
                         <Button className="gap-2 bg-sky-500 text-white hover:bg-sky-400" onClick={() => continueToPlanner("container")} data-testid="pallet-to-container"><Box className="h-4 w-4" /> Load into container <ArrowRight className="h-4 w-4" /></Button>

@@ -39,16 +39,42 @@ function shorten(value: string, length: number) {
   return value.length > length ? `${value.slice(0, Math.max(1, length - 1))}…` : value;
 }
 
-function drawTrailerProfile(doc: jsPDF, x: number, y: number, width: number, height: number) {
-  doc.setFillColor(240, 249, 255);
+function drawTrailerProfile(doc: jsPDF, x: number, y: number, width: number, height: number, openDeck: boolean) {
+  const deckY = y + height * 0.72;
+  doc.setLineWidth(0.55);
   doc.setDrawColor(2, 132, 199);
-  doc.setLineWidth(0.6);
-  doc.roundedRect(x, y, width * 0.78, height, 2, 2, "FD");
-  doc.lines([[width * 0.12, 0], [width * 0.1, height * 0.28], [0, height * 0.72], [-width * 0.22, 0]], x + width * 0.78, y + height * 0.28, [1, 1], "FD", true);
+  doc.setFillColor(240, 249, 255);
+  if (openDeck) {
+    doc.roundedRect(x, deckY - 2.2, width, 3.8, 0.8, 0.8, "FD");
+    doc.setFillColor(30, 41, 59);
+    doc.rect(x + 1.2, deckY + 1.6, width - 2.4, 1.4, "F");
+  } else {
+    doc.roundedRect(x, y, width, height * 0.72, 1.4, 1.4, "FD");
+    doc.setDrawColor(186, 230, 253);
+    doc.setLineWidth(0.25);
+    for (let divider = 1; divider < 11; divider += 1) {
+      const panelX = x + (width * divider) / 11;
+      doc.line(panelX, y + 1.4, panelX, deckY - 1.4);
+    }
+    doc.setDrawColor(2, 132, 199);
+    doc.setLineWidth(0.55);
+    doc.line(x + width - 2.2, y + 1.2, x + width - 2.2, deckY - 1.2);
+  }
+
+  doc.setFillColor(30, 41, 59);
+  doc.rect(x + width * 0.05, deckY, width * 0.9, 1.3, "F");
+  doc.setDrawColor(71, 85, 105);
   doc.setFillColor(255, 255, 255);
-  doc.circle(x + width * 0.22, y + height + 1, 2.7, "FD");
-  doc.circle(x + width * 0.83, y + height + 1, 2.7, "FD");
-  for (let divider = 1; divider < 8; divider += 1) doc.line(x + (width * 0.78 * divider) / 8, y + 2, x + (width * 0.78 * divider) / 8, y + height - 2);
+  for (const wheelX of [x + width * 0.72, x + width * 0.84]) {
+    doc.circle(wheelX, deckY + 4.1, 3.2, "FD");
+    doc.setFillColor(100, 116, 139);
+    doc.circle(wheelX, deckY + 4.1, 1.2, "F");
+    doc.setFillColor(255, 255, 255);
+  }
+  doc.setFillColor(71, 85, 105);
+  doc.rect(x + width * 0.18, deckY + 1.2, 1.3, 5.1, "F");
+  doc.rect(x + width * 0.145, deckY + 5.7, 4.2, 0.9, "F");
+  doc.rect(x + width - 1.2, deckY + 1.1, 1.1, 4.2, "F");
 }
 
 function drawTopPlan(doc: jsPDF, placed: PlacedBox[], lengthIn: number, widthIn: number, x: number, y: number, width: number, height: number) {
@@ -138,7 +164,7 @@ export async function generateTruckLoadingReportBlob({ plan, cargoRows, unitSyst
 
   y = drawSectionHeading(doc, "Equipment", y, "Usable internal dimensions");
   doc.setFillColor(248, 250, 252); doc.setDrawColor(226, 232, 240); doc.roundedRect(REPORT_PAGE.left, y, 187.9, 37, 3, 3, "FD");
-  drawTrailerProfile(doc, 20, y + 8, 44, 18);
+  drawTrailerProfile(doc, 20, y + 8, 44, 18, plan.trailer.hasDeck);
   doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(15, 23, 42); doc.text(plan.trailer.name, 73, y + 11);
   doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(71, 85, 105);
   doc.text(`${format.dimension(plan.trailer.lengthIn)} × ${format.dimension(plan.trailer.widthIn)} × ${format.dimension(plan.trailer.heightIn)}`, 73, y + 18);
