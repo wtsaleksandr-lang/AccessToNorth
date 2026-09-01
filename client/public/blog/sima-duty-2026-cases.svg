@@ -21,8 +21,8 @@
   <text x="80" y="110" fill="#FFFFFF" fill-opacity="0.85" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="700" letter-spacing="4" text-transform="uppercase">COMPLIANCE &amp; DUTIES</text>
 
   <!-- Title -->
-  <text x="80" y="310" fill="#FFFFFF" font-family="Inter, system-ui, sans-serif" font-size="54" font-weight="800" letter-spacing="-1.5">SIMA Duty 2026: Active Cases and What</text>
-    <text x="80" y="370" fill="#FFFFFF" font-family="Inter, system-ui, sans-serif" font-size="54" font-weight="800" letter-spacing="-1.5">They Cost You</text>
+  <text x="80" y="310" fill="#FFFFFF" font-family="Inter, system-ui, sans-serif" font-size="54" font-weight="800" letter-spacing="-1.5">SIMA Duty 2026: How to Check Measures</text>
+    <text x="80" y="370" fill="#FFFFFF" font-family="Inter, system-ui, sans-serif" font-size="54" font-weight="800" letter-spacing="-1.5">in Force</text>
 
   <!-- Footer: branding + date -->
   <line x1="80" y1="520" x2="1120" y2="520" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="1" />
