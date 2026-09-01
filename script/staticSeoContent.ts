@@ -1,4 +1,5 @@
 import { canonicalUrl, type RouteMeta } from "./routeMetadata";
+import { POSTS } from "../client/src/data/blog/posts";
 
 type SeoSection = {
   heading: string;
@@ -12,6 +13,7 @@ type SeoPageContent = {
   intro: string;
   sections: SeoSection[];
   links?: Array<{ label: string; href: string }>;
+  sources?: Array<{ label: string; href: string }>;
 };
 
 function escapeHtml(value: string): string {
@@ -111,6 +113,142 @@ const PRIORITY_CONTENT: Record<string, SeoPageContent> = {
       { label: "How to Import Into Canada", href: "/resources/how-to-import-into-canada" },
       { label: "Canadian HS Code Finder", href: "/tools/hs-code-finder" },
       { label: "Customs Duty Calculator", href: "/customs-calculator" },
+    ],
+  },
+  "/services/business-number-bn": {
+    eyebrow: "CRA business registration",
+    heading: "Business Number registration in Canada",
+    intro:
+      "A Business Number is the unique nine-digit identifier used to connect a business with CRA and other government program accounts. The BN is not the same thing as GST/HST, payroll, corporation income tax, or an import-export account.",
+    sections: [
+      {
+        heading: "When a business may need a BN",
+        bullets: [
+          "Opening a GST/HST, payroll, corporation income tax, or information-return program account.",
+          "Registering an import-export RM program account for commercial importing or exporting.",
+          "Operating through an incorporated entity or interacting with a participating government program.",
+        ],
+      },
+      {
+        heading: "BN9 versus program accounts",
+        paragraphs: [
+          "The BN contains nine digits. A program account adds a two-letter program identifier and a four-digit reference number, such as RT for GST/HST, RP for payroll, RC for corporation income tax, or RM for import-export activity.",
+          "A business generally has one BN. Before applying for another, confirm whether the legal entity already received one through incorporation, a previous CRA registration, or another program.",
+        ],
+      },
+      {
+        heading: "Information to prepare",
+        bullets: [
+          "Exact legal and operating names, entity type, incorporation or registration details, and business addresses.",
+          "Owner, director, partner, or authorized-representative information required for the chosen registration route.",
+          "The business activity and the specific CRA or CBSA program accounts that are actually needed.",
+        ],
+      },
+    ],
+    links: [
+      { label: "GST/HST registration service", href: "/services/gst-hst-registration" },
+      { label: "CARM registration service", href: "/services/carm-registration-canada" },
+      { label: "Non-resident importer setup", href: "/services/non-resident-importer-canada" },
+    ],
+    sources: [
+      {
+        label: "CRA — Business number and program accounts",
+        href: "https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/business-registration/business-number-program-account.html",
+      },
+      {
+        label: "CRA — How to register",
+        href: "https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/business-registration/business-number-program-account/how-register.html",
+      },
+    ],
+  },
+  "/services/carm-registration-canada": {
+    eyebrow: "CBSA importer onboarding",
+    heading: "CARM registration for Canadian importers",
+    intro:
+      "CARM is CBSA's system of record for commercial import accounting and payment. The importer must register its own business in the portal before delegating access to a customs broker or other service provider.",
+    sections: [
+      {
+        heading: "What the setup normally includes",
+        bullets: [
+          "Confirming the correct legal entity, BN9, and import-export RM program account.",
+          "Creating user access and having the business account manager register or claim the business.",
+          "Reviewing program-account access and delegating appropriate authority to the customs broker.",
+          "Deciding whether Release Prior to Payment is required and arranging financial security when needed.",
+        ],
+      },
+      {
+        heading: "CARM registration and RPP are different",
+        paragraphs: [
+          "Registering the business lets the importer transact in CARM, but it does not automatically provide release-before-payment privileges. RPP is a separate enrolment with its own financial-security requirements.",
+          "The importer remains responsible for its account even when a broker is delegated. Review statements, balances, security, and user access regularly.",
+        ],
+      },
+      {
+        heading: "Avoid common onboarding delays",
+        paragraphs: [
+          "Use legal names and addresses that match the BN and incorporation records. Identify the correct business account manager before starting, and do not create duplicate entities simply because the first claim attempt fails.",
+        ],
+      },
+    ],
+    links: [
+      { label: "CARM security calculator", href: "/carm-security-calculator" },
+      { label: "Business Number registration", href: "/services/business-number-bn" },
+      { label: "How to import into Canada", href: "/resources/how-to-import-into-canada" },
+    ],
+    sources: [
+      {
+        label: "CBSA — Get started with CARM",
+        href: "https://www.canada.ca/en/border-services-agency/services/carm/register.html",
+      },
+      {
+        label: "CBSA — Register or modify an import-export account",
+        href: "https://www.canada.ca/en/border-services-agency/services/carm/register-modify-account.html",
+      },
+    ],
+  },
+  "/services/non-resident-importer-canada": {
+    eyebrow: "Importing into Canada",
+    heading: "Non-resident importer setup for Canada",
+    intro:
+      "A foreign business can act as importer of record in Canada when its commercial, tax, customs, and delivery responsibilities are set up correctly. NRI status is not one registration; it is a coordinated operating model.",
+    sections: [
+      {
+        heading: "Core customs setup",
+        bullets: [
+          "Obtain or confirm the non-resident entity's Canadian BN9.",
+          "Register an import-export RM account and enrol the business in CARM.",
+          "Delegate the customs broker and decide whether RPP financial security is needed.",
+          "Establish classification, valuation, origin, permit, accounting, and recordkeeping procedures.",
+        ],
+      },
+      {
+        heading: "GST/HST is a separate analysis",
+        paragraphs: [
+          "Being importer of record does not by itself answer every GST/HST question. Registration obligations and input-tax-credit recovery depend on the business model, where and how supplies are made, and whether the normal or simplified digital-economy rules apply.",
+          "Review customs value, import GST, customer invoicing, returns, and marketplace collection together before quoting a delivered price.",
+        ],
+      },
+      {
+        heading: "Define responsibility before shipping",
+        paragraphs: [
+          "Confirm the importer, Incoterm, customs broker, consignee, tax treatment, return process, and party responsible for permits and corrections. A DDP label alone does not create the registrations or procedures needed to perform those obligations.",
+        ],
+      },
+    ],
+    links: [
+      { label: "Non-resident GST/HST guide", href: "/blog/register-gst-hst-non-resident-canada" },
+      { label: "Canadian customs calculator", href: "/customs-calculator" },
+      { label: "CARM registration service", href: "/services/carm-registration-canada" },
+    ],
+    sources: [
+      {
+        label: "CBSA — Register or modify an import-export account",
+        href: "https://www.canada.ca/en/border-services-agency/services/carm/register-modify-account.html",
+      },
+      {
+        label: "CRA — GST/HST information for non-residents",
+        href: "https://www.canada.ca/en/revenue-agency/services/forms-publications/publications/rc4027/doing-business-canada-gst-hst-information-non-residents.html",
+      },
     ],
   },
   "/tools/container-calculator": {
@@ -331,8 +469,47 @@ function renderSections(sections: SeoSection[]): string {
     .join("");
 }
 
+function getBlogSeoContent(route: RouteMeta): SeoPageContent | undefined {
+  const slug = route.path.match(/^\/blog\/([^/]+)$/)?.[1];
+  if (!slug) return undefined;
+
+  const post = POSTS.find((candidate) => candidate.slug === slug);
+  if (!post) return undefined;
+
+  const sections: SeoSection[] = [
+    { heading: "Key takeaways", bullets: post.keyTakeaways },
+    ...post.sections.map((section) => ({
+      heading: section.heading,
+      paragraphs: [
+        ...(Array.isArray(section.body) ? section.body : section.body ? [section.body] : []),
+        ...(section.note ? [`Note: ${section.note}`] : []),
+      ],
+      bullets: section.list,
+    })),
+  ];
+
+  const relatedLinks = (post.relatedPosts ?? [])
+    .map((relatedSlug) => POSTS.find((candidate) => candidate.slug === relatedSlug))
+    .filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate))
+    .slice(0, 3)
+    .map((candidate) => ({ label: candidate.title, href: `/blog/${candidate.slug}` }));
+
+  return {
+    eyebrow: "AccessToNorth guide",
+    heading: post.title,
+    intro: post.intro,
+    sections,
+    links: [
+      ...relatedLinks,
+      ...(post.cta ? [{ label: post.cta.text, href: post.cta.href }] : []),
+      { label: "All importer guides", href: "/blog" },
+    ],
+    sources: post.sources,
+  };
+}
+
 export function renderStaticSeoContent(route: RouteMeta): string {
-  const content = PRIORITY_CONTENT[route.path] ?? {
+  const content = PRIORITY_CONTENT[route.path] ?? getBlogSeoContent(route) ?? {
     eyebrow: "AccessToNorth.com",
     heading: route.title.replace(/\s*[|—-]\s*AccessToNorth\.com.*$/i, ""),
     intro: route.description,
@@ -348,6 +525,12 @@ export function renderStaticSeoContent(route: RouteMeta): string {
   const links = (content.links ?? [])
     .map((link) => `<a href="${escapeHtml(canonicalUrl(link.href))}">${escapeHtml(link.label)}</a>`)
     .join("");
+  const sources = (content.sources ?? [])
+    .map(
+      (source) =>
+        `<li><a href="${escapeHtml(source.href)}" rel="noopener noreferrer">${escapeHtml(source.label)}</a></li>`,
+    )
+    .join("");
 
   return `<div data-prerender-content>
     <header><a class="brand" href="${canonicalUrl("/")}">AccessToNorth<span>.com</span></a></header>
@@ -356,6 +539,7 @@ export function renderStaticSeoContent(route: RouteMeta): string {
       <h1>${escapeHtml(content.heading)}</h1>
       <p class="intro">${escapeHtml(content.intro)}</p>
       ${renderSections(content.sections)}
+      ${sources ? `<aside><h2>Official sources</h2><ul>${sources}</ul></aside>` : ""}
       ${links ? `<nav aria-label="Related pages">${links}</nav>` : ""}
       <noscript><p class="notice">Interactive features require JavaScript, but the guidance and page links above remain available.</p></noscript>
     </main>
