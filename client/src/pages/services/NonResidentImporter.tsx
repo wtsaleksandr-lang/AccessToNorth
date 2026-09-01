@@ -7,8 +7,8 @@ export default function NonResidentImporter() {
       title="Non-Resident Importer (NRI)"
       subtitle="Full registration and compliance setup for non-resident businesses importing into or selling in Canada."
       metaTitle="Non-Resident Importer Services Canada | AccessToNorth.com"
-      metaDescription="Complete NRI setup for foreign businesses selling in Canada. GST/HST registration, BN setup, CARM onboarding, and simplified regime compliance."
-      canonical="https://www.accesstonorth.com/services/non-resident-importer-canada"
+      metaDescription="Canadian non-resident importer setup for foreign businesses: BN9, RM account, CARM onboarding, customs procedures, GST/HST analysis, and broker delegation."
+      canonical="https://accesstonorth.com/services/non-resident-importer-canada"
       icon={Globe}
       whatsIncluded={[
         "Non-Resident Business Number (BN) application",
