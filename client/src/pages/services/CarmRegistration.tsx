@@ -6,9 +6,9 @@ export default function CarmRegistration() {
     <ServiceDetailPage
       title="CARM Registration"
       subtitle="Complete CARM portal registration and onboarding for importers. Business Number, import account, and delegation setup."
-      metaTitle="CARM Portal Registration | AccessToNorth.com"
-      metaDescription="End-to-end CARM registration for Canadian importers. BN setup, RM import account, portal onboarding, and delegate management."
-      canonical="https://www.accesstonorth.com/services/carm-registration-canada"
+      metaTitle="CARM Registration Canada for Importers | AccessToNorth.com"
+      metaDescription="CARM registration support for Canadian and non-resident importers: BN and RM review, business onboarding, broker delegation, RPP screening, and security guidance."
+      canonical="https://accesstonorth.com/services/carm-registration-canada"
       icon={Landmark}
       whatsIncluded={[
         "CRA Business Number (BN) registration or verification",
@@ -24,7 +24,7 @@ export default function CarmRegistration() {
       }}
       ctaService="carm_portal"
       priceCAD={499}
-      additionalInfo="CARM is mandatory for all commercial importers in Canada. If you import goods, you need to be registered and compliant with the new system."
+      additionalInfo="CARM is CBSA's system of record for commercial import accounting and payment. Importers must register their own business before delegating access; RPP enrolment and financial security are separate decisions."
       sampleDeliverable={{
         title: "CARM Client Portal activation",
         fields: [
