@@ -23,6 +23,19 @@ export function serveStatic(app: Express) {
       return res.redirect(308, `https://accesstonorth.com${req.originalUrl}`);
     }
 
+    // Canonicals and sitemap entries use directory-style trailing slashes.
+    // Redirect only routes that have a prerendered page so assets, API calls,
+    // and dynamic application URLs keep their existing behaviour.
+    if ((req.method === "GET" || req.method === "HEAD") && req.path !== "/" && !req.path.endsWith("/")) {
+      const urlPath = req.path.replace(/^\/+/, "");
+      const routeIndex = path.resolve(distPath, urlPath, "index.html");
+      if (routeIndex.startsWith(distPath + path.sep) && fs.existsSync(routeIndex)) {
+        const queryStart = req.originalUrl.indexOf("?");
+        const query = queryStart >= 0 ? req.originalUrl.slice(queryStart) : "";
+        return res.redirect(308, `${req.path}/${query}`);
+      }
+    }
+
     const privatePrefixes = [
       "/admin",
       "/portal",
