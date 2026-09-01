@@ -87,6 +87,7 @@ test("prerender emits crawl-visible article and application metadata", async () 
     assert(freightQuote.includes('"@type":"WebApplication"'));
     assert(ampsGuide.includes("How to review a Notice of Penalty Assessment"));
     assert(ampsGuide.includes("CBSA — Master Penalty Document"));
+    assert(ampsGuide.includes('"logo":{"@type":"ImageObject","url":"https://accesstonorth.com/favicon.png"}'));
     assert(ampsGuide.includes("Related pages"));
     assert(!ampsGuide.includes('<div id="root"></div>'));
   } finally {
