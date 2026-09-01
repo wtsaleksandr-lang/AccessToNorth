@@ -68,6 +68,7 @@ export default function BlogPost() {
     dateModified: post.updatedDate ?? post.publishDate,
     keywords: post.tags.join(", "),
     articleSection: cat.name,
+    citation: post.sources?.map((source) => source.href),
   };
 
   const breadcrumbJsonLd = {
@@ -202,6 +203,26 @@ export default function BlogPost() {
               </section>
             ))}
           </div>
+
+          {post.sources && post.sources.length > 0 && (
+            <aside className="my-10 rounded-xl border border-slate-200 bg-white p-5">
+              <h2 className="mb-3 text-sm font-semibold text-slate-800">Official sources</h2>
+              <ul className="space-y-2 text-sm">
+                {post.sources.map((source) => (
+                  <li key={source.href}>
+                    <a
+                      href={source.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      {source.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </aside>
+          )}
 
           {/* Tags */}
           <div className="flex flex-wrap items-center gap-2 mt-8 mb-10">

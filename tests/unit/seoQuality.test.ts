@@ -85,6 +85,29 @@ test("published posts are discoverable and related-post references are valid", (
   assert.deepEqual(invalidRelated, [], `Invalid related posts:\n${invalidRelated.join("\n")}`);
 });
 
+test("priority regulatory articles expose current primary sources", () => {
+  const prioritySlugs = [
+    "voluntary-vs-mandatory-gst-hst",
+    "customs-valuation-methods",
+    "sima-duty-2026-cases",
+    "amps-penalties-canada",
+  ];
+
+  for (const slug of prioritySlugs) {
+    const post = POSTS.find((candidate) => candidate.slug === slug);
+    assert(post, `missing priority article: ${slug}`);
+    assert(post.updatedDate, `missing review date: ${slug}`);
+    assert((post.sources?.length ?? 0) >= 2, `missing primary sources: ${slug}`);
+    for (const source of post.sources ?? []) {
+      assert(source.href.startsWith("https://"), `insecure source URL: ${slug}`);
+      assert(
+        ["canada.ca", "cbsa-asfc.gc.ca"].some((domain) => new URL(source.href).hostname.endsWith(domain)),
+        `non-primary source domain: ${slug} -> ${source.href}`,
+      );
+    }
+  }
+});
+
 test("major public calculators expose WebApplication schema", () => {
   const calculators = [
     "/tools/hs-code-finder",

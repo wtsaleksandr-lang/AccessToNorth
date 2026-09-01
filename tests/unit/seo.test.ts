@@ -67,6 +67,10 @@ test("prerender emits crawl-visible article and application metadata", async () 
       join(outDir, "tools", "freight-quote", "index.html"),
       "utf8",
     );
+    const ampsGuide = await readFile(
+      join(outDir, "blog", "amps-penalties-canada", "index.html"),
+      "utf8",
+    );
 
     assert(article.includes('<link rel="canonical" href="https://accesstonorth.com/resources/how-to-import-into-canada/">'));
     assert(article.includes('<meta property="og:type" content="article">'));
@@ -81,6 +85,10 @@ test("prerender emits crawl-visible article and application metadata", async () 
     assert(!article.includes('<div id="root"></div>'));
     assert(freightQuote.includes('<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">'));
     assert(freightQuote.includes('"@type":"WebApplication"'));
+    assert(ampsGuide.includes("How to review a Notice of Penalty Assessment"));
+    assert(ampsGuide.includes("CBSA — Master Penalty Document"));
+    assert(ampsGuide.includes("Related pages"));
+    assert(!ampsGuide.includes('<div id="root"></div>'));
   } finally {
     await rm(outDir, { recursive: true, force: true });
   }

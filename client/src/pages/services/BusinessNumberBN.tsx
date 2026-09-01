@@ -6,9 +6,9 @@ export default function BusinessNumberBN() {
     <ServiceDetailPage
       title="Business Number (BN) Registration"
       subtitle="Get your 9-digit Business Number from the CRA — the foundation for all Canadian tax accounts."
-      metaTitle="Business Number (BN) Registration | AccessToNorth.com"
-      metaDescription="Register for a CRA Business Number (BN) quickly and correctly. Required for GST/HST, payroll, import/export, and corporate tax accounts. From CA$99."
-      canonical="https://www.accesstonorth.com/services/business-number-bn"
+      metaTitle="CRA Business Number Registration Canada (BN9) | AccessToNorth.com"
+      metaDescription="Register or confirm a Canadian CRA Business Number (BN9) and the program accounts your business actually needs, including GST/HST, payroll, corporate tax, and import-export."
+      canonical="https://accesstonorth.com/services/business-number-bn"
       icon={Building2}
       whatsIncluded={[
         "CRA Business Number (BN) application and submission",
@@ -19,7 +19,7 @@ export default function BusinessNumberBN() {
       ]}
       ctaService="bn"
       priceCAD={99}
-      additionalInfo="A Business Number is required before you can open GST/HST, payroll, import/export, or corporate income tax accounts with the CRA. Processing typically takes 5–10 business days."
+      additionalInfo="A Business Number identifies the legal entity. GST/HST, payroll, corporate income tax, and import-export activity use separate program accounts connected to that BN. Processing time depends on the entity and registration route."
       sampleDeliverable={{
         title: "CRA Business Number confirmation",
         fields: [

@@ -235,25 +235,26 @@ export const POSTS: BlogPost[] = [
     metaDescription:
       "When does voluntary GST/HST registration make sense? A straight comparison of voluntary vs mandatory registration — ITC recovery, compliance burden, and cash-flow impact.",
     publishDate: "2026-05-18",
+    updatedDate: "2026-09-01",
     category: "registration-tax",
     tags: ["voluntary gst hst registration", "mandatory registration", "itc recovery", "input tax credits"],
     author: TEAM,
     readingTime: 6,
     intro:
-      "Registration is mandatory once you cross CA$30,000 in taxable supplies. But thousands of Canadian small businesses register voluntarily while they're still under the threshold — and it usually saves them money. Here's how to tell if you should.",
+      "GST/HST registration becomes mandatory when the applicable small-supplier threshold rules are exceeded. An eligible business can also register voluntarily below the threshold, but the right choice depends on customers, recoverable input tax credits, pricing, and the ongoing filing burden.",
     keyTakeaways: [
-      "Voluntary registration is allowed as soon as you have or intend to have a commercial activity",
-      "ITC recovery is the #1 reason to register early — you can claim tax back on business expenses",
-      "The compliance cost is a quarterly return plus bookkeeping that tracks GST/HST separately",
-      "Once voluntarily registered you must stay registered for at least 1 year before deregistering",
-      "B2B businesses almost always benefit from voluntary registration; B2C depends on whether your customers can claim the tax back",
+      "Eligible businesses engaged in commercial activity may apply for voluntary registration",
+      "Registrants may claim qualifying input tax credits when the documentary and use requirements are met",
+      "Registration creates collection, invoicing, recordkeeping, return, and remittance obligations",
+      "CRA generally requires at least one year of registration before cancelling a voluntary account",
+      "B2B and B2C pricing effects differ because not every customer can recover the tax charged",
     ],
     sections: [
       {
         heading: "The core math: ITC recovery",
         body: [
-          "When you're registered, every business expense you pay that includes GST/HST becomes recoverable as an Input Tax Credit. A CA$10,000 software subscription attracts CA$500 in HST (Ontario). Registered, you recover that $500. Unregistered, you eat it.",
-          "For a growing business spending CA$50K–200K/year on Canadian taxable inputs, the recoverable tax is CA$2,500–10,000. The registration and filing cost is well under that — usually a few hundred dollars a year in bookkeeping time.",
+          "A registrant may recover GST/HST paid or payable on qualifying purchases and expenses used in commercial activities, provided the normal input-tax-credit rules and documentation requirements are met.",
+          "For example, a CA$10,000 taxable software purchase supplied in Ontario would generally carry CA$1,300 of HST at 13%. The recoverable amount can be material, but mixed-use, exempt, personal, and documentary limitations must be considered.",
         ],
       },
       {
@@ -284,14 +285,28 @@ export const POSTS: BlogPost[] = [
       },
       {
         heading: "The 1-year lock-in",
-        body: "Once you register voluntarily, you must stay registered for at least one full year before you can apply to cancel. Plan accordingly — don't register for one big ITC claim and assume you can deregister.",
-        note: "Deregistration isn't automatic. You file a cancellation form, and the CRA may claw back ITCs if the decision looks strategic rather than commercial.",
+        body: "CRA generally requires a voluntarily registered business to remain registered for at least one year before cancellation. Cancellation is not automatic and the business must continue meeting its obligations until CRA confirms the effective date.",
+        note: "Cancellation can create GST/HST consequences for capital and other property held at the effective date. Review the closing-return rules before applying.",
       },
     ],
     relatedPosts: [
       "register-gst-hst-non-resident-canada",
       "canada-30000-rule-gst-hst",
       "do-i-need-canadian-business-number-checklist",
+    ],
+    sources: [
+      {
+        label: "CRA — Register voluntarily for a GST/HST account",
+        href: "https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/gst-hst-businesses/account-register-voluntarily.html",
+      },
+      {
+        label: "CRA — When to register and start charging GST/HST",
+        href: "https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/gst-hst-businesses/when-register-charge.html",
+      },
+      {
+        label: "CRA — Input tax credits",
+        href: "https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/gst-hst-businesses/input-tax-credits.html",
+      },
     ],
     heroImage: {
       subject: "Split-screen balance showing CRA forms on one side, recovered-tax dollars on the other",
@@ -1044,10 +1059,11 @@ export const POSTS: BlogPost[] = [
   {
     slug: "customs-valuation-methods",
     title: "Customs Valuation Methods in Canada Explained",
-    metaTitle: "Canadian Customs Valuation Methods (2026) | AccessToNorth.com",
+    metaTitle: "How to Declare Customs Value in Canada (2026) | AccessToNorth.com",
     metaDescription:
-      "The six customs valuation methods used by CBSA — transaction value, identical/similar goods, deductive, computed, and residual. When each applies and how to support it.",
+      "Learn how to declare value for customs in Canada using CBSA's six valuation methods, including transaction value, assists, related-party sales, and supporting records.",
     publishDate: "2026-08-03",
+    updatedDate: "2026-09-01",
     category: "hs-classification",
     tags: ["customs valuation", "value for duty", "transaction value", "cbsa valuation"],
     author: TEAM,
@@ -1055,27 +1071,27 @@ export const POSTS: BlogPost[] = [
     intro:
       "Duty in Canada is calculated on 'value for duty' — not always the same as the invoice price. CBSA applies six valuation methods in hierarchical order. Most importers default to the first (transaction value) without knowing the alternatives or when CBSA can reject it. Here's the full picture.",
     keyTakeaways: [
-      "Transaction value (method 1) is used in 95% of imports — the price actually paid or payable",
-      "CBSA can reject transaction value if the sale isn't 'arm's length' or conditions distort price",
-      "Methods 2–6 apply in order when method 1 fails; you can't pick the cheapest",
+      "Use the transaction value method whenever its statutory conditions are met",
+      "A related-party sale is not automatically rejected, but the relationship must not have influenced the price",
+      "The remaining methods normally apply in sequence; an importer may request that the deductive and computed methods be reversed",
       "Assists (tooling, design, inputs you provide to the exporter) must be added to value for duty",
-      "Misvalued entries are reviewable for 4 years — reassessment includes duty + GST + interest",
+      "Keep invoices, payment records, contracts, assists, royalties, freight details, and related-party support",
     ],
     sections: [
       {
         heading: "Method 1 — Transaction value",
         body: [
-          "The price actually paid or payable for the goods when sold for export to Canada, adjusted for: freight and insurance to the border (if not included), commissions, royalties tied to the import, and the value of 'assists' you provided.",
-          "This is the most common method because it's the most objective — there's an invoice number, a wire transfer, and an agreed price between arm's-length parties.",
+          "Transaction value starts with the price paid or payable for goods sold for export to Canada to a purchaser in Canada. The Customs Act then requires specific additions and permits specific deductions.",
+          "Possible additions include certain commissions, packing, assists, specified royalties or licence fees, and proceeds that later accrue to the vendor. Qualifying transportation costs from the place of direct shipment may be deducted when they are included in the price and properly identified.",
         ],
       },
       {
-        heading: "When CBSA rejects Method 1",
+        heading: "When Method 1 cannot be used",
         body: [
-          "CBSA rejects transaction value when the buyer and seller are related AND the relationship affected the price (common in intra-corporate transfers), when there's a condition attached to the sale that can't be quantified, or when the buyer gets a share of subsequent resale proceeds.",
-          "In those cases CBSA works down the hierarchy — Method 2, then 3, etc. — until one fits.",
+          "Transaction value may be unavailable when there is no qualifying sale for export to Canada, the purchaser-in-Canada requirement is not met, the price cannot be determined, a restriction or condition prevents use of the method, or a related-party relationship influenced the price.",
+          "Related buyers and sellers can still use transaction value when they can support that the relationship did not influence the price. Transfer-pricing documents alone may not answer every customs valuation question.",
         ],
-        note: "Related-party imports between a Canadian subsidiary and its foreign parent are scrutinized hard. If you're importing from related suppliers, be prepared to substantiate that the price reflects arm's-length terms.",
+        note: "For related-party imports, keep the intercompany agreement, pricing methodology, comparable sales, payment records, and any customs-specific analysis supporting the declared value.",
       },
       {
         heading: "Methods 2 and 3 — Identical / Similar goods",
@@ -1090,10 +1106,11 @@ export const POSTS: BlogPost[] = [
           "Method 4 (deductive): start with the Canadian resale price and work backwards, subtracting Canadian profit, transportation, duties, and GST. Used when imports are sold without further transformation.",
           "Method 5 (computed): sum of production cost, profit, and selling expenses from the exporter's books, plus transport to Canada. Requires the exporter to share cost data — usually impossible for arm's-length suppliers.",
         ],
+        note: "The importer may request that the order of the deductive and computed value methods be reversed.",
       },
       {
         heading: "Method 6 — Residual",
-        body: "When none of methods 1–5 works, CBSA applies a flexible 'residual' approach — usually a modified version of one of the earlier methods adjusted for the circumstances. Used very rarely and always with an explanatory report.",
+        body: "When none of methods 1–5 can be applied, the residual method uses reasonable means consistent with the principles of the valuation rules and available Canadian data. It is not permission to choose an arbitrary or lowest available value.",
       },
       {
         heading: "Assists — the most-missed addition",
@@ -1107,6 +1124,20 @@ export const POSTS: BlogPost[] = [
       "find-canadian-hs-code",
       "hs-misclassification-mistakes",
       "cbsa-shipment-hold-guide",
+    ],
+    sources: [
+      {
+        label: "CBSA — Customs valuation handbook",
+        href: "https://www.cbsa-asfc.gc.ca/import/valuation-valeur/customs-val-douane-eng.html",
+      },
+      {
+        label: "CBSA Memorandum D13-3-1 — Methods of determining value for duty",
+        href: "https://www.cbsa-asfc.gc.ca/publications/dm-md/d13/d13-3-1-eng.html",
+      },
+      {
+        label: "CBSA — D13 valuation memoranda",
+        href: "https://www.cbsa-asfc.gc.ca/publications/dm-md/d13-eng.html",
+      },
     ],
     heroImage: {
       subject: "Six-step staircase labeled with valuation methods, ascending in complexity",
@@ -1190,67 +1221,81 @@ export const POSTS: BlogPost[] = [
   // ============================================================
   {
     slug: "sima-duty-2026-cases",
-    title: "SIMA Duty 2026: Active Cases and What They Cost You",
-    metaTitle: "SIMA Duty 2026 — Active Cases & Costs | AccessToNorth.com",
+    title: "SIMA Duty 2026: How to Check Measures in Force",
+    metaTitle: "SIMA Duty 2026 — Check Canada's Measures in Force | AccessToNorth.com",
     metaDescription:
-      "The active SIMA anti-dumping and countervailing duty cases in Canada for 2026. By product, country, and assessed rate — and how to check if your imports are affected.",
+      "Check whether Canadian SIMA anti-dumping or countervailing duties affect your product, origin, exporter, and landed cost using CBSA's live measures-in-force records.",
     publishDate: "2026-08-17",
+    updatedDate: "2026-09-01",
     category: "compliance-duties",
     tags: ["sima duty", "anti dumping canada", "cbsa measures in force", "2026 duty"],
     author: TEAM,
     readingTime: 6,
     intro:
-      "SIMA duty is the single biggest uncontrolled cost in Canadian importing. A 40% anti-dumping rate on a CA$500,000 annual import program is CA$200,000/year you didn't plan for. Here's what's active in 2026 and how to stay out of it.",
+      "SIMA duties can materially change the landed cost of goods subject to Canadian anti-dumping or countervailing measures. Coverage depends on the legal product description, country of origin or export, shipment date, and sometimes the exporter. Use the live CBSA record before every purchase or quote.",
     keyTakeaways: [
       "SIMA duties apply on top of MFN duty — not instead of it",
-      "Measures target specific product + country combinations, not broad categories",
-      "Most active cases in 2026 cover steel, aluminum, refined sugar, upholstered furniture, and specific copper/wire products",
-      "Normal-value determinations let pre-approved exporters avoid full SIMA duty",
-      "Check CBSA's Measures in Force list BEFORE placing any large order",
+      "Coverage is determined by the measure's legal product description, origin, export country, and relevant dates—not by HS code alone",
+      "Exporter-specific normal values or subsidy amounts may affect the amount payable",
+      "CBSA's Measures in Force list is the starting point, but the underlying finding or order controls if information conflicts",
+      "Check the current measure before ordering, quoting, and accounting for the shipment",
     ],
     sections: [
       {
-        heading: "Steel and metals — the biggest SIMA exposure",
+        heading: "What determines SIMA exposure",
         body: [
-          "Steel products from China, Vietnam, and occasionally Korea have been under SIMA measures for over a decade. Active cases in 2026 cover heavy plate, wire rod, cold-rolled steel, galvanized sheet, and specific structural tubes. Rates range from 15% to 95% depending on product and exporter.",
-          "Aluminum extrusions from China are covered by a separate case with similarly high rates. If you import anything metal-derived from these origins, SIMA verification is mandatory before placing the order.",
+          "A tariff code is only a screening tool. The legal product definition in the applicable finding or order determines whether goods are subject, and it may include technical specifications, dimensions, end uses, exclusions, origin, and export country.",
+          "The exporter can matter as well. Some exporters have specific normal values or subsidy amounts, while other shipments may be assessed using ministerial specifications. Never assume that a rate from a previous supplier or shipment applies to the next one.",
         ],
-      },
-      {
-        heading: "Upholstered furniture from China and Vietnam",
-        body: "One of the most-cited SIMA cases today. Sofas, chairs, and seating with fabric or leather upholstery from both countries are subject to duties of 100%+ on some producers. Retailers importing under their own account need to verify their Chinese supplier's normal-value determination status — pre-approved exporters have lower rates or zero.",
-      },
-      {
-        heading: "Refined sugar and agricultural commodities",
-        body: "Refined sugar has SIMA duties active against the EU, the US, and Korea dating back to 1995 (reviewed and renewed every 5 years). Dairy-derivative products see occasional cases but most are handled through TRQ (tariff-rate quota) rather than SIMA.",
       },
       {
         heading: "How to check if your product is covered",
         list: [
-          "Go to CBSA's Measures in Force page (updated weekly)",
-          "Search by HS code (6-digit level is enough for first pass)",
-          "Check country of origin — SIMA is ALWAYS product+country",
-          "Read the measure ID — some cases have exporter-specific rates; find your exporter's name",
-          "Compute the effective rate: MFN duty + SIMA duty + GST",
+          "Open CBSA's current Measures in Force list and identify possible product matches",
+          "Read the complete product definition, exclusions, countries, dates, and tribunal finding or order",
+          "Confirm the manufacturer and exporter against any exporter-specific information",
+          "Review the current normal-value, export-price, and subsidy instructions applicable to the shipment",
+          "Keep the scope analysis and source pages with the customs accounting record",
         ],
-        note: "SIMA rates can change between shipments if CBSA issues a new normal-value determination. Quote your landed cost after confirming the current rate, not after checking once.",
+        note: "HS codes listed on a measure page are normally provided for convenience. A matching or non-matching code does not replace the legal product description.",
       },
       {
-        heading: "Normal-value determinations — the legal bypass",
+        heading: "Normal values are not a blanket exemption",
         body: [
-          "CBSA allows specific exporters to file for a normal-value determination (NVD) — essentially a certification that their export price is above the threshold that would trigger SIMA. Pre-approved exporters see lower or zero SIMA duty.",
-          "If you import regularly from one supplier, encourage them to apply for an NVD. The process takes 6–12 months and they must disclose production costs, but the payoff is huge: a supplier with an NVD gives you duty-free access to products that would otherwise carry 40%+ SIMA rates.",
+          "Normal values are confidential values established for specific exporters and products. Anti-dumping duty generally arises when the export price is below the applicable normal value; countervailing duty depends on the applicable subsidy amount.",
+          "Having exporter-specific values does not make the goods automatically duty-free. The shipment details and declared export price must still be assessed under the current instructions.",
+        ],
+      },
+      {
+        heading: "Build SIMA into the quote workflow",
+        body: [
+          "Screen SIMA before issuing a landed-cost quote, not after the cargo arrives. Record the product specification, origin, exporter, measure page, review date, and the assumption used for the estimate.",
+          "Because measures and exporter information can change, label the estimate as time-sensitive and recheck before customs accounting.",
         ],
       },
       {
         heading: "Disputing a SIMA assessment",
-        body: "If you receive a SIMA assessment you believe is wrong (wrong exporter matched, product mis-classified, origin misread), file a request for re-determination within 90 days. After 90 days you lose the right to dispute unless you demonstrate exceptional circumstances. This is a hard deadline — do not miss it.",
+        body: "If an importer disputes a SIMA determination, a request for re-determination is generally filed through the CARM Client Portal within the applicable 90-day period. Confirm the correct appeal route and deadline from the decision notice and CBSA guidance immediately.",
       },
     ],
     relatedPosts: [
       "hs-misclassification-mistakes",
       "amps-penalties-canada",
       "cbsa-shipment-hold-guide",
+    ],
+    sources: [
+      {
+        label: "CBSA — SIMA measures in force",
+        href: "https://www.cbsa-asfc.gc.ca/sima-lmsi/mif-mev/menu-eng.html",
+      },
+      {
+        label: "CBSA — Guide for self-assessing SIMA duties",
+        href: "https://www.cbsa-asfc.gc.ca/sima-lmsi/self-auto-eng.html",
+      },
+      {
+        label: "CBSA — Guide for appealing a SIMA duty assessment",
+        href: "https://www.cbsa-asfc.gc.ca/sima-lmsi/rrd-drr-eng.html",
+      },
     ],
     heroImage: {
       subject: "Stacked steel coils with a percentage-rate meter overlay showing anti-dumping rates",
@@ -1264,67 +1309,66 @@ export const POSTS: BlogPost[] = [
   // ============================================================
   {
     slug: "amps-penalties-canada",
-    title: "CBSA AMPS Penalties: Top Violations and Average Fines",
-    metaTitle: "CBSA AMPS Penalties — Top Violations 2026 | AccessToNorth.com",
+    title: "CBSA AMPS Penalties: Codes, Amounts, Corrections and Reviews",
+    metaTitle: "CBSA AMPS Penalties: Codes & Reviews (2026) | AccessToNorth.com",
     metaDescription:
-      "The Administrative Monetary Penalty System (AMPS) catches routine customs mistakes. The top 10 AMPS violations, what they cost, and how to avoid them.",
+      "Understand a CBSA AMPS Notice of Penalty Assessment: contravention codes, current penalty amounts, correction requests, ministerial reviews, and prevention.",
     publishDate: "2026-08-24",
+    updatedDate: "2026-09-01",
     category: "compliance-duties",
     tags: ["amps penalties", "cbsa fines", "customs penalty", "administrative penalty"],
     author: TEAM,
     readingTime: 6,
     intro:
-      "AMPS is how CBSA fines you for clerical and compliance errors that don't rise to the level of criminal prosecution. Penalties range from CA$150 to CA$25,000 per violation, and a busy importer can rack up several in a single audit if their documentation is sloppy. Here are the top 10 violations and the typical cost of each.",
+      "The Administrative Monetary Penalty System is how CBSA assesses monetary penalties for designated trade and border contraventions. Every notice must be read against its specific contravention code because the amount, penalty basis, escalation levels, retention period, and correction rules vary by code.",
     keyTakeaways: [
-      "AMPS penalties escalate by 'level' — each repeat multiplies the base amount",
-      "Most common: C152 (failure to report), C218 (incorrect declaration), C215 (missing certificate)",
-      "First violations are often CA$150–500; repeat offenders hit CA$1,000+ fast",
-      "AMPS is assessable up to 4 years after the infraction",
-      "Clean compliance history lowers your risk of targeted audits",
+      "Use the contravention code on the notice to open the current CBSA Master Penalty Document entry",
+      "Penalty amounts, calculation basis, escalation, caps, and retention periods differ by code",
+      "An obvious error can be raised with the issuing office as a correction request",
+      "A formal request for a Minister's decision is generally due within 90 days of service",
+      "Paying a penalty and disputing it are separate issues; follow the notice and current CBSA instructions",
     ],
     sections: [
       {
         heading: "How AMPS penalties work",
         body: [
-          "Each violation has a contravention code (CXXX) and a base penalty. Repeat offenses on the same code within a 12-month rolling window escalate: Level 1 = base, Level 2 = 2× base, Level 3 = 3× base.",
-          "CBSA auditors document each violation separately. A single shipment with a wrong HS code, a missing certificate, AND a reporting error could trigger three separate penalties.",
+          "Each designated contravention has a code in CBSA's Master Penalty Document. The code page identifies the legal requirement, the first and subsequent penalty amounts, whether the assessment is per shipment, occurrence, issue, document, or another basis, and the retention period used for escalation.",
+          "There is no reliable universal list of average fines and no universal multiplier. Always verify the current code page instead of relying on an old chart, another importer's notice, or a penalty amount from a different contravention.",
         ],
       },
       {
-        heading: "Top 10 AMPS violations in 2026",
+        heading: "How to review a Notice of Penalty Assessment",
         list: [
-          "C152 — Failure to report goods — CA$500 level 1, escalates to CA$2,500",
-          "C218 — Incorrect declaration (wrong HS code, value, origin) — CA$150 level 1, CA$1,500 level 3",
-          "C215 — Failure to produce a certificate on request — CA$500 level 1",
-          "C336 — Failure to pay duty by due date — CA$100 + 5% of unpaid + interest",
-          "C329 — Failure to maintain records for 6 years — CA$1,000 level 1",
-          "C360 — Failure to provide required information on request — CA$500",
-          "C333 — Failure to correct a previous declaration — CA$150 (often stacks with C218)",
-          "C107 — Failure to report changes in business info — CA$500",
-          "C083 — Misuse of 'release prior to payment' without security — CA$1,000+",
-          "C162 — Failure to submit final accounting within 5 business days — CA$150",
+          "Confirm the legal name, client identifier, notice date, issuing office, and service date",
+          "Open the exact contravention code in the live Master Penalty Document",
+          "Compare the stated facts with the documents, transmission records, and applicable requirement",
+          "Check whether the occurrence level, calculation basis, amount, and retention period were applied correctly",
+          "Calendar the payment, correction, and formal-review deadlines immediately",
         ],
       },
       {
-        heading: "Escalation example",
-        body: "An importer gets a C218 (incorrect HS code) on a shipment — CA$150 penalty. Six months later, a CBSA review catches 4 more C218s from the same importer over a 12-month window. Each of those is now Level 3 (since the clock was reset at the first). Total: CA$150 + (4 × CA$1,500) = CA$6,150. One careless quarter, five figures in AMPS exposure.",
-        note: "AMPS escalation is why \"just ignore the first one\" is the worst possible strategy. Respond to the first penalty properly (pay or appeal), fix the root cause, and you stop the escalation clock.",
+        heading: "Correction request versus formal review",
+        body: [
+          "If the notice contains an obvious error that is evident to both parties—such as the wrong client, calculation, contravention type, penalty level, or amount—the recipient may contact the issuing CBSA office to request a correction within 90 days of the notice.",
+          "If the recipient believes the assessment was applied inappropriately, the usual formal route is a request for a Minister's decision within 90 days from service. Certain contraventions have a different appeal route, so follow the notice and Memorandum D22-1-1 rather than assuming one procedure applies to every code.",
+        ],
+        note: "A correction request is not a substitute for preserving a formal review deadline. Obtain professional advice promptly when the amount or legal issue is material.",
       },
       {
-        heading: "Appealing an AMPS penalty",
+        heading: "Prepare a useful review record",
         body: [
-          "You have 90 days from the penalty notice to file an appeal (CBSA form BSF760). Successful appeals usually require showing: (a) the violation didn't occur as described, (b) the documentation CBSA relied on was incorrect, or (c) the penalty is disproportionate to the error.",
-          "Roughly 30% of AMPS appeals are reduced or dismissed. The rest are upheld. Appeal when you have a clear factual or procedural basis — not just to delay.",
+          "Build a chronology of the transaction, reporting event, CBSA communication, discovery of the issue, and corrective action. Attach the notice, accounting or cargo records, messages, system timestamps, procedures, and the exact code page relied on.",
+          "Address the statutory requirement and CBSA's stated facts directly. A general claim that the penalty feels unfair is much weaker than evidence that the contravention did not occur, the wrong client was assessed, or the penalty level or basis was misapplied.",
         ],
       },
       {
         heading: "Preventing AMPS — the compliance checklist",
         list: [
           "Review every HS code annually against the current tariff",
-          "Keep 6 years of records digitally indexed by shipment ID",
-          "Set up a 3-day pre-clearance review of every CA$10K+ invoice",
-          "Respond to CBSA document requests within 48 hours",
-          "Run a self-audit of the past 90 days every quarter",
+          "Keep required customs and transportation records indexed by shipment and declaration",
+          "Assign owners and deadlines for corrections after the business has reason to believe a declaration is wrong",
+          "Validate ACI, release, accounting, origin, permit, and recordkeeping steps with role-specific checklists",
+          "Review the current Master Penalty Document during compliance audits instead of using a static penalty chart",
         ],
       },
     ],
@@ -1332,6 +1376,20 @@ export const POSTS: BlogPost[] = [
       "hs-misclassification-mistakes",
       "sima-duty-2026-cases",
       "customs-audits-what-to-expect",
+    ],
+    sources: [
+      {
+        label: "CBSA — Administrative Monetary Penalty System",
+        href: "https://www.cbsa-asfc.gc.ca/trade-commerce/amps/menu-eng.html",
+      },
+      {
+        label: "CBSA — Master Penalty Document",
+        href: "https://www.cbsa-asfc.gc.ca/trade-commerce/amps/mpd-dmi-eng.html",
+      },
+      {
+        label: "CBSA Memorandum D22-1-1 — Implementing AMPS",
+        href: "https://www.cbsa-asfc.gc.ca/publications/dm-md/d22/d22-1-1-eng.html",
+      },
     ],
     heroImage: {
       subject: "A customs officer holding a ticket-book with AMPS fine codes stacked behind",

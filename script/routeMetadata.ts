@@ -115,9 +115,10 @@ const STATIC_ROUTES: RouteMeta[] = [
   {
     path: "/services/business-number-bn",
     priority: "0.8",
-    title: "Business Number (BN) Registration | AccessToNorth.com",
+    lastmod: "2026-09-01",
+    title: "CRA Business Number Registration Canada (BN9) | AccessToNorth.com",
     description:
-      "Register for a CRA Business Number (BN) quickly and correctly. Required for GST/HST, payroll, import/export, and corporate tax accounts. From CA$99.",
+      "Register or confirm a Canadian CRA Business Number (BN9) and the program accounts your business actually needs, including GST/HST, payroll, corporate tax, and import-export.",
   },
   {
     path: "/services/gst-hst-registration",
@@ -150,9 +151,10 @@ const STATIC_ROUTES: RouteMeta[] = [
   {
     path: "/services/carm-registration-canada",
     priority: "0.8",
-    title: "CARM Portal Registration | AccessToNorth.com",
+    lastmod: "2026-09-01",
+    title: "CARM Registration Canada for Importers | AccessToNorth.com",
     description:
-      "End-to-end CARM registration for Canadian importers. BN setup, RM import account, portal onboarding, and delegate management.",
+      "CARM registration support for Canadian and non-resident importers: BN and RM review, business onboarding, broker delegation, RPP screening, and security guidance.",
   },
   {
     path: "/services/rpp-bond-coordination",
@@ -171,9 +173,10 @@ const STATIC_ROUTES: RouteMeta[] = [
   {
     path: "/services/non-resident-importer-canada",
     priority: "0.8",
+    lastmod: "2026-09-01",
     title: "Non-Resident Importer Services Canada | AccessToNorth.com",
     description:
-      "Complete NRI setup for foreign businesses selling in Canada. GST/HST registration, BN setup, CARM onboarding, and simplified regime compliance.",
+      "Canadian non-resident importer setup for foreign businesses: BN9, RM account, CARM onboarding, customs procedures, GST/HST analysis, and broker delegation.",
   },
   {
     path: "/canadian-customs-clearance",

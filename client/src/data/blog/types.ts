@@ -39,6 +39,11 @@ export interface BlogImageBrief {
   alt: string;
 }
 
+export interface BlogSource {
+  label: string;
+  href: string;
+}
+
 export interface BlogPost {
   slug: string;
   title: string;
@@ -62,6 +67,8 @@ export interface BlogPost {
   sections: BlogSection[];
   /** Slugs of 2–4 related posts for cross-linking. */
   relatedPosts?: string[];
+  /** Primary government or standards sources used to verify factual claims. */
+  sources?: BlogSource[];
   /** Optional custom CTA — defaults to the category's default CTA. */
   cta?: {
     text: string;

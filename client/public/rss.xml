@@ -6,7 +6,7 @@
     <atom:link href="https://accesstonorth.com/rss.xml" rel="self" type="application/rss+xml" />
     <description>Weekly guides on Canadian GST/HST, CARM, customs clearance, and import compliance.</description>
     <language>en-CA</language>
-    <lastBuildDate>Mon, 31 Aug 2026 20:08:27 GMT</lastBuildDate>
+    <lastBuildDate>Tue, 01 Sep 2026 04:30:42 GMT</lastBuildDate>
     <item>
       <title>Trailer Load Planning: Fit, Weight, Balance and Loading Sequence</title>
       <link>https://accesstonorth.com/blog/trailer-load-planning-guide/</link>
@@ -84,36 +84,36 @@ Key takeaways:
 - Missing ONE element disqualifies the shipment — CBSA denies preferential treatment and assesses MFN duty</description>
     </item>
     <item>
-      <title>CBSA AMPS Penalties: Top Violations and Average Fines</title>
+      <title>CBSA AMPS Penalties: Codes, Amounts, Corrections and Reviews</title>
       <link>https://accesstonorth.com/blog/amps-penalties-canada/</link>
       <guid isPermaLink="true">https://accesstonorth.com/blog/amps-penalties-canada/</guid>
       <pubDate>Mon, 24 Aug 2026 13:00:00 GMT</pubDate>
       <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
       <category>Compliance &amp; Duties</category>
-      <description>AMPS is how CBSA fines you for clerical and compliance errors that don&apos;t rise to the level of criminal prosecution. Penalties range from CA$150 to CA$25,000 per violation, and a busy importer can rack up several in a single audit if their documentation is sloppy. Here are the top 10 violations and the typical cost of each.
+      <description>The Administrative Monetary Penalty System is how CBSA assesses monetary penalties for designated trade and border contraventions. Every notice must be read against its specific contravention code because the amount, penalty basis, escalation levels, retention period, and correction rules vary by code.
 
 Key takeaways:
-- AMPS penalties escalate by &apos;level&apos; — each repeat multiplies the base amount
-- Most common: C152 (failure to report), C218 (incorrect declaration), C215 (missing certificate)
-- First violations are often CA$150–500; repeat offenders hit CA$1,000+ fast
-- AMPS is assessable up to 4 years after the infraction
-- Clean compliance history lowers your risk of targeted audits</description>
+- Use the contravention code on the notice to open the current CBSA Master Penalty Document entry
+- Penalty amounts, calculation basis, escalation, caps, and retention periods differ by code
+- An obvious error can be raised with the issuing office as a correction request
+- A formal request for a Minister&apos;s decision is generally due within 90 days of service
+- Paying a penalty and disputing it are separate issues; follow the notice and current CBSA instructions</description>
     </item>
     <item>
-      <title>SIMA Duty 2026: Active Cases and What They Cost You</title>
+      <title>SIMA Duty 2026: How to Check Measures in Force</title>
       <link>https://accesstonorth.com/blog/sima-duty-2026-cases/</link>
       <guid isPermaLink="true">https://accesstonorth.com/blog/sima-duty-2026-cases/</guid>
       <pubDate>Mon, 17 Aug 2026 13:00:00 GMT</pubDate>
       <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
       <category>Compliance &amp; Duties</category>
-      <description>SIMA duty is the single biggest uncontrolled cost in Canadian importing. A 40% anti-dumping rate on a CA$500,000 annual import program is CA$200,000/year you didn&apos;t plan for. Here&apos;s what&apos;s active in 2026 and how to stay out of it.
+      <description>SIMA duties can materially change the landed cost of goods subject to Canadian anti-dumping or countervailing measures. Coverage depends on the legal product description, country of origin or export, shipment date, and sometimes the exporter. Use the live CBSA record before every purchase or quote.
 
 Key takeaways:
 - SIMA duties apply on top of MFN duty — not instead of it
-- Measures target specific product + country combinations, not broad categories
-- Most active cases in 2026 cover steel, aluminum, refined sugar, upholstered furniture, and specific copper/wire products
-- Normal-value determinations let pre-approved exporters avoid full SIMA duty
-- Check CBSA&apos;s Measures in Force list BEFORE placing any large order</description>
+- Coverage is determined by the measure&apos;s legal product description, origin, export country, and relevant dates—not by HS code alone
+- Exporter-specific normal values or subsidy amounts may affect the amount payable
+- CBSA&apos;s Measures in Force list is the starting point, but the underlying finding or order controls if information conflicts
+- Check the current measure before ordering, quoting, and accounting for the shipment</description>
     </item>
     <item>
       <title>What to Do When CBSA Holds Your Shipment</title>
@@ -141,11 +141,11 @@ Key takeaways:
       <description>Duty in Canada is calculated on &apos;value for duty&apos; — not always the same as the invoice price. CBSA applies six valuation methods in hierarchical order. Most importers default to the first (transaction value) without knowing the alternatives or when CBSA can reject it. Here&apos;s the full picture.
 
 Key takeaways:
-- Transaction value (method 1) is used in 95% of imports — the price actually paid or payable
-- CBSA can reject transaction value if the sale isn&apos;t &apos;arm&apos;s length&apos; or conditions distort price
-- Methods 2–6 apply in order when method 1 fails; you can&apos;t pick the cheapest
+- Use the transaction value method whenever its statutory conditions are met
+- A related-party sale is not automatically rejected, but the relationship must not have influenced the price
+- The remaining methods normally apply in sequence; an importer may request that the deductive and computed methods be reversed
 - Assists (tooling, design, inputs you provide to the exporter) must be added to value for duty
-- Misvalued entries are reviewable for 4 years — reassessment includes duty + GST + interest</description>
+- Keep invoices, payment records, contracts, assists, royalties, freight details, and related-party support</description>
     </item>
     <item>
       <title>CUSMA Origin Certification: When and How</title>
@@ -313,14 +313,14 @@ Key takeaways:
       <pubDate>Mon, 18 May 2026 13:00:00 GMT</pubDate>
       <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
       <category>Registration &amp; Tax</category>
-      <description>Registration is mandatory once you cross CA$30,000 in taxable supplies. But thousands of Canadian small businesses register voluntarily while they&apos;re still under the threshold — and it usually saves them money. Here&apos;s how to tell if you should.
+      <description>GST/HST registration becomes mandatory when the applicable small-supplier threshold rules are exceeded. An eligible business can also register voluntarily below the threshold, but the right choice depends on customers, recoverable input tax credits, pricing, and the ongoing filing burden.
 
 Key takeaways:
-- Voluntary registration is allowed as soon as you have or intend to have a commercial activity
-- ITC recovery is the #1 reason to register early — you can claim tax back on business expenses
-- The compliance cost is a quarterly return plus bookkeeping that tracks GST/HST separately
-- Once voluntarily registered you must stay registered for at least 1 year before deregistering
-- B2B businesses almost always benefit from voluntary registration; B2C depends on whether your customers can claim the tax back</description>
+- Eligible businesses engaged in commercial activity may apply for voluntary registration
+- Registrants may claim qualifying input tax credits when the documentary and use requirements are met
+- Registration creates collection, invoicing, recordkeeping, return, and remittance obligations
+- CRA generally requires at least one year of registration before cancelling a voluntary account
+- B2B and B2C pricing effects differ because not every customer can recover the tax charged</description>
     </item>
     <item>
       <title>Do I Need a Canadian Business Number? A 5-Question Checklist</title>
