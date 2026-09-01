@@ -91,6 +91,15 @@ test.describe("public marketing surface", () => {
     expect(sitemap.status()).toBe(200);
     expect(await sitemap.text()).toContain("<urlset");
   });
+
+  test("public pages consolidate on their trailing-slash canonical", async ({ request }) => {
+    const response = await request.get("/resources/how-to-import-into-canada?source=test", {
+      maxRedirects: 0,
+    });
+
+    expect(response.status()).toBe(308);
+    expect(response.headers().location).toBe("/resources/how-to-import-into-canada/?source=test");
+  });
 });
 
 const hasBackend = !process.env.E2E_SKIP_BACKEND;
