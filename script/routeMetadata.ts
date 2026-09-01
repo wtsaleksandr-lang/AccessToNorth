@@ -193,7 +193,7 @@ const STATIC_ROUTES: RouteMeta[] = [
     priority: "0.7",
     changefreq: "monthly",
     schemaType: "WebApplication",
-    title: "Canadian HS Code Finder — Free Tariff Lookup | AccessToNorth.com",
+    title: "Canadian HS Code Finder — Free Tariff Lookup",
     description:
       "Search Canadian HS codes by keyword. Find the right 10-digit classification for your product with duty rates and descriptions.",
   },
@@ -250,7 +250,7 @@ const STATIC_ROUTES: RouteMeta[] = [
     changefreq: "monthly",
     lastmod: "2026-08-30",
     schemaType: "WebApplication",
-    title: "Freight Quote Request for Canada & US Shipping | AccessToNorth.com",
+    title: "Freight Quote Tool for Canada & US Shipping",
     description: "Build a carrier-ready freight quote request for ocean, air, truck, rail, or courier shipping, including cargo dimensions, requirements, and documents.",
   },
   {
