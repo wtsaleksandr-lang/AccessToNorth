@@ -73,6 +73,7 @@ function buildPrimaryJsonLd(route: RouteMeta): string {
           "@type": "Organization",
           name: "AccessToNorth.com",
           url: `${SITE_URL}/`,
+          logo: { "@type": "ImageObject", url: BRAND_ICON },
         },
       }
     : route.schemaType === "Article" || route.schemaType === "BlogPosting"
@@ -87,6 +88,7 @@ function buildPrimaryJsonLd(route: RouteMeta): string {
             "@type": "Organization",
             name: "AccessToNorth Trade Compliance Team",
             url: `${SITE_URL}/about/`,
+            logo: { "@type": "ImageObject", url: BRAND_ICON },
           },
           publisher: {
             "@type": "Organization",

@@ -1059,7 +1059,7 @@ export const POSTS: BlogPost[] = [
   {
     slug: "customs-valuation-methods",
     title: "Customs Valuation Methods in Canada Explained",
-    metaTitle: "How to Declare Customs Value in Canada (2026) | AccessToNorth.com",
+    metaTitle: "How to Declare Customs Value in Canada (2026)",
     metaDescription:
       "Learn how to declare value for customs in Canada using CBSA's six valuation methods, including transaction value, assists, related-party sales, and supporting records.",
     publishDate: "2026-08-03",
@@ -1310,7 +1310,7 @@ export const POSTS: BlogPost[] = [
   {
     slug: "amps-penalties-canada",
     title: "CBSA AMPS Penalties: Codes, Amounts, Corrections and Reviews",
-    metaTitle: "CBSA AMPS Penalties: Codes & Reviews (2026) | AccessToNorth.com",
+    metaTitle: "CBSA AMPS Penalties: Codes & Reviews (2026)",
     metaDescription:
       "Understand a CBSA AMPS Notice of Penalty Assessment: contravention codes, current penalty amounts, correction requests, ministerial reviews, and prevention.",
     publishDate: "2026-08-24",
