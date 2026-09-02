@@ -123,6 +123,7 @@ test.describe("tool pages load without runtime errors", () => {
     await expect(page.getByTestId("container-comparison-20dc")).toContainText("2 containers");
     await expect(page.getByTestId("container-comparison-40dc")).toContainText("Best fit");
     await expect(page.getByTestId("container-results-workspace")).toBeVisible();
+    await expect(page.getByTestId("button-share-loading-plan")).toBeVisible();
     await expect(page.getByTestId("result-tab-plan")).toHaveAttribute("aria-selected", "true");
     await expect(page.getByTestId("button-export-csv")).toBeVisible();
     await expect(page.getByTestId("container-guide-details")).not.toHaveAttribute("open", "");
@@ -131,6 +132,12 @@ test.describe("tool pages load without runtime errors", () => {
     // A browser with WebGL gets the guarded manual layout editor. Browsers
     // without it retain the universal 2D fallback and all load-plan details.
     if (await page.getByTestId("button-arrange-cargo").count()) {
+      await expect(page.getByTestId("container-viewer-workspace")).toBeVisible();
+      await expect(page.getByTestId("button-container-fullscreen")).toBeVisible();
+      await expect(page.getByTestId("container-viewer-sidebar")).toBeVisible();
+      await expect(page.getByTestId("button-container-view-doors")).toBeVisible();
+      await page.getByTestId("button-container-view-doors").click();
+      await page.getByTestId("button-container-layer-grid").click();
       await expect(page.getByTestId("button-arrange-cargo")).toBeVisible();
       await page.getByTestId("button-arrange-cargo").click();
       await expect(page.getByTestId("button-reset-cargo-layout")).toBeVisible();

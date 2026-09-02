@@ -77,6 +77,7 @@ export function Footer() {
               <li><Link href="/services" className="hover:text-white transition-colors" data-testid="link-footer-services">All Services</Link></li>
               <li><Link href="/pricing" className="hover:text-white transition-colors" data-testid="link-footer-pricing">Pricing</Link></li>
               <li><Link href="/tools" className="hover:text-white transition-colors" data-testid="link-footer-tools">Trade Tools</Link></li>
+              <li><Link href="/developers/container-loading-api" className="hover:text-white transition-colors" data-testid="link-footer-loading-api">Loading API &amp; Embed</Link></li>
               <li><Link href="/resources" className="hover:text-white transition-colors" data-testid="link-footer-resources">Resources</Link></li>
               <li><Link href="/blog" className="hover:text-white transition-colors" data-testid="link-footer-blog">Blog</Link></li>
               <li><Link href="/about" className="hover:text-white transition-colors" data-testid="link-footer-about">About</Link></li>

@@ -51,6 +51,12 @@ import {
   LayoutDashboard,
   ListChecks,
   Ship,
+  Minimize2,
+  Grid3X3,
+  Eye,
+  Camera,
+  Move3d,
+  Share2,
 } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -89,6 +95,7 @@ const KG_TO_LB = 1 / LB_TO_KG;
 
 type BulkApplyScope = "all" | "selected" | "defaults";
 type ResultWorkspaceTab = "overview" | "plan" | "details";
+type ContainerViewPreset = "isometric" | "doors" | "side" | "top";
 
 const CARGO_COLORS = [
   "#0f766e", "#2563eb", "#b45309", "#7c3aed", "#be123c",
@@ -348,7 +355,7 @@ function ContainerFallback2D({
   );
 }
 
-function ContainerViewer3D({
+export function ContainerViewer3D({
   placed,
   container,
   unitSystem,
@@ -362,6 +369,7 @@ function ContainerViewer3D({
   onPlacedChange?: (nextPlaced: PlacedBox[]) => void;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
   const [webglError, setWebglError] = useState(false);
   const [rendererAttempt, setRendererAttempt] = useState(0);
   const [arrangeMode, setArrangeMode] = useState(false);
@@ -369,6 +377,13 @@ function ContainerViewer3D({
   const [placementMessage, setPlacementMessage] = useState("Select a cargo item and drag it to a new position.");
   const [sequenceMode, setSequenceMode] = useState(false);
   const [sequenceStep, setSequenceStep] = useState(1);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [activeView, setActiveView] = useState<ContainerViewPreset>("isometric");
+  const [showGrid, setShowGrid] = useState(true);
+  const [showShell, setShowShell] = useState(true);
+  const [showLabels, setShowLabels] = useState(true);
+  const [hoveredCargoIndex, setHoveredCargoIndex] = useState<number | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const arrangementHistoryRef = useRef<PlacedBox[][]>([]);
   const optimizedLayoutRef = useRef<PlacedBox[]>(placed.map((box) => ({ ...box })));
   const optimizedLayoutIdentityRef = useRef("");
@@ -383,6 +398,10 @@ function ContainerViewer3D({
     camera: THREE.PerspectiveCamera;
     controls: OrbitControls;
     cargoMeshes: THREE.Mesh[];
+    gridObjects: THREE.Object3D[];
+    containerGroup: THREE.Group;
+    setCargoHover: (index: number | null) => void;
+    setView: (preset: ContainerViewPreset) => void;
     render: () => void;
   } | null>(null);
 
@@ -405,6 +424,39 @@ function ContainerViewer3D({
     () => `${container.id}:${placed.map((box) => `${box.cargoId}:${box.l}:${box.w}:${box.h}`).join("|")}`,
     [container.id, placed],
   );
+
+  const loadSummary = useMemo(() => {
+    const usedLength = placed.reduce((max, box) => Math.max(max, box.x + box.l), 0);
+    const usedWidth = placed.reduce((max, box) => Math.max(max, box.z + box.w), 0);
+    const usedHeight = placed.reduce((max, box) => Math.max(max, box.y + box.h), 0);
+    const totalWeight = placed.reduce((sum, box) => sum + box.weight, 0);
+    const usedVolumeCuFt = placed.reduce((sum, box) => sum + (box.l * box.w * box.h) / 1728, 0);
+    return { usedLength, usedWidth, usedHeight, totalWeight, usedVolumeCuFt };
+  }, [placed]);
+
+  const toggleFullscreen = useCallback(async () => {
+    const workspace = workspaceRef.current;
+    if (!workspace) return;
+    try {
+      if (document.fullscreenElement === workspace) {
+        await document.exitFullscreen();
+      } else if (workspace.requestFullscreen) {
+        await workspace.requestFullscreen();
+      } else {
+        setIsFullscreen((current) => !current);
+      }
+    } catch {
+      setIsFullscreen((current) => !current);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === workspaceRef.current);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
 
   useEffect(() => {
     if (optimizedLayoutIdentityRef.current === layoutIdentity) return;
@@ -488,7 +540,10 @@ function ContainerViewer3D({
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = false;
-    controls.enablePan = false;
+    controls.enablePan = isFullscreen;
+    controls.rotateSpeed = 0.62;
+    controls.zoomSpeed = 0.78;
+    controls.panSpeed = 0.55;
     controls.target.set(cL / 2, cH * 0.38, cW / 2);
     controls.minDistance = 1;
     controls.maxDistance = 30;
@@ -519,29 +574,38 @@ function ContainerViewer3D({
     rimLight.position.set(cL * 0.2, cH * 1.4, cW * 2.2);
     scene.add(rimLight);
 
-    const gridSize = Math.max(cL, cW) * 2.25;
+    const gridSize = Math.max(cL, cW) * 12;
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(gridSize, gridSize),
-      new THREE.MeshStandardMaterial({ color: 0xe7ebf0, roughness: 0.98, metalness: 0.01 }),
+      new THREE.PlaneGeometry(gridSize * 1.4, gridSize * 1.4),
+      new THREE.MeshStandardMaterial({ color: 0xe9edf2, roughness: 0.99, metalness: 0 }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(cL / 2, -0.035, cW / 2);
     ground.receiveShadow = true;
     scene.add(ground);
 
-    const gridDivisions = 48;
+    const gridDivisions = 180;
     const grid = new THREE.GridHelper(gridSize, gridDivisions, 0xcbd5e1, 0xdce3ea);
     grid.position.set(cL / 2, -0.02, cW / 2);
     if (Array.isArray(grid.material)) {
       grid.material.forEach((m) => {
         (m as THREE.LineBasicMaterial).transparent = true;
-        (m as THREE.LineBasicMaterial).opacity = 0.11;
+        (m as THREE.LineBasicMaterial).opacity = 0.34;
       });
     } else {
       (grid.material as THREE.LineBasicMaterial).transparent = true;
-      (grid.material as THREE.LineBasicMaterial).opacity = 0.11;
+      (grid.material as THREE.LineBasicMaterial).opacity = 0.34;
     }
     scene.add(grid);
+
+    const gridObjects: THREE.Object3D[] = [ground, grid];
+    ground.visible = showGrid;
+    grid.visible = showGrid;
+
+    const containerGroup = new THREE.Group();
+    containerGroup.name = "container-shell";
+    containerGroup.visible = showShell;
+    scene.add(containerGroup);
 
     const containerEdges = new THREE.EdgesGeometry(new THREE.BoxGeometry(cL, cH, cW));
     const containerWire = new THREE.LineSegments(
@@ -549,7 +613,7 @@ function ContainerViewer3D({
       new THREE.LineBasicMaterial({ color: 0x0f172a, transparent: true, opacity: 0.5 })
     );
     containerWire.position.set(cL / 2, cH / 2, cW / 2);
-    scene.add(containerWire);
+    containerGroup.add(containerWire);
 
     const structureMat = new THREE.MeshStandardMaterial({
       color: 0x1e293b,
@@ -560,7 +624,7 @@ function ContainerViewer3D({
       const beam = new THREE.Mesh(geometry, structureMat);
       beam.position.set(x, y, z);
       beam.castShadow = true;
-      scene.add(beam);
+      containerGroup.add(beam);
     };
     const rail = Math.max(0.032, Math.min(cH, cW) * 0.018);
     for (const x of [0, cL]) {
@@ -583,7 +647,7 @@ function ContainerViewer3D({
     );
     floor.position.set(cL / 2, -0.015, cW / 2);
     floor.receiveShadow = true;
-    scene.add(floor);
+    containerGroup.add(floor);
 
     const wallMat = new THREE.MeshStandardMaterial({
       color: 0x60a5fa,
@@ -598,21 +662,40 @@ function ContainerViewer3D({
     const backWall = new THREE.Mesh(new THREE.PlaneGeometry(cW, cH), wallMat);
     backWall.position.set(0, cH / 2, cW / 2);
     backWall.rotation.y = Math.PI / 2;
-    scene.add(backWall);
+    containerGroup.add(backWall);
 
     const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(cL, cH), wallMat);
     leftWall.position.set(cL / 2, cH / 2, 0);
-    scene.add(leftWall);
+    containerGroup.add(leftWall);
 
     const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(cL, cH), wallMat);
     rightWall.position.set(cL / 2, cH / 2, cW);
-    scene.add(rightWall);
+    containerGroup.add(rightWall);
 
     const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(cL, cW), wallMat.clone());
     (ceiling.material as THREE.MeshStandardMaterial).opacity = 0.045;
     ceiling.rotation.x = Math.PI / 2;
     ceiling.position.set(cL / 2, cH, cW / 2);
-    scene.add(ceiling);
+    containerGroup.add(ceiling);
+
+    // Subtle corrugation makes the shell read like a real ISO container while
+    // keeping the wall transparent enough to inspect the load.
+    const ribMat = new THREE.MeshStandardMaterial({
+      color: 0x64748b,
+      transparent: true,
+      opacity: 0.2,
+      roughness: 0.48,
+      metalness: 0.42,
+    });
+    const ribCount = Math.max(12, Math.round(cL / 0.55));
+    for (let index = 1; index < ribCount; index++) {
+      const x = (cL * index) / ribCount;
+      for (const z of [0.008, cW - 0.008]) {
+        const rib = new THREE.Mesh(new THREE.BoxGeometry(0.018, cH * 0.9, 0.018), ribMat);
+        rib.position.set(x, cH / 2, z);
+        containerGroup.add(rib);
+      }
+    }
 
     const doorX = cL;
     const doorMat = new THREE.MeshStandardMaterial({
@@ -624,20 +707,13 @@ function ContainerViewer3D({
       side: THREE.DoubleSide,
       depthWrite: false,
     });
-    for (const z of [cW * 0.25, cW * 0.75]) {
-      const doorPanel = new THREE.Mesh(new THREE.PlaneGeometry(cW * 0.49, cH * 0.98), doorMat);
-      doorPanel.rotation.y = Math.PI / 2;
-      doorPanel.position.set(doorX + 0.006, cH / 2, z);
-      scene.add(doorPanel);
-    }
-
     const frameMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.32, metalness: 0.74 });
     const hardwareMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.18, metalness: 0.92 });
     const addDoorFrame = (geometry: THREE.BufferGeometry, x: number, y: number, z: number) => {
       const mesh = new THREE.Mesh(geometry, frameMat);
       mesh.position.set(x, y, z);
       mesh.castShadow = true;
-      scene.add(mesh);
+      containerGroup.add(mesh);
     };
     addDoorFrame(new THREE.BoxGeometry(0.045, cH, 0.035), doorX + 0.025, cH / 2, 0);
     addDoorFrame(new THREE.BoxGeometry(0.045, cH, 0.035), doorX + 0.025, cH / 2, cW / 2);
@@ -645,18 +721,37 @@ function ContainerViewer3D({
     addDoorFrame(new THREE.BoxGeometry(0.045, 0.04, cW), doorX + 0.025, 0, cW / 2);
     addDoorFrame(new THREE.BoxGeometry(0.045, 0.04, cW), doorX + 0.025, cH, cW / 2);
 
-    const rodGeometry = new THREE.CylinderGeometry(0.012, 0.012, cH * 0.78, 8);
-    for (const z of [cW * 0.28, cW * 0.72]) {
-      const rod = new THREE.Mesh(rodGeometry, hardwareMat);
-      rod.position.set(doorX + 0.052, cH * 0.52, z);
+    const createOpenDoor = (side: "left" | "right") => {
+      const direction = side === "left" ? 1 : -1;
+      const door = new THREE.Group();
+      door.position.set(doorX + 0.018, 0, side === "left" ? 0 : cW);
+      door.rotation.y = direction * THREE.MathUtils.degToRad(32);
+
+      const panel = new THREE.Mesh(new THREE.PlaneGeometry(cW * 0.49, cH * 0.96), doorMat.clone());
+      panel.rotation.y = Math.PI / 2;
+      panel.position.set(0, cH / 2, direction * cW * 0.245);
+      door.add(panel);
+
+      for (const offset of [0.04, 0.16, 0.28, 0.4]) {
+        const rib = new THREE.Mesh(new THREE.BoxGeometry(0.025, cH * 0.9, 0.022), frameMat);
+        rib.position.set(0.012, cH / 2, direction * cW * offset);
+        door.add(rib);
+      }
+
+      const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, cH * 0.8, 10), hardwareMat);
+      rod.position.set(0.045, cH * 0.52, direction * cW * 0.31);
       rod.castShadow = true;
-      scene.add(rod);
+      door.add(rod);
 
       const handle = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.035, cW * 0.12), hardwareMat);
-      handle.position.set(doorX + 0.07, cH * 0.42, z);
+      handle.position.set(0.062, cH * 0.41, direction * cW * 0.31);
       handle.castShadow = true;
-      scene.add(handle);
-    }
+      door.add(handle);
+
+      containerGroup.add(door);
+    };
+    createOpenDoor("left");
+    createOpenDoor("right");
 
     const cargoMeshes: THREE.Mesh[] = [];
     const runningPiece: Record<string, number> = {};
@@ -734,7 +829,8 @@ function ContainerViewer3D({
 
       const faceMat = (tex: THREE.CanvasTexture) => {
         return new THREE.MeshStandardMaterial({
-          map: tex,
+          map: showLabels ? tex : null,
+          color: showLabels ? 0xffffff : baseColor,
           roughness: 0.64,
           metalness: 0.015,
         });
@@ -750,7 +846,16 @@ function ContainerViewer3D({
       boxMesh.position.set(bX + bL / 2, bY + bH / 2, bZ + bW / 2);
       boxMesh.castShadow = true;
       boxMesh.receiveShadow = true;
-      boxMesh.userData = { placedIndex: idx, l: bL, w: bW, h: bH, origL: box.l, origW: box.w };
+      boxMesh.userData = {
+        placedIndex: idx,
+        cargoId: box.cargoId,
+        cargoName: box.cargoName || "Cargo item",
+        l: bL,
+        w: bW,
+        h: bH,
+        origL: box.l,
+        origW: box.w,
+      };
       scene.add(boxMesh);
       cargoMeshes.push(boxMesh);
 
@@ -806,6 +911,24 @@ function ContainerViewer3D({
       renderer.render(scene, camera);
     };
 
+    const setView = (preset: ContainerViewPreset) => {
+      camera.up.set(0, 1, 0);
+      controls.target.set(cL / 2, cH * 0.4, cW / 2);
+      if (preset === "doors") {
+        camera.position.set(cL * 1.42, cH * 0.82, cW * 0.5);
+      } else if (preset === "side") {
+        camera.position.set(cL * 0.52, cH * 0.78, cW * 3.05);
+      } else if (preset === "top") {
+        camera.up.set(0, 0, -1);
+        camera.position.set(cL * 0.5, Math.max(cL * 1.05, cH * 3.4), cW * 0.5);
+      } else {
+        camera.position.set(cL * 1.35, cH * 1.62, cW * 2.35);
+      }
+      camera.lookAt(controls.target);
+      controls.update();
+      renderScene();
+    };
+
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     const dragIntersection = new THREE.Vector3();
@@ -835,6 +958,24 @@ function ContainerViewer3D({
         material.emissive.setHex(color ?? 0x000000);
         material.emissiveIntensity = color === null ? 0 : 0.24;
       });
+    };
+
+    const setCargoHover = (index: number | null) => {
+      cargoMeshes.forEach((mesh) => {
+        const active = index === (mesh.userData.placedIndex as number);
+        const linkedEdges = mesh.userData.linkedEdges as THREE.LineSegments | undefined;
+        if (linkedEdges) {
+          const material = linkedEdges.material as THREE.LineBasicMaterial;
+          material.color.setHex(active ? 0x0369a1 : 0x0f172a);
+          material.opacity = active ? 0.96 : 0.42;
+          material.needsUpdate = true;
+          linkedEdges.scale.setScalar(active ? 1.008 : 1);
+        }
+        if (!dragState || dragState.mesh !== mesh) {
+          highlightMesh(mesh, active ? 0x38bdf8 : null);
+        }
+      });
+      renderScene();
     };
 
     const moveMesh = (mesh: THREE.Mesh, position: THREE.Vector3) => {
@@ -881,8 +1022,25 @@ function ContainerViewer3D({
       renderScene();
     };
 
+    let currentHoverIndex: number | null = null;
     const handlePointerMove = (event: PointerEvent) => {
-      if (!dragState || dragState.pointerId !== event.pointerId) return;
+      if (!dragState) {
+        updatePointer(event);
+        const intersection = raycaster.intersectObjects(cargoMeshes, false)[0];
+        const nextIndex = intersection?.object instanceof THREE.Mesh
+          ? intersection.object.userData.placedIndex as number
+          : null;
+        if (nextIndex !== currentHoverIndex) {
+          currentHoverIndex = nextIndex;
+          setHoveredCargoIndex(nextIndex);
+          setCargoHover(nextIndex);
+        }
+        renderer.domElement.style.cursor = nextIndex !== null
+          ? arrangeMode ? "grab" : "pointer"
+          : "default";
+        return;
+      }
+      if (dragState.pointerId !== event.pointerId) return;
       event.preventDefault();
       updatePointer(event);
       if (!raycaster.ray.intersectPlane(dragState.plane, dragIntersection)) return;
@@ -968,16 +1126,34 @@ function ContainerViewer3D({
 
     const handlePointerUp = (event: PointerEvent) => finishDrag(event, true);
     const handlePointerCancel = (event: PointerEvent) => finishDrag(event, false);
+    const handlePointerLeave = () => {
+      if (dragState) return;
+      currentHoverIndex = null;
+      setHoveredCargoIndex(null);
+      setCargoHover(null);
+    };
 
     renderer.domElement.style.cursor = arrangeMode ? "grab" : "default";
     renderer.domElement.addEventListener("pointerdown", handlePointerDown);
     renderer.domElement.addEventListener("pointermove", handlePointerMove);
     renderer.domElement.addEventListener("pointerup", handlePointerUp);
     renderer.domElement.addEventListener("pointercancel", handlePointerCancel);
+    renderer.domElement.addEventListener("pointerleave", handlePointerLeave);
     controls.addEventListener("change", renderScene);
     renderScene();
 
-    sceneRef.current = { renderer, scene, camera, controls, cargoMeshes, render: renderScene };
+    sceneRef.current = {
+      renderer,
+      scene,
+      camera,
+      controls,
+      cargoMeshes,
+      gridObjects,
+      containerGroup,
+      setCargoHover,
+      setView,
+      render: renderScene,
+    };
 
     if (onReadyExport) {
       const exportSnapshots: SnapshotExportFn = () => {
@@ -1054,6 +1230,7 @@ function ContainerViewer3D({
       renderer.domElement.removeEventListener("pointermove", handlePointerMove);
       renderer.domElement.removeEventListener("pointerup", handlePointerUp);
       renderer.domElement.removeEventListener("pointercancel", handlePointerCancel);
+      renderer.domElement.removeEventListener("pointerleave", handlePointerLeave);
       controls.removeEventListener("change", renderScene);
       renderer.domElement.removeEventListener("webglcontextlost", handleContextLost);
       controls.dispose();
@@ -1086,7 +1263,26 @@ function ContainerViewer3D({
         el.removeChild(renderer.domElement);
       }
     };
-  }, [placed, container, unitSystem, arrangeMode, rendererAttempt, webglError]);
+  }, [
+    placed,
+    container,
+    unitSystem,
+    arrangeMode,
+    rendererAttempt,
+    webglError,
+    isFullscreen,
+    showGrid,
+    showShell,
+    showLabels,
+  ]);
+
+  useEffect(() => {
+    sceneRef.current?.setView(activeView);
+  }, [activeView]);
+
+  useEffect(() => {
+    sceneRef.current?.setCargoHover(hoveredCargoIndex);
+  }, [hoveredCargoIndex]);
 
   useEffect(() => {
     const sceneState = sceneRef.current;
@@ -1112,12 +1308,43 @@ function ContainerViewer3D({
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-end mb-2 gap-2 flex-wrap">
+    <div
+      ref={workspaceRef}
+      className={`bg-white ${isFullscreen ? "h-screen w-screen overflow-hidden p-3 sm:p-4" : "rounded-xl"}`}
+      data-testid="container-viewer-workspace"
+    >
+      <div className="mb-2 flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-white shadow-sm">
+            <Move3d className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-xs font-bold text-slate-900">3D loading workspace</p>
+            <p className="hidden text-[10px] text-slate-500 sm:block">Inspect, sequence and safely adjust every cargo unit</p>
+          </div>
+        </div>
         <div className="flex items-center gap-2 text-xs text-slate-600">
           <span className="bg-white border border-slate-200 rounded-md px-2 py-1 shadow-sm">L <span className="font-semibold text-slate-800">{fmt(container.lengthIn)}</span></span>
           <span className="bg-white border border-slate-200 rounded-md px-2 py-1 shadow-sm">W <span className="font-semibold text-slate-800">{fmt(container.widthIn)}</span></span>
           <span className="bg-white border border-slate-200 rounded-md px-2 py-1 shadow-sm">H <span className="font-semibold text-slate-800">{fmt(container.heightIn)}</span></span>
+          <button
+            type="button"
+            onClick={() => setSidebarOpen((current) => !current)}
+            className="hidden h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 font-semibold text-slate-700 shadow-sm hover:border-slate-300 lg:flex"
+            aria-pressed={sidebarOpen}
+          >
+            <Settings2 className="h-3.5 w-3.5" />
+            Controls
+          </button>
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="flex h-8 items-center gap-1.5 rounded-lg bg-slate-900 px-2.5 font-semibold text-white shadow-sm transition hover:bg-slate-800"
+            data-testid="button-container-fullscreen"
+          >
+            {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+            <span className="hidden sm:inline">{isFullscreen ? "Exit full screen" : "Full workspace"}</span>
+          </button>
         </div>
       </div>
       {webglError ? (
@@ -1130,8 +1357,9 @@ function ContainerViewer3D({
           }}
         />
       ) : (
+        <div className={`grid min-h-0 gap-3 ${sidebarOpen ? "lg:grid-cols-[minmax(0,1fr)_300px]" : "grid-cols-1"} ${isFullscreen ? "h-[calc(100vh-4.5rem)]" : ""}`}>
         <div
-          className="relative w-full h-[400px] md:h-[500px] rounded-xl overflow-hidden border border-slate-200/90 bg-[radial-gradient(ellipse_at_45%_0%,#ffffff_0%,#f3f6fa_48%,#e6ebf1_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_45px_-34px_rgba(15,23,42,0.45)]"
+          className={`relative w-full rounded-xl overflow-hidden border border-slate-200/90 bg-[radial-gradient(ellipse_at_45%_0%,#ffffff_0%,#f3f6fa_48%,#e6ebf1_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_45px_-34px_rgba(15,23,42,0.45)] ${isFullscreen ? "h-full min-h-[480px]" : "h-[460px] md:h-[560px]"}`}
           data-testid="container-3d-viewer"
         >
           <div ref={mountRef} className="absolute inset-0" />
@@ -1208,6 +1436,26 @@ function ContainerViewer3D({
               </button>
             )}
           </div>
+          {hoveredCargoIndex !== null && placed[hoveredCargoIndex] && (
+            <div
+              className="pointer-events-none absolute left-1/2 top-14 z-10 w-max max-w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-xl border border-white/90 bg-slate-950/[0.88] px-3 py-2 text-white shadow-xl shadow-slate-900/20 backdrop-blur-md"
+              data-testid="container-cargo-hover-card"
+            >
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-sm ring-2 ring-white/20" style={{ backgroundColor: placed[hoveredCargoIndex].color }} />
+                <span className="max-w-44 truncate text-[11px] font-bold">{placed[hoveredCargoIndex].cargoName || "Cargo item"}</span>
+                <span className="h-3 w-px bg-white/20" />
+                <span className="text-[10px] text-slate-200">
+                  {fmt(placed[hoveredCargoIndex].l)} × {fmt(placed[hoveredCargoIndex].w)} × {fmt(placed[hoveredCargoIndex].h)}
+                </span>
+                <span className="hidden text-[10px] text-slate-300 sm:inline">
+                  {unitSystem === "metric"
+                    ? `${(placed[hoveredCargoIndex].weight * LB_TO_KG).toFixed(0)} kg`
+                    : `${placed[hoveredCargoIndex].weight.toFixed(0)} lb`}
+                </span>
+              </div>
+            </div>
+          )}
           {sequenceMode ? (
             <div className="absolute bottom-3 left-3 right-3 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:min-w-[390px] rounded-xl border border-indigo-200 bg-white/92 p-2 shadow-lg backdrop-blur" data-testid="loading-sequence-controls">
               <div className="flex items-center gap-2">
@@ -1254,6 +1502,136 @@ function ContainerViewer3D({
               {arrangeMode ? placementMessage : "Drag to rotate · Scroll or pinch to zoom"}
             </div>
           )}
+        </div>
+        {sidebarOpen && (
+          <aside className="hidden min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/80 shadow-sm lg:flex" data-testid="container-viewer-sidebar">
+            <div className="border-b border-slate-200 bg-white p-3.5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-primary">
+                  <Ship className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-bold text-slate-900">{container.name}</p>
+                  <p className="mt-0.5 text-[10px] text-slate-500">{fmt(container.lengthIn)} × {fmt(container.widthIn)} × {fmt(container.heightIn)}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3 border-b border-slate-200 p-3">
+              <div>
+                <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                  <Camera className="h-3.5 w-3.5" /> Camera
+                </div>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {([
+                    ["isometric", "3D"],
+                    ["doors", "Doors"],
+                    ["side", "Side"],
+                    ["top", "Top"],
+                  ] as const).map(([preset, label]) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setActiveView(preset)}
+                      className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${activeView === preset ? "border-blue-400 bg-blue-50 text-primary shadow-sm" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`}
+                      aria-pressed={activeView === preset}
+                      data-testid={`button-container-view-${preset}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                  <Settings2 className="h-3.5 w-3.5" /> Scene layers
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { label: "Grid", active: showGrid, set: setShowGrid, icon: Grid3X3 },
+                    { label: "Shell", active: showShell, set: setShowShell, icon: Eye },
+                    { label: "Labels", active: showLabels, set: setShowLabels, icon: Box },
+                  ].map(({ label, active, set, icon: Icon }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => set(!active)}
+                      className={`flex items-center justify-center gap-1 rounded-lg border px-1 py-2 text-[9px] font-bold transition ${active ? "border-slate-300 bg-white text-slate-800" : "border-slate-200 bg-slate-100 text-slate-400"}`}
+                      aria-pressed={active}
+                      data-testid={`button-container-layer-${label.toLowerCase()}`}
+                    >
+                      <Icon className="h-3 w-3" /> {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="border-b border-slate-200 bg-white p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Load summary</p>
+                <Badge className="border-0 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700 hover:bg-emerald-50">{placed.length} items</Badge>
+              </div>
+              <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-1.5 text-[10px]">
+                <span className="font-medium text-slate-500">Used</span><span className="text-right font-medium text-slate-400">Capacity</span><span className="text-right font-medium text-slate-400">Free</span>
+                {[
+                  [fmt(loadSummary.usedLength), fmt(container.lengthIn), fmt(Math.max(0, container.lengthIn - loadSummary.usedLength))],
+                  [fmt(loadSummary.usedWidth), fmt(container.widthIn), fmt(Math.max(0, container.widthIn - loadSummary.usedWidth))],
+                  [fmt(loadSummary.usedHeight), fmt(container.heightIn), fmt(Math.max(0, container.heightIn - loadSummary.usedHeight))],
+                ].map((row, index) => (
+                  <Fragment key={index}>
+                    <span className="font-semibold text-slate-800">{row[0]}</span>
+                    <span className="text-right text-slate-500">{row[1]}</span>
+                    <span className="text-right font-bold text-emerald-600">{row[2]}</span>
+                  </Fragment>
+                ))}
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="rounded-lg bg-slate-50 px-2.5 py-2">
+                  <p className="text-[9px] text-slate-500">Weight</p>
+                  <p className="mt-0.5 text-[11px] font-bold text-slate-900">{unitSystem === "metric" ? `${(loadSummary.totalWeight * LB_TO_KG).toLocaleString(undefined, { maximumFractionDigits: 0 })} kg` : `${loadSummary.totalWeight.toLocaleString(undefined, { maximumFractionDigits: 0 })} lb`}</p>
+                </div>
+                <div className="rounded-lg bg-slate-50 px-2.5 py-2">
+                  <p className="text-[9px] text-slate-500">Volume used</p>
+                  <p className="mt-0.5 text-[11px] font-bold text-slate-900">{unitSystem === "metric" ? `${(loadSummary.usedVolumeCuFt * 0.0283168).toFixed(1)} m³` : `${loadSummary.usedVolumeCuFt.toFixed(1)} ft³`}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-2 [scrollbar-width:thin]">
+              <div className="sticky top-0 z-10 mb-1 flex items-center justify-between rounded-lg bg-slate-50/95 px-2 py-1.5 backdrop-blur">
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Cargo units</p>
+                <p className="text-[9px] text-slate-400">Hover to inspect</p>
+              </div>
+              <div className="space-y-1">
+                {placed.map((box, index) => (
+                  <button
+                    key={`${box.cargoId}-${index}`}
+                    type="button"
+                    onMouseEnter={() => setHoveredCargoIndex(index)}
+                    onMouseLeave={() => setHoveredCargoIndex(null)}
+                    onFocus={() => setHoveredCargoIndex(index)}
+                    onBlur={() => setHoveredCargoIndex(null)}
+                    className={`w-full rounded-xl border p-2 text-left transition ${hoveredCargoIndex === index ? "border-blue-300 bg-white shadow-sm ring-2 ring-blue-100" : "border-transparent hover:border-slate-200 hover:bg-white"}`}
+                    data-testid={`button-container-cargo-${index}`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-900" style={{ backgroundColor: `${box.color}45` }}>
+                        <Box className="h-3.5 w-3.5" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[10px] font-bold text-slate-800">{box.cargoName || `Cargo ${index + 1}`}</span>
+                        <span className="mt-0.5 block truncate text-[9px] text-slate-500">{fmt(box.l)} × {fmt(box.w)} × {fmt(box.h)}</span>
+                        <span className="mt-0.5 block text-[9px] text-slate-400">{unitSystem === "metric" ? `${(box.weight * LB_TO_KG).toFixed(0)} kg` : `${box.weight.toFixed(0)} lb`} · x {box.x.toFixed(0)} / y {box.y.toFixed(0)}</span>
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </aside>
+        )}
         </div>
       )}
     </div>
@@ -1647,6 +2025,7 @@ function ContainerComparisonPanel({
 }
 
 export default function ContainerCalculator() {
+  const isEmbedMode = typeof window !== "undefined" && window.location.pathname.startsWith("/embed/");
   usePageMeta({
     title: "Free 3D Container Loading Calculator | AccessToNorth.com",
     description:
@@ -1713,6 +2092,7 @@ export default function ContainerCalculator() {
   const [activeResultTab, setActiveResultTab] = useState<ResultWorkspaceTab>("plan");
   const [activeResultContainer, setActiveResultContainer] = useState(0);
   const [cogUndoLayouts, setCogUndoLayouts] = useState<Record<number, PlacedBox[]>>({});
+  const [creatingShareLink, setCreatingShareLink] = useState(false);
 
   const [showImportModal, setShowImportModal] = useState(false);
   const [importStep, setImportStep] = useState<"upload" | "mapping" | "preview">("upload");
@@ -2340,6 +2720,56 @@ export default function ContainerCalculator() {
     }
   }, [multiResult, unitSystem, toast]);
 
+  const handleSharePlan = useCallback(async () => {
+    if (!multiResult || multiResult.containers.length === 0 || creatingShareLink) return;
+    setCreatingShareLink(true);
+    try {
+      const response = await fetch("/api/shared-load-plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: `${multiResult.totalContainers}-container loading plan`,
+          unitSystem,
+          containers: multiResult.containers.map((entry) => ({
+            label: entry.label,
+            container: entry.container,
+            placed: entry.result.placed,
+          })),
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.url) {
+        throw new Error(data.message || "Could not create a share link.");
+      }
+      const absoluteUrl = new URL(data.url, window.location.origin).toString();
+      try {
+        await navigator.clipboard.writeText(absoluteUrl);
+      } catch {
+        const textArea = document.createElement("textarea");
+        textArea.value = absoluteUrl;
+        textArea.style.position = "fixed";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        textArea.remove();
+      }
+      toast({
+        title: "Share link copied",
+        description: "Anyone with the link can open this read-only loading plan for 180 days.",
+      });
+    } catch (error) {
+      console.error("Share-link error:", error);
+      toast({
+        title: "Could not create share link",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingShareLink(false);
+    }
+  }, [creatingShareLink, multiResult, toast, unitSystem]);
+
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
       {calculating && (
@@ -2357,15 +2787,15 @@ export default function ContainerCalculator() {
           </div>
         </div>
       )}
-      <Navbar />
-      <main className="flex-1 pt-28 pb-16">
+      {!isEmbedMode && <Navbar />}
+      <main className={`flex-1 pb-16 ${isEmbedMode ? "pt-6" : "pt-28"}`}>
         <div className="container mx-auto px-4 md:px-6">
-          <Breadcrumbs
+          {!isEmbedMode && <Breadcrumbs
             items={[
               { label: "Tools", href: "/tools" },
               { label: "Container Loading Calculator" },
             ]}
-          />
+          />}
 
           <div className="text-center max-w-3xl mx-auto mb-10">
             <Badge className="mb-3 bg-primary/10 text-primary border-0 px-3 py-1">
@@ -4616,7 +5046,18 @@ export default function ContainerCalculator() {
                           );
                         })}
                       </div>
-                      <div className="grid w-full grid-cols-2 gap-2 lg:flex lg:w-auto">
+                      <div className="grid w-full grid-cols-3 gap-2 lg:flex lg:w-auto">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5 px-2 text-xs sm:px-3 sm:text-sm"
+                          onClick={handleSharePlan}
+                          disabled={creatingShareLink}
+                          data-testid="button-share-loading-plan"
+                        >
+                          {creatingShareLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4 text-primary" />}
+                          Share
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"
@@ -5200,8 +5641,8 @@ export default function ContainerCalculator() {
           </div>
         </section>
       </main>
-      <ToolWorkedExample kind="container" />
-      <Footer />
+      {!isEmbedMode && <ToolWorkedExample kind="container" />}
+      {!isEmbedMode && <Footer />}
     </div>
   );
 }
