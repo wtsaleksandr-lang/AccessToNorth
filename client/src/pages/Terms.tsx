@@ -42,33 +42,40 @@ export default function Terms() {
             <section>
               <h2 className="text-xl font-semibold font-display mb-3">5. Fees and Pricing</h2>
               <p className="text-slate-600 leading-relaxed">
-                All fees are displayed in USD and represent the total cost of our administrative services. Pricing is all-inclusive for the scope described in each service package. Government filing fees, where applicable, are included in the stated price unless otherwise noted on the specific service description. No hidden charges will be applied beyond the listed price at checkout.
+                Fees are displayed in the currency shown at checkout. Fixed-scope administrative services are one-time purchases. Container Loading Embed and API plans are recurring subscriptions billed monthly or annually as selected. The exact price, currency, renewal interval, and any discount are displayed before payment details are submitted.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold font-display mb-3">6. Limitation of Liability</h2>
+              <h2 className="text-xl font-semibold font-display mb-3">6. Tool Trials and Subscriptions</h2>
+              <p className="text-slate-600 leading-relaxed">
+                Eligible customers receive one 14-day trial of a paid Container Loading plan. A payment method is required, but it is not charged until the trial ends. Unless cancelled before the date shown in Stripe Checkout, the plan automatically renews at the displayed monthly or annual price. You may cancel or update payment details through the Stripe billing portal. Cancellation stops future renewals and does not retroactively refund a completed billing period. Usage limits and overage terms shown for the selected plan apply.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-xl font-semibold font-display mb-3">7. Limitation of Liability</h2>
               <p className="text-slate-600 leading-relaxed">
                 Our total liability for any claim arising from or related to our services is limited to the amount you paid for the specific service in question. We are not liable for any indirect, incidental, consequential, or special damages, including but not limited to lost profits, business interruptions, or penalties resulting from government decisions or delays.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold font-display mb-3">7. Chargebacks and Disputes</h2>
+              <h2 className="text-xl font-semibold font-display mb-3">8. Chargebacks and Disputes</h2>
               <p className="text-slate-600 leading-relaxed">
                 If you have a concern about a charge, we encourage you to contact our support team at <a href="mailto:operations@accesstonorth.com" className="text-primary hover:underline">operations@accesstonorth.com</a> before initiating a chargeback with your payment provider. We are committed to resolving billing concerns promptly and fairly.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold font-display mb-3">8. Governing Law and Disputes</h2>
+              <h2 className="text-xl font-semibold font-display mb-3">9. Governing Law and Disputes</h2>
               <p className="text-slate-600 leading-relaxed">
                 These terms are governed by the laws of the Province of Ontario, Canada. Any disputes arising from these terms or our services shall be resolved in the courts located in Ontario, Canada.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold font-display mb-3">9. Contact</h2>
+              <h2 className="text-xl font-semibold font-display mb-3">10. Contact</h2>
               <p className="text-slate-600 leading-relaxed">
                 For questions about these terms, please contact us at <a href="mailto:operations@accesstonorth.com" className="text-primary hover:underline">operations@accesstonorth.com</a> or through our <a href="/contact" className="text-primary hover:underline">contact page</a>.
               </p>

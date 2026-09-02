@@ -20,6 +20,8 @@ import { registerVapiRoutes } from "./vapiRoutes";
 import { registerFreightRoutes } from "./freightRoutes";
 import { registerSharedLoadPlanRoutes } from "./sharedLoadPlanRoutes";
 import { registerContainerLoadingApiRoutes } from "./containerLoadingApiRoutes";
+import { registerToolSubscriptionRoutes } from "./toolSubscriptionRoutes";
+import { ensureToolSubscriptionTables, handleToolSubscriptionEvent, startToolSubscriptionLifecycleJobs } from "./toolSubscriptionService";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { runMigrations } from 'stripe-replit-sync';
@@ -180,6 +182,7 @@ app.post(
         const { getUncachableStripeClient } = await import('./stripeClient');
         const stripe = await getUncachableStripeClient();
         const event = JSON.parse(req.body.toString());
+        await handleToolSubscriptionEvent(event);
 
         // Idempotency note:
         //  - hs-classification: guarded by `order.status === 'Awaiting Payment'`
@@ -194,7 +197,7 @@ app.post(
           const customerEmail =
             session.customer_email || session.customer_details?.email;
           const customerName = session.customer_details?.name || null;
-          if (customerEmail) {
+          if (customerEmail && session.metadata?.purchaseType !== 'tool-subscription') {
             try {
               const { sendEmail, buildPaymentFailedEmail } = await import('./emailService');
               const notif = buildPaymentFailedEmail(customerName, session.id);
@@ -412,6 +415,12 @@ app.use((req, res, next) => {
   } catch (err: any) {
     console.warn('Stripe initialization skipped (integration not connected):', err.message);
   }
+  try {
+    await ensureToolSubscriptionTables();
+    startToolSubscriptionLifecycleJobs();
+  } catch (err: any) {
+    console.warn('Tool subscription lifecycle unavailable:', err.message);
+  }
   await ensureTariffDataset();
   await ensureTrigramIndexes();
   registerPortalRoutes(app);
@@ -429,6 +438,7 @@ app.use((req, res, next) => {
   registerFreightRoutes(app);
   registerSharedLoadPlanRoutes(app);
   registerContainerLoadingApiRoutes(app);
+  registerToolSubscriptionRoutes(app);
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {

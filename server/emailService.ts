@@ -636,6 +636,65 @@ export function buildPaymentFailedEmail(
   };
 }
 
+type ToolEmailKind = "welcome" | "reminder" | "converted" | "cancelled" | "payment-failed" | "winback";
+
+export function buildToolSubscriptionEmail(input: {
+  kind: ToolEmailKind;
+  email: string;
+  planName: string;
+  trialEnd?: Date | null;
+  daysRemaining?: number;
+  manageUrl?: string;
+  promotionCode?: string;
+}): SendEmailParams {
+  const trialDate = input.trialEnd?.toLocaleDateString("en-CA", { month: "long", day: "numeric", year: "numeric", timeZone: "America/Toronto" });
+  const manageUrl = input.manageUrl || `${BASE_URL}/developers/container-loading-api`;
+  const content: Record<ToolEmailKind, { subject: string; heading: string; copy: string; cta: string }> = {
+    welcome: {
+      subject: `Your ${input.planName} trial is ready`,
+      heading: "Your 14-day trial has started",
+      copy: `Your ${input.planName} workspace is active${trialDate ? ` through <strong>${trialDate}</strong>` : ""}. Your card will not be charged before the trial ends, and you can cancel any time.`,
+      cta: "Open your plan",
+    },
+    reminder: {
+      subject: `${input.daysRemaining} day${input.daysRemaining === 1 ? "" : "s"} left in your AccessToNorth trial`,
+      heading: `Your trial ends in ${input.daysRemaining} day${input.daysRemaining === 1 ? "" : "s"}`,
+      copy: `Your ${input.planName} trial${trialDate ? ` ends on <strong>${trialDate}</strong>` : " is almost complete"}. It will continue as a paid subscription unless you cancel before then.`,
+      cta: "Review subscription",
+    },
+    converted: {
+      subject: `Your ${input.planName} subscription is active`,
+      heading: "Thanks for subscribing",
+      copy: `Your ${input.planName} subscription is active. Hosted embed and API customers automatically use the latest compatible loading engine—there is no package to reinstall.`,
+      cta: "Manage subscription",
+    },
+    cancelled: {
+      subject: `Your ${input.planName} trial has ended`,
+      heading: "Your plan is no longer active",
+      copy: `Your ${input.planName} trial or subscription has ended and no further renewal will be taken. Your public loading plans remain viewable, while paid embed and API access is disabled.`,
+      cta: "Compare plans",
+    },
+    "payment-failed": {
+      subject: `Payment action needed for ${input.planName}`,
+      heading: "We could not process your renewal",
+      copy: `Please update the payment method for your ${input.planName} subscription to avoid an interruption to embed or API access.`,
+      cta: "Update payment method",
+    },
+    winback: {
+      subject: `Come back for 50% off for 6 months`,
+      heading: "A practical reason to give it another run",
+      copy: `Restart ${input.planName} and receive <strong>50% off your first 6 paid months</strong>. Use code <strong>${escapeEmailHtml(input.promotionCode || "")}</strong> within 14 days. The discount ends automatically after month six.`,
+      cta: "Restart with 50% off",
+    },
+  };
+  const selected = content[input.kind];
+  return {
+    to: input.email,
+    subject: selected.subject,
+    html: emailWrapper(`<div class="body"><h2>${selected.heading}</h2><p>${selected.copy}</p><p style="text-align:center;margin:24px 0"><a href="${manageUrl}" class="btn">${selected.cta}</a></p><p style="font-size:12px;color:#718096">Questions? Reply to this email and our team will help.</p></div>`),
+  };
+}
+
 /**
  * Generic status-update email that works for every service type — use this
  * when you don't have HS-classification metadata. The HS-specific variant
