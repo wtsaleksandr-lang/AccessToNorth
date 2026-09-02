@@ -1,4 +1,5 @@
 import { getUncachableStripeClient } from './stripeClient';
+import { TOOL_PLANS, WINBACK_MONTHS, WINBACK_PERCENT_OFF } from '../shared/toolPlans';
 
 const PACKAGES = [
   {
@@ -106,6 +107,49 @@ export async function seedProducts() {
     });
 
     console.log(`Created product "${pkg.name}" ($${(pkg.price / 100).toFixed(2)})`);
+  }
+
+  for (const plan of TOOL_PLANS) {
+    let product = existingProducts.data.find((candidate) => candidate.metadata?.toolTier === plan.tier);
+    if (!product) {
+      product = await stripe.products.create({
+        name: `Container Loading ${plan.name}`,
+        description: plan.apiAccess
+          ? 'Hosted container-loading optimization API with continuously updated packing engine.'
+          : 'Hosted container-loading calculator for embedding in a logistics website.',
+        metadata: { toolTier: plan.tier, productFamily: 'container-loading' },
+      });
+    }
+
+    const prices = await stripe.prices.list({ product: product.id, active: true, limit: 100 });
+    const exists = prices.data.some((price) =>
+      price.metadata?.toolPlanId === plan.id &&
+      price.unit_amount === plan.amount &&
+      price.recurring?.interval === plan.interval,
+    );
+    if (!exists) {
+      await stripe.prices.create({
+        product: product.id,
+        unit_amount: plan.amount,
+        currency: 'cad',
+        recurring: { interval: plan.interval },
+        nickname: plan.id,
+        metadata: { toolPlanId: plan.id, toolTier: plan.tier },
+      });
+      console.log(`Created recurring price for ${plan.id}`);
+    }
+  }
+
+  const coupons = await stripe.coupons.list({ limit: 100 });
+  if (!coupons.data.some((coupon) => coupon.metadata?.campaign === 'tool-trial-winback-2026')) {
+    await stripe.coupons.create({
+      name: `${WINBACK_PERCENT_OFF}% off for ${WINBACK_MONTHS} months`,
+      percent_off: WINBACK_PERCENT_OFF,
+      duration: 'repeating',
+      duration_in_months: WINBACK_MONTHS,
+      metadata: { campaign: 'tool-trial-winback-2026' },
+    });
+    console.log('Created tool subscription win-back coupon');
   }
 
   console.log('Product seeding complete.');

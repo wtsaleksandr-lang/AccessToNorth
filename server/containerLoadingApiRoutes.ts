@@ -6,6 +6,10 @@ import {
   recommendContainer,
   type CargoItem,
 } from "../client/src/lib/containerPacking";
+import { consumeApiAllowance, validateSubscriptionApiKey } from "./toolSubscriptionService";
+import { getToolPlan } from "../shared/toolPlans";
+
+const ENGINE_VERSION = process.env.REPLIT_DEPLOYMENT_ID || process.env.GIT_COMMIT_SHA || "current";
 
 const requestSchema = z.object({
   container: z.enum(["auto", "20dc", "40dc", "40hc", "45hc"]).default("auto"),
@@ -46,19 +50,16 @@ function rateAllowed(key: string) {
 }
 
 export function registerContainerLoadingApiRoutes(app: Express) {
-  app.post("/api/v1/container-load-plans", (req, res) => {
+  app.post("/api/v1/container-load-plans", async (req, res) => {
     const keys = configuredApiKeys();
-    if (keys.size === 0) {
-      return res.status(503).json({ error: "api_not_configured", message: "Container Loading API access is not configured." });
-    }
     const key = extractBearer(req.header("authorization")) || req.header("x-api-key") || "";
-    if (!keys.has(key)) {
+    const subscription = keys.has(key) ? { plan_id: "legacy", stripe_subscription_id: "" } : await validateSubscriptionApiKey(key).catch(() => null);
+    if (!subscription) {
       return res.status(401).json({ error: "invalid_api_key", message: "Provide a valid API key." });
     }
     if (!rateAllowed(key)) {
       return res.status(429).json({ error: "rate_limit", message: "Too many requests. Try again in one minute." });
     }
-
     const parsed = requestSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
@@ -66,6 +67,13 @@ export function registerContainerLoadingApiRoutes(app: Express) {
         message: parsed.error.issues[0]?.message || "Invalid request.",
         path: parsed.error.issues[0]?.path.join(".") || undefined,
       });
+    }
+    if (subscription.plan_id !== "legacy") {
+      const plan = getToolPlan(subscription.plan_id);
+      const count = plan ? await consumeApiAllowance(subscription.stripe_subscription_id, plan.monthlyCalculations) : undefined;
+      if (!count) return res.status(429).json({ error: "monthly_limit", message: "Monthly calculation allowance reached. Contact support to add capacity." });
+      res.setHeader("X-RateLimit-Monthly-Limit", String(plan!.monthlyCalculations));
+      res.setHeader("X-RateLimit-Monthly-Remaining", String(Math.max(0, plan!.monthlyCalculations - count)));
     }
 
     const palette = ["#0f766e", "#2563eb", "#b45309", "#7c3aed", "#be123c"];
@@ -101,7 +109,11 @@ export function registerContainerLoadingApiRoutes(app: Express) {
     }
     const plan = recommendation?.plan || packIntoContainers(items, selected, parsed.data.maxContainers);
 
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("X-AccessToNorth-Engine-Version", ENGINE_VERSION);
     return res.json({
+      apiVersion: "v1",
+      engineVersion: ENGINE_VERSION,
       recommendedContainer: selected,
       complete: plan.totalPiecesLoaded === plan.totalPiecesAll,
       totalContainers: plan.totalContainers,
@@ -121,4 +133,3 @@ export function registerContainerLoadingApiRoutes(app: Express) {
     });
   });
 }
-
