@@ -96,6 +96,7 @@ const KG_TO_LB = 1 / LB_TO_KG;
 type BulkApplyScope = "all" | "selected" | "defaults";
 type ResultWorkspaceTab = "overview" | "plan" | "details";
 type ContainerViewPreset = "isometric" | "doors" | "side" | "top";
+type CargoWorkspaceZone = "dock1" | "loaded" | "dock2";
 
 const CARGO_COLORS = [
   "#0f766e", "#2563eb", "#b45309", "#7c3aed", "#be123c",
@@ -312,7 +313,7 @@ function ContainerFallback2D({
                   height={Math.max(0.5, box.w - 1)}
                   rx="1"
                   fill={box.color}
-                  fillOpacity="0.86"
+                  fillOpacity="0.76"
                   stroke="#ffffff"
                   strokeWidth="0.8"
                 />
@@ -384,6 +385,7 @@ export function ContainerViewer3D({
   const [showLabels, setShowLabels] = useState(true);
   const [hoveredCargoIndex, setHoveredCargoIndex] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activeCargoZone, setActiveCargoZone] = useState<CargoWorkspaceZone>("loaded");
   const arrangementHistoryRef = useRef<PlacedBox[][]>([]);
   const optimizedLayoutRef = useRef<PlacedBox[]>(placed.map((box) => ({ ...box })));
   const optimizedLayoutIdentityRef = useRef("");
@@ -601,6 +603,29 @@ export function ContainerViewer3D({
     const gridObjects: THREE.Object3D[] = [ground, grid];
     ground.visible = showGrid;
     grid.visible = showGrid;
+
+    // Two quiet staging areas make the loading direction immediately clear
+    // and leave room for the upcoming dock-based manual workflow.
+    const createDockOutline = (zMin: number, zMax: number) => {
+      const xMin = -cL * 0.08;
+      const xMax = cL * 1.08;
+      const points = [
+        new THREE.Vector3(xMin, -0.005, zMin),
+        new THREE.Vector3(xMax, -0.005, zMin),
+        new THREE.Vector3(xMax, -0.005, zMax),
+        new THREE.Vector3(xMin, -0.005, zMax),
+        new THREE.Vector3(xMin, -0.005, zMin),
+      ];
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
+      const material = new THREE.LineDashedMaterial({ color: 0x94a3b8, dashSize: 0.22, gapSize: 0.14, transparent: true, opacity: 0.65 });
+      const outline = new THREE.Line(geometry, material);
+      outline.computeLineDistances();
+      outline.visible = showGrid;
+      scene.add(outline);
+      gridObjects.push(outline);
+    };
+    createDockOutline(-cW * 1.58, -cW * 0.2);
+    createDockOutline(cW * 1.2, cW * 2.58);
 
     const containerGroup = new THREE.Group();
     containerGroup.name = "container-shell";
@@ -831,6 +856,8 @@ export function ContainerViewer3D({
         return new THREE.MeshStandardMaterial({
           map: showLabels ? tex : null,
           color: showLabels ? 0xffffff : baseColor,
+          transparent: true,
+          opacity: 0.78,
           roughness: 0.64,
           metalness: 0.015,
         });
@@ -906,6 +933,8 @@ export function ContainerViewer3D({
       fmtLabel(container.heightIn),
       new THREE.Vector3(-0.3, cH / 2, -0.2)
     );
+    addAxisLabel("DOCK 1", new THREE.Vector3(cL / 2, 0.015, -cW * 0.9));
+    addAxisLabel("DOCK 2", new THREE.Vector3(cL / 2, 0.015, cW * 1.9));
 
     const renderScene = () => {
       renderer.render(scene, camera);
@@ -1274,6 +1303,7 @@ export function ContainerViewer3D({
     showGrid,
     showShell,
     showLabels,
+    sidebarOpen,
   ]);
 
   useEffect(() => {
@@ -1357,12 +1387,12 @@ export function ContainerViewer3D({
           }}
         />
       ) : (
-        <div className={`grid min-h-0 gap-3 ${sidebarOpen ? "lg:grid-cols-[minmax(0,1fr)_300px]" : "grid-cols-1"} ${isFullscreen ? "h-[calc(100vh-4.5rem)]" : ""}`}>
+        <div className={`relative min-h-0 ${isFullscreen ? "h-[calc(100vh-4.5rem)]" : "h-[540px] md:h-[620px] xl:h-[700px]"}`}>
         <div
-          className={`relative w-full rounded-xl overflow-hidden border border-slate-200/90 bg-[radial-gradient(ellipse_at_45%_0%,#ffffff_0%,#f3f6fa_48%,#e6ebf1_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_45px_-34px_rgba(15,23,42,0.45)] ${isFullscreen ? "h-full min-h-[480px]" : "h-[460px] md:h-[560px]"}`}
+          className="relative h-full min-h-0 w-full overflow-hidden rounded-xl border border-slate-200/90 bg-[radial-gradient(ellipse_at_45%_0%,#ffffff_0%,#f3f6fa_48%,#e6ebf1_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_45px_-34px_rgba(15,23,42,0.45)]"
           data-testid="container-3d-viewer"
         >
-          <div ref={mountRef} className="absolute inset-0" />
+          <div ref={mountRef} className={`absolute inset-y-0 left-0 ${sidebarOpen ? "right-0 lg:right-[344px]" : "right-0"}`} />
           <div className="absolute top-3 left-3 right-3 flex items-center gap-2 flex-wrap">
             <div className="h-8 px-2.5 rounded-lg border border-white/80 bg-white/75 backdrop-blur text-[11px] font-semibold text-slate-700 shadow-sm flex items-center gap-1.5 pointer-events-none">
               <Box className="w-3.5 h-3.5 text-primary" />
@@ -1504,7 +1534,7 @@ export function ContainerViewer3D({
           )}
         </div>
         {sidebarOpen && (
-          <aside className="hidden min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/80 shadow-sm lg:flex" data-testid="container-viewer-sidebar">
+          <aside className="absolute inset-y-3 right-3 z-20 hidden w-[320px] min-h-0 flex-col overflow-hidden rounded-3xl border border-white/80 bg-white/88 shadow-[0_24px_70px_-24px_rgba(15,23,42,0.38)] backdrop-blur-xl lg:flex" data-testid="container-viewer-sidebar">
             <div className="border-b border-slate-200 bg-white p-3.5">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-primary">
@@ -1514,6 +1544,25 @@ export function ContainerViewer3D({
                   <p className="truncate text-xs font-bold text-slate-900">{container.name}</p>
                   <p className="mt-0.5 text-[10px] text-slate-500">{fmt(container.lengthIn)} × {fmt(container.widthIn)} × {fmt(container.heightIn)}</p>
                 </div>
+              </div>
+              <div className="mt-3 grid grid-cols-3 rounded-xl bg-slate-100 p-1" role="tablist" aria-label="Cargo workspace zones">
+                {([
+                  ["dock1", "Dock 1"],
+                  ["loaded", "Loaded"],
+                  ["dock2", "Dock 2"],
+                ] as const).map(([zone, label]) => (
+                  <button
+                    key={zone}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeCargoZone === zone}
+                    onClick={() => setActiveCargoZone(zone)}
+                    className={`rounded-lg px-2 py-1.5 text-[10px] font-bold transition ${activeCargoZone === zone ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                    data-testid={`button-cargo-zone-${zone}`}
+                  >
+                    {label}{zone === "loaded" ? ` ${placed.length}` : ""}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -1599,12 +1648,12 @@ export function ContainerViewer3D({
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto p-2 [scrollbar-width:thin]">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 [scrollbar-color:#cbd5e1_transparent] [scrollbar-width:thin]">
               <div className="sticky top-0 z-10 mb-1 flex items-center justify-between rounded-lg bg-slate-50/95 px-2 py-1.5 backdrop-blur">
-                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Cargo units</p>
-                <p className="text-[9px] text-slate-400">Hover to inspect</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">{activeCargoZone === "loaded" ? "Cargo units" : activeCargoZone === "dock1" ? "Dock 1 staging" : "Dock 2 staging"}</p>
+                <p className="text-[9px] text-slate-400">{activeCargoZone === "loaded" ? "Hover to inspect" : "0 staged"}</p>
               </div>
-              <div className="space-y-1">
+              {activeCargoZone === "loaded" ? <div className="space-y-1">
                 {placed.map((box, index) => (
                   <button
                     key={`${box.cargoId}-${index}`}
@@ -1628,7 +1677,13 @@ export function ContainerViewer3D({
                     </div>
                   </button>
                 ))}
-              </div>
+              </div> : (
+                <div className="mx-2 mt-8 rounded-2xl border border-dashed border-slate-300 bg-white/70 px-4 py-7 text-center">
+                  <Package className="mx-auto h-6 w-6 text-slate-300" />
+                  <p className="mt-2 text-[11px] font-bold text-slate-600">No cargo staged here</p>
+                  <p className="mt-1 text-[9px] leading-4 text-slate-400">This staging area is currently clear.</p>
+                </div>
+              )}
             </div>
           </aside>
         )}
@@ -2789,7 +2844,7 @@ export default function ContainerCalculator() {
       )}
       {!isEmbedMode && <Navbar />}
       <main className={`flex-1 pb-16 ${isEmbedMode ? "pt-6" : "pt-28"}`}>
-        <div className="container mx-auto px-4 md:px-6">
+        <div className="mx-auto w-full max-w-[1920px] px-4 md:px-6 xl:px-8">
           {!isEmbedMode && <Breadcrumbs
             items={[
               { label: "Tools", href: "/tools" },
@@ -2813,7 +2868,7 @@ export default function ContainerCalculator() {
             </p>
           </div>
 
-          <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="max-w-[1800px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-5 space-y-5">
               <Card className="border-slate-200">
                 <CardContent className="p-5">
@@ -4914,7 +4969,7 @@ export default function ContainerCalculator() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4 }}
-                  className="space-y-5"
+                  className="space-y-5 lg:w-[calc(171.4286%+1.5rem)] lg:-ml-[calc(71.4286%+1.5rem)]"
                   data-testid="results-section"
                 >
                   {recommendation
@@ -5192,7 +5247,7 @@ export default function ContainerCalculator() {
                               {cr.label}
                             </Badge>
                           </div>
-                          <CardContent className="p-4">
+                          <CardContent className="p-2 sm:p-3">
                             <div ref={viewerRef}>
                               <ContainerViewer3D
                                 placed={cResult.placed}
