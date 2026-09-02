@@ -168,7 +168,13 @@ export async function handleToolSubscriptionEvent(event: Stripe.Event) {
   if (event.type === "customer.subscription.trial_will_end") await sendOnce(row, "reminder_3_sent_at", "reminder", { daysRemaining: 3 });
   if (event.type === "customer.subscription.deleted") await sendOnce(row, "cancelled_sent_at", "cancelled");
   if (event.type === "invoice.payment_failed") await sendOnce(row, "payment_failed_sent_at", "payment-failed");
-  if (event.type === "invoice.paid" && subscription.status === "active" && !subscription.trial_end) await sendOnce(row, "converted_sent_at", "converted");
+  if (event.type === "invoice.paid") {
+    const invoice = event.data.object as Stripe.Invoice;
+    if (subscription.status === "active" && invoice.amount_paid > 0) {
+      await sendOnce(row, "converted_sent_at", "converted");
+      await pool.query(`UPDATE tool_subscriptions SET payment_failed_sent_at=NULL WHERE stripe_subscription_id=$1`, [row.stripe_subscription_id]);
+    }
+  }
 }
 
 async function createWinbackCode(stripe: Stripe, customerId: string) {
