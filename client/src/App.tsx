@@ -63,6 +63,8 @@ const OrderConfirmation = lazy(() => import("@/pages/order/OrderConfirmation"));
 const FreightQuote = lazy(() => import("@/pages/tools/FreightQuote"));
 const ShipmentTracking = lazy(() => import("@/pages/tools/ShipmentTracking"));
 const ContainerCalculator = lazy(() => import("@/pages/tools/ContainerCalculator"));
+const SharedContainerPlan = lazy(() => import("@/pages/SharedContainerPlan"));
+const ContainerLoadingApi = lazy(() => import("@/pages/ContainerLoadingApi"));
 const PalletBuilder = lazy(() => import("@/pages/tools/PalletBuilder"));
 const TruckLoadPlanner = lazy(() => import("@/pages/tools/TruckLoadPlanner"));
 const HowToImportIntoCanada = lazy(() => import("@/pages/resources/HowToImportIntoCanada"));
@@ -120,6 +122,9 @@ function Router() {
         <Route path="/tools/freight-quote" component={FreightQuote} />
         <Route path="/tools/shipment-tracking" component={ShipmentTracking} />
         <Route path="/tools/container-calculator" component={ContainerCalculator} />
+        <Route path="/embed/container-calculator" component={ContainerCalculator} />
+        <Route path="/developers/container-loading-api" component={ContainerLoadingApi} />
+        <Route path="/share/load-plan/:token" component={SharedContainerPlan} />
         <Route path="/tools/pallet-builder" component={PalletBuilder} />
         <Route path="/tools/truck-load-planner" component={TruckLoadPlanner} />
         <Route path="/resources" component={Resources} />

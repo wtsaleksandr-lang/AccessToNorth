@@ -229,11 +229,20 @@ const STATIC_ROUTES: RouteMeta[] = [
     path: "/tools/container-calculator",
     priority: "0.8",
     changefreq: "monthly",
-    lastmod: "2026-08-28",
+    lastmod: "2026-09-02",
     schemaType: "WebApplication",
     title: "Free 3D Container Loading Calculator | AccessToNorth.com",
     description:
       "Free 3D container loading calculator for 20', 40', 40' HC, and 45' HC containers. Import cargo dimensions, get a best-fit recommendation, and export a PDF load plan.",
+  },
+  {
+    path: "/developers/container-loading-api",
+    priority: "0.7",
+    changefreq: "monthly",
+    lastmod: "2026-09-02",
+    title: "Container Loading Calculator API & Website Embed | AccessToNorth.com",
+    description:
+      "Affordable container loading API and embeddable 3D load planner from CA$19/month, with placements, recommendations, PDF reports, and share links.",
   },
   {
     path: "/tools/truck-load-planner",
