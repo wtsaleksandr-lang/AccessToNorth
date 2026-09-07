@@ -6,6 +6,7 @@ import {
   findSafeManualPlacement,
   getSupportRatio,
   isInsideContainer,
+  rotateManualSelection,
   validateManualLayout,
   validateManualPlacement,
 } from "../../client/src/lib/containerLayout";
@@ -120,4 +121,22 @@ test("selected cargo aligns as a group without changing its internal spacing", (
 test("group alignment is rejected when it would overlap unselected cargo", () => {
   const boxes = [box({ x: 20, z: 0 }), box({ x: 40, z: 0 }), box({ x: 80, z: 0 })];
   assert.equal(alignManualSelection(boxes, [0, 1], container, "doors"), null);
+});
+
+test("selected cargo rotates as a rigid group and stays inside the container", () => {
+  const boxes = [box({ x: 10, z: 5, l: 20, w: 10 }), box({ x: 30, z: 5, l: 20, w: 10 })];
+  const rotated = rotateManualSelection(boxes, [0, 1], container, "clockwise");
+
+  assert.ok(rotated);
+  assert.equal(rotated[0].l, 10);
+  assert.equal(rotated[0].w, 20);
+  assert.equal(rotated[0].rotation, "WLH");
+  assert.equal(validateManualLayout(rotated, container).valid, true);
+  assert.equal(Math.abs((rotated[1].z + rotated[1].w / 2) - (rotated[0].z + rotated[0].w / 2)), 20);
+});
+
+test("group rotation is rejected when the rotated footprint collides", () => {
+  const selected = box({ x: 20, z: 0, l: 40, w: 10 });
+  const blocker = box({ x: 30, z: 10, l: 20, w: 20 });
+  assert.equal(rotateManualSelection([selected, blocker], [0], container, "clockwise"), null);
 });

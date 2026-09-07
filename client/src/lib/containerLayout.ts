@@ -129,6 +129,7 @@ export function findSafeManualPlacement(
 }
 
 export type ManualAlignment = "closed-end" | "length-center" | "doors" | "side-a" | "width-center" | "side-b";
+export type ManualRotationDirection = "clockwise" | "counterclockwise";
 
 export function translateManualSelection(
   boxes: PlacedBox[],
@@ -167,5 +168,66 @@ export function alignManualSelection(
   if (alignment === "side-b") deltaZ = container.widthIn - maxZ;
 
   const candidate = translateManualSelection(boxes, selected, deltaX, deltaZ);
+  return validateManualLayout(candidate, container).valid ? candidate : null;
+}
+
+function horizontalRotationName(rotation: string) {
+  if (!/^[LWH]{3}$/.test(rotation)) return rotation;
+  return `${rotation[1]}${rotation[0]}${rotation[2]}`;
+}
+
+/**
+ * Rotates an axis-aligned selection by 90 degrees around its shared centre.
+ * The full group is shifted back inside the container when possible and the
+ * operation is rejected if it would collide with other cargo or lose support.
+ */
+export function rotateManualSelection(
+  boxes: PlacedBox[],
+  selectedIndices: Iterable<number>,
+  container: ContainerSpec,
+  direction: ManualRotationDirection,
+) {
+  const selected = [...new Set(selectedIndices)].filter((index) => boxes[index]);
+  if (!selected.length) return null;
+  const selectedSet = new Set(selected);
+  const selectedBoxes = selected.map((index) => boxes[index]);
+  const minX = Math.min(...selectedBoxes.map((box) => box.x));
+  const maxX = Math.max(...selectedBoxes.map((box) => box.x + box.l));
+  const minZ = Math.min(...selectedBoxes.map((box) => box.z));
+  const maxZ = Math.max(...selectedBoxes.map((box) => box.z + box.w));
+  const centreX = (minX + maxX) / 2;
+  const centreZ = (minZ + maxZ) / 2;
+
+  let candidate = boxes.map((box, index) => {
+    if (!selectedSet.has(index)) return { ...box };
+    const boxCentreX = box.x + box.l / 2;
+    const boxCentreZ = box.z + box.w / 2;
+    const offsetX = boxCentreX - centreX;
+    const offsetZ = boxCentreZ - centreZ;
+    const nextCentreX = direction === "clockwise" ? centreX + offsetZ : centreX - offsetZ;
+    const nextCentreZ = direction === "clockwise" ? centreZ - offsetX : centreZ + offsetX;
+    return {
+      ...box,
+      x: Number((nextCentreX - box.w / 2).toFixed(3)),
+      z: Number((nextCentreZ - box.l / 2).toFixed(3)),
+      l: box.w,
+      w: box.l,
+      rotation: horizontalRotationName(box.rotation),
+    };
+  });
+
+  const rotated = selected.map((index) => candidate[index]);
+  const rotatedMinX = Math.min(...rotated.map((box) => box.x));
+  const rotatedMaxX = Math.max(...rotated.map((box) => box.x + box.l));
+  const rotatedMinZ = Math.min(...rotated.map((box) => box.z));
+  const rotatedMaxZ = Math.max(...rotated.map((box) => box.z + box.w));
+  const deltaX = rotatedMinX < 0
+    ? -rotatedMinX
+    : rotatedMaxX > container.lengthIn ? container.lengthIn - rotatedMaxX : 0;
+  const deltaZ = rotatedMinZ < 0
+    ? -rotatedMinZ
+    : rotatedMaxZ > container.widthIn ? container.widthIn - rotatedMaxZ : 0;
+  candidate = translateManualSelection(candidate, selected, deltaX, deltaZ);
+
   return validateManualLayout(candidate, container).valid ? candidate : null;
 }

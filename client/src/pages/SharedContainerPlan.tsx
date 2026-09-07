@@ -1,33 +1,29 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "wouter";
-import { AlertTriangle, CalendarClock, ChevronLeft, ChevronRight, Eye, Package, Ship } from "lucide-react";
+import { AlertTriangle, CalendarClock, ChevronLeft, ChevronRight, CopyPlus, Eye, Package, Scale, Ship } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { useToast } from "@/hooks/use-toast";
+import { saveContainerShareTransfer, type EditableSharedPlan } from "@/lib/containerShareTransfer";
 import { ContainerViewer3D } from "@/pages/tools/ContainerCalculator";
-import type { ContainerSpec, PlacedBox } from "@/lib/containerPacking";
 
-interface SharedPlanResponse {
+interface SharedPlanResponse extends EditableSharedPlan {
   token: string;
-  title: string;
-  unitSystem: "imperial" | "metric";
   createdAt: string;
   expiresAt: string;
-  containers: Array<{
-    label: string;
-    container: ContainerSpec;
-    placed: PlacedBox[];
-  }>;
 }
 
 export default function SharedContainerPlan() {
+  const { toast } = useToast();
   const { token } = useParams<{ token: string }>();
   const [plan, setPlan] = useState<SharedPlanResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [copying, setCopying] = useState(false);
 
   usePageMeta({
     title: "Shared Container Loading Plan | AccessToNorth.com",
@@ -67,6 +63,22 @@ export default function SharedContainerPlan() {
   const metric = plan?.unitSystem === "metric";
   const displayWeight = metric ? totals.weight * 0.453592 : totals.weight;
 
+  const copyPlanToEditor = () => {
+    if (!plan || copying) return;
+    setCopying(true);
+    try {
+      saveContainerShareTransfer(plan);
+      window.location.assign("/tools/container-calculator?from=shared-plan");
+    } catch (reason) {
+      setCopying(false);
+      toast({
+        title: "Could not create an editable copy",
+        description: reason instanceof Error ? reason.message : "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <Navbar />
@@ -89,7 +101,7 @@ export default function SharedContainerPlan() {
         ) : (
           <>
             <section className="mb-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
                 <div className="min-w-0">
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     <Badge className="gap-1.5 border-blue-200 bg-blue-50 text-primary hover:bg-blue-50"><Eye className="h-3 w-3" /> Read-only shared plan</Badge>
@@ -98,17 +110,22 @@ export default function SharedContainerPlan() {
                   <h1 className="truncate text-xl font-bold tracking-tight sm:text-2xl">{plan.title}</h1>
                   <p className="mt-1 text-sm text-slate-500">Interactive 3D placement shared through AccessToNorth</p>
                 </div>
-                <div className="grid grid-cols-3 gap-2 sm:min-w-[360px]">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="grid grid-cols-3 gap-2 sm:min-w-[360px]">
                   {[
                     { icon: Ship, label: "Containers", value: plan.containers.length.toLocaleString() },
                     { icon: Package, label: "Pieces", value: totals.pieces.toLocaleString() },
-                    { icon: Ship, label: "Weight", value: `${displayWeight.toLocaleString(undefined, { maximumFractionDigits: 0 })} ${metric ? "kg" : "lbs"}` },
+                    { icon: Scale, label: "Weight", value: `${displayWeight.toLocaleString(undefined, { maximumFractionDigits: 0 })} ${metric ? "kg" : "lbs"}` },
                   ].map((stat) => (
                     <div key={stat.label} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
                       <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400"><stat.icon className="h-3 w-3" />{stat.label}</div>
                       <div className="mt-1 truncate text-sm font-bold text-slate-800">{stat.value}</div>
                     </div>
                   ))}
+                  </div>
+                  <Button type="button" className="h-12 shrink-0 gap-2 px-5" onClick={copyPlanToEditor} disabled={copying} data-testid="button-copy-shared-plan">
+                    <CopyPlus className="h-4 w-4" />{copying ? "Preparing…" : "Copy and edit"}
+                  </Button>
                 </div>
               </div>
             </section>
@@ -131,8 +148,8 @@ export default function SharedContainerPlan() {
             />
 
             <div className="mt-4 flex flex-col items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500 sm:flex-row">
-              <span>This is a view-only snapshot. Changes made by the sender after sharing are not applied.</span>
-              <Button asChild size="sm" variant="outline"><a href="/tools/container-calculator">Build your own loading plan</a></Button>
+              <span>This snapshot stays unchanged. Copying it creates your own editable plan without changing the sender’s version.</span>
+              <Button type="button" size="sm" variant="outline" className="gap-2" onClick={copyPlanToEditor} disabled={copying}><CopyPlus className="h-3.5 w-3.5" />Copy this plan and edit</Button>
             </div>
           </>
         )}
@@ -141,4 +158,3 @@ export default function SharedContainerPlan() {
     </div>
   );
 }
-
