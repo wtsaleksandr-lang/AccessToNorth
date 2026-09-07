@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  alignManualSelection,
   boxesOverlap3D,
   findSafeManualPlacement,
   getSupportRatio,
@@ -105,4 +106,18 @@ test("staged cargo finds the next safe edge when its original position is occupi
 test("staged cargo stays staged when no valid container position exists", () => {
   const oversized = box({ l: 120 });
   assert.equal(findSafeManualPlacement(oversized, [], container), null);
+});
+
+test("selected cargo aligns as a group without changing its internal spacing", () => {
+  const boxes = [box({ x: 20, z: 10 }), box({ x: 40, z: 10 })];
+  const aligned = alignManualSelection(boxes, [0, 1], container, "doors");
+
+  assert.ok(aligned);
+  assert.equal(aligned[1].x - aligned[0].x, 20);
+  assert.equal(aligned[1].x + aligned[1].l, container.lengthIn);
+});
+
+test("group alignment is rejected when it would overlap unselected cargo", () => {
+  const boxes = [box({ x: 20, z: 0 }), box({ x: 40, z: 0 }), box({ x: 80, z: 0 })];
+  assert.equal(alignManualSelection(boxes, [0, 1], container, "doors"), null);
 });

@@ -47,6 +47,17 @@ export async function ensureToolSubscriptionTables() {
       request_count integer NOT NULL DEFAULT 0,
       PRIMARY KEY (stripe_subscription_id, period_start)
     );
+    CREATE TABLE IF NOT EXISTS tool_account_tokens (
+      id bigserial PRIMARY KEY,
+      stripe_subscription_id text NOT NULL REFERENCES tool_subscriptions(stripe_subscription_id) ON DELETE CASCADE,
+      token_hash text UNIQUE NOT NULL,
+      token_prefix text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      last_used_at timestamptz,
+      revoked_at timestamptz
+    );
+    CREATE INDEX IF NOT EXISTS tool_account_tokens_subscription_idx
+      ON tool_account_tokens (stripe_subscription_id);
   `);
 }
 
@@ -66,6 +77,79 @@ export async function provisionApiKey(subscriptionId: string) {
     if (error?.code === "23505") return { key: null, prefix, alreadyProvisioned: true };
     throw error;
   }
+}
+
+export async function rotateApiKey(subscriptionId: string) {
+  const key = `atn_live_${randomBytes(24).toString("base64url")}`;
+  const prefix = key.slice(0, 16);
+  const result = await pool.query(`
+    INSERT INTO tool_api_keys (stripe_subscription_id,key_hash,key_prefix,revoked_at)
+    VALUES ($1,$2,$3,NULL)
+    ON CONFLICT (stripe_subscription_id) DO UPDATE SET
+      key_hash=EXCLUDED.key_hash, key_prefix=EXCLUDED.key_prefix,
+      created_at=now(), revoked_at=NULL
+    RETURNING key_prefix
+  `, [subscriptionId, apiKeyHash(key), prefix]);
+  return result.rowCount ? { key, prefix } : null;
+}
+
+export async function provisionToolAccountToken(subscriptionId: string) {
+  const token = `atn_acct_${randomBytes(32).toString("base64url")}`;
+  const prefix = token.slice(0, 18);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(`
+      INSERT INTO tool_account_tokens (stripe_subscription_id,token_hash,token_prefix)
+      VALUES ($1,$2,$3)
+    `, [subscriptionId, apiKeyHash(token), prefix]);
+    await client.query(`
+      UPDATE tool_account_tokens SET revoked_at=now()
+      WHERE stripe_subscription_id=$1 AND revoked_at IS NULL AND id NOT IN (
+        SELECT id FROM tool_account_tokens
+        WHERE stripe_subscription_id=$1 AND revoked_at IS NULL
+        ORDER BY created_at DESC, id DESC
+        LIMIT 5
+      )
+    `, [subscriptionId]);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+  return { token, prefix };
+}
+
+export async function validateToolAccountToken(token: string) {
+  if (!token.startsWith("atn_acct_")) return null;
+  const result = await pool.query(`
+    WITH touched AS (
+      UPDATE tool_account_tokens SET last_used_at=now()
+      WHERE token_hash=$1 AND revoked_at IS NULL
+      RETURNING stripe_subscription_id
+    )
+    SELECT s.* FROM touched t
+    JOIN tool_subscriptions s ON s.stripe_subscription_id=t.stripe_subscription_id
+    WHERE s.status IN ('trialing','active','past_due')
+    LIMIT 1
+  `, [apiKeyHash(token)]);
+  return result.rows[0] || null;
+}
+
+export async function getToolAccountSummary(subscriptionId: string) {
+  const result = await pool.query(`
+    SELECT s.*, k.key_prefix,
+      COALESCE(u.request_count, 0)::integer AS request_count
+    FROM tool_subscriptions s
+    LEFT JOIN tool_api_keys k ON k.stripe_subscription_id=s.stripe_subscription_id AND k.revoked_at IS NULL
+    LEFT JOIN tool_api_usage u ON u.stripe_subscription_id=s.stripe_subscription_id
+      AND u.period_start=date_trunc('month', now())::date
+    WHERE s.stripe_subscription_id=$1
+    LIMIT 1
+  `, [subscriptionId]);
+  return result.rows[0] || null;
 }
 
 export async function validateSubscriptionApiKey(key: string) {

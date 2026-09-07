@@ -127,3 +127,45 @@ export function findSafeManualPlacement(
 
   return null;
 }
+
+export type ManualAlignment = "closed-end" | "length-center" | "doors" | "side-a" | "width-center" | "side-b";
+
+export function translateManualSelection(
+  boxes: PlacedBox[],
+  selectedIndices: Iterable<number>,
+  deltaX: number,
+  deltaZ: number,
+) {
+  const selected = new Set(selectedIndices);
+  return boxes.map((box, index) => selected.has(index)
+    ? { ...box, x: Number((box.x + deltaX).toFixed(3)), z: Number((box.z + deltaZ).toFixed(3)) }
+    : { ...box });
+}
+
+/** Aligns a selected cargo group while preserving every item's relative spacing and stack height. */
+export function alignManualSelection(
+  boxes: PlacedBox[],
+  selectedIndices: Iterable<number>,
+  container: ContainerSpec,
+  alignment: ManualAlignment,
+) {
+  const selected = [...new Set(selectedIndices)].filter((index) => boxes[index]);
+  if (!selected.length) return null;
+  const selectedBoxes = selected.map((index) => boxes[index]);
+  const minX = Math.min(...selectedBoxes.map((box) => box.x));
+  const maxX = Math.max(...selectedBoxes.map((box) => box.x + box.l));
+  const minZ = Math.min(...selectedBoxes.map((box) => box.z));
+  const maxZ = Math.max(...selectedBoxes.map((box) => box.z + box.w));
+  let deltaX = 0;
+  let deltaZ = 0;
+
+  if (alignment === "closed-end") deltaX = -minX;
+  if (alignment === "length-center") deltaX = (container.lengthIn - (maxX - minX)) / 2 - minX;
+  if (alignment === "doors") deltaX = container.lengthIn - maxX;
+  if (alignment === "side-a") deltaZ = -minZ;
+  if (alignment === "width-center") deltaZ = (container.widthIn - (maxZ - minZ)) / 2 - minZ;
+  if (alignment === "side-b") deltaZ = container.widthIn - maxZ;
+
+  const candidate = translateManualSelection(boxes, selected, deltaX, deltaZ);
+  return validateManualLayout(candidate, container).valid ? candidate : null;
+}

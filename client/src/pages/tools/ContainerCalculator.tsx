@@ -61,6 +61,10 @@ import {
   PanelRightClose,
   PanelRightOpen,
   ImageDown,
+  FolderOpen,
+  Save,
+  Copy,
+  Clock3,
 } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -81,7 +85,14 @@ import {
   type RotationMode,
 } from "@/lib/containerPacking";
 import { mergeImportedCargoItems, type ImportedCargoRow } from "@/lib/containerImport";
-import { findSafeManualPlacement, validateManualLayout, validateManualPlacement } from "@/lib/containerLayout";
+import {
+  alignManualSelection,
+  findSafeManualPlacement,
+  translateManualSelection,
+  validateManualLayout,
+  validateManualPlacement,
+  type ManualAlignment,
+} from "@/lib/containerLayout";
 import { calculateContainerBalance, centerContainerCargoLayout } from "@/lib/containerBalance";
 import { compareContainerPlans, type ContainerPlanComparison } from "@/lib/containerComparison";
 import { consumePalletPlanTransfer } from "@/lib/palletTransfer";
@@ -91,6 +102,16 @@ import {
   type PlanReviewItem,
 } from "@/lib/containerPlanInsights";
 import { buildContainerPlacementCsv } from "@/lib/containerPlanExport";
+import {
+  duplicateContainerProject,
+  persistContainerDraft,
+  persistContainerProjects,
+  readContainerDraft,
+  readContainerProjects,
+  saveContainerProject,
+  type ContainerProjectSnapshot,
+  type SavedContainerProject,
+} from "@/lib/containerProjects";
 
 const IN_TO_CM = 2.54;
 const CM_TO_IN = 1 / IN_TO_CM;
@@ -404,6 +425,8 @@ export function ContainerViewer3D({
   const [showShell, setShowShell] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
   const [hoveredCargoIndex, setHoveredCargoIndex] = useState<number | null>(null);
+  const [selectedCargoIndices, setSelectedCargoIndices] = useState<Set<number>>(new Set());
+  const selectedCargoIndicesRef = useRef<Set<number>>(new Set());
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeCargoZone, setActiveCargoZone] = useState<CargoWorkspaceZone>("loaded");
   const [displayControlsOpen, setDisplayControlsOpen] = useState(false);
@@ -466,6 +489,11 @@ export function ContainerViewer3D({
   }), [stagedCargo]);
   const hasPlacementWarning = /invalid|unsupported|no collision-safe|would leave/i.test(placementMessage);
 
+  useEffect(() => {
+    selectedCargoIndicesRef.current = selectedCargoIndices;
+    sceneRef.current?.setCargoHover(hoveredCargoIndex);
+  }, [hoveredCargoIndex, selectedCargoIndices]);
+
   const toggleFullscreen = useCallback(async () => {
     const workspace = workspaceRef.current;
     if (!workspace) return;
@@ -504,6 +532,7 @@ export function ContainerViewer3D({
     setHistoryCount(0);
     setRedoCount(0);
     setStagedCargo([]);
+    setSelectedCargoIndices(new Set());
   }, [layoutIdentity, placed]);
 
   const undoArrangement = useCallback(() => {
@@ -540,12 +569,45 @@ export function ContainerViewer3D({
     })));
   }, [onPlacedChange, placed]);
 
+  const toggleCargoSelection = useCallback((index: number, additive = true) => {
+    setSelectedCargoIndices((current) => {
+      const next = additive ? new Set(current) : new Set<number>();
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }, []);
+
+  const applySelectionAlignment = useCallback((alignment: ManualAlignment) => {
+    const selected = [...selectedCargoIndices].filter((index) => placed[index]);
+    if (!selected.length) {
+      setPlacementMessage("Select one or more cargo units before using alignment controls.");
+      return;
+    }
+    const nextLayout = alignManualSelection(placed, selected, container, alignment);
+    if (!nextLayout) {
+      setPlacementMessage("That alignment would overlap cargo or break stack support, so the current layout was kept.");
+      setWarningPanelOpen(true);
+      return;
+    }
+    arrangementHistoryRef.current = [
+      ...arrangementHistoryRef.current,
+      placed.map((box) => ({ ...box })),
+    ].slice(-20);
+    arrangementRedoRef.current = [];
+    setHistoryCount(arrangementHistoryRef.current.length);
+    setRedoCount(0);
+    setPlacementMessage(`${selected.length} selected cargo unit${selected.length === 1 ? "" : "s"} aligned safely.`);
+    onPlacedChange?.(nextLayout);
+  }, [container, onPlacedChange, placed, selectedCargoIndices]);
+
   const resetArrangement = useCallback(() => {
     arrangementHistoryRef.current = [];
     arrangementRedoRef.current = [];
     setHistoryCount(0);
     setRedoCount(0);
     setPlacementMessage("The optimized loading plan has been restored.");
+    setSelectedCargoIndices(new Set());
     const restoringStagedCargo = stagedCargo.length > 0;
     setStagedCargo([]);
     stagingMutationRef.current = restoringStagedCargo;
@@ -571,6 +633,7 @@ export function ContainerViewer3D({
     setHistoryCount(0);
     setRedoCount(0);
     setHoveredCargoIndex(null);
+    setSelectedCargoIndices(new Set());
     setStagedCargo((current) => [
       ...current,
       {
@@ -598,6 +661,7 @@ export function ContainerViewer3D({
     arrangementRedoRef.current = [];
     setHistoryCount(0);
     setRedoCount(0);
+    setSelectedCargoIndices(new Set());
     setStagedCargo((current) => current.filter((entry) => entry.id !== stagedId));
     stagingMutationRef.current = true;
     onPlacedChange?.([...placed.map((box) => ({ ...box })), safePlacement]);
@@ -1152,7 +1216,8 @@ export function ContainerViewer3D({
       pointerId: number;
       mesh: THREE.Mesh;
       index: number;
-      startPosition: THREE.Vector3;
+      indices: number[];
+      startPositions: Map<number, THREE.Vector3>;
       offset: THREE.Vector3;
       plane: THREE.Plane;
       nextLayout: PlacedBox[] | null;
@@ -1179,16 +1244,17 @@ export function ContainerViewer3D({
     const setCargoHover = (index: number | null) => {
       cargoMeshes.forEach((mesh) => {
         const active = index === (mesh.userData.placedIndex as number);
+        const selected = selectedCargoIndicesRef.current.has(mesh.userData.placedIndex as number);
         const linkedEdges = mesh.userData.linkedEdges as THREE.LineSegments | undefined;
         if (linkedEdges) {
           const material = linkedEdges.material as THREE.LineBasicMaterial;
-          material.color.setHex(active ? 0x0369a1 : 0x0f172a);
-          material.opacity = active ? 0.96 : 0.42;
+          material.color.setHex(active ? 0x0369a1 : selected ? 0x2563eb : 0x0f172a);
+          material.opacity = active || selected ? 0.96 : 0.42;
           material.needsUpdate = true;
-          linkedEdges.scale.setScalar(active ? 1.008 : 1);
+          linkedEdges.scale.setScalar(active || selected ? 1.008 : 1);
         }
         if (!dragState || dragState.mesh !== mesh) {
-          highlightMesh(mesh, active ? 0x38bdf8 : null);
+          highlightMesh(mesh, active ? 0x38bdf8 : selected ? 0x60a5fa : null);
         }
       });
       renderScene();
@@ -1217,6 +1283,24 @@ export function ContainerViewer3D({
       event.stopPropagation();
       const mesh = intersection.object;
       const index = mesh.userData.placedIndex as number;
+      if (event.shiftKey) {
+        const next = new Set(selectedCargoIndicesRef.current);
+        if (next.has(index)) next.delete(index);
+        else next.add(index);
+        selectedCargoIndicesRef.current = next;
+        setSelectedCargoIndices(next);
+        setCargoHover(index);
+        setPlacementMessage(`${next.size} cargo unit${next.size === 1 ? "" : "s"} selected. Shift-click or use the cargo list to change the group.`);
+        return;
+      }
+      const indices = selectedCargoIndicesRef.current.has(index)
+        ? [...selectedCargoIndicesRef.current].filter((selectedIndex) => placed[selectedIndex])
+        : [index];
+      if (!selectedCargoIndicesRef.current.has(index)) {
+        const next = new Set([index]);
+        selectedCargoIndicesRef.current = next;
+        setSelectedCargoIndices(next);
+      }
       const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -mesh.position.y);
       if (!raycaster.ray.intersectPlane(plane, dragIntersection)) return;
 
@@ -1224,7 +1308,8 @@ export function ContainerViewer3D({
         pointerId: event.pointerId,
         mesh,
         index,
-        startPosition: mesh.position.clone(),
+        indices,
+        startPositions: new Map(indices.map((selectedIndex) => [selectedIndex, cargoMeshes[selectedIndex].position.clone()])),
         offset: dragIntersection.clone().sub(mesh.position),
         plane,
         nextLayout: null,
@@ -1233,8 +1318,10 @@ export function ContainerViewer3D({
       renderer.domElement.setPointerCapture(event.pointerId);
       renderer.domElement.style.cursor = "grabbing";
       controls.enabled = false;
-      highlightMesh(mesh, 0x0ea5e9);
-      setPlacementMessage("Drag horizontally — floor and supported stack levels snap automatically.");
+      indices.forEach((selectedIndex) => highlightMesh(cargoMeshes[selectedIndex], 0x0ea5e9));
+      setPlacementMessage(indices.length > 1
+        ? `Moving ${indices.length} selected units together — relative spacing and stack heights stay locked.`
+        : "Drag horizontally — floor and supported stack levels snap automatically.");
       renderScene();
     };
 
@@ -1271,6 +1358,31 @@ export function ContainerViewer3D({
       const nextX = Math.min(cL - halfLength, Math.max(halfLength, Math.round(unclampedX / snap) * snap));
       const nextZ = Math.min(cW - halfWidth, Math.max(halfWidth, Math.round(unclampedZ / snap) * snap));
       const current = placed[dragState.index];
+      if (dragState.indices.length > 1) {
+        const selectedBoxes = dragState.indices.map((index) => placed[index]);
+        const minX = Math.min(...selectedBoxes.map((box) => box.x));
+        const maxX = Math.max(...selectedBoxes.map((box) => box.x + box.l));
+        const minZ = Math.min(...selectedBoxes.map((box) => box.z));
+        const maxZ = Math.max(...selectedBoxes.map((box) => box.z + box.w));
+        const desiredDeltaX = Math.round((((nextX - halfLength) / 0.0254) - current.x));
+        const desiredDeltaZ = Math.round((((nextZ - halfWidth) / 0.0254) - current.z));
+        const deltaX = Math.min(container.lengthIn - maxX, Math.max(-minX, desiredDeltaX));
+        const deltaZ = Math.min(container.widthIn - maxZ, Math.max(-minZ, desiredDeltaZ));
+        const nextLayout = translateManualSelection(placed, dragState.indices, deltaX, deltaZ);
+        const validation = validateManualLayout(nextLayout, container);
+        dragState.nextLayout = nextLayout;
+        dragState.valid = validation.valid;
+        dragState.indices.forEach((selectedIndex) => {
+          const start = dragState!.startPositions.get(selectedIndex)!;
+          moveMesh(cargoMeshes[selectedIndex], new THREE.Vector3(start.x + inToM(deltaX), start.y, start.z + inToM(deltaZ)));
+          highlightMesh(cargoMeshes[selectedIndex], validation.valid ? 0x10b981 : 0xef4444);
+        });
+        setPlacementMessage(validation.valid
+          ? `${dragState.indices.length} units can be placed here safely.`
+          : placementText(validation.reason));
+        renderScene();
+        return;
+      }
       const horizontalCandidate: PlacedBox = {
         ...current,
         x: Number(((nextX - halfLength) / 0.0254).toFixed(3)),
@@ -1320,9 +1432,12 @@ export function ContainerViewer3D({
       }
       controls.enabled = true;
       renderer.domElement.style.cursor = arrangeMode ? "grab" : "default";
-      highlightMesh(completedDrag.mesh, null);
+      completedDrag.indices.forEach((index) => highlightMesh(cargoMeshes[index], null));
 
-      const moved = completedDrag.startPosition.distanceTo(completedDrag.mesh.position) > 0.001;
+      const moved = completedDrag.indices.some((index) => {
+        const start = completedDrag.startPositions.get(index);
+        return Boolean(start && start.distanceTo(cargoMeshes[index].position) > 0.001);
+      });
       if (commit && moved && completedDrag.valid && completedDrag.nextLayout) {
         arrangementHistoryRef.current = [
           ...arrangementHistoryRef.current,
@@ -1331,14 +1446,20 @@ export function ContainerViewer3D({
         arrangementRedoRef.current = [];
         setHistoryCount(arrangementHistoryRef.current.length);
         setRedoCount(0);
-        setPlacementMessage("Cargo placed safely. You can undo or continue adjusting.");
+        setPlacementMessage(completedDrag.indices.length > 1
+          ? `${completedDrag.indices.length} cargo units moved safely. You can undo or continue adjusting.`
+          : "Cargo placed safely. You can undo or continue adjusting.");
         onPlacedChange?.(completedDrag.nextLayout.map((box) => ({ ...box })));
       } else {
-        moveMesh(completedDrag.mesh, completedDrag.startPosition);
+        completedDrag.indices.forEach((index) => {
+          const start = completedDrag.startPositions.get(index);
+          if (start) moveMesh(cargoMeshes[index], start);
+        });
         if (moved && !completedDrag.valid) {
           setPlacementMessage("Invalid move cancelled — the previous position was restored.");
         }
       }
+      setCargoHover(currentHoverIndex);
       renderScene();
     };
 
@@ -1501,10 +1622,6 @@ export function ContainerViewer3D({
   }, [activeView]);
 
   useEffect(() => {
-    sceneRef.current?.setCargoHover(hoveredCargoIndex);
-  }, [hoveredCargoIndex]);
-
-  useEffect(() => {
     const sceneState = sceneRef.current;
     if (!sceneState) return;
     const visibleIndexes = new Set(sequenceOrder.slice(0, sequenceStep));
@@ -1588,6 +1705,13 @@ export function ContainerViewer3D({
             </div>
             {arrangeMode && <><button type="button" onClick={undoArrangement} disabled={historyCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/85 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm backdrop-blur hover:bg-white disabled:opacity-40" data-testid="button-undo-cargo-move"><Undo2 className="mr-1 inline h-3.5 w-3.5" />Undo</button><button type="button" onClick={redoArrangement} disabled={redoCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/85 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm backdrop-blur hover:bg-white disabled:opacity-40" data-testid="button-redo-cargo-move"><Redo2 className="mr-1 inline h-3.5 w-3.5" />Redo</button><button type="button" onClick={resetArrangement} className="h-8 rounded-lg border border-white/80 bg-white/85 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm backdrop-blur hover:bg-white" data-testid="button-reset-cargo-layout"><RotateCcw className="mr-1 inline h-3.5 w-3.5" />Reset</button></>}
           </div>
+          {arrangeMode && selectedCargoIndices.size > 0 && (
+            <div className="absolute left-3 top-14 z-20 w-[min(360px,calc(100%-5rem))] rounded-2xl border border-white/90 bg-white/[0.88] p-3 shadow-[0_18px_45px_-22px_rgba(15,23,42,0.5)] backdrop-blur-xl" data-testid="cargo-group-controls">
+              <div className="flex items-center justify-between gap-3"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">{selectedCargoIndices.size} selected</p><button type="button" onClick={() => setSelectedCargoIndices(new Set())} className="text-[10px] font-semibold text-slate-400 hover:text-slate-700">Clear</button></div>
+              <div className="mt-2 grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1.5 text-[9px]"><span className="font-semibold text-slate-400">Length</span><div className="grid grid-cols-3 gap-1">{([ ["closed-end", "Closed end"], ["length-center", "Center"], ["doors", "Doors"] ] as const).map(([alignment, label]) => <button key={alignment} type="button" onClick={() => applySelectionAlignment(alignment)} className="rounded-lg border border-slate-200 bg-white px-1.5 py-1.5 font-bold text-slate-600 hover:border-blue-300 hover:text-primary" data-testid={`button-align-${alignment}`}>{label}</button>)}</div><span className="font-semibold text-slate-400">Width</span><div className="grid grid-cols-3 gap-1">{([ ["side-a", "Side A"], ["width-center", "Center"], ["side-b", "Side B"] ] as const).map(([alignment, label]) => <button key={alignment} type="button" onClick={() => applySelectionAlignment(alignment)} className="rounded-lg border border-slate-200 bg-white px-1.5 py-1.5 font-bold text-slate-600 hover:border-blue-300 hover:text-primary" data-testid={`button-align-${alignment}`}>{label}</button>)}</div></div>
+              <p className="mt-2 text-[9px] leading-4 text-slate-400">Drag any selected unit to move the group. Unsafe alignments and overlaps are blocked.</p>
+            </div>
+          )}
           <div className={`absolute right-3 top-3 z-30 flex flex-col items-center gap-1.5 rounded-2xl border border-white/80 bg-white/72 p-1.5 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.5)] backdrop-blur-xl transition-[right] ${sidebarOpen ? "lg:right-[344px]" : ""}`} data-testid="container-floating-tool-rail">
             <button type="button" onClick={() => setSidebarOpen((current) => !current)} className="hidden h-9 w-9 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white hover:text-primary hover:shadow-sm lg:flex" aria-label={sidebarOpen ? "Hide cargo panel" : "Show cargo panel"} title={sidebarOpen ? "Hide cargo panel" : "Show cargo panel"} data-testid="button-container-sidebar-toggle">
               {sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
@@ -1762,9 +1886,10 @@ export function ContainerViewer3D({
                     key={`${box.cargoId}-${index}`}
                     onMouseEnter={() => setHoveredCargoIndex(index)}
                     onMouseLeave={() => setHoveredCargoIndex(null)}
-                    className={`group flex w-full items-center gap-1 rounded-xl border p-1.5 text-left transition ${hoveredCargoIndex === index ? "border-blue-300 bg-white shadow-sm ring-2 ring-blue-100" : "border-transparent hover:border-slate-200 hover:bg-white"}`}
+                    className={`group flex w-full items-center gap-1 rounded-xl border p-1.5 text-left transition ${selectedCargoIndices.has(index) ? "border-blue-300 bg-blue-50/70 shadow-sm ring-2 ring-blue-100" : hoveredCargoIndex === index ? "border-blue-300 bg-white shadow-sm ring-2 ring-blue-100" : "border-transparent hover:border-slate-200 hover:bg-white"}`}
                     data-testid={`container-cargo-row-${index}`}
                   >
+                    {onPlacedChange && arrangeMode && <button type="button" onClick={() => toggleCargoSelection(index)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-primary hover:bg-white" aria-label={`${selectedCargoIndices.has(index) ? "Deselect" : "Select"} ${box.cargoName || "cargo item"}`} aria-pressed={selectedCargoIndices.has(index)} data-testid={`button-select-container-cargo-${index}`}>{selectedCargoIndices.has(index) ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 text-slate-400" />}</button>}
                     <button
                       type="button"
                       onFocus={() => setHoveredCargoIndex(index)}
@@ -2276,6 +2401,12 @@ export default function ContainerCalculator() {
       return null;
     }
   });
+  const [savedProjects, setSavedProjects] = useState<SavedContainerProject[]>(() => readContainerProjects());
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [projectName, setProjectName] = useState("");
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
+  const [persistenceReady, setPersistenceReady] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
 
   const [showImportModal, setShowImportModal] = useState(false);
   const [importStep, setImportStep] = useState<"upload" | "mapping" | "preview">("upload");
@@ -2323,6 +2454,117 @@ export default function ContainerCalculator() {
       description: "Choose Calculate Loading Plan to get the recommended container and placement.",
     });
   }, [toast]);
+
+  const restoreProjectSnapshot = useCallback((snapshot: ContainerProjectSnapshot) => {
+    const validContainerId = snapshot.containerId === "custom"
+      || CONTAINER_PRESETS.some((entry) => entry.id === snapshot.containerId)
+      ? snapshot.containerId
+      : "20dc";
+    setUnitSystem(snapshot.unitSystem);
+    setContainerSelectionMode(snapshot.containerSelectionMode);
+    setContainerId(validContainerId);
+    setCustomContainer({ ...snapshot.customContainer });
+    setCargoItems(snapshot.cargoItems.map((item) => ({ ...item })));
+    setMultiResult(snapshot.multiResult ? JSON.parse(JSON.stringify(snapshot.multiResult)) as MultiContainerResult : null);
+    setRecommendation(null);
+    setSelectedIds(new Set());
+    setCogUndoLayouts({});
+    setSnapshotExportFn(null);
+    setActiveResultTab("plan");
+    setActiveResultContainer(Math.max(0, Math.min(snapshot.activeResultContainer, (snapshot.multiResult?.containers.length || 1) - 1)));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("from") === "pallet-builder") {
+      setPersistenceReady(true);
+      return;
+    }
+    const draft = readContainerDraft();
+    if (draft) {
+      restoreProjectSnapshot(draft);
+      setLastSavedAt(Date.now());
+    }
+    setPersistenceReady(true);
+  }, [restoreProjectSnapshot]);
+
+  const captureProjectSnapshot = useCallback((): ContainerProjectSnapshot => ({
+    unitSystem,
+    containerSelectionMode,
+    containerId,
+    customContainer: { ...customContainer },
+    cargoItems: cargoItems.map((item) => ({ ...item })),
+    multiResult: multiResult ? JSON.parse(JSON.stringify(multiResult)) as MultiContainerResult : null,
+    activeResultContainer,
+  }), [activeResultContainer, cargoItems, containerId, containerSelectionMode, customContainer, multiResult, unitSystem]);
+
+  useEffect(() => {
+    if (!persistenceReady) return;
+    const timer = window.setTimeout(() => {
+      const snapshot = captureProjectSnapshot();
+      const draftSaved = persistContainerDraft(snapshot);
+      if (currentProjectId) {
+        setSavedProjects((current) => {
+          const existing = current.find((project) => project.id === currentProjectId);
+          if (!existing) return current;
+          const saved = saveContainerProject(current, snapshot, existing.name, currentProjectId);
+          persistContainerProjects(saved.projects);
+          return saved.projects;
+        });
+      }
+      if (draftSaved) setLastSavedAt(Date.now());
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [captureProjectSnapshot, currentProjectId, persistenceReady]);
+
+  const saveCurrentProject = useCallback(() => {
+    const current = currentProjectId ? savedProjects.find((project) => project.id === currentProjectId) : null;
+    const fallbackName = cargoItems.find((item) => item.name.trim())?.name.trim()
+      || `Loading plan ${new Date().toLocaleDateString("en-CA", { month: "short", day: "numeric" })}`;
+    const saved = saveContainerProject(savedProjects, captureProjectSnapshot(), projectName || current?.name || fallbackName, currentProjectId);
+    setSavedProjects(saved.projects);
+    persistContainerProjects(saved.projects);
+    persistContainerDraft(saved.project.snapshot);
+    setCurrentProjectId(saved.project.id);
+    setProjectName(saved.project.name);
+    setLastSavedAt(Date.now());
+    toast({ title: current ? "Project updated" : "Project saved", description: `${saved.project.name} is saved on this device.` });
+  }, [captureProjectSnapshot, cargoItems, currentProjectId, projectName, savedProjects, toast]);
+
+  const openProjectLibrary = useCallback(() => {
+    const current = currentProjectId ? savedProjects.find((project) => project.id === currentProjectId) : null;
+    setProjectName(current?.name || cargoItems.find((item) => item.name.trim())?.name.trim() || "");
+    setProjectDialogOpen(true);
+  }, [cargoItems, currentProjectId, savedProjects]);
+
+  const restoreSavedProject = useCallback((project: SavedContainerProject) => {
+    restoreProjectSnapshot(project.snapshot);
+    persistContainerDraft(project.snapshot);
+    setCurrentProjectId(project.id);
+    setProjectName(project.name);
+    setLastSavedAt(Date.now());
+    setProjectDialogOpen(false);
+    toast({ title: "Project opened", description: project.name });
+  }, [restoreProjectSnapshot, toast]);
+
+  const duplicateSavedProject = useCallback((project: SavedContainerProject) => {
+    const copy = duplicateContainerProject(project);
+    const next = [copy, ...savedProjects].slice(0, 20);
+    setSavedProjects(next);
+    persistContainerProjects(next);
+    toast({ title: "Project duplicated", description: copy.name });
+  }, [savedProjects, toast]);
+
+  const deleteSavedProject = useCallback((project: SavedContainerProject) => {
+    if (!window.confirm(`Delete “${project.name}”? This cannot be undone.`)) return;
+    const next = savedProjects.filter((entry) => entry.id !== project.id);
+    setSavedProjects(next);
+    persistContainerProjects(next);
+    if (currentProjectId === project.id) {
+      setCurrentProjectId(null);
+      setProjectName("");
+    }
+  }, [currentProjectId, savedProjects]);
 
   const isMetric = unitSystem === "metric";
   const dimFactor = isMetric ? IN_TO_CM : 1;
@@ -2796,6 +3038,8 @@ export default function ContainerCalculator() {
     setCogUndoLayouts({});
     setSnapshotExportFn(null);
     setShareDialogOpen(false);
+    setCurrentProjectId(null);
+    setProjectName("");
   }, [defaultCargoItem]);
 
   const handleExportPDF = useCallback(async () => {
@@ -3017,6 +3261,33 @@ export default function ContainerCalculator() {
           </div>
         </div>
       )}
+      {projectDialogOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm" onClick={() => setProjectDialogOpen(false)} data-testid="project-library-overlay">
+          <div className="flex max-h-[86vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-white/80 bg-white shadow-2xl" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="project-library-title" data-testid="project-library-dialog">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5">
+              <div><p id="project-library-title" className="text-lg font-bold text-slate-950">Loading plan projects</p><p className="mt-1 text-sm leading-5 text-slate-500">Save complete inputs and calculated placements. Projects remain private on this device.</p></div>
+              <button type="button" onClick={() => setProjectDialogOpen(false)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close project library"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="border-b border-slate-200 bg-slate-50/70 p-4 sm:p-5">
+              <Label htmlFor="container-project-name" className="text-xs font-bold text-slate-600">Project name</Label>
+              <div className="mt-2 flex gap-2"><Input id="container-project-name" value={projectName} onChange={(event) => setProjectName(event.target.value)} maxLength={120} placeholder="e.g. Montreal export — 7 pallets" onKeyDown={(event) => { if (event.key === "Enter") saveCurrentProject(); }} /><Button type="button" className="shrink-0 gap-2" onClick={saveCurrentProject} data-testid="button-save-container-project"><Save className="h-4 w-4" />{currentProjectId ? "Update" : "Save"}</Button></div>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+              <div className="mb-3 flex items-center justify-between"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Saved projects ({savedProjects.length}/20)</p><Button type="button" size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { handleReset(); setProjectDialogOpen(false); }}>New blank plan</Button></div>
+              {savedProjects.length ? <div className="space-y-2">{savedProjects.map((project) => (
+                <div key={project.id} className={`flex items-center gap-3 rounded-2xl border p-3 transition ${currentProjectId === project.id ? "border-blue-300 bg-blue-50/50 ring-2 ring-blue-100" : "border-slate-200 hover:border-slate-300"}`} data-testid={`saved-project-${project.id}`}>
+                  <button type="button" className="min-w-0 flex-1 text-left" onClick={() => restoreSavedProject(project)}>
+                    <span className="block truncate text-sm font-bold text-slate-900">{project.name}</span>
+                    <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-500"><span>{project.snapshot.cargoItems.length} cargo row{project.snapshot.cargoItems.length === 1 ? "" : "s"}</span><span>{project.snapshot.multiResult?.totalContainers ? `${project.snapshot.multiResult.totalContainers} container${project.snapshot.multiResult.totalContainers === 1 ? "" : "s"}` : "Not calculated"}</span><span className="inline-flex items-center gap-1"><Clock3 className="h-3 w-3" />{new Date(project.updatedAt).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" })}</span></span>
+                  </button>
+                  <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => duplicateSavedProject(project)} aria-label={`Duplicate ${project.name}`} title="Duplicate project"><Copy className="h-3.5 w-3.5" /></Button>
+                  <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-slate-400 hover:bg-red-50 hover:text-red-600" onClick={() => deleteSavedProject(project)} aria-label={`Delete ${project.name}`} title="Delete project"><Trash2 className="h-3.5 w-3.5" /></Button>
+                </div>
+              ))}</div> : <div className="rounded-2xl border border-dashed border-slate-300 px-6 py-10 text-center"><FolderOpen className="mx-auto h-8 w-8 text-slate-300" /><p className="mt-3 text-sm font-bold text-slate-700">No named projects yet</p><p className="mt-1 text-xs text-slate-500">Your current draft is still saved automatically.</p></div>}
+            </div>
+          </div>
+        </div>
+      )}
       {shareDialogOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm" onClick={() => setShareDialogOpen(false)} data-testid="share-plan-dialog-overlay">
           <div className="w-full max-w-lg rounded-3xl border border-white/80 bg-white p-5 shadow-2xl" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="share-plan-title" data-testid="share-plan-dialog">
@@ -3066,6 +3337,11 @@ export default function ContainerCalculator() {
               Plan optimal cargo placement with interactive 3D visualization. See exactly how your
               goods fit in standard shipping containers.
             </p>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <Button type="button" size="sm" variant="outline" className="gap-2 bg-white" onClick={openProjectLibrary} data-testid="button-open-project-library"><FolderOpen className="h-4 w-4 text-primary" />Saved plans{savedProjects.length ? ` (${savedProjects.length})` : ""}</Button>
+              <Button type="button" size="sm" variant="outline" className="gap-2 bg-white" onClick={saveCurrentProject} data-testid="button-quick-save-project"><Save className="h-4 w-4 text-emerald-600" />{currentProjectId ? "Save changes" : "Save project"}</Button>
+              <span className="inline-flex items-center gap-1.5 px-2 text-[11px] text-slate-400"><Clock3 className="h-3.5 w-3.5" />{lastSavedAt ? `Autosaved ${new Date(lastSavedAt).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}` : "Autosave ready"}</span>
+            </div>
           </div>
 
           <div className="max-w-[1800px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
