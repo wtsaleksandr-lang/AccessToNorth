@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Code2, Copy, ExternalLink, ShieldCheck, Sparkles } from "lucide-react";
+import { Check, Code2, Copy, ExternalLink, LayoutDashboard, ShieldCheck, Sparkles } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -58,14 +58,14 @@ export default function ContainerLoadingApi() {
       <Badge className="mb-4 border-blue-200 bg-blue-50 text-primary hover:bg-blue-50"><Code2 className="mr-1.5 h-3.5 w-3.5" /> Developer & partner access</Badge>
       <h1 className="mx-auto max-w-4xl text-3xl font-extrabold tracking-tight text-slate-950 sm:text-5xl">Put premium 3D load planning inside your product.</h1>
       <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">Start with the free public calculator, embed the complete planner, or connect by API. Every paid plan includes a 14-day trial, automatic updates, and no setup fee.</p>
-      <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row"><Button size="lg" onClick={() => setSelectedTier(tiers[0])}>Start 14-day free trial</Button><Button asChild size="lg" variant="outline"><a href="/embed/container-calculator" target="_blank" rel="noreferrer">Preview the embed <ExternalLink className="ml-2 h-4 w-4" /></a></Button></div>
+      <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row"><Button size="lg" onClick={() => setSelectedTier(tiers[0])}>Start 14-day free trial</Button><Button asChild size="lg" variant="outline"><a href="/embed/container-calculator" target="_blank" rel="noreferrer">Preview the embed <ExternalLink className="ml-2 h-4 w-4" /></a></Button><Button asChild size="lg" variant="ghost"><a href="/developers/container-loading-dashboard"><LayoutDashboard className="mr-2 h-4 w-4" />Customer dashboard</a></Button></div>
       <p className="mt-3 text-xs text-slate-500">Card required · No charge today · Reminder before renewal · Cancel any time</p>
     </section>
 
     <section className="mx-auto mt-10 max-w-6xl px-4 sm:px-6">
       <div className="mx-auto flex w-fit rounded-xl border border-slate-200 bg-white p-1 shadow-sm"><button className={`rounded-lg px-5 py-2 text-sm font-semibold ${billing === "monthly" ? "bg-slate-900 text-white" : "text-slate-600"}`} onClick={() => setBilling("monthly")}>Monthly</button><button className={`rounded-lg px-5 py-2 text-sm font-semibold ${billing === "annual" ? "bg-slate-900 text-white" : "text-slate-600"}`} onClick={() => setBilling("annual")}>Annual <span className="ml-1 text-emerald-500">save up to 35%</span></button></div>
       <div className="mt-7 grid gap-5 lg:grid-cols-4">
-        <article className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h2 className="text-lg font-bold text-slate-900">Public Calculator</h2><p className="mt-2 min-h-[72px] text-sm leading-6 text-slate-500">For occasional planning directly on AccessToNorth.com.</p><div className="mt-5 text-3xl font-extrabold">Free</div><ul className="mt-6 flex-1 space-y-3">{["Unlimited manual projects", "3D loading preview", "PDF and share links", "No website embed or API"].map((f) => <li key={f} className="flex gap-2 text-sm text-slate-600"><Check className="mt-0.5 h-4 w-4 text-emerald-600" />{f}</li>)}</ul><Button asChild variant="outline" className="mt-7"><a href="/tools/container-calculator">Use free calculator</a></Button></article>
+        <article className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h2 className="text-lg font-bold text-slate-900">Public Calculator</h2><p className="mt-2 min-h-[72px] text-sm leading-6 text-slate-500">For occasional planning directly on AccessToNorth.com.</p><div className="mt-5 text-3xl font-extrabold">Free</div><ul className="mt-6 flex-1 space-y-3">{["20 saved projects per device", "3D loading preview", "PDF and share links", "No website embed or API"].map((f) => <li key={f} className="flex gap-2 text-sm text-slate-600"><Check className="mt-0.5 h-4 w-4 text-emerald-600" />{f}</li>)}</ul><Button asChild variant="outline" className="mt-7"><a href="/tools/container-calculator">Use free calculator</a></Button></article>
         {tiers.map((tier) => {
           const amount = billing === "annual" ? tier.annual : tier.monthly;
           const equivalent = billing === "annual" ? Math.round((tier.annual / 12) * 100) / 100 : tier.monthly;

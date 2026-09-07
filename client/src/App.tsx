@@ -65,6 +65,7 @@ const ShipmentTracking = lazy(() => import("@/pages/tools/ShipmentTracking"));
 const ContainerCalculator = lazy(() => import("@/pages/tools/ContainerCalculator"));
 const SharedContainerPlan = lazy(() => import("@/pages/SharedContainerPlan"));
 const ContainerLoadingApi = lazy(() => import("@/pages/ContainerLoadingApi"));
+const ToolSubscriptionDashboard = lazy(() => import("@/pages/ToolSubscriptionDashboard"));
 const SubscriptionSuccess = lazy(() => import("@/pages/SubscriptionSuccess"));
 const PalletBuilder = lazy(() => import("@/pages/tools/PalletBuilder"));
 const TruckLoadPlanner = lazy(() => import("@/pages/tools/TruckLoadPlanner"));
@@ -125,6 +126,7 @@ function Router() {
         <Route path="/tools/container-calculator" component={ContainerCalculator} />
         <Route path="/embed/container-calculator" component={ContainerCalculator} />
         <Route path="/developers/container-loading-api" component={ContainerLoadingApi} />
+        <Route path="/developers/container-loading-dashboard" component={ToolSubscriptionDashboard} />
         <Route path="/subscription/success" component={SubscriptionSuccess} />
         <Route path="/share/load-plan/:token" component={SharedContainerPlan} />
         <Route path="/tools/pallet-builder" component={PalletBuilder} />

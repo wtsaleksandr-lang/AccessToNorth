@@ -149,9 +149,17 @@ test.describe("tool pages load without runtime errors", () => {
       await expect(page.getByRole("button", { name: "Load", exact: true })).toBeVisible();
       await page.getByRole("button", { name: "Load", exact: true }).click();
       await expect(page.getByTestId("button-cargo-zone-loaded")).toContainText("7");
+      await page.getByTestId("button-select-container-cargo-0").click();
+      await page.getByTestId("button-select-container-cargo-1").click();
+      await expect(page.getByTestId("cargo-group-controls")).toContainText("2 selected");
+      await expect(page.getByTestId("button-align-closed-end")).toBeVisible();
       await page.getByTestId("button-loading-sequence").click();
       await expect(page.getByTestId("loading-sequence-controls")).toBeVisible();
       await expect(page.getByTestId("loading-sequence-controls")).toContainText("Loading step 1 of 7");
+      await page.getByTestId("button-quick-save-project").click();
+      await page.getByTestId("button-open-project-library").click();
+      await expect(page.getByTestId("project-library-dialog")).toContainText("Loading plan projects");
+      await expect(page.getByText("2 cargo rows")).toBeVisible();
     }
 
     await page.getByTestId("result-tab-overview").click();
