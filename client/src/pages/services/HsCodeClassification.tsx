@@ -22,6 +22,10 @@ export default function HsCodeClassification() {
         label: "HS Code Finder (built into Customs Calculator)",
         href: "/customs-calculator",
       }}
+      resourceLinks={[
+        { label: "How to Import Into Canada", href: "/resources/how-to-import-into-canada" },
+        { label: "HS Code vs. tariff treatment", href: "/resources/hs-code-vs-tariff-treatment" },
+      ]}
       ctaService="hs_classification"
       priceCAD={95}
       additionalInfo="Incorrect HS codes are one of the most common reasons for CBSA audits and penalties. Our classifications are based on the Canadian Customs Tariff and CBSA interpretation guidelines."

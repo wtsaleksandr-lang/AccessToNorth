@@ -23,6 +23,10 @@ export default function NonResidentImporter() {
         label: "CARM Financial Security Calculator",
         href: "/carm-security-calculator",
       }}
+      resourceLinks={[
+        { label: "How to Import Into Canada", href: "/resources/how-to-import-into-canada" },
+        { label: "Incoterms for Canadian importers", href: "/resources/incoterms-for-canadian-importers" },
+      ]}
       ctaService="non_resident_tax"
       priceCAD={399}
       additionalInfo="Non-resident businesses selling digital products, services, or physical goods into Canada may be required to register for GST/HST and obtain a Business Number. We specialize in guiding international businesses through this process."

@@ -22,6 +22,10 @@ export default function CarmRegistration() {
         label: "CARM Financial Security Calculator",
         href: "/carm-security-calculator",
       }}
+      resourceLinks={[
+        { label: "How to Import Into Canada", href: "/resources/how-to-import-into-canada" },
+        { label: "What is CARM?", href: "/resources/what-is-carm" },
+      ]}
       ctaService="carm_portal"
       priceCAD={499}
       additionalInfo="CARM is CBSA's system of record for commercial import accounting and payment. Importers must register their own business before delegating access; RPP enrolment and financial security are separate decisions."

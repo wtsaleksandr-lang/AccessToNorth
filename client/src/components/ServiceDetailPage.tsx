@@ -23,6 +23,7 @@ interface ServiceDetailProps {
   icon: LucideIcon;
   whatsIncluded: string[];
   toolLink?: { label: string; href: string };
+  resourceLinks?: Array<{ label: string; href: string }>;
   ctaService: string;
   priceCAD?: number;
   additionalInfo?: string;
@@ -38,6 +39,7 @@ export function ServiceDetailPage({
   icon: Icon,
   whatsIncluded,
   toolLink,
+  resourceLinks,
   ctaService,
   priceCAD,
   additionalInfo,
@@ -158,6 +160,22 @@ export function ServiceDetailPage({
                 </Button>
               </Link>
             </div>
+          )}
+
+          {resourceLinks && resourceLinks.length > 0 && (
+            <nav className="mb-8 rounded-xl border border-slate-200 bg-white p-5" aria-label="Related importer resources">
+              <p className="mb-3 text-sm font-semibold text-slate-700">Related importer resources</p>
+              <div className="flex flex-wrap gap-2">
+                {resourceLinks.map((resource) => (
+                  <Link key={resource.href} href={resource.href}>
+                    <Button variant="ghost" size="sm" className="cursor-pointer text-primary">
+                      {resource.label}
+                      <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                    </Button>
+                  </Link>
+                ))}
+              </div>
+            </nav>
           )}
 
           <div className="flex flex-col sm:flex-row gap-3">

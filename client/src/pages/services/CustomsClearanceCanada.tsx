@@ -22,6 +22,10 @@ export default function CustomsClearanceCanada() {
         label: "Customs Duty & Tax Calculator",
         href: "/customs-calculator",
       }}
+      resourceLinks={[
+        { label: "How to Import Into Canada", href: "/resources/how-to-import-into-canada" },
+        { label: "Courier clearance under CA$3,300", href: "/resources/customs-clearance-under-3300" },
+      ]}
       ctaService="customs_clearance"
       additionalInfo="We offer three flat-rate clearance coordination packages: CLVS Coordination (CA$145 for eligible courier shipments up to CA$3,300), Commercial Import Coordination (CA$295 for shipments over CA$3,300 or requiring formal entry), and Clearance Coordination + Compliance Review (CA$395 for full audit). AccessToNorth is not a licensed customs broker; we coordinate with your broker (or introduce you to a vetted partner if you don't have one) who files the declaration with CBSA. Visit our Customs Clearance page for details."
     />

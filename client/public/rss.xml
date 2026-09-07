@@ -6,7 +6,23 @@
     <atom:link href="https://accesstonorth.com/rss.xml" rel="self" type="application/rss+xml" />
     <description>Weekly guides on Canadian GST/HST, CARM, customs clearance, and import compliance.</description>
     <language>en-CA</language>
-    <lastBuildDate>Tue, 01 Sep 2026 04:30:42 GMT</lastBuildDate>
+    <lastBuildDate>Mon, 07 Sep 2026 15:17:49 GMT</lastBuildDate>
+    <item>
+      <title>Canadian Import Permits by Commodity Type</title>
+      <link>https://accesstonorth.com/blog/canadian-import-permits-by-commodity/</link>
+      <guid isPermaLink="true">https://accesstonorth.com/blog/canadian-import-permits-by-commodity/</guid>
+      <pubDate>Mon, 07 Sep 2026 13:00:00 GMT</pubDate>
+      <author>noreply@accesstonorth.com (AccessToNorth Team)</author>
+      <category>Compliance &amp; Duties</category>
+      <description>Every Canadian import runs through CBSA — but CBSA defers to other government departments (OGDs) for specific commodities. Missing the right permit at the border turns a routine clearance into a multi-week hold. Here&apos;s which agency regulates what.
+
+Key takeaways:
+- CFIA: food, plants, animals, seeds, feeds — most commonly missed permits
+- Health Canada: drugs, medical devices, cosmetics, natural health products
+- Global Affairs Canada: textiles, steel quotas, controlled military/dual-use
+- Environment and Climate Change Canada: ozone-depleting substances, hazardous waste
+- Always check the AIRS tool for your HS code BEFORE placing the order</description>
+    </item>
     <item>
       <title>Trailer Load Planning: Fit, Weight, Balance and Loading Sequence</title>
       <link>https://accesstonorth.com/blog/trailer-load-planning-guide/</link>

@@ -59,6 +59,7 @@ test("prerender emits crawl-visible article and application metadata", async () 
       join(outDir, "resources", "how-to-import-into-canada", "index.html"),
       "utf8",
     );
+    const homepage = await readFile(join(outDir, "index.html"), "utf8");
     const calculator = await readFile(
       join(outDir, "tools", "container-calculator", "index.html"),
       "utf8",
@@ -82,6 +83,15 @@ test("prerender emits crawl-visible article and application metadata", async () 
     assert(calculator.includes("Seven square pallets"));
     assert(!calculator.includes('<div id="root"></div>'));
     assert(article.includes("Confirm the importer of record and product admissibility"));
+    assert(article.includes("Worked example: a CA$10,000 commercial import"));
+    assert(article.includes("Justice Laws — Customs Act section 32.2"));
+    const articleText = article
+      .match(/<div data-prerender-content>[\s\S]*?<\/div>/)?.[0]
+      ?.replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    assert((articleText?.split(" ").length ?? 0) >= 900, "priority import guide should expose at least 900 crawl-visible words");
+    assert(homepage.includes("How to Import Into Canada"));
     assert(!article.includes('<div id="root"></div>'));
     assert(freightQuote.includes('<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">'));
     assert(freightQuote.includes('"@type":"WebApplication"'));

@@ -104,6 +104,14 @@ export default function Home() {
                     <p className="mt-0.5 text-xs font-medium leading-tight text-slate-600">Canadian &amp; non-resident clients</p>
                   </div>
                 </div>
+                <Link
+                  href="/resources/how-to-import-into-canada"
+                  className="inline-flex items-center gap-1.5 px-1 text-sm font-semibold text-slate-700 hover:text-primary hover:underline"
+                  data-testid="link-hero-import-guide"
+                >
+                  New to importing? Read the 2026 step-by-step Canada import guide
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
               </div>
             </motion.div>
 
@@ -184,6 +192,9 @@ export default function Home() {
             </Link>
             <Link href="/customs-calculator" className="font-medium text-primary hover:underline">
               Customs Duty Calculator
+            </Link>
+            <Link href="/resources/how-to-import-into-canada" className="font-medium text-primary hover:underline">
+              How to Import Into Canada
             </Link>
           </nav>
         </div>

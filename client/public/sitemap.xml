@@ -2,6 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://accesstonorth.com/</loc>
+    <lastmod>2026-09-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
@@ -37,6 +38,7 @@
   </url>
   <url>
     <loc>https://accesstonorth.com/resources/</loc>
+    <lastmod>2026-09-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -95,6 +97,7 @@
   </url>
   <url>
     <loc>https://accesstonorth.com/tools/hs-code-finder/</loc>
+    <lastmod>2026-09-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -116,7 +119,7 @@
   </url>
   <url>
     <loc>https://accesstonorth.com/tools/container-calculator/</loc>
-    <lastmod>2026-09-02</lastmod>
+    <lastmod>2026-09-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -145,7 +148,7 @@
   </url>
   <url>
     <loc>https://accesstonorth.com/resources/how-to-import-into-canada/</loc>
-    <lastmod>2026-08-28</lastmod>
+    <lastmod>2026-09-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -326,6 +329,12 @@
   <url>
     <loc>https://accesstonorth.com/blog/certificate-of-origin-cusma-requirements/</loc>
     <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://accesstonorth.com/blog/canadian-import-permits-by-commodity/</loc>
+    <lastmod>2026-09-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>

@@ -20,7 +20,7 @@ const articles = [
 
 export default function Resources() {
   usePageMeta({
-    title: "Resources | AccessToNorth.com",
+    title: "Canadian Import & Customs Guides | AccessToNorth.com",
     description: "Guides and articles on Canadian importing, customs clearance, CARM, HS codes, tariff treatments, export declarations, and trade compliance.",
     canonical: "/resources",
   });
