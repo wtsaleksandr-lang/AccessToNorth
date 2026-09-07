@@ -86,3 +86,44 @@ export function validateManualLayout(boxes: PlacedBox[], container: ContainerSpe
 
   return { valid: true, reason: null, supportRatio: 1, boxIndex: null } as const;
 }
+
+/**
+ * Finds a collision-safe position for cargo returning from a staging dock.
+ * The original position is preferred, then the search considers meaningful
+ * edges and supported stack levels instead of walking every inch of the box.
+ */
+export function findSafeManualPlacement(
+  box: PlacedBox,
+  otherBoxes: PlacedBox[],
+  container: ContainerSpec,
+) {
+  const original = { ...box };
+  if (validateManualPlacement(original, otherBoxes, container).valid) return original;
+
+  const xCandidates = new Set<number>([0, Math.max(0, container.lengthIn - box.l)]);
+  const zCandidates = new Set<number>([0, Math.max(0, container.widthIn - box.w)]);
+  const yCandidates = new Set<number>([0]);
+
+  for (const other of otherBoxes) {
+    xCandidates.add(other.x);
+    xCandidates.add(other.x + other.l);
+    zCandidates.add(other.z);
+    zCandidates.add(other.z + other.w);
+    yCandidates.add(other.y + other.h);
+  }
+
+  const xs = [...xCandidates].filter(Number.isFinite).sort((a, b) => a - b);
+  const zs = [...zCandidates].filter(Number.isFinite).sort((a, b) => a - b);
+  const ys = [...yCandidates].filter(Number.isFinite).sort((a, b) => a - b);
+
+  for (const y of ys) {
+    for (const x of xs) {
+      for (const z of zs) {
+        const candidate = { ...box, x, y, z };
+        if (validateManualPlacement(candidate, otherBoxes, container).valid) return candidate;
+      }
+    }
+  }
+
+  return null;
+}

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   boxesOverlap3D,
+  findSafeManualPlacement,
   getSupportRatio,
   isInsideContainer,
   validateManualLayout,
@@ -82,4 +83,26 @@ test("moving a supporting item cannot leave another item floating", () => {
   assert.equal(result.valid, false);
   assert.equal(result.reason, "unsupported");
   assert.equal(result.boxIndex, 1);
+});
+
+test("staged cargo returns to its original position when it remains available", () => {
+  const staged = box({ x: 20, z: 10 });
+  const returned = findSafeManualPlacement(staged, [box({ x: 0, z: 10 })], container);
+
+  assert.deepEqual(returned, staged);
+});
+
+test("staged cargo finds the next safe edge when its original position is occupied", () => {
+  const staged = box({ x: 0, z: 0 });
+  const occupying = box({ x: 0, z: 0 });
+  const returned = findSafeManualPlacement(staged, [occupying], container);
+
+  assert.ok(returned);
+  assert.equal(validateManualPlacement(returned, [occupying], container).valid, true);
+  assert.equal(boxesOverlap3D(returned, occupying), false);
+});
+
+test("staged cargo stays staged when no valid container position exists", () => {
+  const oversized = box({ l: 120 });
+  assert.equal(findSafeManualPlacement(oversized, [], container), null);
 });
