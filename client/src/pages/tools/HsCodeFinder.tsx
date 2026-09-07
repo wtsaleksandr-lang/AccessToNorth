@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   Calculator,
   Ship,
+  BookOpen,
 } from "lucide-react";
 
 interface HsCodeResult {
@@ -567,7 +568,7 @@ export default function HsCodeFinder() {
                 Planning Your Import?
               </h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="grid-next-steps">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4" data-testid="grid-next-steps">
               <Card className="border border-slate-200" data-testid="card-next-duty-calc">
                 <CardContent className="p-6 flex flex-col items-center text-center">
                   <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-4">
@@ -597,6 +598,23 @@ export default function HsCodeFinder() {
                   <Link href="/canadian-customs-clearance">
                     <Button variant="outline" data-testid="button-next-customs">
                       View Customs Clearance
+                      <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+              <Card className="border border-slate-200" data-testid="card-next-import-guide">
+                <CardContent className="p-6 flex flex-col items-center text-center">
+                  <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-4">
+                    <BookOpen className="w-6 h-6 text-blue-700" />
+                  </div>
+                  <h3 className="text-base font-semibold text-slate-900 mb-2">Importing Into Canada?</h3>
+                  <p className="text-sm text-slate-500 mb-4">
+                    Follow the complete 2026 workflow for BN/RM setup, CARM, documents, duty, release, and delivery.
+                  </p>
+                  <Link href="/resources/how-to-import-into-canada">
+                    <Button variant="outline" data-testid="button-next-import-guide">
+                      Read Import Guide
                       <ArrowRight className="w-3.5 h-3.5 ml-1" />
                     </Button>
                   </Link>

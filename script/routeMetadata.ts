@@ -50,6 +50,7 @@ const STATIC_ROUTES: RouteMeta[] = [
     path: "/",
     priority: "1.0",
     changefreq: "weekly",
+    lastmod: "2026-09-07",
     title: "AccessToNorth.com | Canadian Business & Import Registration",
     description:
       "Flat-fee Canadian business registration. GST/HST, Business Numbers, CARM, customs clearance, and non-resident compliance. From CA$99. 5–10 business days.",
@@ -106,7 +107,8 @@ const STATIC_ROUTES: RouteMeta[] = [
     path: "/resources",
     priority: "0.7",
     changefreq: "weekly",
-    title: "Resources | AccessToNorth.com",
+    lastmod: "2026-09-07",
+    title: "Canadian Import & Customs Guides | AccessToNorth.com",
     description:
       "Practical guides for Canadian importers and exporters: CARM, GST/HST, HS codes, Incoterms, customs clearance, CFIA, and more.",
   },
@@ -192,6 +194,7 @@ const STATIC_ROUTES: RouteMeta[] = [
     path: "/tools/hs-code-finder",
     priority: "0.7",
     changefreq: "monthly",
+    lastmod: "2026-09-07",
     schemaType: "WebApplication",
     title: "Canadian HS Code Finder — Free Tariff Lookup",
     description:
@@ -229,7 +232,7 @@ const STATIC_ROUTES: RouteMeta[] = [
     path: "/tools/container-calculator",
     priority: "0.8",
     changefreq: "monthly",
-    lastmod: "2026-09-02",
+    lastmod: "2026-09-07",
     schemaType: "WebApplication",
     title: "Free 3D Container Loading Calculator | AccessToNorth.com",
     description:
@@ -364,13 +367,13 @@ const STATIC_ROUTES: RouteMeta[] = [
     path: "/resources/how-to-import-into-canada",
     priority: "0.8",
     changefreq: "monthly",
-    lastmod: "2026-08-28",
+    lastmod: "2026-09-07",
     schemaType: "Article",
     datePublished: "2026-03-15",
-    dateModified: "2026-08-28",
+    dateModified: "2026-09-07",
     title: "How to Import Into Canada (2026) — Step-by-Step Guide",
     description:
-      "How to import commercial goods into Canada in 2026: importer setup, BN and RM registration, CARM, HS codes, duties, documents, customs release, and RPP security.",
+      "Learn how to import commercial goods into Canada in 2026: BN and RM setup, CARM, HS codes, duties, documents, customs release, RPP, and worked examples.",
   },
   {
     path: "/resources/customs-clearance-under-3300",

@@ -1556,6 +1556,16 @@ export default function CustomsCalculator() {
               CARM Security Calculator
               <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
+            <Button
+              size="lg"
+              variant="ghost"
+              className="min-w-[220px] w-full sm:w-auto justify-center text-blue-700"
+              onClick={() => window.location.href = "/resources/how-to-import-into-canada"}
+              data-testid="button-import-guide"
+            >
+              How to Import Into Canada
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
           </div>
         </div>
       </section>

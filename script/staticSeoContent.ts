@@ -37,6 +37,7 @@ const PRIORITY_CONTENT: Record<string, SeoPageContent> = {
         paragraphs: [
           "Choose the registration or customs service you need, upload the supporting documents securely, and follow the work online. Services include CRA Business Number and GST/HST registration, CARM onboarding, non-resident importer setup, HS classification, customs-clearance coordination, and import-compliance review.",
           "AccessToNorth is an independent administrative-services firm. We prepare and coordinate filings under signed authorization and work with licensed customs professionals where a regulated filing requires one.",
+          "Canadian and foreign businesses can use the site to understand which accounts are needed before placing an order. The step-by-step import guide connects importer-of-record decisions with BN and RM setup, CARM access, tariff classification, valuation, origin, shipping documents, customs release, and post-entry records.",
         ],
       },
       {
@@ -46,6 +47,13 @@ const PRIORITY_CONTENT: Record<string, SeoPageContent> = {
           "Test pallets, cartons, and mixed cargo in the free 3D Container Loading Calculator.",
           "Estimate duties and taxes with the Canadian Customs Duty Calculator.",
           "Build pallet and truck loading plans with visual reports.",
+        ],
+      },
+      {
+        heading: "Plan before the shipment moves",
+        paragraphs: [
+          "The free tools are designed to make early planning more transparent. Results distinguish user inputs from assumptions and highlight items that still need verification. A calculator result does not replace the carrier's equipment specification, a customs ruling, professional advice, or the importer's responsibility for complete and accurate declarations.",
+          "Start with the Canada import guide if this is your first commercial shipment. Use the HS finder to research a detailed product description, send a candidate code to the customs calculator, and confirm CARM and financial-security readiness before the cargo reaches the border.",
         ],
       },
     ],
@@ -239,6 +247,7 @@ const PRIORITY_CONTENT: Record<string, SeoPageContent> = {
       { label: "Non-resident GST/HST guide", href: "/blog/register-gst-hst-non-resident-canada" },
       { label: "Canadian customs calculator", href: "/customs-calculator" },
       { label: "CARM registration service", href: "/services/carm-registration-canada" },
+      { label: "How to import into Canada", href: "/resources/how-to-import-into-canada" },
     ],
     sources: [
       {
@@ -398,24 +407,28 @@ const PRIORITY_CONTENT: Record<string, SeoPageContent> = {
         paragraphs: [
           "The importer of record is responsible for the customs declaration, duties and taxes, recordkeeping, and corrections after release. Under DDP terms this may be a foreign seller acting as a non-resident importer; under many other transactions it is the Canadian buyer. Confirm responsibility before booking freight.",
           "Check whether the goods are prohibited, controlled, or regulated. Food, plants, animals, vehicles, medical products, chemicals, firearms, and some steel or textile goods may require permits, licences, certificates, or labelling before shipment.",
+          "Record the importer, customs broker, consignee, party paying duty and tax, permit owner, and post-entry correction contact in the purchase order or shipping instructions. An Incoterm allocates commercial responsibilities, but it does not create a Canadian importer account or satisfy product regulation.",
         ],
       },
       {
         heading: "2. Obtain a Business Number and import-export RM account",
         paragraphs: [
           "Commercial importers need a nine-digit Business Number and an import-export program account, commonly displayed as BN9 plus RM0001. Legal names and addresses must match the records connected to the BN because mismatches commonly delay CARM registration.",
+          "Check incorporation records, earlier CRA correspondence, tax returns, and previous import activity before requesting another BN. Duplicate accounts can separate program accounts and payments from the legal entity that owns them.",
         ],
       },
       {
         heading: "3. Register in CARM and decide whether RPP is needed",
         paragraphs: [
           "The business account manager registers the importer in the CARM Client Portal and can then delegate access to a customs broker. Release Prior to Payment is separate from portal registration and requires active financial security. Without RPP, payment is generally required before release.",
+          "Before shipping, test employee access, broker delegation, statements, the payment method, and the displayed security status. Discovering an inactive account only after arrival can create avoidable holds and storage charges.",
         ],
       },
       {
         heading: "4. Classify, value, and determine origin",
         paragraphs: [
           "Every product needs a Canadian ten-digit tariff classification. The code determines customs duty and may trigger SIMA duties, permits, quotas, or controls. Determine value for duty using the applicable valuation method, and support preferential tariff treatment with evidence that the goods satisfy the relevant agreement's origin rules.",
+          "Classification, origin, and value are separate decisions. A correct HS code does not prove preferential origin, and the invoice price may require adjustments for assists, royalties, proceeds, discounts, related-party pricing, or other valuation factors.",
         ],
       },
       {
@@ -425,24 +438,56 @@ const PRIORITY_CONTENT: Record<string, SeoPageContent> = {
         ],
       },
       {
+        heading: "Worked example: a CA$10,000 commercial import",
+        paragraphs: [
+          "Assume CBSA accepts a CA$10,000 value for duty, the verified tariff rate is 6.5%, no preferential treatment is claimed, and no SIMA or excise charge applies. Duty is CA$650. In this simplified example, five-percent import GST on the CA$10,650 value for tax is CA$532.50, for CA$1,182.50 in duty and GST.",
+          "This is not the complete landed cost. Brokerage, disbursement, freight, terminal or courier charges, permits, inspections, storage, delivery, and any non-recoverable tax remain separate. If valid origin evidence changes the duty rate to free, both the duty and tax calculation change.",
+          "The example demonstrates the calculation sequence only. The tariff classification, origin treatment, value for duty, tax treatment, and special measures must be verified for the actual goods.",
+        ],
+      },
+      {
         heading: "6. Prepare documents before arrival",
         bullets: [
           "A detailed commercial invoice with buyer, seller, goods, quantity, currency, prices, and origin.",
           "A packing list with package count, dimensions, net weight, and gross weight.",
           "The bill of lading, air waybill, or courier waybill.",
           "Origin certification, permits, licences, test reports, and product certificates where required.",
+          "Broker instructions identifying the importer number, transaction type, claimed treatment, and delivery contact.",
+          "Product specifications, composition, photos, model details, or catalogues needed to support classification.",
         ],
       },
       {
         heading: "7. Arrange customs release and delivery",
         paragraphs: [
           "The carrier reports the cargo while the importer or licensed customs broker submits release and accounting data. Send documents early. Inactive importer accounts, vague descriptions, inconsistent values, and missing permits can lead to holds and storage charges.",
+          "Align document cutoffs with the carrier, terminal, warehouse, and broker. Pre-arrival review provides time to correct incomplete descriptions or missing permits before cargo begins accumulating avoidable charges.",
         ],
       },
       {
         heading: "8. Keep records and correct errors",
         paragraphs: [
           "Import responsibility continues after delivery. Retain invoices, origin support, classifications, valuation records, permits, and accounting documents. Review the entry after release and correct material errors within the applicable deadline.",
+          "If the importer has reason to believe an origin declaration, tariff classification, or value for duty is wrong, Customs Act correction rules can require correction within 90 days. Maintain a shipment file that shows how each customs decision was reached.",
+        ],
+      },
+      {
+        heading: "Pre-shipment checklist",
+        bullets: [
+          "Importer of record confirmed and matched to an active BN and RM account.",
+          "CARM access, broker delegation, payment method, and RPP status tested.",
+          "Product admissibility and other-government-department requirements checked.",
+          "Classification, origin treatment, and value-for-duty method documented.",
+          "Commercial invoice and packing list reconciled to the booking and purchase order.",
+          "Carrier reporting, customs release, terminal, warehouse, and delivery responsibilities assigned.",
+          "Duty, tax, freight, clearance, terminal, and delivery estimates reviewed.",
+          "Post-entry records and correction ownership assigned.",
+        ],
+      },
+      {
+        heading: "Common questions",
+        paragraphs: [
+          "A broker is not mandatory for every commercial import, but the importer remains responsible when a broker files. Foreign businesses can act as non-resident importers when they complete the appropriate BN and RM setup, CARM registration, customs procedures, tax analysis, and delivery arrangements.",
+          "CARM registration and RPP are not the same. Portal registration establishes account access; RPP is a separate privilege requiring active financial security. Shipping from the United States also does not automatically prove CUSMA origin—the product must satisfy the agreement rules and the importer must hold supporting evidence.",
         ],
       },
     ],
@@ -451,6 +496,12 @@ const PRIORITY_CONTENT: Record<string, SeoPageContent> = {
       { label: "Customs Duty Calculator", href: "/customs-calculator" },
       { label: "CARM Security Calculator", href: "/carm-security-calculator" },
       { label: "Customs Clearance Services", href: "/services/customs-clearance-canada" },
+    ],
+    sources: [
+      { label: "CBSA — Commercial importing checklist", href: "https://www.cbsa-asfc.gc.ca/import/checklist-controle-eng.html" },
+      { label: "CBSA — Get started with CARM", href: "https://www.canada.ca/en/border-services-agency/services/carm/register.html" },
+      { label: "CBSA — RPP financial security", href: "https://www.cbsa-asfc.gc.ca/services/carm-gcra/rpp-map/prepare-ready-eng.html" },
+      { label: "Justice Laws — Customs Act section 32.2", href: "https://laws-lois.justice.gc.ca/eng/acts/c-52.6/section-32.2.html" },
     ],
   },
 };
@@ -519,6 +570,8 @@ export function renderStaticSeoContent(route: RouteMeta): string {
       { label: "Services", href: "/services" },
       { label: "Free trade tools", href: "/tools" },
       { label: "Importer resources", href: "/resources" },
+      { label: "How to Import Into Canada", href: "/resources/how-to-import-into-canada" },
+      { label: "Canadian HS Code Finder", href: "/tools/hs-code-finder" },
     ],
   } satisfies SeoPageContent;
 

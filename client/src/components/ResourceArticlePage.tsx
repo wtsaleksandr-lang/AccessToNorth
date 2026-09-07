@@ -19,6 +19,11 @@ interface SourceLink {
   href: string;
 }
 
+interface FaqItem {
+  question: string;
+  answer: string;
+}
+
 export interface ArticleSection {
   heading: string;
   /**
@@ -52,6 +57,8 @@ interface ResourceArticleProps {
   datePublished?: string;
   /** Primary government or standards sources used for the article. */
   sourceLinks?: SourceLink[];
+  /** Questions rendered in the article and emitted as FAQ structured data. */
+  faqItems?: FaqItem[];
 }
 
 export function ResourceArticlePage({
@@ -68,6 +75,7 @@ export function ResourceArticlePage({
   lastReviewed,
   datePublished,
   sourceLinks,
+  faqItems,
 }: ResourceArticleProps) {
   const normalizedCanonical = canonicalUrl(canonical);
   usePageMeta({ title: metaTitle, description: metaDescription, canonical: normalizedCanonical });
@@ -110,10 +118,23 @@ export function ResourceArticlePage({
     ],
   };
 
+  const faqJsonLd = faqItems?.length
+    ? {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: faqItems.map((item) => ({
+          "@type": "Question",
+          name: item.question,
+          acceptedAnswer: { "@type": "Answer", text: item.answer },
+        })),
+      }
+    : null;
+
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
       <JsonLd id={`article-jsonld-${normalizedCanonical}`} data={articleJsonLd} />
       <JsonLd id={`article-breadcrumb-${normalizedCanonical}`} data={breadcrumbJsonLd} />
+      {faqJsonLd && <JsonLd id={`article-faq-${normalizedCanonical}`} data={faqJsonLd} />}
       <Navbar />
       <main className="flex-1 pt-28 pb-16">
         <article className="container mx-auto px-4 md:px-6 max-w-3xl">
@@ -197,6 +218,24 @@ export function ResourceArticlePage({
                 </section>
               ))}
             </div>
+          )}
+
+          {faqItems && faqItems.length > 0 && (
+            <section className="mt-10" aria-labelledby="article-faq-title">
+              <h2 id="article-faq-title" className="text-xl font-bold font-display text-slate-900">
+                Frequently asked questions
+              </h2>
+              <div className="mt-4 space-y-3">
+                {faqItems.map((item) => (
+                  <details key={item.question} className="group rounded-xl border border-slate-200 bg-white p-4">
+                    <summary className="cursor-pointer list-none pr-6 text-sm font-semibold text-slate-900 marker:hidden">
+                      {item.question}
+                    </summary>
+                    <p className="mt-3 text-sm leading-6 text-slate-600">{item.answer}</p>
+                  </details>
+                ))}
+              </div>
+            </section>
           )}
 
           {sourceLinks && sourceLinks.length > 0 && (
