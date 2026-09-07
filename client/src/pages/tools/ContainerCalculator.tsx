@@ -34,6 +34,11 @@ import {
   Layers,
   Undo2,
   Redo2,
+  RotateCw,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
   ArrowUpDown,
   ChevronDown,
   CheckSquare,
@@ -88,14 +93,18 @@ import { mergeImportedCargoItems, type ImportedCargoRow } from "@/lib/containerI
 import {
   alignManualSelection,
   findSafeManualPlacement,
+  rotateManualSelection,
   translateManualSelection,
   validateManualLayout,
   validateManualPlacement,
   type ManualAlignment,
+  type ManualRotationDirection,
 } from "@/lib/containerLayout";
 import { calculateContainerBalance, centerContainerCargoLayout } from "@/lib/containerBalance";
 import { compareContainerPlans, type ContainerPlanComparison } from "@/lib/containerComparison";
 import { consumePalletPlanTransfer } from "@/lib/palletTransfer";
+import { consumeContainerShareTransfer } from "@/lib/containerShareTransfer";
+import { getContainerRenderProfile, type ContainerRenderQuality } from "@/lib/container3dQuality";
 import {
   buildContainerPlanReview,
   diagnoseUnplacedCargo,
@@ -283,6 +292,13 @@ function inToM(inches: number) {
   return inches * 0.0254;
 }
 
+function placementTextForValidation(reason: "inside" | "collision" | "unsupported" | null) {
+  if (reason === "collision") return "That position overlaps another cargo item.";
+  if (reason === "unsupported") return "That position would leave stacked cargo without enough support.";
+  if (reason === "inside") return "Cargo must remain fully inside the container.";
+  return "Valid position.";
+}
+
 export type SnapshotExportFn = () => { iso: string; top: string; sideA: string; front: string } | null;
 
 function ContainerFallback2D({
@@ -401,6 +417,7 @@ export function ContainerViewer3D({
   onReadyExport,
   onPlacedChange,
   onExportPdf,
+  rotationModesByCargoId,
 }: {
   placed: PlacedBox[];
   container: ContainerSpec;
@@ -408,6 +425,7 @@ export function ContainerViewer3D({
   onReadyExport?: (fn: SnapshotExportFn | null) => void;
   onPlacedChange?: (nextPlaced: PlacedBox[]) => void;
   onExportPdf?: () => void;
+  rotationModesByCargoId?: Record<string, RotationMode>;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -424,8 +442,10 @@ export function ContainerViewer3D({
   const [showGrid, setShowGrid] = useState(true);
   const [showShell, setShowShell] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
+  const [renderQuality, setRenderQuality] = useState<ContainerRenderQuality>("auto");
   const [hoveredCargoIndex, setHoveredCargoIndex] = useState<number | null>(null);
   const [selectedCargoIndices, setSelectedCargoIndices] = useState<Set<number>>(new Set());
+  const [movementStep, setMovementStep] = useState<"fine" | "coarse">("fine");
   const selectedCargoIndicesRef = useRef<Set<number>>(new Set());
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeCargoZone, setActiveCargoZone] = useState<CargoWorkspaceZone>("loaded");
@@ -487,7 +507,7 @@ export function ContainerViewer3D({
     dock1: stagedCargo.filter((entry) => entry.zone === "dock1"),
     dock2: stagedCargo.filter((entry) => entry.zone === "dock2"),
   }), [stagedCargo]);
-  const hasPlacementWarning = /invalid|unsupported|no collision-safe|would leave/i.test(placementMessage);
+  const hasPlacementWarning = /invalid|unsupported|overlap|outside|must remain|cannot|exceed|no collision-safe|would leave/i.test(placementMessage);
 
   useEffect(() => {
     selectedCargoIndicesRef.current = selectedCargoIndices;
@@ -601,6 +621,63 @@ export function ContainerViewer3D({
     onPlacedChange?.(nextLayout);
   }, [container, onPlacedChange, placed, selectedCargoIndices]);
 
+  const applySelectionRotation = useCallback((direction: ManualRotationDirection) => {
+    const selected = [...selectedCargoIndices].filter((index) => placed[index]);
+    if (!selected.length) {
+      setPlacementMessage("Select one or more cargo units before rotating.");
+      return;
+    }
+    const locked = selected.some((index) => rotationModesByCargoId?.[placed[index].cargoId] === "fixed");
+    if (locked) {
+      setPlacementMessage("This selection includes fixed-orientation cargo and cannot be rotated.");
+      setWarningPanelOpen(true);
+      return;
+    }
+    const nextLayout = rotateManualSelection(placed, selected, container, direction);
+    if (!nextLayout) {
+      setPlacementMessage("That rotation would overlap cargo, exceed the container, or lose stack support.");
+      setWarningPanelOpen(true);
+      return;
+    }
+    arrangementHistoryRef.current = [
+      ...arrangementHistoryRef.current,
+      placed.map((box) => ({ ...box })),
+    ].slice(-20);
+    arrangementRedoRef.current = [];
+    setHistoryCount(arrangementHistoryRef.current.length);
+    setRedoCount(0);
+    setPlacementMessage(`${selected.length} selected cargo unit${selected.length === 1 ? "" : "s"} rotated safely.`);
+    onPlacedChange?.(nextLayout);
+  }, [container, onPlacedChange, placed, rotationModesByCargoId, selectedCargoIndices]);
+
+  const movementStepIn = unitSystem === "metric"
+    ? (movementStep === "fine" ? 1 : 10) / IN_TO_CM
+    : movementStep === "fine" ? 1 : 6;
+
+  const nudgeSelection = useCallback((deltaX: number, deltaZ: number) => {
+    const selected = [...selectedCargoIndices].filter((index) => placed[index]);
+    if (!selected.length) {
+      setPlacementMessage("Select cargo before using the position controls.");
+      return;
+    }
+    const nextLayout = translateManualSelection(placed, selected, deltaX, deltaZ);
+    const validation = validateManualLayout(nextLayout, container);
+    if (!validation.valid) {
+      setPlacementMessage(placementTextForValidation(validation.reason));
+      setWarningPanelOpen(true);
+      return;
+    }
+    arrangementHistoryRef.current = [
+      ...arrangementHistoryRef.current,
+      placed.map((box) => ({ ...box })),
+    ].slice(-20);
+    arrangementRedoRef.current = [];
+    setHistoryCount(arrangementHistoryRef.current.length);
+    setRedoCount(0);
+    setPlacementMessage(`${selected.length} selected cargo unit${selected.length === 1 ? "" : "s"} moved safely.`);
+    onPlacedChange?.(nextLayout);
+  }, [container, onPlacedChange, placed, selectedCargoIndices]);
+
   const resetArrangement = useCallback(() => {
     arrangementHistoryRef.current = [];
     arrangementRedoRef.current = [];
@@ -681,6 +758,24 @@ export function ContainerViewer3D({
       } else if (modifier && event.key.toLowerCase() === "y") {
         event.preventDefault();
         redoArrangement();
+      } else if (arrangeMode && selectedCargoIndicesRef.current.size > 0 && !modifier && event.key === "ArrowUp") {
+        event.preventDefault();
+        nudgeSelection(-movementStepIn, 0);
+      } else if (arrangeMode && selectedCargoIndicesRef.current.size > 0 && !modifier && event.key === "ArrowDown") {
+        event.preventDefault();
+        nudgeSelection(movementStepIn, 0);
+      } else if (arrangeMode && selectedCargoIndicesRef.current.size > 0 && !modifier && event.key === "ArrowLeft") {
+        event.preventDefault();
+        nudgeSelection(0, -movementStepIn);
+      } else if (arrangeMode && selectedCargoIndicesRef.current.size > 0 && !modifier && event.key === "ArrowRight") {
+        event.preventDefault();
+        nudgeSelection(0, movementStepIn);
+      } else if (arrangeMode && selectedCargoIndicesRef.current.size > 0 && !modifier && event.key.toLowerCase() === "q") {
+        event.preventDefault();
+        applySelectionRotation("counterclockwise");
+      } else if (arrangeMode && selectedCargoIndicesRef.current.size > 0 && !modifier && event.key.toLowerCase() === "e") {
+        event.preventDefault();
+        applySelectionRotation("clockwise");
       } else if (event.key === "Escape") {
         setArrangeMode(false);
         setSequenceMode(false);
@@ -690,7 +785,7 @@ export function ContainerViewer3D({
     };
     window.addEventListener("keydown", handleEditorShortcut);
     return () => window.removeEventListener("keydown", handleEditorShortcut);
-  }, [redoArrangement, undoArrangement]);
+  }, [applySelectionRotation, arrangeMode, movementStepIn, nudgeSelection, redoArrangement, undoArrangement]);
 
   useEffect(() => {
     if (!mountRef.current || webglError) return;
@@ -698,35 +793,57 @@ export function ContainerViewer3D({
     const el = mountRef.current;
     const w = Math.max(el.clientWidth, 320);
     const h = Math.max(el.clientHeight, 300);
-    const compactViewport = window.matchMedia("(max-width: 767px)").matches;
+    const deviceNavigator = navigator as Navigator & { deviceMemory?: number };
+    const renderProfile = getContainerRenderProfile({
+      quality: renderQuality,
+      viewportWidth: w,
+      devicePixelRatio: window.devicePixelRatio || 1,
+      itemCount: placed.length + stagedCargo.length,
+      deviceMemoryGb: deviceNavigator.deviceMemory,
+      hardwareConcurrency: navigator.hardwareConcurrency,
+    });
 
     let renderer: THREE.WebGLRenderer;
     try {
       renderer = new THREE.WebGLRenderer({
-        antialias: !compactViewport,
+        antialias: renderProfile.antialias,
         alpha: true,
-        powerPreference: "default",
+        powerPreference: "high-performance",
         failIfMajorPerformanceCaveat: false,
       });
     } catch {
-      onReadyExport?.(null);
-      setWebglError(true);
-      return;
+      try {
+        renderer = new THREE.WebGLRenderer({
+          antialias: false,
+          alpha: true,
+          powerPreference: "low-power",
+          failIfMajorPerformanceCaveat: false,
+        });
+      } catch {
+        onReadyExport?.(null);
+        setWebglError(true);
+        return;
+      }
     }
     renderer.setSize(w, h);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, compactViewport ? 1.5 : 2));
+    renderer.setPixelRatio(renderProfile.pixelRatio);
     renderer.setClearColor(0x000000, 0);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.02;
-    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.enabled = renderProfile.shadows;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.domElement.style.touchAction = "none";
     el.appendChild(renderer.domElement);
 
     const handleContextLost = (event: Event) => {
       event.preventDefault();
       onReadyExport?.(null);
-      setWebglError(true);
+      if (rendererAttempt < 2) {
+        window.setTimeout(() => setRendererAttempt((attempt) => attempt + 1), 200);
+      } else {
+        setWebglError(true);
+      }
     };
     renderer.domElement.addEventListener("webglcontextlost", handleContextLost);
 
@@ -772,9 +889,10 @@ export function ContainerViewer3D({
 
     const dirLight = new THREE.DirectionalLight(0xfffbeb, 2.05);
     dirLight.position.set(cL, cH * 2, cW * 1.5);
-    dirLight.castShadow = true;
-    const shadowMapSize = compactViewport ? 512 : 1024;
-    dirLight.shadow.mapSize.set(shadowMapSize, shadowMapSize);
+    dirLight.castShadow = renderProfile.shadows;
+    if (renderProfile.shadowMapSize > 0) {
+      dirLight.shadow.mapSize.set(renderProfile.shadowMapSize, renderProfile.shadowMapSize);
+    }
     dirLight.shadow.camera.near = 0.1;
     dirLight.shadow.camera.far = Math.max(cL, cW) * 5;
     dirLight.shadow.bias = -0.0008;
@@ -795,10 +913,10 @@ export function ContainerViewer3D({
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(cL / 2, -0.035, cW / 2);
-    ground.receiveShadow = true;
+    ground.receiveShadow = renderProfile.shadows;
     scene.add(ground);
 
-    const gridDivisions = 180;
+    const gridDivisions = renderProfile.gridDivisions;
     const grid = new THREE.GridHelper(gridSize, gridDivisions, 0xcbd5e1, 0xdce3ea);
     grid.position.set(cL / 2, -0.02, cW / 2);
     if (Array.isArray(grid.material)) {
@@ -860,7 +978,7 @@ export function ContainerViewer3D({
     const addStructure = (geometry: THREE.BufferGeometry, x: number, y: number, z: number) => {
       const beam = new THREE.Mesh(geometry, structureMat);
       beam.position.set(x, y, z);
-      beam.castShadow = true;
+      beam.castShadow = renderProfile.shadows;
       containerGroup.add(beam);
     };
     const rail = Math.max(0.032, Math.min(cH, cW) * 0.018);
@@ -883,7 +1001,7 @@ export function ContainerViewer3D({
       new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.86, metalness: 0.16 }),
     );
     floor.position.set(cL / 2, -0.015, cW / 2);
-    floor.receiveShadow = true;
+    floor.receiveShadow = renderProfile.shadows;
     containerGroup.add(floor);
 
     const wallMat = new THREE.MeshStandardMaterial({
@@ -924,7 +1042,7 @@ export function ContainerViewer3D({
       roughness: 0.48,
       metalness: 0.42,
     });
-    const ribCount = Math.max(12, Math.round(cL / 0.55));
+    const ribCount = Math.max(renderProfile.performanceMode ? 8 : 12, Math.round(cL / (renderProfile.performanceMode ? 0.95 : 0.55)));
     for (let index = 1; index < ribCount; index++) {
       const x = (cL * index) / ribCount;
       for (const z of [0.008, cW - 0.008]) {
@@ -949,7 +1067,7 @@ export function ContainerViewer3D({
     const addDoorFrame = (geometry: THREE.BufferGeometry, x: number, y: number, z: number) => {
       const mesh = new THREE.Mesh(geometry, frameMat);
       mesh.position.set(x, y, z);
-      mesh.castShadow = true;
+      mesh.castShadow = renderProfile.shadows;
       containerGroup.add(mesh);
     };
     addDoorFrame(new THREE.BoxGeometry(0.045, cH, 0.035), doorX + 0.025, cH / 2, 0);
@@ -977,12 +1095,12 @@ export function ContainerViewer3D({
 
       const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, cH * 0.8, 10), hardwareMat);
       rod.position.set(0.045, cH * 0.52, direction * cW * 0.31);
-      rod.castShadow = true;
+      rod.castShadow = renderProfile.shadows;
       door.add(rod);
 
       const handle = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.035, cW * 0.12), hardwareMat);
       handle.position.set(0.062, cH * 0.41, direction * cW * 0.31);
-      handle.castShadow = true;
+      handle.castShadow = renderProfile.shadows;
       door.add(handle);
 
       containerGroup.add(door);
@@ -1004,87 +1122,80 @@ export function ContainerViewer3D({
       const boxGeo = new THREE.BoxGeometry(bL * 0.98, bH * 0.98, bW * 0.98);
       const baseColor = new THREE.Color(box.color);
 
-      runningPiece[box.cargoId] = (runningPiece[box.cargoId] || 0) + 1;
-      const pieceNo = runningPiece[box.cargoId];
-      const dimF = unitSystem === "metric" ? IN_TO_CM : 1;
-      const wtF = unitSystem === "metric" ? LB_TO_KG : 1;
-      const dimU = unitSystem === "metric" ? "cm" : "in";
-      const wtU = unitSystem === "metric" ? "kg" : "lb";
-
-      const itemName = (box.cargoName || "Box").length > 16
-        ? (box.cargoName || "Box").slice(0, 15) + "…"
-        : (box.cargoName || "Box");
-      const line1 = `${itemName} #${pieceNo}`;
-      const line2 = `${(box.l * dimF).toFixed(0)}×${(box.w * dimF).toFixed(0)}×${(box.h * dimF).toFixed(0)} ${dimU}`;
-      const line3 = `${(box.weight * wtF).toFixed(0)} ${wtU}`;
-
-      const makeFaceLabel = (faceW: number, faceH: number): THREE.CanvasTexture => {
-        const cw = 256;
-        const ch = Math.round(256 * (faceH / faceW)) || 256;
-        const c = document.createElement("canvas");
-        c.width = cw;
-        c.height = ch;
-        const ctx = c.getContext("2d")!;
-
-        const gradient = ctx.createLinearGradient(0, 0, cw, ch);
-        gradient.addColorStop(0, baseColor.clone().offsetHSL(0, -0.01, 0.075).getStyle());
-        gradient.addColorStop(1, baseColor.clone().offsetHSL(0, -0.02, -0.055).getStyle());
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, cw, ch);
-        ctx.strokeStyle = "rgba(255,255,255,0.2)";
-        ctx.lineWidth = 3;
-        ctx.strokeRect(4, 4, cw - 8, ch - 8);
-
-        const fontSize = Math.max(16, Math.min(28, Math.round(ch * 0.18)));
-        const subSize = Math.max(12, Math.round(fontSize * 0.72));
-        const cy = ch / 2;
-        ctx.textAlign = "center";
-
-        ctx.shadowColor = "#000000";
-        ctx.shadowBlur = 0;
-        ctx.shadowOffsetX = 1;
-        ctx.shadowOffsetY = 1;
-
-        ctx.fillStyle = "#ffffff";
-        ctx.font = `bold ${fontSize}px Inter, Arial, sans-serif`;
-        ctx.fillText(line1, cw / 2, cy - subSize * 0.6);
-
-        ctx.font = `${subSize}px Inter, Arial, sans-serif`;
-        ctx.fillText(line2, cw / 2, cy + fontSize * 0.5);
-        ctx.fillText(line3, cw / 2, cy + fontSize * 0.5 + subSize * 1.15);
-
-        const tex = new THREE.CanvasTexture(c);
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 4);
-        tex.needsUpdate = true;
-        return tex;
-      };
-
-      const texLR = makeFaceLabel(bW, bH);
-      const texTB = makeFaceLabel(bL, bW);
-      const texFB = makeFaceLabel(bL, bH);
-
-      const faceMat = (tex: THREE.CanvasTexture) => {
-        return new THREE.MeshStandardMaterial({
-          map: showLabels ? tex : null,
-          color: showLabels ? 0xffffff : baseColor,
+      const useDetailedLabel = showLabels && renderProfile.detailedLabels;
+      let materials: THREE.Material | THREE.Material[];
+      if (useDetailedLabel) {
+        runningPiece[box.cargoId] = (runningPiece[box.cargoId] || 0) + 1;
+        const pieceNo = runningPiece[box.cargoId];
+        const dimF = unitSystem === "metric" ? IN_TO_CM : 1;
+        const wtF = unitSystem === "metric" ? LB_TO_KG : 1;
+        const dimU = unitSystem === "metric" ? "cm" : "in";
+        const wtU = unitSystem === "metric" ? "kg" : "lb";
+        const itemName = (box.cargoName || "Box").length > 16
+          ? `${(box.cargoName || "Box").slice(0, 15)}…`
+          : (box.cargoName || "Box");
+        const labelLines = [
+          `${itemName} #${pieceNo}`,
+          `${(box.l * dimF).toFixed(0)}×${(box.w * dimF).toFixed(0)}×${(box.h * dimF).toFixed(0)} ${dimU}`,
+          `${(box.weight * wtF).toFixed(0)} ${wtU}`,
+        ];
+        const makeFaceLabel = (faceW: number, faceH: number) => {
+          const canvas = document.createElement("canvas");
+          canvas.width = 256;
+          canvas.height = Math.max(96, Math.min(512, Math.round(256 * (faceH / Math.max(faceW, 0.01)))));
+          const ctx = canvas.getContext("2d")!;
+          const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+          gradient.addColorStop(0, baseColor.clone().offsetHSL(0, -0.01, 0.075).getStyle());
+          gradient.addColorStop(1, baseColor.clone().offsetHSL(0, -0.02, -0.055).getStyle());
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.strokeStyle = "rgba(255,255,255,0.2)";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
+          const fontSize = Math.max(16, Math.min(28, Math.round(canvas.height * 0.18)));
+          const subSize = Math.max(12, Math.round(fontSize * 0.72));
+          const centreY = canvas.height / 2;
+          ctx.textAlign = "center";
+          ctx.shadowColor = "#000000";
+          ctx.shadowOffsetX = 1;
+          ctx.shadowOffsetY = 1;
+          ctx.fillStyle = "#ffffff";
+          ctx.font = `bold ${fontSize}px Inter, Arial, sans-serif`;
+          ctx.fillText(labelLines[0], canvas.width / 2, centreY - subSize * 0.6);
+          ctx.font = `${subSize}px Inter, Arial, sans-serif`;
+          ctx.fillText(labelLines[1], canvas.width / 2, centreY + fontSize * 0.5);
+          ctx.fillText(labelLines[2], canvas.width / 2, centreY + fontSize * 0.5 + subSize * 1.15);
+          const texture = new THREE.CanvasTexture(canvas);
+          texture.colorSpace = THREE.SRGBColorSpace;
+          texture.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 2);
+          return texture;
+        };
+        const texLR = makeFaceLabel(bW, bH);
+        const texTB = makeFaceLabel(bL, bW);
+        const texFB = makeFaceLabel(bL, bH);
+        const faceMat = (map: THREE.CanvasTexture) => new THREE.MeshStandardMaterial({
+          map,
+          color: 0xffffff,
           transparent: true,
           opacity: 0.78,
           roughness: 0.64,
           metalness: 0.015,
         });
-      };
-
-      const materials = [
-        faceMat(texLR), faceMat(texLR),
-        faceMat(texTB), faceMat(texTB),
-        faceMat(texFB), faceMat(texFB),
-      ];
+        materials = [faceMat(texLR), faceMat(texLR), faceMat(texTB), faceMat(texTB), faceMat(texFB), faceMat(texFB)];
+      } else {
+        materials = new THREE.MeshStandardMaterial({
+          color: baseColor,
+          transparent: true,
+          opacity: 0.8,
+          roughness: 0.66,
+          metalness: 0.015,
+        });
+      }
 
       const boxMesh = new THREE.Mesh(boxGeo, materials);
       boxMesh.position.set(bX + bL / 2, bY + bH / 2, bZ + bW / 2);
-      boxMesh.castShadow = true;
-      boxMesh.receiveShadow = true;
+      boxMesh.castShadow = renderProfile.shadows;
+      boxMesh.receiveShadow = renderProfile.shadows;
       boxMesh.userData = {
         placedIndex: idx,
         cargoId: box.cargoId,
@@ -1137,8 +1248,8 @@ export function ContainerViewer3D({
         }),
       );
       stagedMesh.position.set(dockCursors[zone] + bL / 2, bH / 2, dockCenterZ + rowOffset);
-      stagedMesh.castShadow = true;
-      stagedMesh.receiveShadow = true;
+      stagedMesh.castShadow = renderProfile.shadows;
+      stagedMesh.receiveShadow = renderProfile.shadows;
       scene.add(stagedMesh);
 
       const stagedEdges = new THREE.LineSegments(
@@ -1328,6 +1439,7 @@ export function ContainerViewer3D({
     let currentHoverIndex: number | null = null;
     const handlePointerMove = (event: PointerEvent) => {
       if (!dragState) {
+        if (event.pointerType === "touch") return;
         updatePointer(event);
         const intersection = raycaster.intersectObjects(cargoMeshes, false)[0];
         const nextIndex = intersection?.object instanceof THREE.Mesh
@@ -1555,6 +1667,8 @@ export function ContainerViewer3D({
       renderer.setSize(nw, nh);
       renderScene();
     };
+    const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(handleResize) : null;
+    resizeObserver?.observe(el);
     window.addEventListener("resize", handleResize);
 
     return () => {
@@ -1564,6 +1678,7 @@ export function ContainerViewer3D({
         target: controls.target.toArray() as [number, number, number],
       };
       sceneRef.current = null;
+      resizeObserver?.disconnect();
       window.removeEventListener("resize", handleResize);
       renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
       renderer.domElement.removeEventListener("pointermove", handlePointerMove);
@@ -1613,6 +1728,7 @@ export function ContainerViewer3D({
     showGrid,
     showShell,
     showLabels,
+    renderQuality,
     sidebarOpen,
     stagedCargo,
   ]);
@@ -1687,8 +1803,8 @@ export function ContainerViewer3D({
           placed={placed}
           container={container}
           onRetry={() => {
+            setRendererAttempt(0);
             setWebglError(false);
-            setRendererAttempt((attempt) => attempt + 1);
           }}
         />
       ) : (
@@ -1706,10 +1822,25 @@ export function ContainerViewer3D({
             {arrangeMode && <><button type="button" onClick={undoArrangement} disabled={historyCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/85 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm backdrop-blur hover:bg-white disabled:opacity-40" data-testid="button-undo-cargo-move"><Undo2 className="mr-1 inline h-3.5 w-3.5" />Undo</button><button type="button" onClick={redoArrangement} disabled={redoCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/85 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm backdrop-blur hover:bg-white disabled:opacity-40" data-testid="button-redo-cargo-move"><Redo2 className="mr-1 inline h-3.5 w-3.5" />Redo</button><button type="button" onClick={resetArrangement} className="h-8 rounded-lg border border-white/80 bg-white/85 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm backdrop-blur hover:bg-white" data-testid="button-reset-cargo-layout"><RotateCcw className="mr-1 inline h-3.5 w-3.5" />Reset</button></>}
           </div>
           {arrangeMode && selectedCargoIndices.size > 0 && (
-            <div className="absolute left-3 top-14 z-20 w-[min(360px,calc(100%-5rem))] rounded-2xl border border-white/90 bg-white/[0.88] p-3 shadow-[0_18px_45px_-22px_rgba(15,23,42,0.5)] backdrop-blur-xl" data-testid="cargo-group-controls">
-              <div className="flex items-center justify-between gap-3"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">{selectedCargoIndices.size} selected</p><button type="button" onClick={() => setSelectedCargoIndices(new Set())} className="text-[10px] font-semibold text-slate-400 hover:text-slate-700">Clear</button></div>
-              <div className="mt-2 grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1.5 text-[9px]"><span className="font-semibold text-slate-400">Length</span><div className="grid grid-cols-3 gap-1">{([ ["closed-end", "Closed end"], ["length-center", "Center"], ["doors", "Doors"] ] as const).map(([alignment, label]) => <button key={alignment} type="button" onClick={() => applySelectionAlignment(alignment)} className="rounded-lg border border-slate-200 bg-white px-1.5 py-1.5 font-bold text-slate-600 hover:border-blue-300 hover:text-primary" data-testid={`button-align-${alignment}`}>{label}</button>)}</div><span className="font-semibold text-slate-400">Width</span><div className="grid grid-cols-3 gap-1">{([ ["side-a", "Side A"], ["width-center", "Center"], ["side-b", "Side B"] ] as const).map(([alignment, label]) => <button key={alignment} type="button" onClick={() => applySelectionAlignment(alignment)} className="rounded-lg border border-slate-200 bg-white px-1.5 py-1.5 font-bold text-slate-600 hover:border-blue-300 hover:text-primary" data-testid={`button-align-${alignment}`}>{label}</button>)}</div></div>
-              <p className="mt-2 text-[9px] leading-4 text-slate-400">Drag any selected unit to move the group. Unsafe alignments and overlaps are blocked.</p>
+            <div className="absolute left-3 top-14 z-20 w-[min(430px,calc(100%-5rem))] rounded-2xl border border-white/90 bg-white/[0.9] p-3 shadow-[0_18px_45px_-22px_rgba(15,23,42,0.5)] backdrop-blur-xl" data-testid="cargo-group-controls">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">{selectedCargoIndices.size} selected</p>
+                <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5 text-[9px] font-bold">
+                  <button type="button" onClick={() => setMovementStep("fine")} className={`rounded-md px-2 py-1 ${movementStep === "fine" ? "bg-white text-primary shadow-sm" : "text-slate-400"}`} aria-pressed={movementStep === "fine"}>{unitSystem === "metric" ? "1 cm" : "1 in"}</button>
+                  <button type="button" onClick={() => setMovementStep("coarse")} className={`rounded-md px-2 py-1 ${movementStep === "coarse" ? "bg-white text-primary shadow-sm" : "text-slate-400"}`} aria-pressed={movementStep === "coarse"}>{unitSystem === "metric" ? "10 cm" : "6 in"}</button>
+                  <button type="button" onClick={() => setSelectedCargoIndices(new Set())} className="rounded-md px-2 py-1 text-slate-400 hover:bg-white hover:text-slate-700">Clear</button>
+                </div>
+              </div>
+              <div className="mt-2 grid grid-cols-6 gap-1 text-[8px] font-bold text-slate-500">
+                <button type="button" onClick={() => applySelectionRotation("counterclockwise")} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Rotate selected cargo left" title="Rotate 90° left (Q)" data-testid="button-rotate-selection-left"><RotateCcw className="h-3.5 w-3.5" /><span>Left 90°</span></button>
+                <button type="button" onClick={() => nudgeSelection(-movementStepIn, 0)} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Move selected cargo toward the closed end" title="Move toward closed end (↑)" data-testid="button-nudge-closed-end"><ArrowUp className="h-3.5 w-3.5" /><span>Closed</span></button>
+                <button type="button" onClick={() => applySelectionRotation("clockwise")} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Rotate selected cargo right" title="Rotate 90° right (E)" data-testid="button-rotate-selection-right"><RotateCw className="h-3.5 w-3.5" /><span>Right 90°</span></button>
+                <button type="button" onClick={() => nudgeSelection(0, -movementStepIn)} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Move selected cargo toward side A" title="Move toward side A (←)" data-testid="button-nudge-side-a"><ArrowLeft className="h-3.5 w-3.5" /><span>Side A</span></button>
+                <button type="button" onClick={() => nudgeSelection(movementStepIn, 0)} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Move selected cargo toward the doors" title="Move toward doors (↓)" data-testid="button-nudge-doors"><ArrowDown className="h-3.5 w-3.5" /><span>Doors</span></button>
+                <button type="button" onClick={() => nudgeSelection(0, movementStepIn)} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Move selected cargo toward side B" title="Move toward side B (→)" data-testid="button-nudge-side-b"><ArrowRight className="h-3.5 w-3.5" /><span>Side B</span></button>
+              </div>
+              <div className="mt-1.5 grid grid-cols-6 gap-1 text-[8px]">{([ ["closed-end", "Align closed"], ["length-center", "Length ctr"], ["doors", "Align doors"], ["side-a", "Align A"], ["width-center", "Width ctr"], ["side-b", "Align B"] ] as const).map(([alignment, label]) => <button key={alignment} type="button" onClick={() => applySelectionAlignment(alignment)} className="rounded-lg border border-slate-200 bg-slate-50 px-1 py-1.5 font-bold text-slate-500 hover:border-blue-300 hover:bg-white hover:text-primary" data-testid={`button-align-${alignment}`}>{label}</button>)}</div>
+              <p className="mt-2 text-[9px] leading-4 text-slate-400">Drag, nudge or rotate the group. Collision, boundary and stack-support checks remain active.</p>
             </div>
           )}
           <div className={`absolute right-3 top-3 z-30 flex flex-col items-center gap-1.5 rounded-2xl border border-white/80 bg-white/72 p-1.5 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.5)] backdrop-blur-xl transition-[right] ${sidebarOpen ? "lg:right-[344px]" : ""}`} data-testid="container-floating-tool-rail">
@@ -1730,6 +1861,7 @@ export function ContainerViewer3D({
               <div className="absolute right-12 top-0 w-64 rounded-2xl border border-white/90 bg-white/90 p-3 text-left shadow-[0_20px_55px_-22px_rgba(15,23,42,0.45)] backdrop-blur-xl" data-testid="floating-display-controls">
                 <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Display</p>
                 <div className="mt-2 grid grid-cols-4 gap-1.5">{([ ["isometric", "3D"], ["doors", "Doors"], ["side", "Side"], ["top", "Top"] ] as const).map(([preset, label]) => <button key={preset} type="button" onClick={() => setActiveView(preset)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${activeView === preset ? "border-blue-300 bg-blue-50 text-primary" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`} aria-pressed={activeView === preset} data-testid={`button-container-view-${preset}`}>{label}</button>)}</div>
+                <div className="mt-2 grid grid-cols-3 gap-1.5">{([ ["auto", "Auto"], ["performance", "Fast"], ["quality", "High"] ] as const).map(([quality, label]) => <button key={quality} type="button" onClick={() => setRenderQuality(quality)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${renderQuality === quality ? "border-cyan-300 bg-cyan-50 text-cyan-700" : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"}`} aria-pressed={renderQuality === quality} data-testid={`button-container-quality-${quality}`}>{label}</button>)}</div>
                 <div className="mt-3 grid grid-cols-3 gap-1.5">{[
                   { label: "Grid", active: showGrid, set: setShowGrid, icon: Grid3X3 },
                   { label: "Shell", active: showShell, set: setShowShell, icon: Eye },
@@ -2407,6 +2539,7 @@ export default function ContainerCalculator() {
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [persistenceReady, setPersistenceReady] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const persistenceHydratedRef = useRef(false);
 
   const [showImportModal, setShowImportModal] = useState(false);
   const [importStep, setImportStep] = useState<"upload" | "mapping" | "preview">("upload");
@@ -2476,7 +2609,32 @@ export default function ContainerCalculator() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (new URLSearchParams(window.location.search).get("from") === "pallet-builder") {
+    if (persistenceHydratedRef.current) return;
+    persistenceHydratedRef.current = true;
+    const source = new URLSearchParams(window.location.search).get("from");
+    if (source === "pallet-builder") {
+      setPersistenceReady(true);
+      return;
+    }
+    if (source === "shared-plan") {
+      const transfer = consumeContainerShareTransfer();
+      if (transfer) {
+        restoreProjectSnapshot(transfer.snapshot);
+        setCurrentProjectId(null);
+        setProjectName(transfer.title);
+        persistContainerDraft(transfer.snapshot);
+        setLastSavedAt(Date.now());
+        toast({
+          title: "Editable copy created",
+          description: "The shared inputs and 3D placement are ready. Your changes will not affect the original link.",
+        });
+      } else {
+        toast({
+          title: "Shared copy was not available",
+          description: "Open the share link again and choose Copy and edit.",
+          variant: "destructive",
+        });
+      }
       setPersistenceReady(true);
       return;
     }
@@ -2486,7 +2644,7 @@ export default function ContainerCalculator() {
       setLastSavedAt(Date.now());
     }
     setPersistenceReady(true);
-  }, [restoreProjectSnapshot]);
+  }, [restoreProjectSnapshot, toast]);
 
   const captureProjectSnapshot = useCallback((): ContainerProjectSnapshot => ({
     unitSystem,
@@ -2572,6 +2730,10 @@ export default function ContainerCalculator() {
   const dimUnit = isMetric ? "cm" : "in";
   const weightUnit = isMetric ? "kg" : "lbs";
   const hasCalculatedResult = multiResult !== null;
+  const rotationModesByCargoId = useMemo(
+    () => Object.fromEntries(cargoItems.map((item) => [item.id, item.rotationMode])) as Record<string, RotationMode>,
+    [cargoItems],
+  );
   const containerComparisons = useMemo(
     () => hasCalculatedResult ? compareContainerPlans(cargoItems) : [],
     [cargoItems, hasCalculatedResult],
@@ -3169,6 +3331,12 @@ export default function ContainerCalculator() {
             container: entry.container,
             placed: entry.result.placed,
           })),
+          editorState: {
+            containerSelectionMode,
+            containerId,
+            customContainer,
+            cargoItems,
+          },
           expiresInDays: shareLifetimeDays,
         }),
       });
@@ -3210,7 +3378,7 @@ export default function ContainerCalculator() {
     } finally {
       setCreatingShareLink(false);
     }
-  }, [creatingShareLink, multiResult, shareLifetimeDays, toast, unitSystem]);
+  }, [cargoItems, containerId, containerSelectionMode, creatingShareLink, customContainer, multiResult, shareLifetimeDays, toast, unitSystem]);
 
   const copyManagedShareLink = useCallback(async () => {
     if (!managedShareLink) return;
@@ -5729,6 +5897,7 @@ export default function ContainerCalculator() {
                                 placed={cResult.placed}
                                 container={cr.container}
                                 unitSystem={unitSystem}
+                                rotationModesByCargoId={rotationModesByCargoId}
                                 onReadyExport={(fn) => setSnapshotExportFn(() => fn)}
                                 onExportPdf={handleExportPDF}
                                 onPlacedChange={(nextPlaced) => {

@@ -138,6 +138,7 @@ test.describe("tool pages load without runtime errors", () => {
       await expect(page.getByTestId("container-floating-tool-rail")).toBeVisible();
       await page.getByTestId("button-floating-settings").click();
       await expect(page.getByTestId("button-container-view-doors")).toBeVisible();
+      await expect(page.getByTestId("button-container-quality-auto")).toBeVisible();
       await page.getByTestId("button-container-view-doors").click();
       await page.getByTestId("button-container-layer-grid").click();
       await expect(page.getByTestId("button-arrange-cargo")).toBeVisible();
@@ -153,6 +154,8 @@ test.describe("tool pages load without runtime errors", () => {
       await page.getByTestId("button-select-container-cargo-1").click();
       await expect(page.getByTestId("cargo-group-controls")).toContainText("2 selected");
       await expect(page.getByTestId("button-align-closed-end")).toBeVisible();
+      await expect(page.getByTestId("button-rotate-selection-right")).toBeVisible();
+      await expect(page.getByTestId("button-nudge-doors")).toBeVisible();
       await page.getByTestId("button-loading-sequence").click();
       await expect(page.getByTestId("loading-sequence-controls")).toBeVisible();
       await expect(page.getByTestId("loading-sequence-controls")).toContainText("Loading step 1 of 7");
@@ -189,6 +192,31 @@ test.describe("tool pages load without runtime errors", () => {
     // Three.js often logs GPU warnings — filter those out but fail on real errors.
     const realErrors = errors.filter((e) => !/WebGL|GPU|THREE\./i.test(e));
     expect(realErrors, `Uncaught errors on /tools/container-calculator: ${realErrors.join("\n")}`).toEqual([]);
+  });
+
+  test("Shared container plan — creates an independent editable copy", async ({ page }) => {
+    await page.route("**/api/shared-load-plans/abcdefghijkl", async (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        token: "abcdefghijkl",
+        title: "Customer pallet plan",
+        unitSystem: "imperial",
+        createdAt: "2026-09-07T12:00:00.000Z",
+        expiresAt: "2026-10-07T12:00:00.000Z",
+        containers: [{
+          label: "1 × 40' Standard (DC)",
+          container: { id: "40dc", name: "40' Standard (DC)", lengthIn: 473.8, widthIn: 92.6, heightIn: 94.2, maxPayloadLbs: 58_820, volumeCuFt: 2_390, tare: 8_333 },
+          placed: [{ cargoId: "pallet", cargoName: "Pallet", color: "#0f766e", x: 0, y: 0, z: 0, l: 48, w: 48, h: 61, weight: 750, rotation: "LWH", stackable: false }],
+        }],
+      }),
+    }));
+    await page.goto("/share/load-plan/abcdefghijkl");
+    await expect(page.getByRole("heading", { name: "Customer pallet plan" })).toBeVisible();
+    await page.getByTestId("button-copy-shared-plan").click();
+    await expect(page).toHaveURL(/\/tools\/container-calculator\?from=shared-plan/);
+    await expect(page.getByTestId("input-cargo-name-0")).toHaveValue("Pallet");
+    await expect(page.getByTestId("results-section")).toBeVisible();
   });
 
   test("Truck Load Planner — builds a spatial pallet plan", async ({ page }) => {

@@ -46,3 +46,18 @@ test("shared load-plan schema rejects unsafe colours and unbounded dimensions", 
   assert.equal(parsed.success, false);
 });
 
+test("shared load-plan schema accepts bounded editable source data", () => {
+  const editable = structuredClone(validPlan) as typeof validPlan & { editorState: Record<string, unknown> };
+  editable.editorState = {
+    containerSelectionMode: "recommend",
+    containerId: "40dc",
+    customContainer: { lengthIn: 473.8, widthIn: 92.6, heightIn: 94.2, maxPayloadLbs: 58_820 },
+    cargoItems: [{
+      id: "pallets", name: "Pallet", length: 48, width: 48, height: 61, weight: 11_596,
+      quantity: 7, color: "#0f766e", stackable: false, palletized: false, palletType: "none",
+      customPalletL: 48, customPalletW: 40, customPalletH: 6, rotationMode: "horizontal",
+      included: true, loadPriority: "normal",
+    }],
+  };
+  assert.equal(createSharedLoadPlanSchema.safeParse(editable).success, true);
+});
