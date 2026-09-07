@@ -1,10 +1,11 @@
 import jwt from "jsonwebtoken";
 import type { Request, Response, NextFunction } from "express";
 
-const JWT_SECRET = process.env.SESSION_SECRET;
-if (!JWT_SECRET) {
+const configuredSessionSecret = process.env.SESSION_SECRET;
+if (!configuredSessionSecret) {
   throw new Error("SESSION_SECRET environment variable is required for portal authentication");
 }
+const JWT_SECRET: jwt.Secret = configuredSessionSecret;
 const TOKEN_EXPIRY = "24h";
 const COOKIE_NAME = "portal_token";
 
@@ -19,7 +20,7 @@ export function signPortalToken(payload: PortalTokenPayload): string {
 
 export function verifyPortalToken(token: string): PortalTokenPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as PortalTokenPayload;
+    return jwt.verify(token, JWT_SECRET) as unknown as PortalTokenPayload;
   } catch {
     return null;
   }

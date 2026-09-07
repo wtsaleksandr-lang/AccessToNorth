@@ -28,6 +28,10 @@ const taskUpdateSchema = z.object({
   note: z.string().optional(),
 });
 
+function routeParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
 export function registerAdminCrmRoutes(app: Express): void {
   // ─── Overview ────────────────────────────────────────────────────────────
   app.get("/api/admin/crm/overview", adminAuthMiddleware, async (_req, res) => {
@@ -84,7 +88,7 @@ export function registerAdminCrmRoutes(app: Express): void {
 
   app.get("/api/admin/crm/clients/:id", adminAuthMiddleware, async (req, res) => {
     try {
-      const client = await crm.getClientById(req.params.id);
+      const client = await crm.getClientById(routeParam(req.params.id));
       if (!client) return res.status(404).json({ message: "Client not found" });
       const [services, activity] = await Promise.all([
         crm.listClientServicesForClient(client.id),
@@ -152,7 +156,7 @@ export function registerAdminCrmRoutes(app: Express): void {
 
   app.get("/api/admin/crm/services/:id", adminAuthMiddleware, async (req, res) => {
     try {
-      const service = await crm.getClientServiceById(req.params.id);
+      const service = await crm.getClientServiceById(routeParam(req.params.id));
       if (!service) return res.status(404).json({ message: "Service not found" });
       const [tasks, onboarding, client, activity] = await Promise.all([
         crm.listTasksForClientService(service.id),
@@ -171,7 +175,7 @@ export function registerAdminCrmRoutes(app: Express): void {
   app.patch("/api/admin/crm/tasks/:id", adminAuthMiddleware, async (req, res) => {
     try {
       const patch = taskUpdateSchema.parse(req.body);
-      const existing = await crm.getTaskById(req.params.id);
+      const existing = await crm.getTaskById(routeParam(req.params.id));
       if (!existing) return res.status(404).json({ message: "Task not found" });
 
       const updated = await crm.updateTaskStatus(

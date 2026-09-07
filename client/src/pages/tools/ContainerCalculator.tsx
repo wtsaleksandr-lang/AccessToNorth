@@ -33,6 +33,7 @@ import {
   Settings2,
   Layers,
   Undo2,
+  Redo2,
   ArrowUpDown,
   ChevronDown,
   CheckSquare,
@@ -57,6 +58,9 @@ import {
   Camera,
   Move3d,
   Share2,
+  PanelRightClose,
+  PanelRightOpen,
+  ImageDown,
 } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -77,7 +81,7 @@ import {
   type RotationMode,
 } from "@/lib/containerPacking";
 import { mergeImportedCargoItems, type ImportedCargoRow } from "@/lib/containerImport";
-import { validateManualLayout, validateManualPlacement } from "@/lib/containerLayout";
+import { findSafeManualPlacement, validateManualLayout, validateManualPlacement } from "@/lib/containerLayout";
 import { calculateContainerBalance, centerContainerCargoLayout } from "@/lib/containerBalance";
 import { compareContainerPlans, type ContainerPlanComparison } from "@/lib/containerComparison";
 import { consumePalletPlanTransfer } from "@/lib/palletTransfer";
@@ -97,6 +101,19 @@ type BulkApplyScope = "all" | "selected" | "defaults";
 type ResultWorkspaceTab = "overview" | "plan" | "details";
 type ContainerViewPreset = "isometric" | "doors" | "side" | "top";
 type CargoWorkspaceZone = "dock1" | "loaded" | "dock2";
+type StagingDock = Exclude<CargoWorkspaceZone, "loaded">;
+type StagedCargo = {
+  id: string;
+  zone: StagingDock;
+  box: PlacedBox;
+};
+type ShareLifetimeDays = 7 | 30 | 90 | 180;
+type ManagedShareLink = {
+  token: string;
+  url: string;
+  expiresAt: string;
+  revokeToken: string;
+};
 
 const CARGO_COLORS = [
   "#0f766e", "#2563eb", "#b45309", "#7c3aed", "#be123c",
@@ -362,12 +379,14 @@ export function ContainerViewer3D({
   unitSystem,
   onReadyExport,
   onPlacedChange,
+  onExportPdf,
 }: {
   placed: PlacedBox[];
   container: ContainerSpec;
   unitSystem: "imperial" | "metric";
   onReadyExport?: (fn: SnapshotExportFn | null) => void;
   onPlacedChange?: (nextPlaced: PlacedBox[]) => void;
+  onExportPdf?: () => void;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -375,6 +394,7 @@ export function ContainerViewer3D({
   const [rendererAttempt, setRendererAttempt] = useState(0);
   const [arrangeMode, setArrangeMode] = useState(false);
   const [historyCount, setHistoryCount] = useState(0);
+  const [redoCount, setRedoCount] = useState(0);
   const [placementMessage, setPlacementMessage] = useState("Select a cargo item and drag it to a new position.");
   const [sequenceMode, setSequenceMode] = useState(false);
   const [sequenceStep, setSequenceStep] = useState(1);
@@ -386,7 +406,12 @@ export function ContainerViewer3D({
   const [hoveredCargoIndex, setHoveredCargoIndex] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeCargoZone, setActiveCargoZone] = useState<CargoWorkspaceZone>("loaded");
+  const [displayControlsOpen, setDisplayControlsOpen] = useState(false);
+  const [warningPanelOpen, setWarningPanelOpen] = useState(false);
+  const [stagedCargo, setStagedCargo] = useState<StagedCargo[]>([]);
+  const stagingMutationRef = useRef(false);
   const arrangementHistoryRef = useRef<PlacedBox[][]>([]);
+  const arrangementRedoRef = useRef<PlacedBox[][]>([]);
   const optimizedLayoutRef = useRef<PlacedBox[]>(placed.map((box) => ({ ...box })));
   const optimizedLayoutIdentityRef = useRef("");
   const cameraViewRef = useRef<{
@@ -435,6 +460,11 @@ export function ContainerViewer3D({
     const usedVolumeCuFt = placed.reduce((sum, box) => sum + (box.l * box.w * box.h) / 1728, 0);
     return { usedLength, usedWidth, usedHeight, totalWeight, usedVolumeCuFt };
   }, [placed]);
+  const stagedByZone = useMemo(() => ({
+    dock1: stagedCargo.filter((entry) => entry.zone === "dock1"),
+    dock2: stagedCargo.filter((entry) => entry.zone === "dock2"),
+  }), [stagedCargo]);
+  const hasPlacementWarning = /invalid|unsupported|no collision-safe|would leave/i.test(placementMessage);
 
   const toggleFullscreen = useCallback(async () => {
     const workspace = workspaceRef.current;
@@ -462,16 +492,29 @@ export function ContainerViewer3D({
 
   useEffect(() => {
     if (optimizedLayoutIdentityRef.current === layoutIdentity) return;
+    if (stagingMutationRef.current) {
+      stagingMutationRef.current = false;
+      optimizedLayoutIdentityRef.current = layoutIdentity;
+      return;
+    }
     optimizedLayoutIdentityRef.current = layoutIdentity;
     optimizedLayoutRef.current = placed.map((box) => ({ ...box }));
     arrangementHistoryRef.current = [];
+    arrangementRedoRef.current = [];
     setHistoryCount(0);
+    setRedoCount(0);
+    setStagedCargo([]);
   }, [layoutIdentity, placed]);
 
   const undoArrangement = useCallback(() => {
     const previous = arrangementHistoryRef.current.pop();
     if (!previous) return;
+    arrangementRedoRef.current = [
+      ...arrangementRedoRef.current,
+      placed.map((box) => ({ ...box })),
+    ].slice(-20);
     setHistoryCount(arrangementHistoryRef.current.length);
+    setRedoCount(arrangementRedoRef.current.length);
     setPlacementMessage("Previous cargo position restored.");
     const currentColors = new Map(placed.map((box) => [box.cargoId, box.color]));
     onPlacedChange?.(previous.map((box) => ({
@@ -480,16 +523,110 @@ export function ContainerViewer3D({
     })));
   }, [onPlacedChange, placed]);
 
+  const redoArrangement = useCallback(() => {
+    const next = arrangementRedoRef.current.pop();
+    if (!next) return;
+    arrangementHistoryRef.current = [
+      ...arrangementHistoryRef.current,
+      placed.map((box) => ({ ...box })),
+    ].slice(-20);
+    setHistoryCount(arrangementHistoryRef.current.length);
+    setRedoCount(arrangementRedoRef.current.length);
+    setPlacementMessage("Cargo move reapplied.");
+    const currentColors = new Map(placed.map((box) => [box.cargoId, box.color]));
+    onPlacedChange?.(next.map((box) => ({
+      ...box,
+      color: currentColors.get(box.cargoId) ?? box.color,
+    })));
+  }, [onPlacedChange, placed]);
+
   const resetArrangement = useCallback(() => {
     arrangementHistoryRef.current = [];
+    arrangementRedoRef.current = [];
     setHistoryCount(0);
+    setRedoCount(0);
     setPlacementMessage("The optimized loading plan has been restored.");
+    const restoringStagedCargo = stagedCargo.length > 0;
+    setStagedCargo([]);
+    stagingMutationRef.current = restoringStagedCargo;
     const currentColors = new Map(placed.map((box) => [box.cargoId, box.color]));
     onPlacedChange?.(optimizedLayoutRef.current.map((box) => ({
       ...box,
       color: currentColors.get(box.cargoId) ?? box.color,
     })));
-  }, [onPlacedChange, placed]);
+  }, [onPlacedChange, placed, stagedCargo.length]);
+
+  const stageCargo = useCallback((index: number, zone: StagingDock) => {
+    const selected = placed[index];
+    if (!selected) return;
+    const nextPlaced = placed.filter((_, placedIndex) => placedIndex !== index).map((box) => ({ ...box }));
+    const remainingLayout = validateManualLayout(nextPlaced, container);
+    if (!remainingLayout.valid) {
+      setPlacementMessage("Move the cargo resting above this item first; staging it would leave cargo unsupported.");
+      setWarningPanelOpen(true);
+      return;
+    }
+    arrangementHistoryRef.current = [];
+    arrangementRedoRef.current = [];
+    setHistoryCount(0);
+    setRedoCount(0);
+    setHoveredCargoIndex(null);
+    setStagedCargo((current) => [
+      ...current,
+      {
+        id: `${selected.cargoId}-${Date.now()}-${index}`,
+        zone,
+        box: { ...selected },
+      },
+    ]);
+    stagingMutationRef.current = true;
+    onPlacedChange?.(nextPlaced);
+    setPlacementMessage(`${selected.cargoName || "Cargo item"} moved to ${zone === "dock1" ? "Dock 1" : "Dock 2"}.`);
+    setActiveCargoZone(zone);
+  }, [container, onPlacedChange, placed]);
+
+  const loadStagedCargo = useCallback((stagedId: string) => {
+    const staged = stagedCargo.find((entry) => entry.id === stagedId);
+    if (!staged) return;
+    const safePlacement = findSafeManualPlacement(staged.box, placed, container);
+    if (!safePlacement) {
+      setPlacementMessage("No collision-safe space is available. Move loaded cargo or choose a larger container.");
+      setWarningPanelOpen(true);
+      return;
+    }
+    arrangementHistoryRef.current = [];
+    arrangementRedoRef.current = [];
+    setHistoryCount(0);
+    setRedoCount(0);
+    setStagedCargo((current) => current.filter((entry) => entry.id !== stagedId));
+    stagingMutationRef.current = true;
+    onPlacedChange?.([...placed.map((box) => ({ ...box })), safePlacement]);
+    setPlacementMessage(`${safePlacement.cargoName || "Cargo item"} loaded from the staging dock.`);
+    setActiveCargoZone("loaded");
+  }, [container, onPlacedChange, placed, stagedCargo]);
+
+  useEffect(() => {
+    const handleEditorShortcut = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+      const modifier = event.ctrlKey || event.metaKey;
+      if (modifier && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        if (event.shiftKey) redoArrangement();
+        else undoArrangement();
+      } else if (modifier && event.key.toLowerCase() === "y") {
+        event.preventDefault();
+        redoArrangement();
+      } else if (event.key === "Escape") {
+        setArrangeMode(false);
+        setSequenceMode(false);
+        setDisplayControlsOpen(false);
+        setWarningPanelOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleEditorShortcut);
+    return () => window.removeEventListener("keydown", handleEditorShortcut);
+  }, [redoArrangement, undoArrangement]);
 
   useEffect(() => {
     if (!mountRef.current || webglError) return;
@@ -536,6 +673,17 @@ export function ContainerViewer3D({
     const cL = inToM(container.lengthIn);
     const cW = inToM(container.widthIn);
     const cH = inToM(container.heightIn);
+
+    const applyViewportComposition = (viewportWidth: number, viewportHeight: number) => {
+      camera.clearViewOffset();
+      if (sidebarOpen && viewportWidth >= 1024) {
+        // Render one uninterrupted scene, but compose the load in the open
+        // space to the left of the floating 320px inspector.
+        camera.setViewOffset(viewportWidth + 344, viewportHeight, 344, 0, viewportWidth, viewportHeight);
+      }
+      camera.updateProjectionMatrix();
+    };
+    applyViewportComposition(w, h);
 
     camera.position.set(cL * 1.4, cH * 1.65, cW * 2.35);
     camera.lookAt(cL / 2, cH * 0.38, cW / 2);
@@ -899,6 +1047,45 @@ export function ContainerViewer3D({
       scene.add(edges);
     }
 
+    const dockCursors: Record<StagingDock, number> = { dock1: 0, dock2: 0 };
+    const dockRows: Record<StagingDock, number> = { dock1: 0, dock2: 0 };
+    for (const staged of stagedCargo) {
+      const { box, zone } = staged;
+      const bL = inToM(box.l);
+      const bW = inToM(box.w);
+      const bH = inToM(box.h);
+      const gap = 0.12;
+      if (dockCursors[zone] + bL > cL) {
+        dockCursors[zone] = 0;
+        dockRows[zone] += 1;
+      }
+      const dockCenterZ = zone === "dock1" ? -cW * 0.9 : cW * 1.9;
+      const rowDirection = zone === "dock1" ? -1 : 1;
+      const rowOffset = dockRows[zone] * Math.max(bW + gap, cW * 0.32) * rowDirection;
+      const stagedMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(bL * 0.98, bH * 0.98, bW * 0.98),
+        new THREE.MeshStandardMaterial({
+          color: new THREE.Color(box.color),
+          transparent: true,
+          opacity: 0.62,
+          roughness: 0.72,
+          metalness: 0.01,
+        }),
+      );
+      stagedMesh.position.set(dockCursors[zone] + bL / 2, bH / 2, dockCenterZ + rowOffset);
+      stagedMesh.castShadow = true;
+      stagedMesh.receiveShadow = true;
+      scene.add(stagedMesh);
+
+      const stagedEdges = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.BoxGeometry(bL, bH, bW)),
+        new THREE.LineBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.62 }),
+      );
+      stagedEdges.position.copy(stagedMesh.position);
+      scene.add(stagedEdges);
+      dockCursors[zone] += bL + gap;
+    }
+
     function addAxisLabel(text: string, pos: THREE.Vector3) {
       const canvas = document.createElement("canvas");
       canvas.width = 256;
@@ -1141,7 +1328,9 @@ export function ContainerViewer3D({
           ...arrangementHistoryRef.current,
           placed.map((box) => ({ ...box })),
         ].slice(-20);
+        arrangementRedoRef.current = [];
         setHistoryCount(arrangementHistoryRef.current.length);
+        setRedoCount(0);
         setPlacementMessage("Cargo placed safely. You can undo or continue adjusting.");
         onPlacedChange?.(completedDrag.nextLayout.map((box) => ({ ...box })));
       } else {
@@ -1241,7 +1430,7 @@ export function ContainerViewer3D({
       const nw = mountRef.current.clientWidth;
       const nh = mountRef.current.clientHeight;
       camera.aspect = nw / nh;
-      camera.updateProjectionMatrix();
+      applyViewportComposition(nw, nh);
       renderer.setSize(nw, nh);
       renderScene();
     };
@@ -1304,6 +1493,7 @@ export function ContainerViewer3D({
     showShell,
     showLabels,
     sidebarOpen,
+    stagedCargo,
   ]);
 
   useEffect(() => {
@@ -1337,6 +1527,22 @@ export function ContainerViewer3D({
     return `${inches.toFixed(1)} in`;
   };
 
+  const cycleCameraView = () => {
+    const views: ContainerViewPreset[] = ["isometric", "doors", "side", "top"];
+    const next = views[(views.indexOf(activeView) + 1) % views.length];
+    setActiveView(next);
+  };
+
+  const downloadCurrentSnapshot = () => {
+    const sceneState = sceneRef.current;
+    if (!sceneState) return;
+    sceneState.render();
+    const link = document.createElement("a");
+    link.download = `container-loading-${container.id}.png`;
+    link.href = sceneState.renderer.domElement.toDataURL("image/png");
+    link.click();
+  };
+
   return (
     <div
       ref={workspaceRef}
@@ -1357,24 +1563,6 @@ export function ContainerViewer3D({
           <span className="bg-white border border-slate-200 rounded-md px-2 py-1 shadow-sm">L <span className="font-semibold text-slate-800">{fmt(container.lengthIn)}</span></span>
           <span className="bg-white border border-slate-200 rounded-md px-2 py-1 shadow-sm">W <span className="font-semibold text-slate-800">{fmt(container.widthIn)}</span></span>
           <span className="bg-white border border-slate-200 rounded-md px-2 py-1 shadow-sm">H <span className="font-semibold text-slate-800">{fmt(container.heightIn)}</span></span>
-          <button
-            type="button"
-            onClick={() => setSidebarOpen((current) => !current)}
-            className="hidden h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 font-semibold text-slate-700 shadow-sm hover:border-slate-300 lg:flex"
-            aria-pressed={sidebarOpen}
-          >
-            <Settings2 className="h-3.5 w-3.5" />
-            Controls
-          </button>
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            className="flex h-8 items-center gap-1.5 rounded-lg bg-slate-900 px-2.5 font-semibold text-white shadow-sm transition hover:bg-slate-800"
-            data-testid="button-container-fullscreen"
-          >
-            {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-            <span className="hidden sm:inline">{isFullscreen ? "Exit full screen" : "Full workspace"}</span>
-          </button>
         </div>
       </div>
       {webglError ? (
@@ -1392,78 +1580,44 @@ export function ContainerViewer3D({
           className="relative h-full min-h-0 w-full overflow-hidden rounded-xl border border-slate-200/90 bg-[radial-gradient(ellipse_at_45%_0%,#ffffff_0%,#f3f6fa_48%,#e6ebf1_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_45px_-34px_rgba(15,23,42,0.45)]"
           data-testid="container-3d-viewer"
         >
-          <div ref={mountRef} className={`absolute inset-y-0 left-0 ${sidebarOpen ? "right-0 lg:right-[344px]" : "right-0"}`} />
-          <div className="absolute top-3 left-3 right-3 flex items-center gap-2 flex-wrap">
+          <div ref={mountRef} className="absolute inset-0" />
+          <div className="absolute left-3 top-3 z-10 flex items-center gap-2">
             <div className="h-8 px-2.5 rounded-lg border border-white/80 bg-white/75 backdrop-blur text-[11px] font-semibold text-slate-700 shadow-sm flex items-center gap-1.5 pointer-events-none">
               <Box className="w-3.5 h-3.5 text-primary" />
               Interactive 3D
             </div>
-            {onPlacedChange && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSequenceMode(false);
-                    setArrangeMode((current) => !current);
-                    setPlacementMessage("Select a cargo item and drag it to a new position.");
-                  }}
-                  className={`h-8 px-2.5 rounded-lg border backdrop-blur text-[11px] font-semibold shadow-sm transition-colors flex items-center gap-1.5 ${
-                    arrangeMode
-                      ? "border-sky-500 bg-sky-600 text-white"
-                      : "border-white/80 bg-white/80 text-slate-700 hover:bg-white"
-                  }`}
-                  data-testid="button-arrange-cargo"
-                  aria-pressed={arrangeMode}
-                >
-                  <MousePointerClick className="w-3.5 h-3.5" />
-                  {arrangeMode ? "Finish arranging" : "Adjust layout"}
-                </button>
-                {arrangeMode && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={undoArrangement}
-                      disabled={historyCount === 0}
-                      className="h-8 px-2.5 rounded-lg border border-white/80 bg-white/80 backdrop-blur text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white disabled:opacity-45 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
-                      data-testid="button-undo-cargo-move"
-                    >
-                      <Undo2 className="w-3.5 h-3.5" />
-                      Undo
-                    </button>
-                    <button
-                      type="button"
-                      onClick={resetArrangement}
-                      className="h-8 px-2.5 rounded-lg border border-white/80 bg-white/80 backdrop-blur text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white transition-colors flex items-center gap-1.5"
-                      data-testid="button-reset-cargo-layout"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      Reset plan
-                    </button>
-                  </>
-                )}
-              </>
+            {arrangeMode && <><button type="button" onClick={undoArrangement} disabled={historyCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/85 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm backdrop-blur hover:bg-white disabled:opacity-40" data-testid="button-undo-cargo-move"><Undo2 className="mr-1 inline h-3.5 w-3.5" />Undo</button><button type="button" onClick={redoArrangement} disabled={redoCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/85 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm backdrop-blur hover:bg-white disabled:opacity-40" data-testid="button-redo-cargo-move"><Redo2 className="mr-1 inline h-3.5 w-3.5" />Redo</button><button type="button" onClick={resetArrangement} className="h-8 rounded-lg border border-white/80 bg-white/85 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm backdrop-blur hover:bg-white" data-testid="button-reset-cargo-layout"><RotateCcw className="mr-1 inline h-3.5 w-3.5" />Reset</button></>}
+          </div>
+          <div className={`absolute right-3 top-3 z-30 flex flex-col items-center gap-1.5 rounded-2xl border border-white/80 bg-white/72 p-1.5 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.5)] backdrop-blur-xl transition-[right] ${sidebarOpen ? "lg:right-[344px]" : ""}`} data-testid="container-floating-tool-rail">
+            <button type="button" onClick={() => setSidebarOpen((current) => !current)} className="hidden h-9 w-9 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white hover:text-primary hover:shadow-sm lg:flex" aria-label={sidebarOpen ? "Hide cargo panel" : "Show cargo panel"} title={sidebarOpen ? "Hide cargo panel" : "Show cargo panel"} data-testid="button-container-sidebar-toggle">
+              {sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+            </button>
+            <button type="button" onClick={() => { cycleCameraView(); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white hover:text-primary hover:shadow-sm" aria-label="Change camera angle" title={`Camera: ${activeView}`} data-testid="button-floating-camera"><Camera className="h-4 w-4" /></button>
+            <button type="button" onClick={() => { setArrangeMode(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setSequenceMode((current) => { if (!current) setSequenceStep(1); return !current; }); }} disabled={placed.length === 0} className={`flex h-9 w-9 items-center justify-center rounded-xl transition hover:bg-white hover:shadow-sm disabled:opacity-35 ${sequenceMode ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:text-primary"}`} aria-label="Loading sequence" title="Loading sequence" data-testid="button-loading-sequence"><Play className="h-4 w-4" /></button>
+            {onExportPdf && <button type="button" onClick={onExportPdf} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white hover:text-primary hover:shadow-sm" aria-label="Save PDF report" title="Save PDF report" data-testid="button-floating-pdf"><FileDown className="h-4 w-4" /></button>}
+            <button type="button" onClick={downloadCurrentSnapshot} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white hover:text-primary hover:shadow-sm" aria-label="Save camera snapshot" title="Save camera snapshot" data-testid="button-floating-snapshot"><ImageDown className="h-4 w-4" /></button>
+            {onPlacedChange && <button type="button" onClick={() => { setSequenceMode(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setArrangeMode((current) => !current); setPlacementMessage("Select a cargo item and drag it to a new position."); }} className={`flex h-9 w-9 items-center justify-center rounded-xl transition hover:bg-white hover:shadow-sm ${arrangeMode ? "bg-sky-50 text-sky-600" : "text-slate-600 hover:text-primary"}`} aria-label="Adjust cargo layout" title="Adjust cargo layout" data-testid="button-arrange-cargo"><MousePointerClick className="h-4 w-4" /></button>}
+            <div className="my-0.5 h-px w-6 bg-slate-200" />
+            <button type="button" onClick={() => { setDisplayControlsOpen((current) => !current); setWarningPanelOpen(false); }} className={`flex h-9 w-9 items-center justify-center rounded-xl transition hover:bg-white hover:shadow-sm ${displayControlsOpen ? "bg-slate-900 text-white" : "text-slate-600 hover:text-primary"}`} aria-label="Display settings" title="Display settings" data-testid="button-floating-settings"><Settings2 className="h-4 w-4" /></button>
+            <button type="button" onClick={() => { setWarningPanelOpen((current) => !current); setDisplayControlsOpen(false); }} className={`relative flex h-9 w-9 items-center justify-center rounded-xl transition hover:bg-white hover:shadow-sm ${warningPanelOpen ? "bg-slate-900 text-white" : "text-slate-600 hover:text-primary"}`} aria-label="Placement warnings" title="Placement warnings" data-testid="button-floating-warnings"><AlertTriangle className="h-4 w-4" />{hasPlacementWarning && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />}</button>
+            <button type="button" onClick={toggleFullscreen} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white hover:text-primary hover:shadow-sm" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} title={isFullscreen ? "Exit full screen" : "Open full workspace"} data-testid="button-container-fullscreen">{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
+
+            {displayControlsOpen && (
+              <div className="absolute right-12 top-0 w-64 rounded-2xl border border-white/90 bg-white/90 p-3 text-left shadow-[0_20px_55px_-22px_rgba(15,23,42,0.45)] backdrop-blur-xl" data-testid="floating-display-controls">
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Display</p>
+                <div className="mt-2 grid grid-cols-4 gap-1.5">{([ ["isometric", "3D"], ["doors", "Doors"], ["side", "Side"], ["top", "Top"] ] as const).map(([preset, label]) => <button key={preset} type="button" onClick={() => setActiveView(preset)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${activeView === preset ? "border-blue-300 bg-blue-50 text-primary" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`} aria-pressed={activeView === preset} data-testid={`button-container-view-${preset}`}>{label}</button>)}</div>
+                <div className="mt-3 grid grid-cols-3 gap-1.5">{[
+                  { label: "Grid", active: showGrid, set: setShowGrid, icon: Grid3X3 },
+                  { label: "Shell", active: showShell, set: setShowShell, icon: Eye },
+                  { label: "Labels", active: showLabels, set: setShowLabels, icon: Box },
+                ].map(({ label, active, set, icon: Icon }) => <button key={label} type="button" onClick={() => set(!active)} className={`flex items-center justify-center gap-1 rounded-lg border px-1 py-2 text-[9px] font-bold transition ${active ? "border-slate-300 bg-white text-slate-800" : "border-slate-200 bg-slate-100 text-slate-400"}`} aria-pressed={active} data-testid={`button-container-layer-${label.toLowerCase()}`}><Icon className="h-3 w-3" />{label}</button>)}</div>
+              </div>
             )}
-            {placed.length > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  setArrangeMode(false);
-                  setSequenceMode((current) => {
-                    if (!current) setSequenceStep(1);
-                    return !current;
-                  });
-                }}
-                className={`h-8 px-2.5 rounded-lg border backdrop-blur text-[11px] font-semibold shadow-sm transition-colors flex items-center gap-1.5 ${
-                  sequenceMode
-                    ? "border-indigo-500 bg-indigo-600 text-white"
-                    : "border-white/80 bg-white/80 text-slate-700 hover:bg-white"
-                }`}
-                data-testid="button-loading-sequence"
-                aria-pressed={sequenceMode}
-              >
-                <Play className="w-3.5 h-3.5" />
-                {sequenceMode ? "Exit sequence" : "Loading sequence"}
-              </button>
+            {warningPanelOpen && (
+              <div className="absolute right-12 top-40 w-60 rounded-2xl border border-white/90 bg-white/90 p-3 text-left shadow-[0_20px_55px_-22px_rgba(15,23,42,0.45)] backdrop-blur-xl" data-testid="floating-warning-panel">
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Plan status</p>
+                <div className="mt-2 flex gap-2 rounded-xl bg-slate-50 p-2.5"><AlertTriangle className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${hasPlacementWarning ? "text-red-500" : "text-emerald-500"}`} /><p className="text-[10px] leading-4 text-slate-600">{arrangeMode || hasPlacementWarning ? placementMessage : "No active placement warnings. Use Adjust layout to validate manual moves."}</p></div>
+              </div>
             )}
           </div>
           {hoveredCargoIndex !== null && placed[hoveredCargoIndex] && (
@@ -1560,60 +1714,9 @@ export function ContainerViewer3D({
                     className={`rounded-lg px-2 py-1.5 text-[10px] font-bold transition ${activeCargoZone === zone ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
                     data-testid={`button-cargo-zone-${zone}`}
                   >
-                    {label}{zone === "loaded" ? ` ${placed.length}` : ""}
+                    {label} {zone === "loaded" ? placed.length : stagedByZone[zone].length}
                   </button>
                 ))}
-              </div>
-            </div>
-
-            <div className="space-y-3 border-b border-slate-200 p-3">
-              <div>
-                <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
-                  <Camera className="h-3.5 w-3.5" /> Camera
-                </div>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {([
-                    ["isometric", "3D"],
-                    ["doors", "Doors"],
-                    ["side", "Side"],
-                    ["top", "Top"],
-                  ] as const).map(([preset, label]) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => setActiveView(preset)}
-                      className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${activeView === preset ? "border-blue-400 bg-blue-50 text-primary shadow-sm" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`}
-                      aria-pressed={activeView === preset}
-                      data-testid={`button-container-view-${preset}`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
-                  <Settings2 className="h-3.5 w-3.5" /> Scene layers
-                </div>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {[
-                    { label: "Grid", active: showGrid, set: setShowGrid, icon: Grid3X3 },
-                    { label: "Shell", active: showShell, set: setShowShell, icon: Eye },
-                    { label: "Labels", active: showLabels, set: setShowLabels, icon: Box },
-                  ].map(({ label, active, set, icon: Icon }) => (
-                    <button
-                      key={label}
-                      type="button"
-                      onClick={() => set(!active)}
-                      className={`flex items-center justify-center gap-1 rounded-lg border px-1 py-2 text-[9px] font-bold transition ${active ? "border-slate-300 bg-white text-slate-800" : "border-slate-200 bg-slate-100 text-slate-400"}`}
-                      aria-pressed={active}
-                      data-testid={`button-container-layer-${label.toLowerCase()}`}
-                    >
-                      <Icon className="h-3 w-3" /> {label}
-                    </button>
-                  ))}
-                </div>
               </div>
             </div>
 
@@ -1651,21 +1754,24 @@ export function ContainerViewer3D({
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 [scrollbar-color:#cbd5e1_transparent] [scrollbar-width:thin]">
               <div className="sticky top-0 z-10 mb-1 flex items-center justify-between rounded-lg bg-slate-50/95 px-2 py-1.5 backdrop-blur">
                 <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">{activeCargoZone === "loaded" ? "Cargo units" : activeCargoZone === "dock1" ? "Dock 1 staging" : "Dock 2 staging"}</p>
-                <p className="text-[9px] text-slate-400">{activeCargoZone === "loaded" ? "Hover to inspect" : "0 staged"}</p>
+                <p className="text-[9px] text-slate-400">{activeCargoZone === "loaded" ? "Hover to inspect" : `${stagedByZone[activeCargoZone].length} staged`}</p>
               </div>
               {activeCargoZone === "loaded" ? <div className="space-y-1">
                 {placed.map((box, index) => (
-                  <button
+                  <div
                     key={`${box.cargoId}-${index}`}
-                    type="button"
                     onMouseEnter={() => setHoveredCargoIndex(index)}
                     onMouseLeave={() => setHoveredCargoIndex(null)}
-                    onFocus={() => setHoveredCargoIndex(index)}
-                    onBlur={() => setHoveredCargoIndex(null)}
-                    className={`w-full rounded-xl border p-2 text-left transition ${hoveredCargoIndex === index ? "border-blue-300 bg-white shadow-sm ring-2 ring-blue-100" : "border-transparent hover:border-slate-200 hover:bg-white"}`}
-                    data-testid={`button-container-cargo-${index}`}
+                    className={`group flex w-full items-center gap-1 rounded-xl border p-1.5 text-left transition ${hoveredCargoIndex === index ? "border-blue-300 bg-white shadow-sm ring-2 ring-blue-100" : "border-transparent hover:border-slate-200 hover:bg-white"}`}
+                    data-testid={`container-cargo-row-${index}`}
                   >
-                    <div className="flex items-start gap-2">
+                    <button
+                      type="button"
+                      onFocus={() => setHoveredCargoIndex(index)}
+                      onBlur={() => setHoveredCargoIndex(null)}
+                      className="flex min-w-0 flex-1 items-start gap-2 rounded-lg p-0.5 text-left"
+                      data-testid={`button-container-cargo-${index}`}
+                    >
                       <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-900" style={{ backgroundColor: `${box.color}45` }}>
                         <Box className="h-3.5 w-3.5" />
                       </span>
@@ -1674,14 +1780,24 @@ export function ContainerViewer3D({
                         <span className="mt-0.5 block truncate text-[9px] text-slate-500">{fmt(box.l)} × {fmt(box.w)} × {fmt(box.h)}</span>
                         <span className="mt-0.5 block text-[9px] text-slate-400">{unitSystem === "metric" ? `${(box.weight * LB_TO_KG).toFixed(0)} kg` : `${box.weight.toFixed(0)} lb`} · x {box.x.toFixed(0)} / y {box.y.toFixed(0)}</span>
                       </span>
-                    </div>
-                  </button>
+                    </button>
+                    {onPlacedChange && <div className="flex shrink-0 gap-0.5 opacity-55 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                      <button type="button" onClick={() => stageCargo(index, "dock1")} className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-blue-50 hover:text-primary" title="Move to Dock 1" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 1`} data-testid={`button-stage-dock1-${index}`}><ChevronLeft className="h-3.5 w-3.5" /></button>
+                      <button type="button" onClick={() => stageCargo(index, "dock2")} className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-blue-50 hover:text-primary" title="Move to Dock 2" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 2`} data-testid={`button-stage-dock2-${index}`}><ChevronRight className="h-3.5 w-3.5" /></button>
+                    </div>}
+                  </div>
                 ))}
               </div> : (
-                <div className="mx-2 mt-8 rounded-2xl border border-dashed border-slate-300 bg-white/70 px-4 py-7 text-center">
+                stagedByZone[activeCargoZone].length > 0 ? <div className="space-y-1">
+                  {stagedByZone[activeCargoZone].map((entry) => <div key={entry.id} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm" data-testid={`staged-cargo-${entry.id}`}>
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-900" style={{ backgroundColor: `${entry.box.color}45` }}><Package className="h-4 w-4" /></span>
+                    <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-slate-800">{entry.box.cargoName || "Cargo item"}</span><span className="mt-0.5 block truncate text-[9px] text-slate-500">{fmt(entry.box.l)} × {fmt(entry.box.w)} × {fmt(entry.box.h)}</span></span>
+                    <button type="button" onClick={() => loadStagedCargo(entry.id)} className="rounded-lg bg-slate-900 px-2 py-1.5 text-[9px] font-bold text-white hover:bg-slate-700" data-testid={`button-load-staged-${entry.id}`}>Load</button>
+                  </div>)}
+                </div> : <div className="mx-2 mt-8 rounded-2xl border border-dashed border-slate-300 bg-white/70 px-4 py-7 text-center">
                   <Package className="mx-auto h-6 w-6 text-slate-300" />
                   <p className="mt-2 text-[11px] font-bold text-slate-600">No cargo staged here</p>
-                  <p className="mt-1 text-[9px] leading-4 text-slate-400">This staging area is currently clear.</p>
+                  <p className="mt-1 text-[9px] leading-4 text-slate-400">Use the arrows beside a loaded unit to move it into this dock.</p>
                 </div>
               )}
             </div>
@@ -2148,6 +2264,18 @@ export default function ContainerCalculator() {
   const [activeResultContainer, setActiveResultContainer] = useState(0);
   const [cogUndoLayouts, setCogUndoLayouts] = useState<Record<number, PlacedBox[]>>({});
   const [creatingShareLink, setCreatingShareLink] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareLifetimeDays, setShareLifetimeDays] = useState<ShareLifetimeDays>(30);
+  const [managedShareLink, setManagedShareLink] = useState<ManagedShareLink | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const saved = window.localStorage.getItem("atn-managed-container-share");
+      const parsed = saved ? JSON.parse(saved) as ManagedShareLink : null;
+      return parsed?.expiresAt && new Date(parsed.expiresAt).getTime() > Date.now() ? parsed : null;
+    } catch {
+      return null;
+    }
+  });
 
   const [showImportModal, setShowImportModal] = useState(false);
   const [importStep, setImportStep] = useState<"upload" | "mapping" | "preview">("upload");
@@ -2260,6 +2388,12 @@ export default function ContainerCalculator() {
     setCogUndoLayouts({});
     setSnapshotExportFn(null);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (managedShareLink) window.localStorage.setItem("atn-managed-container-share", JSON.stringify(managedShareLink));
+    else window.localStorage.removeItem("atn-managed-container-share");
+  }, [managedShareLink]);
 
   const handleUnitSwitch = useCallback((newUnit: "imperial" | "metric") => {
     if (newUnit === unitSystem) return;
@@ -2661,6 +2795,7 @@ export default function ContainerCalculator() {
     setActiveResultContainer(0);
     setCogUndoLayouts({});
     setSnapshotExportFn(null);
+    setShareDialogOpen(false);
   }, [defaultCargoItem]);
 
   const handleExportPDF = useCallback(async () => {
@@ -2790,6 +2925,7 @@ export default function ContainerCalculator() {
             container: entry.container,
             placed: entry.result.placed,
           })),
+          expiresInDays: shareLifetimeDays,
         }),
       });
       const data = await response.json().catch(() => ({}));
@@ -2797,6 +2933,13 @@ export default function ContainerCalculator() {
         throw new Error(data.message || "Could not create a share link.");
       }
       const absoluteUrl = new URL(data.url, window.location.origin).toString();
+      const token = absoluteUrl.split("/").filter(Boolean).at(-1) || "";
+      setManagedShareLink({
+        token,
+        url: absoluteUrl,
+        expiresAt: String(data.expiresAt || ""),
+        revokeToken: String(data.revokeToken || ""),
+      });
       try {
         await navigator.clipboard.writeText(absoluteUrl);
       } catch {
@@ -2811,7 +2954,7 @@ export default function ContainerCalculator() {
       }
       toast({
         title: "Share link copied",
-        description: "Anyone with the link can open this read-only loading plan for 180 days.",
+        description: `Anyone with the link can open this read-only loading plan for ${shareLifetimeDays} days.`,
       });
     } catch (error) {
       console.error("Share-link error:", error);
@@ -2823,7 +2966,39 @@ export default function ContainerCalculator() {
     } finally {
       setCreatingShareLink(false);
     }
-  }, [creatingShareLink, multiResult, toast, unitSystem]);
+  }, [creatingShareLink, multiResult, shareLifetimeDays, toast, unitSystem]);
+
+  const copyManagedShareLink = useCallback(async () => {
+    if (!managedShareLink) return;
+    try {
+      await navigator.clipboard.writeText(managedShareLink.url);
+    } catch {
+      const textArea = document.createElement("textarea");
+      textArea.value = managedShareLink.url;
+      textArea.style.position = "fixed";
+      textArea.style.opacity = "0";
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      textArea.remove();
+    }
+    toast({ title: "Share link copied", description: "Ready to send to your customer or warehouse." });
+  }, [managedShareLink, toast]);
+
+  const revokeManagedShareLink = useCallback(async () => {
+    if (!managedShareLink) return;
+    const response = await fetch(`/api/shared-load-plans/${encodeURIComponent(managedShareLink.token)}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${managedShareLink.revokeToken}` },
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      toast({ title: "Could not revoke link", description: data.message || "Please try again.", variant: "destructive" });
+      return;
+    }
+    setManagedShareLink(null);
+    toast({ title: "Share link revoked", description: "The public loading plan can no longer be opened." });
+  }, [managedShareLink, toast]);
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
@@ -2839,6 +3014,31 @@ export default function ContainerCalculator() {
               <p className="font-semibold text-slate-900 text-sm">Calculating optimal layout...</p>
               <p className="text-xs text-slate-500 mt-1">Packing your cargo into the container</p>
             </div>
+          </div>
+        </div>
+      )}
+      {shareDialogOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm" onClick={() => setShareDialogOpen(false)} data-testid="share-plan-dialog-overlay">
+          <div className="w-full max-w-lg rounded-3xl border border-white/80 bg-white p-5 shadow-2xl" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="share-plan-title" data-testid="share-plan-dialog">
+            <div className="flex items-start justify-between gap-4">
+              <div><p id="share-plan-title" className="text-lg font-bold text-slate-950">Share loading plan</p><p className="mt-1 text-sm leading-5 text-slate-500">Anyone with the link can inspect the read-only 3D plan without an account.</p></div>
+              <button type="button" onClick={() => setShareDialogOpen(false)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close share dialog"><X className="h-4 w-4" /></button>
+            </div>
+
+            {!managedShareLink ? <>
+              <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Link expires after</p>
+              <div className="mt-2 grid grid-cols-4 gap-2">
+                {([7, 30, 90, 180] as ShareLifetimeDays[]).map((days) => <button key={days} type="button" onClick={() => setShareLifetimeDays(days)} className={`rounded-xl border px-2 py-2.5 text-xs font-bold transition ${shareLifetimeDays === days ? "border-blue-400 bg-blue-50 text-primary ring-2 ring-blue-100" : "border-slate-200 text-slate-600 hover:border-slate-300"}`} aria-pressed={shareLifetimeDays === days}>{days === 180 ? "6 months" : `${days} days`}</button>)}
+              </div>
+              <Button className="mt-5 w-full gap-2" onClick={handleSharePlan} disabled={creatingShareLink} data-testid="button-create-share-link">{creatingShareLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}Create and copy link</Button>
+            </> : <>
+              <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
+                <div className="flex items-center gap-2 text-sm font-bold text-emerald-800"><CheckCircle2 className="h-4 w-4" />Link is active</div>
+                <div className="mt-3 flex gap-2"><Input readOnly value={managedShareLink.url} className="min-w-0 bg-white text-xs" aria-label="Share loading plan URL" /><Button type="button" variant="outline" onClick={copyManagedShareLink}>Copy</Button></div>
+                <p className="mt-2 text-[11px] text-emerald-800/70">Expires {new Date(managedShareLink.expiresAt).toLocaleDateString("en-CA", { dateStyle: "medium" })}</p>
+              </div>
+              <div className="mt-4 flex items-center justify-between gap-3"><p className="text-xs leading-5 text-slate-500">You can disable this exact link at any time.</p><Button type="button" variant="ghost" className="text-red-600 hover:bg-red-50 hover:text-red-700" onClick={revokeManagedShareLink} data-testid="button-revoke-share-link">Revoke link</Button></div>
+            </>}
           </div>
         </div>
       )}
@@ -5106,7 +5306,7 @@ export default function ContainerCalculator() {
                           size="sm"
                           variant="outline"
                           className="gap-1.5 px-2 text-xs sm:px-3 sm:text-sm"
-                          onClick={handleSharePlan}
+                          onClick={() => setShareDialogOpen(true)}
                           disabled={creatingShareLink}
                           data-testid="button-share-loading-plan"
                         >
@@ -5254,6 +5454,7 @@ export default function ContainerCalculator() {
                                 container={cr.container}
                                 unitSystem={unitSystem}
                                 onReadyExport={(fn) => setSnapshotExportFn(() => fn)}
+                                onExportPdf={handleExportPDF}
                                 onPlacedChange={(nextPlaced) => {
                                   setCogUndoLayouts((current) => {
                                     const next = { ...current };
@@ -5262,13 +5463,31 @@ export default function ContainerCalculator() {
                                   });
                                   setMultiResult((current) => {
                                     if (!current) return current;
+                                    const totalWeight = nextPlaced.reduce((sum, box) => sum + box.weight, 0);
+                                    const totalVolumeIn3 = nextPlaced.reduce((sum, box) => sum + box.l * box.w * box.h, 0);
+                                    const maxX = nextPlaced.reduce((max, box) => Math.max(max, box.x + box.l), 0);
+                                    const maxZ = nextPlaced.reduce((max, box) => Math.max(max, box.z + box.w), 0);
+                                    const nextContainers = current.containers.map((entry, entryIndex) =>
+                                      entryIndex === ci
+                                        ? {
+                                            ...entry,
+                                            result: {
+                                              ...entry.result,
+                                              placed: nextPlaced,
+                                              totalWeight,
+                                              totalVolume: totalVolumeIn3 / 1728,
+                                              volumeUtil: (totalVolumeIn3 / (entry.container.lengthIn * entry.container.widthIn * entry.container.heightIn)) * 100,
+                                              weightUtil: (totalWeight / entry.container.maxPayloadLbs) * 100,
+                                              floorArea: (maxX * maxZ) / 144,
+                                              piecesLoaded: nextPlaced.length,
+                                            },
+                                          }
+                                        : entry,
+                                    );
                                     return {
                                       ...current,
-                                      containers: current.containers.map((entry, entryIndex) =>
-                                        entryIndex === ci
-                                          ? { ...entry, result: { ...entry.result, placed: nextPlaced } }
-                                          : entry,
-                                      ),
+                                      containers: nextContainers,
+                                      totalPiecesLoaded: nextContainers.reduce((sum, entry) => sum + entry.result.piecesLoaded, 0),
                                     };
                                   });
                                 }}

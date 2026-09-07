@@ -18,10 +18,14 @@ const submitSchema = z.object({
   finalize: z.boolean().optional(),
 });
 
+function routeParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
 export function registerOnboardingRoutes(app: Express): void {
   app.get("/api/onboarding/:token", async (req: Request, res: Response) => {
     try {
-      const submission = await crm.getOnboardingByToken(req.params.token);
+      const submission = await crm.getOnboardingByToken(routeParam(req.params.token));
       if (!submission) {
         return res.status(404).json({ message: "Onboarding link not found" });
       }
@@ -60,7 +64,7 @@ export function registerOnboardingRoutes(app: Express): void {
     try {
       const { responses, finalize } = submitSchema.parse(req.body);
 
-      const submission = await crm.getOnboardingByToken(req.params.token);
+      const submission = await crm.getOnboardingByToken(routeParam(req.params.token));
       if (!submission) {
         return res.status(404).json({ message: "Onboarding link not found" });
       }
