@@ -1187,7 +1187,10 @@ export function ContainerViewer3D({
         ? `${(inches * IN_TO_CM).toFixed(0)} cm`
         : `${inches.toFixed(1)} in`;
     const cargoMeshes: THREE.Mesh[] = [];
-    const hoverMeasurementGroups: THREE.Group[] = [];
+    const hoverMeasurementGroup = new THREE.Group();
+    hoverMeasurementGroup.visible = false;
+    scene.add(hoverMeasurementGroup);
+    let activeMeasurementIndex: number | null = null;
     const createMeasurementLabel = (text: string, scale: number) => {
       const canvas = document.createElement("canvas");
       canvas.width = 384;
@@ -1225,6 +1228,40 @@ export function ContainerViewer3D({
       const labelSprite = createMeasurementLabel(label, Math.max(0.62, Math.min(cL * 0.22, Math.max(0.8, endX - startX) * 0.72)));
       labelSprite.position.set((startX + endX) / 2, y + Math.max(0.06, cH * 0.025), z);
       group.add(labelSprite);
+    };
+    const clearHoverMeasurements = () => {
+      while (hoverMeasurementGroup.children.length > 0) {
+        const child = hoverMeasurementGroup.children.pop()!;
+        if (child instanceof THREE.LineSegments) {
+          child.geometry.dispose();
+          const materials = Array.isArray(child.material) ? child.material : [child.material];
+          materials.forEach((material) => material.dispose());
+        } else if (child instanceof THREE.Sprite) {
+          child.material.map?.dispose();
+          child.material.dispose();
+        }
+      }
+    };
+    const updateHoverMeasurements = (index: number | null) => {
+      if (index === activeMeasurementIndex) return;
+      activeMeasurementIndex = index;
+      clearHoverMeasurements();
+      const box = index === null ? null : placed[index];
+      if (!box) {
+        hoverMeasurementGroup.visible = false;
+        return;
+      }
+      const bX = inToM(box.x);
+      const bY = inToM(box.y);
+      const bZ = inToM(box.z);
+      const bL = inToM(box.l);
+      const bW = inToM(box.w);
+      const bH = inToM(box.h);
+      const measurementY = Math.min(cH + 0.16, bY + bH + Math.max(0.08, cH * 0.035));
+      const measurementZ = Math.min(cW + 0.12, bZ + bW + Math.max(0.08, cW * 0.04));
+      addMeasurementRange(hoverMeasurementGroup, 0, bX, measurementY, measurementZ, `Back ${formatSceneLength(box.x)}`);
+      addMeasurementRange(hoverMeasurementGroup, bX + bL, cL, measurementY, measurementZ, `Doors ${formatSceneLength(Math.max(0, container.lengthIn - box.x - box.l))}`);
+      hoverMeasurementGroup.visible = true;
     };
     for (let idx = 0; idx < placed.length; idx++) {
       const box = placed[idx];
@@ -1315,15 +1352,6 @@ export function ContainerViewer3D({
       edges.userData = { linkedTo: idx };
       boxMesh.userData.linkedEdges = edges;
       scene.add(edges);
-
-      const measurementGroup = new THREE.Group();
-      measurementGroup.visible = false;
-      const measurementY = Math.min(cH + 0.16, bY + bH + Math.max(0.08, cH * 0.035));
-      const measurementZ = Math.min(cW + 0.12, bZ + bW + Math.max(0.08, cW * 0.04));
-      addMeasurementRange(measurementGroup, 0, bX, measurementY, measurementZ, `Back ${formatSceneLength(box.x)}`);
-      addMeasurementRange(measurementGroup, bX + bL, cL, measurementY, measurementZ, `Doors ${formatSceneLength(Math.max(0, container.lengthIn - box.x - box.l))}`);
-      scene.add(measurementGroup);
-      hoverMeasurementGroups.push(measurementGroup);
     }
 
     const stagedMeshes: THREE.Mesh[] = [];
@@ -1444,9 +1472,7 @@ export function ContainerViewer3D({
     };
 
     const setCargoHover = (index: number | null) => {
-      hoverMeasurementGroups.forEach((group, groupIndex) => {
-        group.visible = index === groupIndex;
-      });
+      updateHoverMeasurements(index);
       cargoMeshes.forEach((mesh) => {
         const active = index === (mesh.userData.placedIndex as number);
         const selected = selectedCargoIndicesRef.current.has(mesh.userData.placedIndex as number);
@@ -1544,6 +1570,7 @@ export function ContainerViewer3D({
       };
       renderer.domElement.setPointerCapture(event.pointerId);
       renderer.domElement.style.cursor = "grabbing";
+      orbiting = false;
       controls.enabled = false;
       indices.forEach((selectedIndex) => highlightMesh(cargoMeshes[selectedIndex], 0x0ea5e9));
       setPlacementMessage(indices.length > 1
@@ -1553,8 +1580,24 @@ export function ContainerViewer3D({
     };
 
     let currentHoverIndex: number | null = null;
+    let orbiting = false;
+    const handleOrbitStart = () => {
+      if (dragState) return;
+      orbiting = true;
+      if (currentHoverIndex !== null) {
+        currentHoverIndex = null;
+        setHoveredCargoIndex(null);
+        setCargoHover(null);
+      }
+      renderer.domElement.style.cursor = "grabbing";
+    };
+    const handleOrbitEnd = () => {
+      orbiting = false;
+      renderer.domElement.style.cursor = arrangeMode ? "grab" : "default";
+    };
     const handlePointerMove = (event: PointerEvent) => {
       if (!dragState) {
+        if (orbiting) return;
         if (event.pointerType === "touch") return;
         updatePointer(event);
         const intersection = raycaster.intersectObjects(cargoMeshes, false)[0];
@@ -1682,6 +1725,7 @@ export function ContainerViewer3D({
         renderer.domElement.releasePointerCapture(event.pointerId);
       }
       controls.enabled = true;
+      orbiting = false;
       renderer.domElement.style.cursor = arrangeMode ? "grab" : "default";
       completedDrag.indices.forEach((index) => highlightMesh(cargoMeshes[index], null));
 
@@ -1751,6 +1795,8 @@ export function ContainerViewer3D({
     renderer.domElement.addEventListener("pointerup", handlePointerUp);
     renderer.domElement.addEventListener("pointercancel", handlePointerCancel);
     renderer.domElement.addEventListener("pointerleave", handlePointerLeave);
+    controls.addEventListener("start", handleOrbitStart);
+    controls.addEventListener("end", handleOrbitEnd);
     controls.addEventListener("change", renderScene);
     renderScene();
 
@@ -1846,6 +1892,8 @@ export function ContainerViewer3D({
       renderer.domElement.removeEventListener("pointerup", handlePointerUp);
       renderer.domElement.removeEventListener("pointercancel", handlePointerCancel);
       renderer.domElement.removeEventListener("pointerleave", handlePointerLeave);
+      controls.removeEventListener("start", handleOrbitStart);
+      controls.removeEventListener("end", handleOrbitEnd);
       controls.removeEventListener("change", renderScene);
       renderer.domElement.removeEventListener("webglcontextlost", handleContextLost);
       controls.dispose();
