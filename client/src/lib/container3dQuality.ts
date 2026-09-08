@@ -27,14 +27,14 @@ export function getContainerRenderProfile(input: ContainerRenderProfileInput): C
   const performanceMode = input.quality === "performance"
     || (input.quality === "auto" && (compact || constrainedDevice || largePlan));
 
-  const pixelRatioCap = input.quality === "quality" ? 2 : performanceMode ? 1.15 : 1.6;
+  const pixelRatioCap = input.quality === "quality" ? 1.35 : performanceMode ? 0.75 : 1;
   return {
     performanceMode,
-    antialias: !performanceMode,
-    pixelRatio: Math.max(0.75, Math.min(input.devicePixelRatio || 1, pixelRatioCap)),
-    shadows: !performanceMode && input.itemCount <= 240,
+    antialias: input.quality === "quality" && !performanceMode,
+    pixelRatio: Math.max(0.65, Math.min(input.devicePixelRatio || 1, pixelRatioCap)),
+    shadows: false,
     shadowMapSize: performanceMode ? 0 : compact ? 512 : 1024,
-    gridDivisions: performanceMode ? 90 : 180,
-    detailedLabels: input.itemCount <= (performanceMode ? 40 : 180),
+    gridDivisions: performanceMode ? 64 : 100,
+    detailedLabels: !performanceMode && input.itemCount <= 120,
   };
 }
