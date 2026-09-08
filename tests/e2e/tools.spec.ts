@@ -136,6 +136,7 @@ test.describe("tool pages load without runtime errors", () => {
       await expect(page.getByTestId("button-container-fullscreen")).toBeVisible();
       await expect(page.getByTestId("container-viewer-sidebar")).toBeVisible();
       await expect(page.getByTestId("container-floating-tool-rail")).toBeVisible();
+      await expect(page.getByTestId("button-reset-camera")).toBeVisible();
       await page.getByTestId("button-floating-settings").click();
       await expect(page.getByTestId("button-container-view-doors")).toBeVisible();
       await expect(page.getByTestId("button-container-quality-auto")).toBeVisible();
@@ -156,6 +157,15 @@ test.describe("tool pages load without runtime errors", () => {
       await expect(page.getByTestId("button-align-closed-end")).toBeVisible();
       await expect(page.getByTestId("button-rotate-selection-right")).toBeVisible();
       await expect(page.getByTestId("button-nudge-doors")).toBeVisible();
+      await page.setViewportSize({ width: 390, height: 844 });
+      await expect(page.getByTestId("button-mobile-cargo-panel")).toBeVisible();
+      await page.getByTestId("button-mobile-cargo-panel").click();
+      await expect(page.getByTestId("mobile-cargo-panel")).toBeVisible();
+      await expect(page.getByTestId("button-mobile-cargo-zone-dock1")).toBeVisible();
+      await page.getByTestId("button-mobile-select-all-cargo").click();
+      await expect(page.getByTestId("mobile-cargo-panel")).toContainText("7 selected");
+      await page.getByTestId("button-close-mobile-cargo-panel").click();
+      await page.setViewportSize({ width: 1280, height: 900 });
       await page.getByTestId("button-loading-sequence").click();
       await expect(page.getByTestId("loading-sequence-controls")).toBeVisible();
       await expect(page.getByTestId("loading-sequence-controls")).toContainText("Loading step 1 of 7");
