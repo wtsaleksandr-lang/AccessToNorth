@@ -86,7 +86,8 @@ export function PalletPreview3D({
       camera.position.set(largestDimension * 1.25, largestDimension * 0.9, largestDimension * 1.2);
 
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+      const basePixelRatio = Math.min(window.devicePixelRatio || 1, 1.35);
+      renderer.setPixelRatio(basePixelRatio);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1.05;
@@ -98,8 +99,13 @@ export function PalletPreview3D({
       });
       host.replaceChildren(renderer.domElement);
 
+      let renderFrameId: number | null = null;
       const render = () => {
-        if (!disposed && renderer) renderer.render(scene, camera);
+        if (disposed || !renderer || renderFrameId !== null) return;
+        renderFrameId = window.requestAnimationFrame(() => {
+          renderFrameId = null;
+          if (!disposed && renderer) renderer.render(scene, camera);
+        });
       };
 
       controls = new OrbitControls(camera, renderer.domElement);
@@ -110,6 +116,11 @@ export function PalletPreview3D({
       controls.maxDistance = Math.max(220, largestDimension * 3.4);
       controls.maxPolarAngle = Math.PI * 0.49;
       controls.addEventListener("change", render);
+      controls.addEventListener("start", () => renderer?.setPixelRatio(Math.min(basePixelRatio, 0.85)));
+      controls.addEventListener("end", () => {
+        renderer?.setPixelRatio(basePixelRatio);
+        render();
+      });
 
       scene.add(new THREE.HemisphereLight(0xf8fbff, 0x64748b, 2.3));
       const keyLight = new THREE.DirectionalLight(0xffffff, 3.2);
@@ -202,6 +213,7 @@ export function PalletPreview3D({
 
       return () => {
         disposed = true;
+        if (renderFrameId !== null) window.cancelAnimationFrame(renderFrameId);
         resizeObserver?.disconnect();
         controls?.dispose();
         scene.traverse((object) => {
@@ -228,7 +240,7 @@ export function PalletPreview3D({
       {failed ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
           <div className="absolute inset-4 opacity-80"><PalletTopView builtPallet={builtPallet} pallet={pallet} /></div>
-          <div className="relative mt-auto flex items-center gap-2 rounded-full border border-white/80 bg-white/90 px-3 py-2 text-xs text-slate-600 shadow-sm backdrop-blur">
+          <div className="relative mt-auto flex items-center gap-2 rounded-full border border-white/80 bg-white/95 px-3 py-2 text-xs text-slate-600 shadow-sm">
             <Box className="h-4 w-4 text-sky-600" /> Lightweight top view
             <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-[11px]" onClick={() => { setFailed(false); setRetryKey((value) => value + 1); }}>
               <RefreshCw className="h-3 w-3" /> Retry 3D
@@ -239,7 +251,7 @@ export function PalletPreview3D({
         <div ref={hostRef} className="absolute inset-0 cursor-grab active:cursor-grabbing" />
       )}
       {!failed && (
-        <div className="pointer-events-none absolute bottom-3 left-3 rounded-full border border-white/80 bg-white/80 px-3 py-1.5 text-[11px] font-medium text-slate-500 shadow-sm backdrop-blur">
+        <div className="pointer-events-none absolute bottom-3 left-3 rounded-full border border-white/80 bg-white/95 px-3 py-1.5 text-[11px] font-medium text-slate-500 shadow-sm">
           Drag to rotate · Scroll to zoom
         </div>
       )}
