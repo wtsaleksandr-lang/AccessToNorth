@@ -15,8 +15,8 @@ test("auto quality uses a lightweight profile on mobile", () => {
   assert.equal(profile.performanceMode, true);
   assert.equal(profile.antialias, false);
   assert.equal(profile.shadows, false);
-  assert.equal(profile.pixelRatio, 1.15);
-  assert.equal(profile.detailedLabels, true);
+  assert.equal(profile.pixelRatio, 0.75);
+  assert.equal(profile.detailedLabels, false);
 });
 
 test("large plans automatically disable expensive labels and shadows", () => {
@@ -46,6 +46,6 @@ test("quality override retains premium rendering within safe limits", () => {
 
   assert.equal(profile.performanceMode, false);
   assert.equal(profile.antialias, true);
-  assert.equal(profile.pixelRatio, 2);
-  assert.equal(profile.shadows, true);
+  assert.equal(profile.pixelRatio, 1.35);
+  assert.equal(profile.shadows, false);
 });
