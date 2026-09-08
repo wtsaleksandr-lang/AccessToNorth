@@ -1039,36 +1039,10 @@ export function ContainerViewer3D({
     const containerEdges = new THREE.EdgesGeometry(new THREE.BoxGeometry(cL, cH, cW));
     const containerWire = new THREE.LineSegments(
       containerEdges,
-      new THREE.LineBasicMaterial({ color: 0x59636f, transparent: true, opacity: 0.58 })
+      new THREE.LineBasicMaterial({ color: 0x718096, transparent: true, opacity: 0.46 })
     );
     containerWire.position.set(cL / 2, cH / 2, cW / 2);
     containerGroup.add(containerWire);
-
-    const structureMat = new THREE.MeshStandardMaterial({
-      color: 0x737d88,
-      roughness: 0.58,
-      metalness: 0.34,
-    });
-    const addStructure = (geometry: THREE.BufferGeometry, x: number, y: number, z: number) => {
-      const beam = new THREE.Mesh(geometry, structureMat);
-      beam.position.set(x, y, z);
-      beam.castShadow = false;
-      containerGroup.add(beam);
-    };
-    const rail = Math.max(0.032, Math.min(cH, cW) * 0.018);
-    for (const x of [0, cL]) {
-      for (const z of [0, cW]) {
-        addStructure(new THREE.BoxGeometry(rail, cH, rail), x, cH / 2, z);
-      }
-    }
-    for (const y of [0, cH]) {
-      for (const z of [0, cW]) {
-        addStructure(new THREE.BoxGeometry(cL, rail, rail), cL / 2, y, z);
-      }
-      for (const x of [0, cL]) {
-        addStructure(new THREE.BoxGeometry(rail, rail, cW), x, y, cW / 2);
-      }
-    }
 
     const floor = new THREE.Mesh(
       new THREE.BoxGeometry(cL, 0.035, cW),
@@ -1109,73 +1083,59 @@ export function ContainerViewer3D({
 
     // Subtle corrugation makes the shell read like a real ISO container while
     // keeping the wall transparent enough to inspect the load.
-    const ribMat = new THREE.MeshStandardMaterial({
-      color: 0x9ba5b0,
-      transparent: true,
-      opacity: 0.24,
-      roughness: 0.48,
-      metalness: 0.42,
-    });
+    const ribPoints: THREE.Vector3[] = [];
     const ribCount = Math.max(renderProfile.performanceMode ? 8 : 12, Math.round(cL / (renderProfile.performanceMode ? 0.95 : 0.55)));
     for (let index = 1; index < ribCount; index++) {
       const x = (cL * index) / ribCount;
       for (const z of [0.008, cW - 0.008]) {
-        const rib = new THREE.Mesh(new THREE.BoxGeometry(0.018, cH * 0.9, 0.018), ribMat);
-        rib.position.set(x, cH / 2, z);
-        containerGroup.add(rib);
+        ribPoints.push(new THREE.Vector3(x, cH * 0.05, z), new THREE.Vector3(x, cH * 0.95, z));
       }
     }
+    const ribs = new THREE.LineSegments(
+      new THREE.BufferGeometry().setFromPoints(ribPoints),
+      new THREE.LineBasicMaterial({ color: 0xaab3bd, transparent: true, opacity: 0.18 }),
+    );
+    containerGroup.add(ribs);
 
     const doorX = cL;
-    const doorMat = new THREE.MeshStandardMaterial({
-      color: 0xd9dfe6,
-      transparent: true,
-      opacity: 0.3,
-      roughness: 0.42,
-      metalness: 0.48,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    });
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0x737d88, roughness: 0.5, metalness: 0.42 });
-    const hardwareMat = new THREE.MeshStandardMaterial({ color: 0xdbe1e7, roughness: 0.3, metalness: 0.7 });
-    const addDoorFrame = (geometry: THREE.BufferGeometry, x: number, y: number, z: number) => {
-      const mesh = new THREE.Mesh(geometry, frameMat);
-      mesh.position.set(x, y, z);
-      mesh.castShadow = false;
-      containerGroup.add(mesh);
-    };
-    addDoorFrame(new THREE.BoxGeometry(0.045, cH, 0.035), doorX + 0.025, cH / 2, 0);
-    addDoorFrame(new THREE.BoxGeometry(0.045, cH, 0.035), doorX + 0.025, cH / 2, cW / 2);
-    addDoorFrame(new THREE.BoxGeometry(0.045, cH, 0.035), doorX + 0.025, cH / 2, cW);
-    addDoorFrame(new THREE.BoxGeometry(0.045, 0.04, cW), doorX + 0.025, 0, cW / 2);
-    addDoorFrame(new THREE.BoxGeometry(0.045, 0.04, cW), doorX + 0.025, cH, cW / 2);
+    const doorLineMaterial = new THREE.LineBasicMaterial({ color: 0x687684, transparent: true, opacity: 0.58 });
+    const doorPanelMaterial = new THREE.MeshBasicMaterial({ color: 0xf2f5f8, transparent: true, opacity: 0.08, side: THREE.DoubleSide, depthWrite: false });
+    const doorOpeningDetails = new THREE.LineSegments(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(doorX + 0.002, 0, cW / 2), new THREE.Vector3(doorX + 0.002, cH, cW / 2),
+      ]),
+      doorLineMaterial.clone(),
+    );
+    containerGroup.add(doorOpeningDetails);
 
     const createOpenDoor = (side: "left" | "right") => {
       const direction = side === "left" ? 1 : -1;
       const door = new THREE.Group();
-      door.position.set(doorX + 0.018, 0, side === "left" ? 0 : cW);
-      door.rotation.y = direction * THREE.MathUtils.degToRad(32);
+      const doorWidth = cW * 0.49;
+      door.position.set(doorX + 0.006, 0, side === "left" ? 0 : cW);
+      door.rotation.y = direction * THREE.MathUtils.degToRad(26);
 
-      const panel = new THREE.Mesh(new THREE.PlaneGeometry(cW * 0.49, cH * 0.96), doorMat.clone());
+      const panel = new THREE.Mesh(new THREE.PlaneGeometry(doorWidth, cH), doorPanelMaterial.clone());
       panel.rotation.y = Math.PI / 2;
-      panel.position.set(0, cH / 2, direction * cW * 0.245);
+      panel.position.set(0, cH / 2, direction * doorWidth / 2);
       door.add(panel);
 
-      for (const offset of [0.04, 0.16, 0.28, 0.4]) {
-        const rib = new THREE.Mesh(new THREE.BoxGeometry(0.025, cH * 0.9, 0.022), frameMat);
-        rib.position.set(0.012, cH / 2, direction * cW * offset);
-        door.add(rib);
-      }
-
-      const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, cH * 0.8, 10), hardwareMat);
-      rod.position.set(0.045, cH * 0.52, direction * cW * 0.31);
-      rod.castShadow = false;
-      door.add(rod);
-
-      const handle = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.035, cW * 0.12), hardwareMat);
-      handle.position.set(0.062, cH * 0.41, direction * cW * 0.31);
-      handle.castShadow = false;
-      door.add(handle);
+      const freeEdge = direction * doorWidth;
+      const lockZ = direction * doorWidth * 0.56;
+      const doorOutline = new THREE.LineSegments(
+        new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, cH, 0),
+          new THREE.Vector3(0, cH, 0), new THREE.Vector3(0, cH, freeEdge),
+          new THREE.Vector3(0, cH, freeEdge), new THREE.Vector3(0, 0, freeEdge),
+          new THREE.Vector3(0, 0, freeEdge), new THREE.Vector3(0, 0, 0),
+          new THREE.Vector3(0, cH * 0.5, 0), new THREE.Vector3(0, cH * 0.5, freeEdge),
+          new THREE.Vector3(0, cH * 0.12, lockZ), new THREE.Vector3(0, cH * 0.88, lockZ),
+          new THREE.Vector3(0, cH * 0.42, lockZ), new THREE.Vector3(0, cH * 0.42, lockZ + direction * doorWidth * 0.16),
+        ]),
+        doorLineMaterial.clone(),
+      );
+      doorOutline.renderOrder = 8;
+      door.add(doorOutline);
 
       containerGroup.add(door);
     };
@@ -1214,13 +1174,82 @@ export function ContainerViewer3D({
       sprite.renderOrder = 20;
       return sprite;
     };
+    const createRulerLabel = (text: string, scale: number) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 256;
+      canvas.height = 56;
+      const ctx = canvas.getContext("2d")!;
+      ctx.fillStyle = "rgba(71,85,105,0.9)";
+      ctx.font = "600 23px Inter, Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, 128, 28);
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
+      sprite.scale.set(scale, scale * 0.219, 1);
+      sprite.renderOrder = 18;
+      return sprite;
+    };
+    const rulerOffset = Math.max(0.16, cW * 0.16);
+    const rulerZ = cW + rulerOffset;
+    const rulerY = 0.025;
+    const rulerTick = Math.max(0.045, cW * 0.035);
+    const rulerMaterial = new THREE.LineBasicMaterial({ color: 0x718096, transparent: true, opacity: 0.56, depthTest: false });
+    const rulerPoints: THREE.Vector3[] = [
+      new THREE.Vector3(0, rulerY, rulerZ), new THREE.Vector3(cL, rulerY, rulerZ),
+      new THREE.Vector3(0, rulerY, cW), new THREE.Vector3(0, rulerY, rulerZ + rulerTick),
+      new THREE.Vector3(cL, rulerY, cW), new THREE.Vector3(cL, rulerY, rulerZ + rulerTick),
+    ];
+    const rulerValuesIn: number[] = [0];
+    const preferredStepIn = unitSystem === "metric" ? 200 / IN_TO_CM : 96;
+    for (let value = preferredStepIn; value < container.lengthIn; value += preferredStepIn) rulerValuesIn.push(value);
+    rulerValuesIn.push(container.lengthIn);
+    rulerValuesIn.forEach((valueIn) => {
+      const x = inToM(valueIn);
+      rulerPoints.push(
+        new THREE.Vector3(x, rulerY, rulerZ - rulerTick),
+        new THREE.Vector3(x, rulerY, rulerZ + rulerTick),
+      );
+      const label = createRulerLabel(formatSceneLength(valueIn), Math.max(0.42, Math.min(0.62, cW * 0.26)));
+      label.position.set(x, rulerY + 0.035, rulerZ + rulerTick * 2.4);
+      containerGroup.add(label);
+    });
+    const lengthRuler = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(rulerPoints), rulerMaterial);
+    lengthRuler.renderOrder = 17;
+    containerGroup.add(lengthRuler);
+
+    // Width and height callouts complete the container envelope without a
+    // separate header card. They stay in the scene and move with the model.
+    const endGuideX = cL + rulerOffset * 0.72;
+    const envelopeGuides = new THREE.LineSegments(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(cL, rulerY, 0), new THREE.Vector3(endGuideX, rulerY, 0),
+        new THREE.Vector3(cL, rulerY, cW), new THREE.Vector3(endGuideX, rulerY, cW),
+        new THREE.Vector3(endGuideX, rulerY, 0), new THREE.Vector3(endGuideX, rulerY, cW),
+        new THREE.Vector3(0, 0, rulerZ), new THREE.Vector3(0, cH, rulerZ),
+        new THREE.Vector3(0, 0, cW), new THREE.Vector3(0, 0, rulerZ + rulerTick),
+        new THREE.Vector3(0, cH, cW), new THREE.Vector3(0, cH, rulerZ + rulerTick),
+      ]),
+      rulerMaterial.clone(),
+    );
+    envelopeGuides.renderOrder = 17;
+    containerGroup.add(envelopeGuides);
+    const widthLabel = createRulerLabel(`W ${formatSceneLength(container.widthIn)}`, Math.max(0.5, Math.min(0.74, cW * 0.31)));
+    widthLabel.position.set(endGuideX + 0.035, rulerY + 0.04, cW / 2);
+    containerGroup.add(widthLabel);
+    const heightLabel = createRulerLabel(`H ${formatSceneLength(container.heightIn)}`, Math.max(0.5, Math.min(0.74, cH * 0.28)));
+    heightLabel.material.rotation = Math.PI / 2;
+    heightLabel.position.set(0, cH / 2, rulerZ + rulerTick * 2.2);
+    containerGroup.add(heightLabel);
+
     const addMeasurementRange = (group: THREE.Group, startX: number, endX: number, y: number, z: number, label: string) => {
       const lineMaterial = new THREE.LineBasicMaterial({ color: 0x718096, transparent: true, opacity: 0.72, depthTest: false });
       const tick = Math.max(cW * 0.035, 0.045);
       const geometry = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(startX, y, z), new THREE.Vector3(endX, y, z),
-        new THREE.Vector3(startX, y, z - tick), new THREE.Vector3(startX, y, z + tick),
-        new THREE.Vector3(endX, y, z - tick), new THREE.Vector3(endX, y, z + tick),
+        new THREE.Vector3(startX, y, cW), new THREE.Vector3(startX, y, z + tick),
+        new THREE.Vector3(endX, y, cW), new THREE.Vector3(endX, y, z + tick),
       ]);
       const lines = new THREE.LineSegments(geometry, lineMaterial);
       lines.renderOrder = 19;
@@ -1252,13 +1281,9 @@ export function ContainerViewer3D({
         return;
       }
       const bX = inToM(box.x);
-      const bY = inToM(box.y);
-      const bZ = inToM(box.z);
       const bL = inToM(box.l);
-      const bW = inToM(box.w);
-      const bH = inToM(box.h);
-      const measurementY = Math.min(cH + 0.16, bY + bH + Math.max(0.08, cH * 0.035));
-      const measurementZ = Math.min(cW + 0.12, bZ + bW + Math.max(0.08, cW * 0.04));
+      const measurementY = rulerY + 0.012;
+      const measurementZ = rulerZ;
       addMeasurementRange(hoverMeasurementGroup, 0, bX, measurementY, measurementZ, `Back ${formatSceneLength(box.x)}`);
       addMeasurementRange(hoverMeasurementGroup, bX + bL, cL, measurementY, measurementZ, `Doors ${formatSceneLength(Math.max(0, container.lengthIn - box.x - box.l))}`);
       hoverMeasurementGroup.visible = true;
