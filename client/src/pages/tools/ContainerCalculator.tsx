@@ -313,7 +313,7 @@ function ViewerHoverLabel({ children, side = "left" }: { children: string; side?
     : side === "bottom"
       ? "left-1/2 top-full mt-2 -translate-x-1/2"
       : "right-full top-1/2 mr-2 -translate-y-1/2";
-  return <span role="tooltip" className={`pointer-events-none absolute z-[80] w-max max-w-48 rounded-lg border border-slate-700/10 bg-slate-950/90 px-2 py-1 text-[9px] font-semibold leading-4 text-white opacity-0 shadow-lg backdrop-blur transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 ${position}`}>{children}</span>;
+  return <span role="tooltip" className={`pointer-events-none absolute z-[80] w-max max-w-48 rounded-lg border border-slate-700/10 bg-slate-950 px-2 py-1 text-[9px] font-semibold leading-4 text-white opacity-0 shadow-lg group-hover:opacity-100 group-focus-visible:opacity-100 ${position}`}>{children}</span>;
 }
 
 function ContainerFallback2D({
@@ -1303,42 +1303,34 @@ export function ContainerViewer3D({
       const displayColor = baseColor.clone().lerp(new THREE.Color(0xffffff), luminance < 0.45 ? 0.34 : 0.1);
 
       const useDetailedLabel = showLabels && renderProfile.detailedLabels;
-      let materials: THREE.Material | THREE.Material[];
+      let materials: THREE.Material;
       if (useDetailedLabel) {
         const unitReference = `#${idx + 1}`;
-        const makeFaceLabel = (faceW: number, faceH: number) => {
-          const canvas = document.createElement("canvas");
-          canvas.width = 256;
-          canvas.height = Math.max(96, Math.min(512, Math.round(256 * (faceH / Math.max(faceW, 0.01)))));
-          const ctx = canvas.getContext("2d")!;
-          ctx.fillStyle = displayColor.getStyle();
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.strokeStyle = "rgba(71,85,105,0.22)";
-          ctx.lineWidth = 2;
-          ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
-          const fontSize = Math.max(22, Math.min(42, Math.round(canvas.height * 0.28)));
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillStyle = "#334155";
-          ctx.font = `bold ${fontSize}px Inter, Arial, sans-serif`;
-          ctx.fillText(unitReference, canvas.width / 2, canvas.height / 2);
-          const texture = new THREE.CanvasTexture(canvas);
-          texture.colorSpace = THREE.SRGBColorSpace;
-          texture.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 2);
-          return texture;
-        };
-        const texLR = makeFaceLabel(bW, bH);
-        const texTB = makeFaceLabel(bL, bW);
-        const texFB = makeFaceLabel(bL, bH);
-        const faceMat = (map: THREE.CanvasTexture) => new THREE.MeshStandardMaterial({
-          map,
+        const canvas = document.createElement("canvas");
+        canvas.width = 192;
+        canvas.height = 192;
+        const ctx = canvas.getContext("2d")!;
+        ctx.fillStyle = displayColor.getStyle();
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = "rgba(71,85,105,0.2)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#334155";
+        ctx.font = "bold 36px Inter, Arial, sans-serif";
+        ctx.fillText(unitReference, canvas.width / 2, canvas.height / 2);
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.anisotropy = 1;
+        materials = new THREE.MeshStandardMaterial({
+          map: texture,
           color: 0xffffff,
           transparent: true,
           opacity: 0.76,
           roughness: 0.92,
           metalness: 0,
         });
-        materials = [faceMat(texLR), faceMat(texLR), faceMat(texTB), faceMat(texTB), faceMat(texFB), faceMat(texFB)];
       } else {
         materials = new THREE.MeshStandardMaterial({
           color: displayColor,
@@ -1441,8 +1433,13 @@ export function ContainerViewer3D({
     addAxisLabel("DOCK 1", new THREE.Vector3(cL / 2, 0.015, -dockGap - dockDepth / 2));
     addAxisLabel("DOCK 2", new THREE.Vector3(cL / 2, 0.015, cW + dockGap + dockDepth / 2));
 
+    let renderFrameId: number | null = null;
     const renderScene = () => {
-      renderer.render(scene, camera);
+      if (renderFrameId !== null) return;
+      renderFrameId = window.requestAnimationFrame(() => {
+        renderFrameId = null;
+        renderer.render(scene, camera);
+      });
     };
 
     const setView = (preset: ContainerViewPreset) => {
@@ -1606,9 +1603,16 @@ export function ContainerViewer3D({
 
     let currentHoverIndex: number | null = null;
     let orbiting = false;
+    let interactionResolutionActive = false;
+    const setInteractionResolution = (active: boolean) => {
+      if (interactionResolutionActive === active) return;
+      interactionResolutionActive = active;
+      renderer.setPixelRatio(active ? Math.min(renderProfile.pixelRatio, 0.85) : renderProfile.pixelRatio);
+    };
     const handleOrbitStart = () => {
       if (dragState) return;
       orbiting = true;
+      setInteractionResolution(true);
       if (currentHoverIndex !== null) {
         currentHoverIndex = null;
         setHoveredCargoIndex(null);
@@ -1618,7 +1622,9 @@ export function ContainerViewer3D({
     };
     const handleOrbitEnd = () => {
       orbiting = false;
+      setInteractionResolution(false);
       renderer.domElement.style.cursor = arrangeMode ? "grab" : "default";
+      renderScene();
     };
     const handlePointerMove = (event: PointerEvent) => {
       if (!dragState) {
@@ -1922,6 +1928,7 @@ export function ContainerViewer3D({
       controls.removeEventListener("change", renderScene);
       renderer.domElement.removeEventListener("webglcontextlost", handleContextLost);
       controls.dispose();
+      if (renderFrameId !== null) window.cancelAnimationFrame(renderFrameId);
       const disposeMaterial = (material: THREE.Material) => {
         const map = (material as THREE.MeshStandardMaterial | THREE.MeshBasicMaterial | THREE.SpriteMaterial).map;
         map?.dispose();
@@ -2121,7 +2128,7 @@ export function ContainerViewer3D({
             <div className="relative" data-testid="container-scene-actions">
               <button type="button" onClick={() => { setDisplayControlsOpen((current) => !current); setSharePanelOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-10 w-10 items-center justify-center rounded-full border border-white/95 bg-white/[0.94] transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:text-primary hover:shadow-md ${displayControlsOpen ? "text-primary shadow-sm" : "text-slate-600"}`} aria-label="Scene settings" data-testid="button-floating-settings"><Settings2 className="h-4 w-4" />{!displayControlsOpen && <ViewerHoverLabel side="right">Scene settings</ViewerHoverLabel>}</button>
               {displayControlsOpen && (
-                <div className="absolute left-0 top-12 w-64 rounded-2xl border border-white/95 bg-white/[0.965] p-3 text-left text-slate-700 shadow-[0_20px_55px_-22px_rgba(15,23,42,0.32)] backdrop-blur-2xl" data-testid="floating-display-controls">
+                <div className="absolute left-0 top-12 w-64 rounded-2xl border border-white/95 bg-white/[0.98] p-3 text-left text-slate-700 shadow-[0_20px_55px_-22px_rgba(15,23,42,0.32)]" data-testid="floating-display-controls">
                   <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Scene settings</p>
                   <div className="mt-2 grid grid-cols-3 gap-2">{[
                     { label: "Grid", active: showGrid, set: setShowGrid, icon: Grid3X3 },
@@ -2135,10 +2142,10 @@ export function ContainerViewer3D({
                 </div>
               )}
             </div>
-            {arrangeMode && <><button type="button" onClick={undoArrangement} disabled={historyCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/85 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm backdrop-blur hover:bg-white disabled:opacity-40" data-testid="button-undo-cargo-move"><Undo2 className="mr-1 inline h-3.5 w-3.5" />Undo</button><button type="button" onClick={redoArrangement} disabled={redoCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/85 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm backdrop-blur hover:bg-white disabled:opacity-40" data-testid="button-redo-cargo-move"><Redo2 className="mr-1 inline h-3.5 w-3.5" />Redo</button><button type="button" onClick={resetArrangement} className="h-8 rounded-lg border border-white/80 bg-white/85 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm backdrop-blur hover:bg-white" data-testid="button-reset-cargo-layout"><RotateCcw className="mr-1 inline h-3.5 w-3.5" />Reset</button></>}
+            {arrangeMode && <><button type="button" onClick={undoArrangement} disabled={historyCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/95 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white disabled:opacity-40" data-testid="button-undo-cargo-move"><Undo2 className="mr-1 inline h-3.5 w-3.5" />Undo</button><button type="button" onClick={redoArrangement} disabled={redoCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/95 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white disabled:opacity-40" data-testid="button-redo-cargo-move"><Redo2 className="mr-1 inline h-3.5 w-3.5" />Redo</button><button type="button" onClick={resetArrangement} className="h-8 rounded-lg border border-white/80 bg-white/95 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white" data-testid="button-reset-cargo-layout"><RotateCcw className="mr-1 inline h-3.5 w-3.5" />Reset</button></>}
           </div>
           {arrangeMode && selectedCargoIndices.size > 0 && (
-            <div className="absolute left-3 top-14 z-20 w-[min(430px,calc(100%-5rem))] rounded-2xl border border-white/90 bg-white/[0.9] p-3 shadow-[0_18px_45px_-22px_rgba(15,23,42,0.5)] backdrop-blur-xl" data-testid="cargo-group-controls">
+            <div className="absolute left-3 top-14 z-20 w-[min(430px,calc(100%-5rem))] rounded-2xl border border-white/90 bg-white/[0.98] p-3 shadow-[0_18px_45px_-22px_rgba(15,23,42,0.5)]" data-testid="cargo-group-controls">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">{selectedCargoIndices.size} selected</p>
                 <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5 text-[9px] font-bold">
@@ -2163,7 +2170,7 @@ export function ContainerViewer3D({
             <button type="button" onClick={() => { setMobilePanelOpen((current) => !current); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`flex h-8 w-8 items-center justify-center rounded-full transition ${mobilePanelOpen ? "bg-blue-50 text-primary" : "text-slate-600"}`} aria-label={mobilePanelOpen ? "Hide cargo and dock panel" : "Show cargo and dock panel"} title={mobilePanelOpen ? "Hide cargo and dock panel" : "Show cargo and dock panel"} data-testid="button-mobile-cargo-panel">{mobilePanelOpen ? <PanelRightClose className="h-4 w-4" /> : <ListChecks className="h-4 w-4" />}</button>
             <button type="button" onClick={toggleFullscreen} className="flex h-8 w-8 items-center justify-center rounded-full text-slate-600 transition hover:bg-white hover:text-primary" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} title={isFullscreen ? "Exit full screen" : "Open full workspace"}>{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
           </div>
-          <div className={`absolute right-3 top-3 z-30 hidden max-h-[calc(100%-4.5rem)] flex-col items-center gap-0.5 overflow-visible rounded-2xl border border-white/90 bg-white/[0.93] p-1 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.34)] backdrop-blur-xl transition-[right] lg:flex ${sidebarOpen ? "lg:right-[344px]" : ""}`} data-testid="container-floating-tool-rail">
+          <div className={`absolute right-3 top-3 z-30 hidden max-h-[calc(100%-4.5rem)] flex-col items-center gap-0.5 overflow-visible rounded-2xl border border-white/90 bg-white/[0.98] p-1 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.34)] transition-[right] lg:flex ${sidebarOpen ? "lg:right-[344px]" : ""}`} data-testid="container-floating-tool-rail">
             {onPlacedChange && <button type="button" onClick={() => { setSequenceMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setArrangeMode((current) => !current); setPlacementMessage("Select a cargo item and drag it to a new position."); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${arrangeMode ? "bg-sky-50 text-sky-600" : "text-slate-600 hover:text-primary"}`} aria-label="Adjust cargo layout" data-testid="button-arrange-cargo"><MousePointerClick className="h-4 w-4" /><ViewerHoverLabel>Adjust cargo layout</ViewerHoverLabel></button>}
             <button type="button" onClick={() => { setArrangeMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setSequenceMode((current) => { if (!current) setSequenceStep(1); return !current; }); }} disabled={placed.length === 0} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md disabled:opacity-35 ${sequenceMode ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:text-primary"}`} aria-label="Loading sequence" data-testid="button-loading-sequence"><Play className="h-4 w-4" /><ViewerHoverLabel>Play loading sequence</ViewerHoverLabel></button>
             <div className="my-0.5 h-px w-6 bg-slate-200" />
@@ -2178,26 +2185,26 @@ export function ContainerViewer3D({
             <button type="button" onClick={() => { setWarningPanelOpen((current) => !current); setSharePanelOpen(false); setDisplayControlsOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${warningPanelOpen ? "bg-slate-900 text-white" : "text-slate-600 hover:text-primary"}`} aria-label="Placement checks" data-testid="button-floating-warnings"><AlertTriangle className="h-4 w-4" />{hasPlacementWarning && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />}<ViewerHoverLabel>Placement checks</ViewerHoverLabel></button>
             <button type="button" onClick={() => setSidebarOpen((current) => !current)} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label={sidebarOpen ? "Hide cargo panel" : "Show cargo panel"} data-testid="button-container-sidebar-toggle">{sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}<ViewerHoverLabel>{sidebarOpen ? "Hide cargo panel" : "Show cargo panel"}</ViewerHoverLabel></button>
             <button type="button" onClick={toggleFullscreen} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} data-testid="button-container-fullscreen">{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}<ViewerHoverLabel>{isFullscreen ? "Exit full screen" : "Open full workspace"}</ViewerHoverLabel></button>
-            {sharePanelOpen && <div className="absolute right-12 top-20 w-64 rounded-2xl border border-white/95 bg-white/[0.965] p-2.5 text-left shadow-[0_22px_55px_-24px_rgba(15,23,42,0.38)] backdrop-blur-2xl" data-testid="container-share-panel">
+            {sharePanelOpen && <div className="absolute right-12 top-20 w-64 rounded-2xl border border-white/95 bg-white/[0.98] p-2.5 text-left shadow-[0_22px_55px_-24px_rgba(15,23,42,0.38)]" data-testid="container-share-panel">
               <div className="flex items-center justify-between gap-2 px-1 pb-2"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Share loading plan</p><p className="mt-0.5 text-[9px] text-slate-400">Anyone with the link can preview it.</p></div><Share2 className="h-4 w-4 text-primary" /></div>
               <button type="button" onClick={copyShareLink} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-[10px] font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-primary" data-testid="button-share-copy-link"><Link2 className="h-4 w-4" />{currentShareUrl() ? "Copy share link" : "Create share link"}</button>
               <div className="mt-1 grid grid-cols-4 gap-1 border-t border-slate-100 pt-2">{([ ["email", "Email", Mail], ["facebook", "Facebook", Facebook], ["linkedin", "LinkedIn", Linkedin], ["whatsapp", "WhatsApp", MessageCircle] ] as const).map(([target, label, Icon]) => <button key={target} type="button" onClick={() => openShareTarget(target)} className="group/share flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[8px] font-semibold text-slate-500 transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-primary" aria-label={`Share via ${label}`} data-testid={`button-share-${target}`}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-50 transition group-hover/share:bg-white group-hover/share:shadow-sm"><Icon className="h-3.5 w-3.5" /></span>{label}</button>)}</div>
               {!currentShareUrl() && <p className="mt-1 px-1 text-[8px] leading-3 text-slate-400">Create the secure public link first; then reopen Share to send it.</p>}
               {currentShareUrl() && typeof navigator !== "undefined" && "share" in navigator && <button type="button" onClick={shareCurrentView} className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-xl bg-slate-900 px-3 py-2 text-[9px] font-bold text-white hover:bg-slate-700"><Share2 className="h-3.5 w-3.5" />More sharing options</button>}
             </div>}
-            {helpPanelOpen && <div className="absolute right-12 bottom-16 w-72 rounded-2xl border border-white/95 bg-white/[0.965] p-3 text-left shadow-[0_22px_55px_-24px_rgba(15,23,42,0.38)] backdrop-blur-2xl" data-testid="container-help-panel">
+            {helpPanelOpen && <div className="absolute right-12 bottom-16 w-72 rounded-2xl border border-white/95 bg-white/[0.98] p-3 text-left shadow-[0_22px_55px_-24px_rgba(15,23,42,0.38)]" data-testid="container-help-panel">
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Workspace controls</p>
               <div className="mt-2 space-y-1.5 text-[10px] leading-4 text-slate-600"><p><strong className="text-slate-800">Drag</strong> to rotate the scene. In Adjust mode, drag cargo instead.</p><p><strong className="text-slate-800">Right-drag</strong> to pan in fullscreen. Use the wheel or pinch to zoom.</p><p><strong className="text-slate-800">Cargo moves</strong> stay inside the container and are checked for collisions and stack support.</p></div>
             </div>}
             {warningPanelOpen && (
-              <div className="absolute right-12 top-0 w-60 rounded-2xl border border-white/90 bg-white/94 p-3 text-left shadow-[0_20px_55px_-22px_rgba(15,23,42,0.45)] backdrop-blur-xl" data-testid="floating-warning-panel">
+              <div className="absolute right-12 top-0 w-60 rounded-2xl border border-white/90 bg-white/[0.98] p-3 text-left shadow-[0_20px_55px_-22px_rgba(15,23,42,0.45)]" data-testid="floating-warning-panel">
                 <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Plan status</p>
                 <div className="mt-2 flex gap-2 rounded-xl bg-slate-50 p-2.5"><AlertTriangle className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${hasPlacementWarning ? "text-red-500" : "text-emerald-500"}`} /><p className="text-[10px] leading-4 text-slate-600">{arrangeMode || hasPlacementWarning ? placementMessage : "No active placement warnings. Use Adjust layout to validate manual moves."}</p></div>
               </div>
             )}
           </div>
           {mobilePanelOpen && (
-            <section className="absolute bottom-3 left-3 right-14 z-30 flex max-h-[68%] min-h-0 flex-col overflow-hidden rounded-2xl border border-white/90 bg-white/[0.94] shadow-[0_24px_70px_-24px_rgba(15,23,42,0.5)] backdrop-blur-xl lg:hidden" aria-label="Cargo and staging docks" data-testid="mobile-cargo-panel">
+            <section className="absolute bottom-3 left-3 right-14 z-30 flex max-h-[68%] min-h-0 flex-col overflow-hidden rounded-2xl border border-white/90 bg-white/[0.98] shadow-[0_24px_70px_-24px_rgba(15,23,42,0.5)] lg:hidden" aria-label="Cargo and staging docks" data-testid="mobile-cargo-panel">
               <div className="border-b border-slate-200 bg-white/90 px-3 pb-3 pt-2.5">
                 <div className="mx-auto mb-2 h-1 w-9 rounded-full bg-slate-200" aria-hidden="true" />
                 <div className="flex items-center gap-2.5">
@@ -2254,7 +2261,7 @@ export function ContainerViewer3D({
           )}
           {hoveredCargoIndex !== null && placed[hoveredCargoIndex] && (
             <div
-              className={`pointer-events-none absolute top-3 z-20 w-max max-w-[calc(100%-6.5rem)] -translate-x-1/2 rounded-2xl border border-white/95 bg-white/[0.94] px-3 py-2 text-slate-700 shadow-[0_14px_36px_-22px_rgba(15,23,42,0.32)] backdrop-blur-xl ${sidebarOpen ? "left-1/2 lg:left-[calc(50%-172px)]" : "left-1/2"}`}
+              className={`pointer-events-none absolute top-3 z-20 w-max max-w-[calc(100%-6.5rem)] -translate-x-1/2 rounded-2xl border border-white/95 bg-white/[0.98] px-3 py-2 text-slate-700 shadow-[0_14px_36px_-22px_rgba(15,23,42,0.32)] ${sidebarOpen ? "left-1/2 lg:left-[calc(50%-172px)]" : "left-1/2"}`}
               data-testid="container-cargo-hover-card"
             >
               <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1">
@@ -2271,7 +2278,7 @@ export function ContainerViewer3D({
             </div>
           )}
           {sequenceMode ? (
-            <div className="absolute bottom-3 left-3 right-3 z-30 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:min-w-[390px] lg:bottom-14 rounded-xl border border-indigo-200 bg-white/92 p-2 shadow-lg backdrop-blur" data-testid="loading-sequence-controls">
+            <div className="absolute bottom-3 left-3 right-3 z-30 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:min-w-[390px] lg:bottom-14 rounded-xl border border-indigo-200 bg-white/[0.98] p-2 shadow-lg" data-testid="loading-sequence-controls">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -2306,7 +2313,7 @@ export function ContainerViewer3D({
               <p className="mt-1.5 text-center text-[9px] text-slate-500">Suggested order: closed end to doors, lower levels first</p>
             </div>
           ) : !mobilePanelOpen && (
-            <div className={`absolute bottom-3 right-3 left-3 z-20 sm:left-auto sm:max-w-[75%] lg:hidden rounded-md border px-2.5 py-1.5 text-[10px] font-medium shadow-sm backdrop-blur pointer-events-none ${
+            <div className={`absolute bottom-3 right-3 left-3 z-20 sm:left-auto sm:max-w-[75%] lg:hidden rounded-md border px-2.5 py-1.5 text-[10px] font-medium shadow-sm pointer-events-none ${
               arrangeMode
                 ? placementMessage.includes("overlap") || placementMessage.includes("without enough") || placementMessage.includes("cancelled")
                   ? "border-red-200 bg-red-50/90 text-red-700"
@@ -2316,13 +2323,13 @@ export function ContainerViewer3D({
               {arrangeMode ? placementMessage : <><span className="sm:hidden">Drag to rotate · Pinch to zoom · Tap cargo to inspect</span><span className="hidden sm:inline">Drag to rotate · Scroll or pinch to zoom</span></>}
             </div>
           )}
-          <div className="pointer-events-none absolute bottom-14 left-3 z-20 hidden max-w-[440px] items-center gap-3 rounded-xl border border-white/85 bg-white/76 px-3 py-2 text-[9px] text-slate-500 shadow-[0_12px_32px_-20px_rgba(15,23,42,0.45)] backdrop-blur-xl lg:flex" data-testid="container-interaction-legend">
+          <div className="pointer-events-none absolute bottom-14 left-3 z-20 hidden max-w-[440px] items-center gap-3 rounded-xl border border-white/85 bg-white/95 px-3 py-2 text-[9px] text-slate-500 shadow-[0_12px_32px_-20px_rgba(15,23,42,0.45)] lg:flex" data-testid="container-interaction-legend">
             <Mouse className="h-4 w-4 shrink-0 text-slate-500" />
             <span><strong className="text-slate-700">Left-drag</strong> rotate scene / move selected cargo</span>
             <span><strong className="text-slate-700">Right-drag</strong> pan</span>
             <span><strong className="text-slate-700">Wheel</strong> zoom</span>
           </div>
-          {(onOpenProjects || onEditCargo || onEditContainer) && <nav className="absolute inset-x-0 bottom-0 z-40 hidden h-12 grid-cols-4 border-t border-white/90 bg-white/88 shadow-[0_-12px_30px_-24px_rgba(15,23,42,0.42)] backdrop-blur-xl lg:grid" aria-label="Loading plan workflow" data-testid="container-workflow-bar">
+          {(onOpenProjects || onEditCargo || onEditContainer) && <nav className="absolute inset-x-0 bottom-0 z-40 hidden h-12 grid-cols-4 border-t border-white/90 bg-white/95 shadow-[0_-12px_30px_-24px_rgba(15,23,42,0.42)] lg:grid" aria-label="Loading plan workflow" data-testid="container-workflow-bar">
             <button type="button" onClick={() => runExternalAction(onOpenProjects)} disabled={!onOpenProjects} className="flex items-center justify-center gap-2 border-r border-slate-200/70 text-[10px] font-semibold text-slate-500 transition hover:bg-white hover:text-primary disabled:cursor-default disabled:opacity-60"><FolderOpen className="h-3.5 w-3.5" />Projects</button>
             <button type="button" onClick={() => runExternalAction(onEditCargo)} disabled={!onEditCargo} className="flex items-center justify-center gap-2 border-r border-slate-200/70 text-[10px] font-semibold text-slate-500 transition hover:bg-white hover:text-primary disabled:cursor-default disabled:opacity-60"><Package className="h-3.5 w-3.5" />Cargo</button>
             <button type="button" onClick={() => runExternalAction(onEditContainer)} disabled={!onEditContainer} className="flex items-center justify-center gap-2 border-r border-slate-200/70 text-[10px] font-semibold text-slate-500 transition hover:bg-white hover:text-primary disabled:cursor-default disabled:opacity-60"><Ship className="h-3.5 w-3.5" />Container</button>
@@ -2330,7 +2337,7 @@ export function ContainerViewer3D({
           </nav>}
         </div>
         {sidebarOpen && (
-          <aside className="absolute bottom-14 right-3 top-3 z-20 hidden w-[320px] min-h-0 flex-col overflow-hidden rounded-3xl border border-white/95 bg-white/[0.94] shadow-[0_24px_70px_-24px_rgba(15,23,42,0.3)] backdrop-blur-2xl lg:flex" data-testid="container-viewer-sidebar">
+          <aside className="absolute bottom-14 right-3 top-3 z-20 hidden w-[320px] min-h-0 flex-col overflow-hidden rounded-3xl border border-white/95 bg-white/[0.98] shadow-[0_24px_70px_-24px_rgba(15,23,42,0.3)] lg:flex" data-testid="container-viewer-sidebar">
             <div className="border-b border-slate-200 bg-white/90 p-3">
               <div className="grid grid-cols-[32px_1fr_32px] items-center gap-2">
                 <button type="button" onClick={onPreviousPlan} disabled={!onPreviousPlan || planIndex <= 0} className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-50 text-slate-500 transition hover:bg-white hover:text-primary disabled:opacity-30" aria-label="Previous container plan" data-testid="button-viewer-previous-plan"><ChevronLeft className="h-4 w-4" /></button>
@@ -2389,7 +2396,7 @@ export function ContainerViewer3D({
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2 [scrollbar-color:#cbd5e1_transparent] [scrollbar-width:thin]">
-              <div className="sticky top-0 z-10 mb-1 flex items-center justify-between rounded-lg bg-slate-50/95 px-2 py-1.5 backdrop-blur">
+              <div className="sticky top-0 z-10 mb-1 flex items-center justify-between rounded-lg bg-slate-50 px-2 py-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">{activeCargoZone === "loaded" ? "Cargo units" : activeCargoZone === "dock1" ? "Dock 1 staging" : "Dock 2 staging"}</p>
                 <p className="text-[9px] text-slate-400">{activeCargoZone === "loaded" ? "Hover to inspect" : `${stagedByZone[activeCargoZone].length} staged`}</p>
               </div>
