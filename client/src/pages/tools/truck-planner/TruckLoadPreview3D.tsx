@@ -73,9 +73,11 @@ export function TruckLoadPreview3D({
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(34, 1, 0.1, trailer.lengthIn * 5);
 
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
-      const basePixelRatio = Math.min(window.devicePixelRatio || 1, 1.35);
-      renderer.setPixelRatio(basePixelRatio);
+      renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: "high-performance" });
+      // Keep the backing buffer stable while orbiting. Resizing it on every
+      // pointer start/end forces a synchronous GPU reallocation and presents
+      // as a frozen view followed by a jump on some systems.
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1));
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1.04;
@@ -100,11 +102,6 @@ export function TruckLoadPreview3D({
       controls.enablePan = false;
       controls.maxPolarAngle = Math.PI * 0.49;
       controls.addEventListener("change", render);
-      controls.addEventListener("start", () => renderer?.setPixelRatio(Math.min(basePixelRatio, 0.85)));
-      controls.addEventListener("end", () => {
-        renderer?.setPixelRatio(basePixelRatio);
-        render();
-      });
 
       scene.add(new THREE.HemisphereLight(0xf8fbff, 0x64748b, 2.4));
       const key = new THREE.DirectionalLight(0xffffff, 3.2);

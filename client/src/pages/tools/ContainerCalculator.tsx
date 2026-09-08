@@ -897,8 +897,8 @@ export function ContainerViewer3D({
     renderer.setPixelRatio(renderProfile.pixelRatio);
     renderer.setClearColor(0x000000, 0);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.NeutralToneMapping;
-    renderer.toneMappingExposure = 1.08;
+    renderer.toneMapping = THREE.NoToneMapping;
+    renderer.toneMappingExposure = 1;
     // Keep the planning canvas diagram-like and crisp. Scene shadows made the
     // transparent container look heavy and obscured cargo when zoomed out.
     renderer.shadowMap.enabled = false;
@@ -953,29 +953,10 @@ export function ContainerViewer3D({
     }
     controls.update();
 
-    scene.add(new THREE.HemisphereLight(0xffffff, 0xd9dee5, 1.34));
-    scene.add(new THREE.AmbientLight(0xffffff, 0.58));
-
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.48);
-    dirLight.position.set(cL, cH * 2, cW * 1.5);
-    dirLight.castShadow = false;
-    dirLight.shadow.camera.near = 0.1;
-    dirLight.shadow.camera.far = Math.max(cL, cW) * 5;
-    dirLight.shadow.bias = -0.0008;
-    scene.add(dirLight);
-
-    const fillLight = new THREE.DirectionalLight(0xe8f3ff, 0.78);
-    fillLight.position.set(-cL, cH, -cW);
-    scene.add(fillLight);
-
-    const rimLight = new THREE.DirectionalLight(0xffffff, 0.38);
-    rimLight.position.set(cL * 0.2, cH * 1.4, cW * 2.2);
-    scene.add(rimLight);
-
     const gridSize = Math.max(cL, cW) * 18;
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(gridSize * 1.4, gridSize * 1.4),
-      new THREE.MeshStandardMaterial({ color: 0xe6eaef, roughness: 1, metalness: 0 }),
+      new THREE.MeshBasicMaterial({ color: 0xe6eaef }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(cL / 2, -0.035, cW / 2);
@@ -1046,18 +1027,16 @@ export function ContainerViewer3D({
 
     const floor = new THREE.Mesh(
       new THREE.BoxGeometry(cL, 0.035, cW),
-      new THREE.MeshStandardMaterial({ color: 0xbfc6ce, roughness: 0.96, metalness: 0.02 }),
+      new THREE.MeshBasicMaterial({ color: 0xbfc6ce }),
     );
     floor.position.set(cL / 2, -0.015, cW / 2);
     floor.receiveShadow = false;
     containerGroup.add(floor);
 
-    const wallMat = new THREE.MeshStandardMaterial({
+    const wallMat = new THREE.MeshBasicMaterial({
       color: 0xe4e9ef,
       transparent: true,
       opacity: 0.12,
-      roughness: 0.42,
-      metalness: 0.28,
       side: THREE.DoubleSide,
       depthWrite: false,
     });
@@ -1076,7 +1055,7 @@ export function ContainerViewer3D({
     containerGroup.add(rightWall);
 
     const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(cL, cW), wallMat.clone());
-    (ceiling.material as THREE.MeshStandardMaterial).opacity = 0.045;
+    (ceiling.material as THREE.MeshBasicMaterial).opacity = 0.045;
     ceiling.rotation.x = Math.PI / 2;
     ceiling.position.set(cL / 2, cH, cW / 2);
     containerGroup.add(ceiling);
@@ -1323,21 +1302,17 @@ export function ContainerViewer3D({
         const texture = new THREE.CanvasTexture(canvas);
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.anisotropy = 1;
-        materials = new THREE.MeshStandardMaterial({
+        materials = new THREE.MeshBasicMaterial({
           map: texture,
           color: 0xffffff,
           transparent: true,
           opacity: 0.76,
-          roughness: 0.92,
-          metalness: 0,
         });
       } else {
-        materials = new THREE.MeshStandardMaterial({
+        materials = new THREE.MeshBasicMaterial({
           color: displayColor,
           transparent: true,
           opacity: 0.76,
-          roughness: 0.92,
-          metalness: 0,
         });
       }
 
@@ -1389,12 +1364,10 @@ export function ContainerViewer3D({
       const rowOffset = dockRows[zone] * Math.max(bW + gap, cW * 0.32) * rowDirection;
       const stagedMesh = new THREE.Mesh(
         new THREE.BoxGeometry(bL * 0.996, bH * 0.996, bW * 0.996),
-        new THREE.MeshStandardMaterial({
+        new THREE.MeshBasicMaterial({
           color: new THREE.Color(box.color).lerp(new THREE.Color(0xffffff), 0.2),
           transparent: true,
           opacity: 0.7,
-          roughness: 0.92,
-          metalness: 0,
         }),
       );
       stagedMesh.position.set(dockCursors[zone] + bL / 2, bH / 2, dockCenterZ + rowOffset);
@@ -1603,26 +1576,21 @@ export function ContainerViewer3D({
 
     let currentHoverIndex: number | null = null;
     let orbiting = false;
-    let interactionResolutionActive = false;
-    const setInteractionResolution = (active: boolean) => {
-      if (interactionResolutionActive === active) return;
-      interactionResolutionActive = active;
-      renderer.setPixelRatio(active ? Math.min(renderProfile.pixelRatio, 0.85) : renderProfile.pixelRatio);
-    };
     const handleOrbitStart = () => {
       if (dragState) return;
       orbiting = true;
-      setInteractionResolution(true);
       if (currentHoverIndex !== null) {
         currentHoverIndex = null;
-        setHoveredCargoIndex(null);
+        // Do not update React state at the start of an orbit. This component
+        // owns the full calculator UI, so that state update can block the main
+        // thread long enough for camera movement to appear frozen and then
+        // jump. The WebGL hover treatment can be cleared independently.
         setCargoHover(null);
       }
       renderer.domElement.style.cursor = "grabbing";
     };
     const handleOrbitEnd = () => {
       orbiting = false;
-      setInteractionResolution(false);
       renderer.domElement.style.cursor = arrangeMode ? "grab" : "default";
       renderScene();
     };

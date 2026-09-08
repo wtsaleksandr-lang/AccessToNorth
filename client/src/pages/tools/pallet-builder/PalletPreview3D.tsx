@@ -85,9 +85,10 @@ export function PalletPreview3D({
       const largestDimension = Math.max(builtPallet.loadedLengthIn, builtPallet.loadedWidthIn, builtPallet.loadedHeightIn);
       camera.position.set(largestDimension * 1.25, largestDimension * 0.9, largestDimension * 1.2);
 
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
-      const basePixelRatio = Math.min(window.devicePixelRatio || 1, 1.35);
-      renderer.setPixelRatio(basePixelRatio);
+      renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: "high-performance" });
+      // A fixed, conservative backing-buffer size keeps pointer interaction
+      // responsive and avoids an expensive GPU resize at drag boundaries.
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1));
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1.05;
@@ -116,11 +117,6 @@ export function PalletPreview3D({
       controls.maxDistance = Math.max(220, largestDimension * 3.4);
       controls.maxPolarAngle = Math.PI * 0.49;
       controls.addEventListener("change", render);
-      controls.addEventListener("start", () => renderer?.setPixelRatio(Math.min(basePixelRatio, 0.85)));
-      controls.addEventListener("end", () => {
-        renderer?.setPixelRatio(basePixelRatio);
-        render();
-      });
 
       scene.add(new THREE.HemisphereLight(0xf8fbff, 0x64748b, 2.3));
       const keyLight = new THREE.DirectionalLight(0xffffff, 3.2);
