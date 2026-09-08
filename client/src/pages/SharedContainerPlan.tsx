@@ -145,6 +145,10 @@ export default function SharedContainerPlan() {
               placed={active.placed}
               container={active.container}
               unitSystem={plan.unitSystem}
+              planIndex={activeIndex}
+              planCount={plan.containers.length}
+              onPreviousPlan={activeIndex > 0 ? () => setActiveIndex((index) => Math.max(0, index - 1)) : undefined}
+              onNextPlan={activeIndex < plan.containers.length - 1 ? () => setActiveIndex((index) => Math.min(plan.containers.length - 1, index + 1)) : undefined}
             />
 
             <div className="mt-4 flex flex-col items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500 sm:flex-row">
