@@ -73,6 +73,11 @@ import {
   Home,
   CircleHelp,
   Mouse,
+  Keyboard,
+  Link2,
+  Facebook,
+  Linkedin,
+  MessageCircle,
 } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -304,6 +309,15 @@ function placementTextForValidation(reason: "inside" | "collision" | "unsupporte
 
 export type SnapshotExportFn = () => { iso: string; top: string; sideA: string; front: string } | null;
 
+function ViewerHoverLabel({ children, side = "left" }: { children: string; side?: "left" | "right" | "bottom" }) {
+  const position = side === "right"
+    ? "left-full top-1/2 ml-2 -translate-y-1/2"
+    : side === "bottom"
+      ? "left-1/2 top-full mt-2 -translate-x-1/2"
+      : "right-full top-1/2 mr-2 -translate-y-1/2";
+  return <span role="tooltip" className={`pointer-events-none absolute z-[80] w-max max-w-48 rounded-lg border border-slate-700/10 bg-slate-950/90 px-2 py-1 text-[9px] font-semibold leading-4 text-white opacity-0 shadow-lg backdrop-blur transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 ${position}`}>{children}</span>;
+}
+
 function ContainerFallback2D({
   placed,
   container,
@@ -422,6 +436,7 @@ export function ContainerViewer3D({
   onExportPdf,
   onExportCsv,
   onSharePlan,
+  shareUrl,
   onSaveProject,
   onOpenProjects,
   onEditCargo,
@@ -440,6 +455,7 @@ export function ContainerViewer3D({
   onExportPdf?: () => void;
   onExportCsv?: () => void;
   onSharePlan?: () => void;
+  shareUrl?: string | null;
   onSaveProject?: () => void;
   onOpenProjects?: () => void;
   onEditCargo?: () => void;
@@ -476,6 +492,7 @@ export function ContainerViewer3D({
   const [displayControlsOpen, setDisplayControlsOpen] = useState(false);
   const [warningPanelOpen, setWarningPanelOpen] = useState(false);
   const [helpPanelOpen, setHelpPanelOpen] = useState(false);
+  const [sharePanelOpen, setSharePanelOpen] = useState(false);
   const [placementSummaryOpen, setPlacementSummaryOpen] = useState(false);
   const [balanceSummaryOpen, setBalanceSummaryOpen] = useState(false);
   const [expandedCargoGroups, setExpandedCargoGroups] = useState<Set<string>>(new Set());
@@ -832,6 +849,7 @@ export function ContainerViewer3D({
         setDisplayControlsOpen(false);
         setWarningPanelOpen(false);
         setHelpPanelOpen(false);
+        setSharePanelOpen(false);
         setMobilePanelOpen(false);
       }
     };
@@ -1862,17 +1880,49 @@ export function ContainerViewer3D({
     action();
   };
 
+  const currentShareUrl = () => shareUrl || (!onSharePlan && typeof window !== "undefined" ? window.location.href : "");
+
   const shareCurrentView = () => {
-    if (onSharePlan) {
+    const url = currentShareUrl();
+    if (!url && onSharePlan) {
       runExternalAction(onSharePlan);
       return;
     }
-    const url = window.location.href;
     if (navigator.share) {
       navigator.share({ title: `${container.name} loading plan`, url }).catch(() => undefined);
       return;
     }
     navigator.clipboard?.writeText(url).then(() => setPlacementMessage("Share link copied.")).catch(() => undefined);
+  };
+
+  const copyShareLink = () => {
+    const url = currentShareUrl();
+    if (!url) {
+      setSharePanelOpen(false);
+      runExternalAction(onSharePlan);
+      return;
+    }
+    navigator.clipboard?.writeText(url).then(() => setPlacementMessage("Share link copied.")).catch(() => undefined);
+    setSharePanelOpen(false);
+  };
+
+  const openShareTarget = (target: "email" | "facebook" | "linkedin" | "whatsapp") => {
+    const url = currentShareUrl();
+    if (!url) {
+      setSharePanelOpen(false);
+      runExternalAction(onSharePlan);
+      return;
+    }
+    const encodedUrl = encodeURIComponent(url);
+    const encodedTitle = encodeURIComponent(`${container.name} loading plan`);
+    const destinations = {
+      email: `mailto:?subject=${encodedTitle}&body=${encodeURIComponent(`Open the loading plan: ${url}`)}`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
+      whatsapp: `https://wa.me/?text=${encodedTitle}%20${encodedUrl}`,
+    };
+    window.open(destinations[target], "_blank", "noopener,noreferrer");
+    setSharePanelOpen(false);
   };
 
   const toggleCargoGroup = (groupId: string) => {
@@ -1946,13 +1996,27 @@ export function ContainerViewer3D({
           <div ref={mountRef} className="absolute inset-0" />
           <div className="absolute left-3 top-3 z-30 flex items-center gap-2">
             <div className="relative flex items-center gap-0.5 rounded-2xl border border-white/85 bg-white/78 p-1 shadow-[0_14px_36px_-20px_rgba(15,23,42,0.48)] backdrop-blur-xl" data-testid="container-scene-actions">
-              <button type="button" onClick={() => { setHelpPanelOpen((current) => !current); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`flex h-8 w-8 items-center justify-center rounded-xl transition hover:bg-white hover:text-primary ${helpPanelOpen ? "bg-slate-900 text-white" : "text-slate-600"}`} aria-label="3D workspace help" title="Help" data-testid="button-container-help"><CircleHelp className="h-4 w-4" /></button>
-              {onSaveProject && <button type="button" onClick={() => runExternalAction(onSaveProject)} className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white hover:text-emerald-600" aria-label="Save loading project" title="Save project" data-testid="button-save-scene"><Save className="h-4 w-4" /></button>}
-              <button type="button" onClick={shareCurrentView} className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white hover:text-primary" aria-label="Share current loading plan" title="Share current loading plan" data-testid="button-share-scene"><Share2 className="h-4 w-4" /></button>
-              {onPlacedChange && <button type="button" onClick={() => { setSequenceMode(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setArrangeMode((current) => !current); setPlacementMessage("Select a cargo item and drag it to a new position."); }} className={`flex h-8 w-8 items-center justify-center rounded-xl transition hover:bg-white ${arrangeMode ? "bg-sky-50 text-sky-600" : "text-slate-600 hover:text-primary"}`} aria-label="Adjust cargo layout" title="Adjust cargo layout" data-testid="button-arrange-cargo"><MousePointerClick className="h-4 w-4" /></button>}
+              <button type="button" onClick={() => { setHelpPanelOpen((current) => !current); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`group relative flex h-8 w-8 items-center justify-center rounded-full transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md ${helpPanelOpen ? "bg-slate-900 text-white" : "text-slate-600"}`} aria-label="Workspace help" data-testid="button-container-help"><CircleHelp className="h-4 w-4" /><ViewerHoverLabel side="bottom">Workspace help</ViewerHoverLabel></button>
+              {onSaveProject && <button type="button" onClick={() => runExternalAction(onSaveProject)} className="group relative flex h-8 w-8 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-emerald-600 hover:shadow-md" aria-label="Save project" data-testid="button-save-scene"><Save className="h-4 w-4" /><ViewerHoverLabel side="bottom">Save project</ViewerHoverLabel></button>}
+              <button type="button" onClick={() => { setSharePanelOpen((current) => !current); setHelpPanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`group relative flex h-8 w-8 items-center justify-center rounded-full transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md ${sharePanelOpen ? "bg-blue-50 text-primary shadow-sm" : "text-slate-600"}`} aria-label="Share loading plan" data-testid="button-share-scene"><Share2 className="h-4 w-4" /><ViewerHoverLabel side="bottom">Share loading plan</ViewerHoverLabel></button>
+              {onPlacedChange && <button type="button" onClick={() => { setSequenceMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setArrangeMode((current) => !current); setPlacementMessage("Select a cargo item and drag it to a new position."); }} className={`group relative flex h-8 w-8 items-center justify-center rounded-full transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${arrangeMode ? "bg-sky-50 text-sky-600" : "text-slate-600 hover:text-primary"}`} aria-label="Adjust cargo layout" data-testid="button-arrange-cargo"><MousePointerClick className="h-4 w-4" /><ViewerHoverLabel side="bottom">Adjust cargo layout</ViewerHoverLabel></button>}
               {helpPanelOpen && <div className="absolute left-0 top-11 w-72 rounded-2xl border border-white/90 bg-white/94 p-3 text-left shadow-[0_22px_55px_-24px_rgba(15,23,42,0.52)] backdrop-blur-xl" data-testid="container-help-panel">
                 <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Scene controls</p>
                 <div className="mt-2 space-y-1.5 text-[10px] leading-4 text-slate-600"><p><strong className="text-slate-800">Drag</strong> to rotate the scene. In Adjust mode, drag cargo instead.</p><p><strong className="text-slate-800">Right-drag</strong> to pan in fullscreen. Use the wheel or pinch to zoom.</p><p><strong className="text-slate-800">Cargo moves</strong> stay inside the container and are checked for collisions and stack support.</p></div>
+              </div>}
+              {sharePanelOpen && <div className="absolute left-10 top-11 w-64 rounded-2xl border border-white/90 bg-white/95 p-2.5 text-left shadow-[0_22px_55px_-24px_rgba(15,23,42,0.52)] backdrop-blur-xl" data-testid="container-share-panel">
+                <div className="flex items-center justify-between gap-2 px-1 pb-2"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Share loading plan</p><p className="mt-0.5 text-[9px] text-slate-400">Anyone with the link can preview it.</p></div><Share2 className="h-4 w-4 text-primary" /></div>
+                <button type="button" onClick={copyShareLink} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-[10px] font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-primary" data-testid="button-share-copy-link"><Link2 className="h-4 w-4" />{currentShareUrl() ? "Copy share link" : "Create share link"}</button>
+                <div className="mt-1 grid grid-cols-4 gap-1 border-t border-slate-100 pt-2">
+                  {([
+                    ["email", "Email", Mail],
+                    ["facebook", "Facebook", Facebook],
+                    ["linkedin", "LinkedIn", Linkedin],
+                    ["whatsapp", "WhatsApp", MessageCircle],
+                  ] as const).map(([target, label, Icon]) => <button key={target} type="button" onClick={() => openShareTarget(target)} className="group/share flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[8px] font-semibold text-slate-500 transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-primary" aria-label={`Share via ${label}`} data-testid={`button-share-${target}`}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-50 transition group-hover/share:bg-white group-hover/share:shadow-sm"><Icon className="h-3.5 w-3.5" /></span>{label}</button>)}
+                </div>
+                {!currentShareUrl() && <p className="mt-1 px-1 text-[8px] leading-3 text-slate-400">Create the secure public link first; then reopen Share to send it.</p>}
+                {currentShareUrl() && typeof navigator !== "undefined" && "share" in navigator && <button type="button" onClick={shareCurrentView} className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-xl bg-slate-900 px-3 py-2 text-[9px] font-bold text-white hover:bg-slate-700"><Share2 className="h-3.5 w-3.5" />More sharing options</button>}
               </div>}
             </div>
             {arrangeMode && <><button type="button" onClick={undoArrangement} disabled={historyCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/85 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm backdrop-blur hover:bg-white disabled:opacity-40" data-testid="button-undo-cargo-move"><Undo2 className="mr-1 inline h-3.5 w-3.5" />Undo</button><button type="button" onClick={redoArrangement} disabled={redoCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/85 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm backdrop-blur hover:bg-white disabled:opacity-40" data-testid="button-redo-cargo-move"><Redo2 className="mr-1 inline h-3.5 w-3.5" />Redo</button><button type="button" onClick={resetArrangement} className="h-8 rounded-lg border border-white/80 bg-white/85 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm backdrop-blur hover:bg-white" data-testid="button-reset-cargo-layout"><RotateCcw className="mr-1 inline h-3.5 w-3.5" />Reset</button></>}
@@ -1980,31 +2044,34 @@ export function ContainerViewer3D({
             </div>
           )}
           <div className={`absolute right-3 top-3 z-30 flex items-center gap-1 rounded-2xl border border-white/85 bg-white/78 p-1 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.5)] backdrop-blur-xl transition-[right] ${sidebarOpen ? "lg:right-[344px]" : ""}`} data-testid="container-command-bar">
-            <button type="button" onClick={() => { setDisplayControlsOpen((current) => !current); setWarningPanelOpen(false); setHelpPanelOpen(false); }} className={`flex h-9 items-center justify-center gap-1.5 rounded-xl px-2.5 text-[10px] font-bold transition hover:bg-white hover:shadow-sm ${displayControlsOpen ? "bg-slate-900 text-white" : "text-slate-600 hover:text-primary"}`} aria-label="Display settings" title="Display settings" data-testid="button-floating-settings"><Settings2 className="h-4 w-4" /><span className="hidden xl:inline">Settings</span></button>
-            <button type="button" onClick={() => { setArrangeMode(false); setMobilePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setSequenceMode((current) => { if (!current) setSequenceStep(1); return !current; }); }} disabled={placed.length === 0} className={`flex h-9 items-center justify-center gap-1.5 rounded-xl px-2.5 text-[10px] font-bold transition hover:bg-white hover:shadow-sm disabled:opacity-35 ${sequenceMode ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:text-primary"}`} aria-label="Loading sequence" title="Loading sequence" data-testid="button-loading-sequence"><Play className="h-4 w-4" /><span className="hidden xl:inline">Loading steps</span></button>
+            <button type="button" onClick={() => { setDisplayControlsOpen((current) => !current); setSharePanelOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-9 items-center justify-center gap-1.5 rounded-full px-2.5 text-[10px] font-bold transition duration-150 hover:-translate-y-0.5 hover:scale-[1.03] hover:bg-white hover:shadow-md ${displayControlsOpen ? "bg-slate-900 text-white" : "text-slate-600 hover:text-primary"}`} aria-label="Display settings" data-testid="button-floating-settings"><Settings2 className="h-4 w-4" /><span className="hidden xl:inline">Settings</span><ViewerHoverLabel side="bottom">Display settings</ViewerHoverLabel></button>
+            <button type="button" onClick={() => { setArrangeMode(false); setMobilePanelOpen(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setSequenceMode((current) => { if (!current) setSequenceStep(1); return !current; }); }} disabled={placed.length === 0} className={`group relative flex h-9 items-center justify-center gap-1.5 rounded-full px-2.5 text-[10px] font-bold transition duration-150 hover:-translate-y-0.5 hover:scale-[1.03] hover:bg-white hover:shadow-md disabled:opacity-35 ${sequenceMode ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:text-primary"}`} aria-label="Loading sequence" data-testid="button-loading-sequence"><Play className="h-4 w-4" /><span className="hidden xl:inline">Loading steps</span><ViewerHoverLabel side="bottom">Play loading sequence</ViewerHoverLabel></button>
             <div className="mx-0.5 h-5 w-px bg-slate-200" />
-            <button type="button" onClick={() => setSidebarOpen((current) => !current)} className="hidden h-9 w-9 items-center justify-center rounded-full bg-white text-slate-600 shadow-sm transition hover:text-primary lg:flex" aria-label={sidebarOpen ? "Hide cargo panel" : "Show cargo panel"} title={sidebarOpen ? "Hide cargo panel" : "Show cargo panel"} data-testid="button-container-sidebar-toggle">{sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}</button>
+            <button type="button" onClick={() => setSidebarOpen((current) => !current)} className="group relative hidden h-9 w-9 items-center justify-center rounded-full bg-white text-slate-600 shadow-sm transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:text-primary hover:shadow-md lg:flex" aria-label={sidebarOpen ? "Hide cargo panel" : "Show cargo panel"} data-testid="button-container-sidebar-toggle">{sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}<ViewerHoverLabel side="bottom">{sidebarOpen ? "Hide cargo panel" : "Show cargo panel"}</ViewerHoverLabel></button>
             <button type="button" onClick={() => { setMobilePanelOpen((current) => !current); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm transition lg:hidden ${mobilePanelOpen ? "text-primary" : "text-slate-600"}`} aria-label={mobilePanelOpen ? "Hide cargo and dock panel" : "Show cargo and dock panel"} title={mobilePanelOpen ? "Hide cargo and dock panel" : "Show cargo and dock panel"} data-testid="button-mobile-cargo-panel">{mobilePanelOpen ? <PanelRightClose className="h-4 w-4" /> : <ListChecks className="h-4 w-4" />}</button>
             {displayControlsOpen && (
               <div className="absolute right-0 top-12 w-64 rounded-2xl border border-white/90 bg-white/94 p-3 text-left shadow-[0_20px_55px_-22px_rgba(15,23,42,0.45)] backdrop-blur-xl" data-testid="floating-display-controls">
-                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Display</p>
-                <div className="mt-2 grid grid-cols-4 gap-1.5">{([ ["isometric", "3D"], ["doors", "Doors"], ["side", "Side"], ["top", "Top"] ] as const).map(([preset, label]) => <button key={preset} type="button" onClick={() => setActiveView(preset)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${activeView === preset ? "border-blue-300 bg-blue-50 text-primary" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`} aria-pressed={activeView === preset} data-testid={`button-container-view-${preset}`}>{label}</button>)}</div>
-                <div className="mt-2 grid grid-cols-3 gap-1.5">{([ ["auto", "Auto"], ["performance", "Fast"], ["quality", "High"] ] as const).map(([quality, label]) => <button key={quality} type="button" onClick={() => setRenderQuality(quality)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${renderQuality === quality ? "border-cyan-300 bg-cyan-50 text-cyan-700" : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"}`} aria-pressed={renderQuality === quality} data-testid={`button-container-quality-${quality}`}>{label}</button>)}</div>
-                <div className="mt-3 grid grid-cols-3 gap-1.5">{[
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Quick display</p>
+                <div className="mt-2 grid grid-cols-3 gap-2">{[
                   { label: "Grid", active: showGrid, set: setShowGrid, icon: Grid3X3 },
                   { label: "Shell", active: showShell, set: setShowShell, icon: Eye },
                   { label: "Labels", active: showLabels, set: setShowLabels, icon: Box },
-                ].map(({ label, active, set, icon: Icon }) => <button key={label} type="button" onClick={() => set(!active)} className={`flex items-center justify-center gap-1 rounded-lg border px-1 py-2 text-[9px] font-bold transition ${active ? "border-slate-300 bg-white text-slate-800" : "border-slate-200 bg-slate-100 text-slate-400"}`} aria-pressed={active} data-testid={`button-container-layer-${label.toLowerCase()}`}><Icon className="h-3 w-3" />{label}</button>)}</div>
+                ].map(({ label, active, set, icon: Icon }) => <button key={label} type="button" onClick={() => set(!active)} className={`flex flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-[9px] font-bold transition hover:-translate-y-0.5 hover:shadow-sm ${active ? "border-blue-200 bg-blue-50 text-primary" : "border-slate-200 bg-slate-100 text-slate-400"}`} aria-pressed={active} data-testid={`button-container-layer-${label.toLowerCase()}`}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm"><Icon className="h-3.5 w-3.5" /></span>{label}</button>)}</div>
+                <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">Camera angle</p>
+                <div className="mt-1.5 grid grid-cols-4 gap-1.5">{([ ["isometric", "3D"], ["doors", "Doors"], ["side", "Side"], ["top", "Top"] ] as const).map(([preset, label]) => <button key={preset} type="button" onClick={() => setActiveView(preset)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${activeView === preset ? "border-blue-300 bg-blue-50 text-primary" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`} aria-pressed={activeView === preset} data-testid={`button-container-view-${preset}`}>{label}</button>)}</div>
+                <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">Rendering</p>
+                <div className="mt-1.5 grid grid-cols-3 gap-1.5">{([ ["auto", "Auto"], ["performance", "Fast"], ["quality", "High"] ] as const).map(([quality, label]) => <button key={quality} type="button" onClick={() => setRenderQuality(quality)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${renderQuality === quality ? "border-cyan-300 bg-cyan-50 text-cyan-700" : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"}`} aria-pressed={renderQuality === quality} data-testid={`button-container-quality-${quality}`}>{label}</button>)}</div>
               </div>
             )}
           </div>
           <div className={`absolute right-3 top-16 z-30 flex flex-col items-center gap-1 rounded-2xl border border-white/85 bg-white/78 p-1 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.5)] backdrop-blur-xl transition-[right] ${sidebarOpen ? "lg:right-[344px]" : ""}`} data-testid="container-floating-tool-rail">
-            <button type="button" onClick={() => { cycleCameraView(); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white hover:text-primary hover:shadow-sm" aria-label="Change camera angle" title={`Camera: ${activeView}`} data-testid="button-floating-camera"><Camera className="h-4 w-4" /></button>
-            <button type="button" onClick={resetCameraView} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white hover:text-primary hover:shadow-sm" aria-label="Reset camera view" title="Reset camera view" data-testid="button-reset-camera"><Home className="h-4 w-4" /></button>
-            {onExportPdf && <button type="button" onClick={onExportPdf} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white hover:text-primary hover:shadow-sm" aria-label="Save PDF report" title="Save PDF report" data-testid="button-floating-pdf"><FileDown className="h-4 w-4" /></button>}
-            <button type="button" onClick={downloadCurrentSnapshot} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white hover:text-primary hover:shadow-sm" aria-label="Save camera snapshot" title="Save camera snapshot" data-testid="button-floating-snapshot"><ImageDown className="h-4 w-4" /></button>
-            <button type="button" onClick={() => { setWarningPanelOpen((current) => !current); setDisplayControlsOpen(false); setHelpPanelOpen(false); }} className={`relative flex h-9 w-9 items-center justify-center rounded-xl transition hover:bg-white hover:shadow-sm ${warningPanelOpen ? "bg-slate-900 text-white" : "text-slate-600 hover:text-primary"}`} aria-label="Placement warnings" title="Placement warnings" data-testid="button-floating-warnings"><AlertTriangle className="h-4 w-4" />{hasPlacementWarning && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />}</button>
-            <button type="button" onClick={toggleFullscreen} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white hover:text-primary hover:shadow-sm" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} title={isFullscreen ? "Exit full screen" : "Open full workspace"} data-testid="button-container-fullscreen">{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
+            <button type="button" onClick={() => { cycleCameraView(); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Change camera angle" data-testid="button-floating-camera"><Camera className="h-4 w-4" /><ViewerHoverLabel>Next camera angle</ViewerHoverLabel></button>
+            <button type="button" onClick={resetCameraView} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Reset camera view" data-testid="button-reset-camera"><Home className="h-4 w-4" /><ViewerHoverLabel>Reset camera</ViewerHoverLabel></button>
+            {onExportPdf && <button type="button" onClick={onExportPdf} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Download PDF report" data-testid="button-floating-pdf"><FileDown className="h-4 w-4" /><ViewerHoverLabel>Download PDF report</ViewerHoverLabel></button>}
+            <button type="button" onClick={downloadCurrentSnapshot} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Download scene image" data-testid="button-floating-snapshot"><ImageDown className="h-4 w-4" /><ViewerHoverLabel>Download scene image</ViewerHoverLabel></button>
+            <button type="button" onClick={() => { setHelpPanelOpen((current) => !current); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${helpPanelOpen ? "bg-blue-50 text-primary" : "text-slate-600 hover:text-primary"}`} aria-label="Keyboard and mouse controls" data-testid="button-keyboard-shortcuts"><Keyboard className="h-4 w-4" /><ViewerHoverLabel>Keyboard &amp; mouse controls</ViewerHoverLabel></button>
+            <button type="button" onClick={() => { setWarningPanelOpen((current) => !current); setSharePanelOpen(false); setDisplayControlsOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${warningPanelOpen ? "bg-slate-900 text-white" : "text-slate-600 hover:text-primary"}`} aria-label="Placement checks" data-testid="button-floating-warnings"><AlertTriangle className="h-4 w-4" />{hasPlacementWarning && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />}<ViewerHoverLabel>Placement checks</ViewerHoverLabel></button>
+            <button type="button" onClick={toggleFullscreen} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} data-testid="button-container-fullscreen">{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}<ViewerHoverLabel>{isFullscreen ? "Exit full screen" : "Open full workspace"}</ViewerHoverLabel></button>
             {warningPanelOpen && (
               <div className="absolute right-12 top-0 w-60 rounded-2xl border border-white/90 bg-white/94 p-3 text-left shadow-[0_20px_55px_-22px_rgba(15,23,42,0.45)] backdrop-blur-xl" data-testid="floating-warning-panel">
                 <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Plan status</p>
@@ -6117,6 +6184,7 @@ export default function ContainerCalculator() {
                                 onExportPdf={handleExportPDF}
                                 onExportCsv={handleExportCSV}
                                 onSharePlan={() => setShareDialogOpen(true)}
+                                shareUrl={managedShareLink?.url}
                                 onSaveProject={saveCurrentProject}
                                 onOpenProjects={openProjectLibrary}
                                 onEditCargo={() => document.getElementById("packing-list-setup")?.scrollIntoView({ behavior: "smooth", block: "start" })}
