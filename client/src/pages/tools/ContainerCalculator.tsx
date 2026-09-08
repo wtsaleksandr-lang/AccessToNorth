@@ -70,6 +70,7 @@ import {
   Save,
   Copy,
   Clock3,
+  Home,
 } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -448,6 +449,7 @@ export function ContainerViewer3D({
   const [movementStep, setMovementStep] = useState<"fine" | "coarse">("fine");
   const selectedCargoIndicesRef = useRef<Set<number>>(new Set());
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
   const [activeCargoZone, setActiveCargoZone] = useState<CargoWorkspaceZone>("loaded");
   const [displayControlsOpen, setDisplayControlsOpen] = useState(false);
   const [warningPanelOpen, setWarningPanelOpen] = useState(false);
@@ -781,6 +783,7 @@ export function ContainerViewer3D({
         setSequenceMode(false);
         setDisplayControlsOpen(false);
         setWarningPanelOpen(false);
+        setMobilePanelOpen(false);
       }
     };
     window.addEventListener("keydown", handleEditorShortcut);
@@ -1384,11 +1387,22 @@ export function ContainerViewer3D({
       return "Valid position — release to place cargo.";
     };
 
+    let inspectionPointer: { pointerId: number; clientX: number; clientY: number; index: number } | null = null;
     const handlePointerDown = (event: PointerEvent) => {
-      if (!arrangeMode || event.button !== 0) return;
+      if (event.button !== 0) return;
       updatePointer(event);
       const intersection = raycaster.intersectObjects(cargoMeshes, false)[0];
       if (!intersection || !(intersection.object instanceof THREE.Mesh)) return;
+
+      if (!arrangeMode) {
+        inspectionPointer = {
+          pointerId: event.pointerId,
+          clientX: event.clientX,
+          clientY: event.clientY,
+          index: intersection.object.userData.placedIndex as number,
+        };
+        return;
+      }
 
       event.preventDefault();
       event.stopPropagation();
@@ -1575,10 +1589,27 @@ export function ContainerViewer3D({
       renderScene();
     };
 
-    const handlePointerUp = (event: PointerEvent) => finishDrag(event, true);
-    const handlePointerCancel = (event: PointerEvent) => finishDrag(event, false);
+    const handlePointerUp = (event: PointerEvent) => {
+      if (inspectionPointer?.pointerId === event.pointerId) {
+        const movement = Math.hypot(event.clientX - inspectionPointer.clientX, event.clientY - inspectionPointer.clientY);
+        if (movement < 7) {
+          setHoveredCargoIndex(inspectionPointer.index);
+          setCargoHover(inspectionPointer.index);
+          setActiveCargoZone("loaded");
+          if (event.pointerType === "touch") setMobilePanelOpen(true);
+        }
+        inspectionPointer = null;
+        return;
+      }
+      finishDrag(event, true);
+    };
+    const handlePointerCancel = (event: PointerEvent) => {
+      inspectionPointer = null;
+      finishDrag(event, false);
+    };
     const handlePointerLeave = () => {
       if (dragState) return;
+      inspectionPointer = null;
       currentHoverIndex = null;
       setHoveredCargoIndex(null);
       setCargoHover(null);
@@ -1766,6 +1797,13 @@ export function ContainerViewer3D({
     setActiveView(next);
   };
 
+  const resetCameraView = () => {
+    setActiveView("isometric");
+    sceneRef.current?.setView("isometric");
+    setDisplayControlsOpen(false);
+    setWarningPanelOpen(false);
+  };
+
   const downloadCurrentSnapshot = () => {
     const sceneState = sceneRef.current;
     if (!sceneState) return;
@@ -1831,7 +1869,7 @@ export function ContainerViewer3D({
                   <button type="button" onClick={() => setSelectedCargoIndices(new Set())} className="rounded-md px-2 py-1 text-slate-400 hover:bg-white hover:text-slate-700">Clear</button>
                 </div>
               </div>
-              <div className="mt-2 grid grid-cols-6 gap-1 text-[8px] font-bold text-slate-500">
+              <div className="mt-2 grid grid-cols-3 gap-1 text-[8px] font-bold text-slate-500 sm:grid-cols-6">
                 <button type="button" onClick={() => applySelectionRotation("counterclockwise")} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Rotate selected cargo left" title="Rotate 90° left (Q)" data-testid="button-rotate-selection-left"><RotateCcw className="h-3.5 w-3.5" /><span>Left 90°</span></button>
                 <button type="button" onClick={() => nudgeSelection(-movementStepIn, 0)} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Move selected cargo toward the closed end" title="Move toward closed end (↑)" data-testid="button-nudge-closed-end"><ArrowUp className="h-3.5 w-3.5" /><span>Closed</span></button>
                 <button type="button" onClick={() => applySelectionRotation("clockwise")} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Rotate selected cargo right" title="Rotate 90° right (E)" data-testid="button-rotate-selection-right"><RotateCw className="h-3.5 w-3.5" /><span>Right 90°</span></button>
@@ -1839,7 +1877,7 @@ export function ContainerViewer3D({
                 <button type="button" onClick={() => nudgeSelection(movementStepIn, 0)} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Move selected cargo toward the doors" title="Move toward doors (↓)" data-testid="button-nudge-doors"><ArrowDown className="h-3.5 w-3.5" /><span>Doors</span></button>
                 <button type="button" onClick={() => nudgeSelection(0, movementStepIn)} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Move selected cargo toward side B" title="Move toward side B (→)" data-testid="button-nudge-side-b"><ArrowRight className="h-3.5 w-3.5" /><span>Side B</span></button>
               </div>
-              <div className="mt-1.5 grid grid-cols-6 gap-1 text-[8px]">{([ ["closed-end", "Align closed"], ["length-center", "Length ctr"], ["doors", "Align doors"], ["side-a", "Align A"], ["width-center", "Width ctr"], ["side-b", "Align B"] ] as const).map(([alignment, label]) => <button key={alignment} type="button" onClick={() => applySelectionAlignment(alignment)} className="rounded-lg border border-slate-200 bg-slate-50 px-1 py-1.5 font-bold text-slate-500 hover:border-blue-300 hover:bg-white hover:text-primary" data-testid={`button-align-${alignment}`}>{label}</button>)}</div>
+              <div className="mt-1.5 grid grid-cols-3 gap-1 text-[8px] sm:grid-cols-6">{([ ["closed-end", "Align closed"], ["length-center", "Length ctr"], ["doors", "Align doors"], ["side-a", "Align A"], ["width-center", "Width ctr"], ["side-b", "Align B"] ] as const).map(([alignment, label]) => <button key={alignment} type="button" onClick={() => applySelectionAlignment(alignment)} className="rounded-lg border border-slate-200 bg-slate-50 px-1 py-1.5 font-bold text-slate-500 hover:border-blue-300 hover:bg-white hover:text-primary" data-testid={`button-align-${alignment}`}>{label}</button>)}</div>
               <p className="mt-2 text-[9px] leading-4 text-slate-400">Drag, nudge or rotate the group. Collision, boundary and stack-support checks remain active.</p>
             </div>
           )}
@@ -1847,8 +1885,12 @@ export function ContainerViewer3D({
             <button type="button" onClick={() => setSidebarOpen((current) => !current)} className="hidden h-9 w-9 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white hover:text-primary hover:shadow-sm lg:flex" aria-label={sidebarOpen ? "Hide cargo panel" : "Show cargo panel"} title={sidebarOpen ? "Hide cargo panel" : "Show cargo panel"} data-testid="button-container-sidebar-toggle">
               {sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
             </button>
+            <button type="button" onClick={() => { setMobilePanelOpen((current) => !current); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`flex h-9 w-9 items-center justify-center rounded-xl transition hover:bg-white hover:shadow-sm lg:hidden ${mobilePanelOpen ? "bg-slate-900 text-white" : "text-slate-600 hover:text-primary"}`} aria-label={mobilePanelOpen ? "Hide cargo and dock panel" : "Show cargo and dock panel"} title={mobilePanelOpen ? "Hide cargo and dock panel" : "Show cargo and dock panel"} data-testid="button-mobile-cargo-panel">
+              {mobilePanelOpen ? <PanelRightClose className="h-4 w-4" /> : <ListChecks className="h-4 w-4" />}
+            </button>
             <button type="button" onClick={() => { cycleCameraView(); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white hover:text-primary hover:shadow-sm" aria-label="Change camera angle" title={`Camera: ${activeView}`} data-testid="button-floating-camera"><Camera className="h-4 w-4" /></button>
-            <button type="button" onClick={() => { setArrangeMode(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setSequenceMode((current) => { if (!current) setSequenceStep(1); return !current; }); }} disabled={placed.length === 0} className={`flex h-9 w-9 items-center justify-center rounded-xl transition hover:bg-white hover:shadow-sm disabled:opacity-35 ${sequenceMode ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:text-primary"}`} aria-label="Loading sequence" title="Loading sequence" data-testid="button-loading-sequence"><Play className="h-4 w-4" /></button>
+            <button type="button" onClick={resetCameraView} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white hover:text-primary hover:shadow-sm" aria-label="Reset camera view" title="Reset camera view" data-testid="button-reset-camera"><Home className="h-4 w-4" /></button>
+            <button type="button" onClick={() => { setArrangeMode(false); setMobilePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setSequenceMode((current) => { if (!current) setSequenceStep(1); return !current; }); }} disabled={placed.length === 0} className={`flex h-9 w-9 items-center justify-center rounded-xl transition hover:bg-white hover:shadow-sm disabled:opacity-35 ${sequenceMode ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:text-primary"}`} aria-label="Loading sequence" title="Loading sequence" data-testid="button-loading-sequence"><Play className="h-4 w-4" /></button>
             {onExportPdf && <button type="button" onClick={onExportPdf} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white hover:text-primary hover:shadow-sm" aria-label="Save PDF report" title="Save PDF report" data-testid="button-floating-pdf"><FileDown className="h-4 w-4" /></button>}
             <button type="button" onClick={downloadCurrentSnapshot} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white hover:text-primary hover:shadow-sm" aria-label="Save camera snapshot" title="Save camera snapshot" data-testid="button-floating-snapshot"><ImageDown className="h-4 w-4" /></button>
             {onPlacedChange && <button type="button" onClick={() => { setSequenceMode(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setArrangeMode((current) => !current); setPlacementMessage("Select a cargo item and drag it to a new position."); }} className={`flex h-9 w-9 items-center justify-center rounded-xl transition hover:bg-white hover:shadow-sm ${arrangeMode ? "bg-sky-50 text-sky-600" : "text-slate-600 hover:text-primary"}`} aria-label="Adjust cargo layout" title="Adjust cargo layout" data-testid="button-arrange-cargo"><MousePointerClick className="h-4 w-4" /></button>}
@@ -1876,6 +1918,62 @@ export function ContainerViewer3D({
               </div>
             )}
           </div>
+          {mobilePanelOpen && (
+            <section className="absolute bottom-3 left-3 right-14 z-30 flex max-h-[68%] min-h-0 flex-col overflow-hidden rounded-2xl border border-white/90 bg-white/[0.94] shadow-[0_24px_70px_-24px_rgba(15,23,42,0.5)] backdrop-blur-xl lg:hidden" aria-label="Cargo and staging docks" data-testid="mobile-cargo-panel">
+              <div className="border-b border-slate-200 bg-white/90 px-3 pb-3 pt-2.5">
+                <div className="mx-auto mb-2 h-1 w-9 rounded-full bg-slate-200" aria-hidden="true" />
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-primary"><Ship className="h-4 w-4" /></div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[11px] font-bold text-slate-900">{container.name}</p>
+                    <p className="mt-0.5 truncate text-[9px] text-slate-500">{placed.length} loaded · {unitSystem === "metric" ? `${(loadSummary.totalWeight * LB_TO_KG).toLocaleString(undefined, { maximumFractionDigits: 0 })} kg` : `${loadSummary.totalWeight.toLocaleString(undefined, { maximumFractionDigits: 0 })} lb`}</p>
+                  </div>
+                  <button type="button" onClick={() => setMobilePanelOpen(false)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close cargo panel" data-testid="button-close-mobile-cargo-panel"><X className="h-4 w-4" /></button>
+                </div>
+                {onPlacedChange ? (
+                  <div className="mt-2.5 grid grid-cols-3 rounded-xl bg-slate-100 p-1" role="tablist" aria-label="Cargo workspace zones">
+                    {([ ["dock1", "Dock 1"], ["loaded", "Loaded"], ["dock2", "Dock 2"] ] as const).map(([zone, label]) => (
+                      <button key={zone} type="button" role="tab" aria-selected={activeCargoZone === zone} onClick={() => setActiveCargoZone(zone)} className={`rounded-lg px-1.5 py-1.5 text-[9px] font-bold transition ${activeCargoZone === zone ? "bg-white text-primary shadow-sm" : "text-slate-500"}`} data-testid={`button-mobile-cargo-zone-${zone}`}>
+                        {label} {zone === "loaded" ? placed.length : stagedByZone[zone].length}
+                      </button>
+                    ))}
+                  </div>
+                ) : <p className="mt-2 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Cargo units</p>}
+                {onPlacedChange && activeCargoZone === "loaded" && (
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <p className="text-[9px] text-slate-500">{arrangeMode ? `${selectedCargoIndices.size} selected` : "Inspect cargo below"}</p>
+                    {arrangeMode ? <div className="flex gap-1">
+                      <button type="button" onClick={() => setSelectedCargoIndices(new Set(placed.map((_, index) => index)))} className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[9px] font-bold text-slate-600" data-testid="button-mobile-select-all-cargo">Select all</button>
+                      <button type="button" onClick={() => setSelectedCargoIndices(new Set())} disabled={selectedCargoIndices.size === 0} className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[9px] font-bold text-slate-500 disabled:opacity-40" data-testid="button-mobile-clear-cargo-selection">Clear</button>
+                    </div> : <button type="button" onClick={() => { setSequenceMode(false); setArrangeMode(true); setPlacementMessage("Select cargo below, then drag or use the precision controls."); }} className="rounded-lg bg-slate-900 px-2.5 py-1.5 text-[9px] font-bold text-white" data-testid="button-mobile-open-adjust-layout"><MousePointerClick className="mr-1 inline h-3 w-3" />Adjust layout</button>}
+                  </div>
+                )}
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 [scrollbar-color:#cbd5e1_transparent] [scrollbar-width:thin]">
+                {activeCargoZone === "loaded" || !onPlacedChange ? <div className="space-y-1">
+                  {placed.map((box, index) => (
+                    <div key={`${box.cargoId}-mobile-${index}`} className={`flex items-center gap-1.5 rounded-xl border p-1.5 transition ${selectedCargoIndices.has(index) ? "border-blue-300 bg-blue-50/80 ring-2 ring-blue-100" : hoveredCargoIndex === index ? "border-sky-300 bg-white" : "border-transparent bg-white/60"}`} data-testid={`mobile-container-cargo-row-${index}`}>
+                      {onPlacedChange && arrangeMode && <button type="button" onClick={() => toggleCargoSelection(index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-primary" aria-label={`${selectedCargoIndices.has(index) ? "Deselect" : "Select"} ${box.cargoName || "cargo item"}`} aria-pressed={selectedCargoIndices.has(index)} data-testid={`button-mobile-select-container-cargo-${index}`}>{selectedCargoIndices.has(index) ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 text-slate-400" />}</button>}
+                      <button type="button" onClick={() => { setHoveredCargoIndex(index); sceneRef.current?.setCargoHover(index); }} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg p-0.5 text-left" data-testid={`button-mobile-container-cargo-${index}`}>
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-900" style={{ backgroundColor: `${box.color}45` }}><Box className="h-3.5 w-3.5" /></span>
+                        <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-slate-800">{box.cargoName || `Cargo ${index + 1}`}</span><span className="mt-0.5 block truncate text-[9px] text-slate-500">{fmt(box.l)} × {fmt(box.w)} × {fmt(box.h)} · {unitSystem === "metric" ? `${(box.weight * LB_TO_KG).toFixed(0)} kg` : `${box.weight.toFixed(0)} lb`}</span></span>
+                      </button>
+                      {onPlacedChange && <div className="flex shrink-0 gap-0.5">
+                        <button type="button" onClick={() => stageCargo(index, "dock1")} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-blue-50 hover:text-primary" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 1`} data-testid={`button-mobile-stage-dock1-${index}`}><ChevronLeft className="h-3.5 w-3.5" /></button>
+                        <button type="button" onClick={() => stageCargo(index, "dock2")} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-blue-50 hover:text-primary" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 2`} data-testid={`button-mobile-stage-dock2-${index}`}><ChevronRight className="h-3.5 w-3.5" /></button>
+                      </div>}
+                    </div>
+                  ))}
+                </div> : stagedByZone[activeCargoZone].length > 0 ? <div className="space-y-1">
+                  {stagedByZone[activeCargoZone].map((entry) => <div key={`${entry.id}-mobile`} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm" data-testid={`mobile-staged-cargo-${entry.id}`}>
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-900" style={{ backgroundColor: `${entry.box.color}45` }}><Package className="h-4 w-4" /></span>
+                    <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-slate-800">{entry.box.cargoName || "Cargo item"}</span><span className="mt-0.5 block truncate text-[9px] text-slate-500">{fmt(entry.box.l)} × {fmt(entry.box.w)} × {fmt(entry.box.h)}</span></span>
+                    <button type="button" onClick={() => loadStagedCargo(entry.id)} className="rounded-lg bg-slate-900 px-2.5 py-1.5 text-[9px] font-bold text-white" data-testid={`button-mobile-load-staged-${entry.id}`}>Load</button>
+                  </div>)}
+                </div> : <div className="px-4 py-7 text-center"><Package className="mx-auto h-6 w-6 text-slate-300" /><p className="mt-2 text-[11px] font-bold text-slate-600">No cargo staged here</p><p className="mt-1 text-[9px] leading-4 text-slate-400">Move a loaded unit here using its left or right arrow.</p></div>}
+              </div>
+            </section>
+          )}
           {hoveredCargoIndex !== null && placed[hoveredCargoIndex] && (
             <div
               className="pointer-events-none absolute left-1/2 top-14 z-10 w-max max-w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-xl border border-white/90 bg-slate-950/[0.88] px-3 py-2 text-white shadow-xl shadow-slate-900/20 backdrop-blur-md"
@@ -1931,7 +2029,7 @@ export function ContainerViewer3D({
               </div>
               <p className="mt-1.5 text-center text-[9px] text-slate-500">Suggested order: closed end to doors, lower levels first</p>
             </div>
-          ) : (
+          ) : !mobilePanelOpen && (
             <div className={`absolute bottom-3 right-3 left-3 sm:left-auto sm:max-w-[75%] rounded-md border px-2.5 py-1.5 text-[10px] font-medium shadow-sm backdrop-blur pointer-events-none ${
               arrangeMode
                 ? placementMessage.includes("overlap") || placementMessage.includes("without enough") || placementMessage.includes("cancelled")
@@ -1939,7 +2037,7 @@ export function ContainerViewer3D({
                   : "border-sky-200 bg-white/90 text-slate-700"
                 : "border-white/80 bg-white/75 text-slate-600"
             }`}>
-              {arrangeMode ? placementMessage : "Drag to rotate · Scroll or pinch to zoom"}
+              {arrangeMode ? placementMessage : <><span className="sm:hidden">Drag to rotate · Pinch to zoom · Tap cargo to inspect</span><span className="hidden sm:inline">Drag to rotate · Scroll or pinch to zoom</span></>}
             </div>
           )}
         </div>
