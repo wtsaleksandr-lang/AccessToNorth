@@ -61,7 +61,6 @@ import {
   Grid3X3,
   Eye,
   Camera,
-  Move3d,
   Share2,
   PanelRightClose,
   PanelRightOpen,
@@ -73,7 +72,6 @@ import {
   Home,
   CircleHelp,
   Mouse,
-  Keyboard,
   Link2,
   Facebook,
   Linkedin,
@@ -901,8 +899,9 @@ export function ContainerViewer3D({
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.NeutralToneMapping;
     renderer.toneMappingExposure = 1.08;
-    renderer.shadowMap.enabled = renderProfile.shadows;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Keep the planning canvas diagram-like and crisp. Scene shadows made the
+    // transparent container look heavy and obscured cargo when zoomed out.
+    renderer.shadowMap.enabled = false;
     renderer.domElement.style.touchAction = "none";
     el.appendChild(renderer.domElement);
 
@@ -959,10 +958,7 @@ export function ContainerViewer3D({
 
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.48);
     dirLight.position.set(cL, cH * 2, cW * 1.5);
-    dirLight.castShadow = renderProfile.shadows;
-    if (renderProfile.shadowMapSize > 0) {
-      dirLight.shadow.mapSize.set(renderProfile.shadowMapSize, renderProfile.shadowMapSize);
-    }
+    dirLight.castShadow = false;
     dirLight.shadow.camera.near = 0.1;
     dirLight.shadow.camera.far = Math.max(cL, cW) * 5;
     dirLight.shadow.bias = -0.0008;
@@ -983,7 +979,7 @@ export function ContainerViewer3D({
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(cL / 2, -0.035, cW / 2);
-    ground.receiveShadow = renderProfile.shadows;
+    ground.receiveShadow = false;
     scene.add(ground);
 
     const gridDivisions = renderProfile.gridDivisions;
@@ -1056,7 +1052,7 @@ export function ContainerViewer3D({
     const addStructure = (geometry: THREE.BufferGeometry, x: number, y: number, z: number) => {
       const beam = new THREE.Mesh(geometry, structureMat);
       beam.position.set(x, y, z);
-      beam.castShadow = renderProfile.shadows;
+      beam.castShadow = false;
       containerGroup.add(beam);
     };
     const rail = Math.max(0.032, Math.min(cH, cW) * 0.018);
@@ -1079,7 +1075,7 @@ export function ContainerViewer3D({
       new THREE.MeshStandardMaterial({ color: 0xbfc6ce, roughness: 0.96, metalness: 0.02 }),
     );
     floor.position.set(cL / 2, -0.015, cW / 2);
-    floor.receiveShadow = renderProfile.shadows;
+    floor.receiveShadow = false;
     containerGroup.add(floor);
 
     const wallMat = new THREE.MeshStandardMaterial({
@@ -1145,7 +1141,7 @@ export function ContainerViewer3D({
     const addDoorFrame = (geometry: THREE.BufferGeometry, x: number, y: number, z: number) => {
       const mesh = new THREE.Mesh(geometry, frameMat);
       mesh.position.set(x, y, z);
-      mesh.castShadow = renderProfile.shadows;
+      mesh.castShadow = false;
       containerGroup.add(mesh);
     };
     addDoorFrame(new THREE.BoxGeometry(0.045, cH, 0.035), doorX + 0.025, cH / 2, 0);
@@ -1173,12 +1169,12 @@ export function ContainerViewer3D({
 
       const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, cH * 0.8, 10), hardwareMat);
       rod.position.set(0.045, cH * 0.52, direction * cW * 0.31);
-      rod.castShadow = renderProfile.shadows;
+      rod.castShadow = false;
       door.add(rod);
 
       const handle = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.035, cW * 0.12), hardwareMat);
       handle.position.set(0.062, cH * 0.41, direction * cW * 0.31);
-      handle.castShadow = renderProfile.shadows;
+      handle.castShadow = false;
       door.add(handle);
 
       containerGroup.add(door);
@@ -1186,8 +1182,50 @@ export function ContainerViewer3D({
     createOpenDoor("left");
     createOpenDoor("right");
 
+    const formatSceneLength = (inches: number) =>
+      unitSystem === "metric"
+        ? `${(inches * IN_TO_CM).toFixed(0)} cm`
+        : `${inches.toFixed(1)} in`;
     const cargoMeshes: THREE.Mesh[] = [];
-    const runningPiece: Record<string, number> = {};
+    const hoverMeasurementGroups: THREE.Group[] = [];
+    const createMeasurementLabel = (text: string, scale: number) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 384;
+      canvas.height = 80;
+      const ctx = canvas.getContext("2d")!;
+      ctx.fillStyle = "rgba(255,255,255,0.94)";
+      ctx.roundRect(4, 4, 376, 72, 20);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(100,116,139,0.3)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = "#475569";
+      ctx.font = "600 28px Inter, Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, 192, 41);
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
+      sprite.scale.set(scale, scale * 0.208, 1);
+      sprite.renderOrder = 20;
+      return sprite;
+    };
+    const addMeasurementRange = (group: THREE.Group, startX: number, endX: number, y: number, z: number, label: string) => {
+      const lineMaterial = new THREE.LineBasicMaterial({ color: 0x718096, transparent: true, opacity: 0.72, depthTest: false });
+      const tick = Math.max(cW * 0.035, 0.045);
+      const geometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(startX, y, z), new THREE.Vector3(endX, y, z),
+        new THREE.Vector3(startX, y, z - tick), new THREE.Vector3(startX, y, z + tick),
+        new THREE.Vector3(endX, y, z - tick), new THREE.Vector3(endX, y, z + tick),
+      ]);
+      const lines = new THREE.LineSegments(geometry, lineMaterial);
+      lines.renderOrder = 19;
+      group.add(lines);
+      const labelSprite = createMeasurementLabel(label, Math.max(0.62, Math.min(cL * 0.22, Math.max(0.8, endX - startX) * 0.72)));
+      labelSprite.position.set((startX + endX) / 2, y + Math.max(0.06, cH * 0.025), z);
+      group.add(labelSprite);
+    };
     for (let idx = 0; idx < placed.length; idx++) {
       const box = placed[idx];
       const bL = inToM(box.l);
@@ -1205,20 +1243,7 @@ export function ContainerViewer3D({
       const useDetailedLabel = showLabels && renderProfile.detailedLabels;
       let materials: THREE.Material | THREE.Material[];
       if (useDetailedLabel) {
-        runningPiece[box.cargoId] = (runningPiece[box.cargoId] || 0) + 1;
-        const pieceNo = runningPiece[box.cargoId];
-        const dimF = unitSystem === "metric" ? IN_TO_CM : 1;
-        const wtF = unitSystem === "metric" ? LB_TO_KG : 1;
-        const dimU = unitSystem === "metric" ? "cm" : "in";
-        const wtU = unitSystem === "metric" ? "kg" : "lb";
-        const itemName = (box.cargoName || "Box").length > 16
-          ? `${(box.cargoName || "Box").slice(0, 15)}…`
-          : (box.cargoName || "Box");
-        const labelLines = [
-          `${itemName} #${pieceNo}`,
-          `${(box.l * dimF).toFixed(0)}×${(box.w * dimF).toFixed(0)}×${(box.h * dimF).toFixed(0)} ${dimU}`,
-          `${(box.weight * wtF).toFixed(0)} ${wtU}`,
-        ];
+        const unitReference = `#${idx + 1}`;
         const makeFaceLabel = (faceW: number, faceH: number) => {
           const canvas = document.createElement("canvas");
           canvas.width = 256;
@@ -1229,16 +1254,12 @@ export function ContainerViewer3D({
           ctx.strokeStyle = "rgba(71,85,105,0.22)";
           ctx.lineWidth = 2;
           ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
-          const fontSize = Math.max(16, Math.min(28, Math.round(canvas.height * 0.18)));
-          const subSize = Math.max(12, Math.round(fontSize * 0.72));
-          const centreY = canvas.height / 2;
+          const fontSize = Math.max(22, Math.min(42, Math.round(canvas.height * 0.28)));
           ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
           ctx.fillStyle = "#334155";
           ctx.font = `bold ${fontSize}px Inter, Arial, sans-serif`;
-          ctx.fillText(labelLines[0], canvas.width / 2, centreY - subSize * 0.6);
-          ctx.font = `${subSize}px Inter, Arial, sans-serif`;
-          ctx.fillText(labelLines[1], canvas.width / 2, centreY + fontSize * 0.5);
-          ctx.fillText(labelLines[2], canvas.width / 2, centreY + fontSize * 0.5 + subSize * 1.15);
+          ctx.fillText(unitReference, canvas.width / 2, canvas.height / 2);
           const texture = new THREE.CanvasTexture(canvas);
           texture.colorSpace = THREE.SRGBColorSpace;
           texture.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 2);
@@ -1268,8 +1289,8 @@ export function ContainerViewer3D({
 
       const boxMesh = new THREE.Mesh(boxGeo, materials);
       boxMesh.position.set(bX + bL / 2, bY + bH / 2, bZ + bW / 2);
-      boxMesh.castShadow = renderProfile.shadows;
-      boxMesh.receiveShadow = renderProfile.shadows;
+      boxMesh.castShadow = false;
+      boxMesh.receiveShadow = false;
       boxMesh.userData = {
         placedIndex: idx,
         cargoId: box.cargoId,
@@ -1294,8 +1315,18 @@ export function ContainerViewer3D({
       edges.userData = { linkedTo: idx };
       boxMesh.userData.linkedEdges = edges;
       scene.add(edges);
+
+      const measurementGroup = new THREE.Group();
+      measurementGroup.visible = false;
+      const measurementY = Math.min(cH + 0.16, bY + bH + Math.max(0.08, cH * 0.035));
+      const measurementZ = Math.min(cW + 0.12, bZ + bW + Math.max(0.08, cW * 0.04));
+      addMeasurementRange(measurementGroup, 0, bX, measurementY, measurementZ, `Back ${formatSceneLength(box.x)}`);
+      addMeasurementRange(measurementGroup, bX + bL, cL, measurementY, measurementZ, `Doors ${formatSceneLength(Math.max(0, container.lengthIn - box.x - box.l))}`);
+      scene.add(measurementGroup);
+      hoverMeasurementGroups.push(measurementGroup);
     }
 
+    const stagedMeshes: THREE.Mesh[] = [];
     const dockCursors: Record<StagingDock, number> = { dock1: 0, dock2: 0 };
     const dockRows: Record<StagingDock, number> = { dock1: 0, dock2: 0 };
     for (const staged of stagedCargo) {
@@ -1322,9 +1353,11 @@ export function ContainerViewer3D({
         }),
       );
       stagedMesh.position.set(dockCursors[zone] + bL / 2, bH / 2, dockCenterZ + rowOffset);
-      stagedMesh.castShadow = renderProfile.shadows;
-      stagedMesh.receiveShadow = renderProfile.shadows;
+      stagedMesh.castShadow = false;
+      stagedMesh.receiveShadow = false;
+      stagedMesh.userData = { stagedId: staged.id, zone };
       scene.add(stagedMesh);
+      stagedMeshes.push(stagedMesh);
 
       const stagedEdges = new THREE.LineSegments(
         new THREE.EdgesGeometry(new THREE.BoxGeometry(bL, bH, bW)),
@@ -1352,23 +1385,6 @@ export function ContainerViewer3D({
       scene.add(sprite);
     }
 
-    const fmtLabel = (inches: number) =>
-      unitSystem === "metric"
-        ? `${(inches * 2.54).toFixed(0)} cm`
-        : `${inches.toFixed(1)}"`;
-
-    addAxisLabel(
-      fmtLabel(container.lengthIn),
-      new THREE.Vector3(cL / 2, -0.15, -0.2)
-    );
-    addAxisLabel(
-      fmtLabel(container.widthIn),
-      new THREE.Vector3(-0.3, -0.15, cW / 2)
-    );
-    addAxisLabel(
-      fmtLabel(container.heightIn),
-      new THREE.Vector3(-0.3, cH / 2, -0.2)
-    );
     addAxisLabel("DOCK 1", new THREE.Vector3(cL / 2, 0.015, -dockGap - dockDepth / 2));
     addAxisLabel("DOCK 2", new THREE.Vector3(cL / 2, 0.015, cW + dockGap + dockDepth / 2));
 
@@ -1406,6 +1422,7 @@ export function ContainerViewer3D({
       offset: THREE.Vector3;
       plane: THREE.Plane;
       nextLayout: PlacedBox[] | null;
+      dropZone: StagingDock | null;
       valid: boolean;
     };
     let dragState: DragState | null = null;
@@ -1427,6 +1444,9 @@ export function ContainerViewer3D({
     };
 
     const setCargoHover = (index: number | null) => {
+      hoverMeasurementGroups.forEach((group, groupIndex) => {
+        group.visible = index === groupIndex;
+      });
       cargoMeshes.forEach((mesh) => {
         const active = index === (mesh.userData.placedIndex as number);
         const selected = selectedCargoIndicesRef.current.has(mesh.userData.placedIndex as number);
@@ -1462,6 +1482,16 @@ export function ContainerViewer3D({
     const handlePointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return;
       updatePointer(event);
+      const stagedIntersection = raycaster.intersectObjects(stagedMeshes, false)[0];
+      if (arrangeMode && stagedIntersection?.object instanceof THREE.Mesh) {
+        const stagedId = stagedIntersection.object.userData.stagedId as string | undefined;
+        if (stagedId) {
+          event.preventDefault();
+          event.stopPropagation();
+          loadStagedCargo(stagedId);
+          return;
+        }
+      }
       const intersection = raycaster.intersectObjects(cargoMeshes, false)[0];
       if (!intersection || !(intersection.object instanceof THREE.Mesh)) return;
 
@@ -1509,6 +1539,7 @@ export function ContainerViewer3D({
         offset: dragIntersection.clone().sub(mesh.position),
         plane,
         nextLayout: null,
+        dropZone: null,
         valid: false,
       };
       renderer.domElement.setPointerCapture(event.pointerId);
@@ -1527,6 +1558,7 @@ export function ContainerViewer3D({
         if (event.pointerType === "touch") return;
         updatePointer(event);
         const intersection = raycaster.intersectObjects(cargoMeshes, false)[0];
+        const stagedIntersection = intersection ? null : raycaster.intersectObjects(stagedMeshes, false)[0];
         const nextIndex = intersection?.object instanceof THREE.Mesh
           ? intersection.object.userData.placedIndex as number
           : null;
@@ -1537,7 +1569,7 @@ export function ContainerViewer3D({
         }
         renderer.domElement.style.cursor = nextIndex !== null
           ? arrangeMode ? "grab" : "pointer"
-          : "default";
+          : arrangeMode && stagedIntersection ? "pointer" : "default";
         return;
       }
       if (dragState.pointerId !== event.pointerId) return;
@@ -1552,6 +1584,28 @@ export function ContainerViewer3D({
       const snap = inToM(1);
       const unclampedX = dragIntersection.x - dragState.offset.x;
       const unclampedZ = dragIntersection.z - dragState.offset.z;
+      const candidateDock: StagingDock | null = dragState.indices.length === 1
+        ? unclampedZ >= -dockGap - dockDepth && unclampedZ <= -dockGap
+          ? "dock1"
+          : unclampedZ >= cW + dockGap && unclampedZ <= cW + dockGap + dockDepth
+            ? "dock2"
+            : null
+        : null;
+      if (candidateDock) {
+        const dockMin = candidateDock === "dock1" ? -dockGap - dockDepth : cW + dockGap;
+        const dockMax = candidateDock === "dock1" ? -dockGap : cW + dockGap + dockDepth;
+        const dockX = Math.min(cL - halfLength, Math.max(halfLength, unclampedX));
+        const dockZ = Math.min(dockMax - halfWidth, Math.max(dockMin + halfWidth, unclampedZ));
+        dragState.dropZone = candidateDock;
+        dragState.nextLayout = null;
+        dragState.valid = true;
+        moveMesh(mesh, new THREE.Vector3(dockX, halfHeight, dockZ));
+        highlightMesh(mesh, 0x10b981);
+        setPlacementMessage(`Release to move this unit to ${candidateDock === "dock1" ? "Dock 1" : "Dock 2"}.`);
+        renderScene();
+        return;
+      }
+      dragState.dropZone = null;
       const nextX = Math.min(cL - halfLength, Math.max(halfLength, Math.round(unclampedX / snap) * snap));
       const nextZ = Math.min(cW - halfWidth, Math.max(halfWidth, Math.round(unclampedZ / snap) * snap));
       const current = placed[dragState.index];
@@ -1635,7 +1689,12 @@ export function ContainerViewer3D({
         const start = completedDrag.startPositions.get(index);
         return Boolean(start && start.distanceTo(cargoMeshes[index].position) > 0.001);
       });
-      if (commit && moved && completedDrag.valid && completedDrag.nextLayout) {
+      if (commit && moved && completedDrag.dropZone && completedDrag.indices.length === 1) {
+        const start = completedDrag.startPositions.get(completedDrag.index);
+        if (start) moveMesh(completedDrag.mesh, start);
+        stageCargo(completedDrag.index, completedDrag.dropZone);
+        setCargoHover(null);
+      } else if (commit && moved && completedDrag.valid && completedDrag.nextLayout) {
         arrangementHistoryRef.current = [
           ...arrangementHistoryRef.current,
           placed.map((box) => ({ ...box })),
@@ -1833,6 +1892,8 @@ export function ContainerViewer3D({
     renderQuality,
     sidebarOpen,
     stagedCargo,
+    loadStagedCargo,
+    stageCargo,
   ]);
 
   useEffect(() => {
@@ -1966,22 +2027,7 @@ export function ContainerViewer3D({
       className={`bg-white ${isFullscreen ? "h-screen w-screen overflow-hidden p-3 sm:p-4" : "rounded-xl"}`}
       data-testid="container-viewer-workspace"
     >
-      <div className="mb-2 flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-white shadow-sm">
-            <Move3d className="h-4 w-4" />
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-xs font-bold text-slate-900">3D loading workspace</p>
-            <p className="hidden text-[10px] text-slate-500 sm:block">Inspect, sequence and safely adjust every cargo unit</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-slate-600">
-          <span className="bg-white border border-slate-200 rounded-md px-2 py-1 shadow-sm">L <span className="font-semibold text-slate-800">{fmt(container.lengthIn)}</span></span>
-          <span className="bg-white border border-slate-200 rounded-md px-2 py-1 shadow-sm">W <span className="font-semibold text-slate-800">{fmt(container.widthIn)}</span></span>
-          <span className="bg-white border border-slate-200 rounded-md px-2 py-1 shadow-sm">H <span className="font-semibold text-slate-800">{fmt(container.heightIn)}</span></span>
-        </div>
-      </div>
+      <h2 className="sr-only">Interactive 3D container loading workspace</h2>
       {webglError ? (
         <ContainerFallback2D
           placed={placed}
@@ -1992,36 +2038,29 @@ export function ContainerViewer3D({
           }}
         />
       ) : (
-        <div className={`relative min-h-0 ${isFullscreen ? "h-[calc(100vh-4.5rem)]" : "h-[540px] md:h-[620px] xl:h-[700px]"}`}>
+        <div className={`relative min-h-0 ${isFullscreen ? "h-[calc(100vh-1.5rem)] sm:h-[calc(100vh-2rem)]" : "h-[540px] md:h-[620px] xl:h-[700px]"}`}>
         <div
-          className="relative h-full min-h-0 w-full overflow-hidden rounded-xl border border-slate-200/90 bg-[#e6eaef] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_45px_-34px_rgba(15,23,42,0.3)]"
+          className="relative h-full min-h-0 w-full overflow-hidden rounded-xl border border-slate-200/90 bg-[#e6eaef]"
           data-testid="container-3d-viewer"
         >
           <div ref={mountRef} className="absolute inset-0" />
           <div className="absolute left-3 top-3 z-30 flex items-center gap-2">
-            <div className="relative flex items-center gap-0.5 rounded-2xl border border-white/90 bg-white/[0.93] p-1 shadow-[0_14px_36px_-20px_rgba(15,23,42,0.34)] backdrop-blur-xl" data-testid="container-scene-actions">
-              <button type="button" onClick={() => { setHelpPanelOpen((current) => !current); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`group relative flex h-8 w-8 items-center justify-center rounded-full transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md ${helpPanelOpen ? "bg-slate-900 text-white" : "text-slate-600"}`} aria-label="Workspace help" data-testid="button-container-help"><CircleHelp className="h-4 w-4" /><ViewerHoverLabel side="bottom">Workspace help</ViewerHoverLabel></button>
-              {onSaveProject && <button type="button" onClick={() => runExternalAction(onSaveProject)} className="group relative flex h-8 w-8 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-emerald-600 hover:shadow-md" aria-label="Save project" data-testid="button-save-scene"><Save className="h-4 w-4" /><ViewerHoverLabel side="bottom">Save project</ViewerHoverLabel></button>}
-              <button type="button" onClick={() => { setSharePanelOpen((current) => !current); setHelpPanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`group relative flex h-8 w-8 items-center justify-center rounded-full transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md ${sharePanelOpen ? "bg-blue-50 text-primary shadow-sm" : "text-slate-600"}`} aria-label="Share loading plan" data-testid="button-share-scene"><Share2 className="h-4 w-4" /><ViewerHoverLabel side="bottom">Share loading plan</ViewerHoverLabel></button>
-              {onPlacedChange && <button type="button" onClick={() => { setSequenceMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setArrangeMode((current) => !current); setPlacementMessage("Select a cargo item and drag it to a new position."); }} className={`group relative flex h-8 w-8 items-center justify-center rounded-full transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${arrangeMode ? "bg-sky-50 text-sky-600" : "text-slate-600 hover:text-primary"}`} aria-label="Adjust cargo layout" data-testid="button-arrange-cargo"><MousePointerClick className="h-4 w-4" /><ViewerHoverLabel side="bottom">Adjust cargo layout</ViewerHoverLabel></button>}
-              {helpPanelOpen && <div className="absolute left-0 top-11 w-72 rounded-2xl border border-white/90 bg-white/94 p-3 text-left shadow-[0_22px_55px_-24px_rgba(15,23,42,0.52)] backdrop-blur-xl" data-testid="container-help-panel">
-                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Scene controls</p>
-                <div className="mt-2 space-y-1.5 text-[10px] leading-4 text-slate-600"><p><strong className="text-slate-800">Drag</strong> to rotate the scene. In Adjust mode, drag cargo instead.</p><p><strong className="text-slate-800">Right-drag</strong> to pan in fullscreen. Use the wheel or pinch to zoom.</p><p><strong className="text-slate-800">Cargo moves</strong> stay inside the container and are checked for collisions and stack support.</p></div>
-              </div>}
-              {sharePanelOpen && <div className="absolute left-10 top-11 w-64 rounded-2xl border border-white/90 bg-white/95 p-2.5 text-left shadow-[0_22px_55px_-24px_rgba(15,23,42,0.52)] backdrop-blur-xl" data-testid="container-share-panel">
-                <div className="flex items-center justify-between gap-2 px-1 pb-2"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Share loading plan</p><p className="mt-0.5 text-[9px] text-slate-400">Anyone with the link can preview it.</p></div><Share2 className="h-4 w-4 text-primary" /></div>
-                <button type="button" onClick={copyShareLink} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-[10px] font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-primary" data-testid="button-share-copy-link"><Link2 className="h-4 w-4" />{currentShareUrl() ? "Copy share link" : "Create share link"}</button>
-                <div className="mt-1 grid grid-cols-4 gap-1 border-t border-slate-100 pt-2">
-                  {([
-                    ["email", "Email", Mail],
-                    ["facebook", "Facebook", Facebook],
-                    ["linkedin", "LinkedIn", Linkedin],
-                    ["whatsapp", "WhatsApp", MessageCircle],
-                  ] as const).map(([target, label, Icon]) => <button key={target} type="button" onClick={() => openShareTarget(target)} className="group/share flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[8px] font-semibold text-slate-500 transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-primary" aria-label={`Share via ${label}`} data-testid={`button-share-${target}`}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-50 transition group-hover/share:bg-white group-hover/share:shadow-sm"><Icon className="h-3.5 w-3.5" /></span>{label}</button>)}
+            <div className="relative" data-testid="container-scene-actions">
+              <button type="button" onClick={() => { setDisplayControlsOpen((current) => !current); setSharePanelOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-10 w-10 items-center justify-center rounded-full border border-white/95 bg-white/[0.94] transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:text-primary hover:shadow-md ${displayControlsOpen ? "text-primary shadow-sm" : "text-slate-600"}`} aria-label="Scene settings" data-testid="button-floating-settings"><Settings2 className="h-4 w-4" />{!displayControlsOpen && <ViewerHoverLabel side="right">Scene settings</ViewerHoverLabel>}</button>
+              {displayControlsOpen && (
+                <div className="absolute left-0 top-12 w-64 rounded-2xl border border-white/95 bg-white/[0.965] p-3 text-left text-slate-700 shadow-[0_20px_55px_-22px_rgba(15,23,42,0.32)] backdrop-blur-2xl" data-testid="floating-display-controls">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Scene settings</p>
+                  <div className="mt-2 grid grid-cols-3 gap-2">{[
+                    { label: "Grid", active: showGrid, set: setShowGrid, icon: Grid3X3 },
+                    { label: "Shell", active: showShell, set: setShowShell, icon: Eye },
+                    { label: "Refs", active: showLabels, set: setShowLabels, icon: Box },
+                  ].map(({ label, active, set, icon: Icon }) => <button key={label} type="button" onClick={() => set(!active)} className={`flex flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-[9px] font-bold transition hover:-translate-y-0.5 hover:shadow-sm ${active ? "border-blue-200 bg-blue-50 text-primary" : "border-slate-200 bg-slate-100 text-slate-400"}`} aria-pressed={active} data-testid={`button-container-layer-${label === "Refs" ? "labels" : label.toLowerCase()}`}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm"><Icon className="h-3.5 w-3.5" /></span>{label}</button>)}</div>
+                  <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">Camera angle</p>
+                  <div className="mt-1.5 grid grid-cols-4 gap-1.5">{([ ["isometric", "3D"], ["doors", "Doors"], ["side", "Side"], ["top", "Top"] ] as const).map(([preset, label]) => <button key={preset} type="button" onClick={() => setActiveView(preset)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${activeView === preset ? "border-blue-300 bg-blue-50 text-primary" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`} aria-pressed={activeView === preset} data-testid={`button-container-view-${preset}`}>{label}</button>)}</div>
+                  <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">Rendering</p>
+                  <div className="mt-1.5 grid grid-cols-3 gap-1.5">{([ ["auto", "Auto"], ["performance", "Fast"], ["quality", "High"] ] as const).map(([quality, label]) => <button key={quality} type="button" onClick={() => setRenderQuality(quality)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${renderQuality === quality ? "border-cyan-300 bg-cyan-50 text-cyan-700" : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"}`} aria-pressed={renderQuality === quality} data-testid={`button-container-quality-${quality}`}>{label}</button>)}</div>
                 </div>
-                {!currentShareUrl() && <p className="mt-1 px-1 text-[8px] leading-3 text-slate-400">Create the secure public link first; then reopen Share to send it.</p>}
-                {currentShareUrl() && typeof navigator !== "undefined" && "share" in navigator && <button type="button" onClick={shareCurrentView} className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-xl bg-slate-900 px-3 py-2 text-[9px] font-bold text-white hover:bg-slate-700"><Share2 className="h-3.5 w-3.5" />More sharing options</button>}
-              </div>}
+              )}
             </div>
             {arrangeMode && <><button type="button" onClick={undoArrangement} disabled={historyCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/85 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm backdrop-blur hover:bg-white disabled:opacity-40" data-testid="button-undo-cargo-move"><Undo2 className="mr-1 inline h-3.5 w-3.5" />Undo</button><button type="button" onClick={redoArrangement} disabled={redoCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/85 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm backdrop-blur hover:bg-white disabled:opacity-40" data-testid="button-redo-cargo-move"><Redo2 className="mr-1 inline h-3.5 w-3.5" />Redo</button><button type="button" onClick={resetArrangement} className="h-8 rounded-lg border border-white/80 bg-white/85 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm backdrop-blur hover:bg-white" data-testid="button-reset-cargo-layout"><RotateCcw className="mr-1 inline h-3.5 w-3.5" />Reset</button></>}
           </div>
@@ -2047,35 +2086,36 @@ export function ContainerViewer3D({
               <p className="mt-2 text-[9px] leading-4 text-slate-400">Drag, nudge or rotate the group. Collision, boundary and stack-support checks remain active.</p>
             </div>
           )}
-          <div className={`absolute right-3 top-3 z-30 flex items-center gap-1 rounded-2xl border border-white/90 bg-white/[0.93] p-1 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.34)] backdrop-blur-xl transition-[right] ${sidebarOpen ? "lg:right-[344px]" : ""}`} data-testid="container-command-bar">
-            <button type="button" onClick={() => { setDisplayControlsOpen((current) => !current); setSharePanelOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-9 items-center justify-center gap-1.5 rounded-full px-2.5 text-[10px] font-bold transition duration-150 hover:-translate-y-0.5 hover:scale-[1.03] hover:bg-white hover:shadow-md ${displayControlsOpen ? "bg-blue-50 text-primary shadow-sm" : "text-slate-600 hover:text-primary"}`} aria-label="Display settings" data-testid="button-floating-settings"><Settings2 className="h-4 w-4" /><span className="hidden xl:inline">Settings</span>{!displayControlsOpen && <ViewerHoverLabel side="bottom">Display settings</ViewerHoverLabel>}</button>
-            <button type="button" onClick={() => { setArrangeMode(false); setMobilePanelOpen(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setSequenceMode((current) => { if (!current) setSequenceStep(1); return !current; }); }} disabled={placed.length === 0} className={`group relative flex h-9 items-center justify-center gap-1.5 rounded-full px-2.5 text-[10px] font-bold transition duration-150 hover:-translate-y-0.5 hover:scale-[1.03] hover:bg-white hover:shadow-md disabled:opacity-35 ${sequenceMode ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:text-primary"}`} aria-label="Loading sequence" data-testid="button-loading-sequence"><Play className="h-4 w-4" /><span className="hidden xl:inline">Loading steps</span><ViewerHoverLabel side="bottom">Play loading sequence</ViewerHoverLabel></button>
-            <div className="mx-0.5 h-5 w-px bg-slate-200" />
-            <button type="button" onClick={() => setSidebarOpen((current) => !current)} className="group relative hidden h-9 w-9 items-center justify-center rounded-full bg-white text-slate-600 shadow-sm transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:text-primary hover:shadow-md lg:flex" aria-label={sidebarOpen ? "Hide cargo panel" : "Show cargo panel"} data-testid="button-container-sidebar-toggle">{sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}<ViewerHoverLabel side="bottom">{sidebarOpen ? "Hide cargo panel" : "Show cargo panel"}</ViewerHoverLabel></button>
-            <button type="button" onClick={() => { setMobilePanelOpen((current) => !current); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm transition lg:hidden ${mobilePanelOpen ? "text-primary" : "text-slate-600"}`} aria-label={mobilePanelOpen ? "Hide cargo and dock panel" : "Show cargo and dock panel"} title={mobilePanelOpen ? "Hide cargo and dock panel" : "Show cargo and dock panel"} data-testid="button-mobile-cargo-panel">{mobilePanelOpen ? <PanelRightClose className="h-4 w-4" /> : <ListChecks className="h-4 w-4" />}</button>
-            {displayControlsOpen && (
-              <div className="absolute right-0 top-12 w-64 rounded-2xl border border-white/95 bg-white/[0.965] p-3 text-left text-slate-700 shadow-[0_20px_55px_-22px_rgba(15,23,42,0.32)] backdrop-blur-2xl" data-testid="floating-display-controls">
-                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Quick display</p>
-                <div className="mt-2 grid grid-cols-3 gap-2">{[
-                  { label: "Grid", active: showGrid, set: setShowGrid, icon: Grid3X3 },
-                  { label: "Shell", active: showShell, set: setShowShell, icon: Eye },
-                  { label: "Labels", active: showLabels, set: setShowLabels, icon: Box },
-                ].map(({ label, active, set, icon: Icon }) => <button key={label} type="button" onClick={() => set(!active)} className={`flex flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-[9px] font-bold transition hover:-translate-y-0.5 hover:shadow-sm ${active ? "border-blue-200 bg-blue-50 text-primary" : "border-slate-200 bg-slate-100 text-slate-400"}`} aria-pressed={active} data-testid={`button-container-layer-${label.toLowerCase()}`}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm"><Icon className="h-3.5 w-3.5" /></span>{label}</button>)}</div>
-                <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">Camera angle</p>
-                <div className="mt-1.5 grid grid-cols-4 gap-1.5">{([ ["isometric", "3D"], ["doors", "Doors"], ["side", "Side"], ["top", "Top"] ] as const).map(([preset, label]) => <button key={preset} type="button" onClick={() => setActiveView(preset)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${activeView === preset ? "border-blue-300 bg-blue-50 text-primary" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`} aria-pressed={activeView === preset} data-testid={`button-container-view-${preset}`}>{label}</button>)}</div>
-                <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">Rendering</p>
-                <div className="mt-1.5 grid grid-cols-3 gap-1.5">{([ ["auto", "Auto"], ["performance", "Fast"], ["quality", "High"] ] as const).map(([quality, label]) => <button key={quality} type="button" onClick={() => setRenderQuality(quality)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${renderQuality === quality ? "border-cyan-300 bg-cyan-50 text-cyan-700" : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"}`} aria-pressed={renderQuality === quality} data-testid={`button-container-quality-${quality}`}>{label}</button>)}</div>
-              </div>
-            )}
+          <div className="absolute right-3 top-3 z-30 flex items-center gap-1 rounded-full border border-white/95 bg-white/[0.94] p-1 shadow-sm lg:hidden">
+            <button type="button" onClick={() => { setMobilePanelOpen((current) => !current); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`flex h-8 w-8 items-center justify-center rounded-full transition ${mobilePanelOpen ? "bg-blue-50 text-primary" : "text-slate-600"}`} aria-label={mobilePanelOpen ? "Hide cargo and dock panel" : "Show cargo and dock panel"} title={mobilePanelOpen ? "Hide cargo and dock panel" : "Show cargo and dock panel"} data-testid="button-mobile-cargo-panel">{mobilePanelOpen ? <PanelRightClose className="h-4 w-4" /> : <ListChecks className="h-4 w-4" />}</button>
+            <button type="button" onClick={toggleFullscreen} className="flex h-8 w-8 items-center justify-center rounded-full text-slate-600 transition hover:bg-white hover:text-primary" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} title={isFullscreen ? "Exit full screen" : "Open full workspace"}>{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
           </div>
-          <div className={`absolute right-3 top-16 z-30 flex flex-col items-center gap-1 rounded-2xl border border-white/90 bg-white/[0.93] p-1 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.34)] backdrop-blur-xl transition-[right] ${sidebarOpen ? "lg:right-[344px]" : ""}`} data-testid="container-floating-tool-rail">
+          <div className={`absolute right-3 top-3 z-30 hidden max-h-[calc(100%-4.5rem)] flex-col items-center gap-0.5 overflow-visible rounded-2xl border border-white/90 bg-white/[0.93] p-1 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.34)] backdrop-blur-xl transition-[right] lg:flex ${sidebarOpen ? "lg:right-[344px]" : ""}`} data-testid="container-floating-tool-rail">
+            {onPlacedChange && <button type="button" onClick={() => { setSequenceMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setArrangeMode((current) => !current); setPlacementMessage("Select a cargo item and drag it to a new position."); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${arrangeMode ? "bg-sky-50 text-sky-600" : "text-slate-600 hover:text-primary"}`} aria-label="Adjust cargo layout" data-testid="button-arrange-cargo"><MousePointerClick className="h-4 w-4" /><ViewerHoverLabel>Adjust cargo layout</ViewerHoverLabel></button>}
+            <button type="button" onClick={() => { setArrangeMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setSequenceMode((current) => { if (!current) setSequenceStep(1); return !current; }); }} disabled={placed.length === 0} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md disabled:opacity-35 ${sequenceMode ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:text-primary"}`} aria-label="Loading sequence" data-testid="button-loading-sequence"><Play className="h-4 w-4" /><ViewerHoverLabel>Play loading sequence</ViewerHoverLabel></button>
+            <div className="my-0.5 h-px w-6 bg-slate-200" />
             <button type="button" onClick={() => { cycleCameraView(); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Change camera angle" data-testid="button-floating-camera"><Camera className="h-4 w-4" /><ViewerHoverLabel>Next camera angle</ViewerHoverLabel></button>
             <button type="button" onClick={resetCameraView} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Reset camera view" data-testid="button-reset-camera"><Home className="h-4 w-4" /><ViewerHoverLabel>Reset camera</ViewerHoverLabel></button>
+            <div className="my-0.5 h-px w-6 bg-slate-200" />
+            {onSaveProject && <button type="button" onClick={() => runExternalAction(onSaveProject)} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:text-emerald-600 hover:shadow-md" aria-label="Save project" data-testid="button-save-scene"><Save className="h-4 w-4" /><ViewerHoverLabel>Save project</ViewerHoverLabel></button>}
+            <button type="button" onClick={() => { setSharePanelOpen((current) => !current); setHelpPanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${sharePanelOpen ? "bg-blue-50 text-primary" : "text-slate-600 hover:text-primary"}`} aria-label="Share loading plan" data-testid="button-share-scene"><Share2 className="h-4 w-4" /><ViewerHoverLabel>Share loading plan</ViewerHoverLabel></button>
             {onExportPdf && <button type="button" onClick={onExportPdf} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Download PDF report" data-testid="button-floating-pdf"><FileDown className="h-4 w-4" /><ViewerHoverLabel>Download PDF report</ViewerHoverLabel></button>}
             <button type="button" onClick={downloadCurrentSnapshot} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Download scene image" data-testid="button-floating-snapshot"><ImageDown className="h-4 w-4" /><ViewerHoverLabel>Download scene image</ViewerHoverLabel></button>
-            <button type="button" onClick={() => { setHelpPanelOpen((current) => !current); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${helpPanelOpen ? "bg-blue-50 text-primary" : "text-slate-600 hover:text-primary"}`} aria-label="Keyboard and mouse controls" data-testid="button-keyboard-shortcuts"><Keyboard className="h-4 w-4" /><ViewerHoverLabel>Keyboard &amp; mouse controls</ViewerHoverLabel></button>
+            <button type="button" onClick={() => { setHelpPanelOpen((current) => !current); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${helpPanelOpen ? "bg-blue-50 text-primary" : "text-slate-600 hover:text-primary"}`} aria-label="Workspace help" data-testid="button-container-help"><CircleHelp className="h-4 w-4" /><ViewerHoverLabel>Workspace help</ViewerHoverLabel></button>
             <button type="button" onClick={() => { setWarningPanelOpen((current) => !current); setSharePanelOpen(false); setDisplayControlsOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${warningPanelOpen ? "bg-slate-900 text-white" : "text-slate-600 hover:text-primary"}`} aria-label="Placement checks" data-testid="button-floating-warnings"><AlertTriangle className="h-4 w-4" />{hasPlacementWarning && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />}<ViewerHoverLabel>Placement checks</ViewerHoverLabel></button>
+            <button type="button" onClick={() => setSidebarOpen((current) => !current)} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label={sidebarOpen ? "Hide cargo panel" : "Show cargo panel"} data-testid="button-container-sidebar-toggle">{sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}<ViewerHoverLabel>{sidebarOpen ? "Hide cargo panel" : "Show cargo panel"}</ViewerHoverLabel></button>
             <button type="button" onClick={toggleFullscreen} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} data-testid="button-container-fullscreen">{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}<ViewerHoverLabel>{isFullscreen ? "Exit full screen" : "Open full workspace"}</ViewerHoverLabel></button>
+            {sharePanelOpen && <div className="absolute right-12 top-20 w-64 rounded-2xl border border-white/95 bg-white/[0.965] p-2.5 text-left shadow-[0_22px_55px_-24px_rgba(15,23,42,0.38)] backdrop-blur-2xl" data-testid="container-share-panel">
+              <div className="flex items-center justify-between gap-2 px-1 pb-2"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Share loading plan</p><p className="mt-0.5 text-[9px] text-slate-400">Anyone with the link can preview it.</p></div><Share2 className="h-4 w-4 text-primary" /></div>
+              <button type="button" onClick={copyShareLink} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-[10px] font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-primary" data-testid="button-share-copy-link"><Link2 className="h-4 w-4" />{currentShareUrl() ? "Copy share link" : "Create share link"}</button>
+              <div className="mt-1 grid grid-cols-4 gap-1 border-t border-slate-100 pt-2">{([ ["email", "Email", Mail], ["facebook", "Facebook", Facebook], ["linkedin", "LinkedIn", Linkedin], ["whatsapp", "WhatsApp", MessageCircle] ] as const).map(([target, label, Icon]) => <button key={target} type="button" onClick={() => openShareTarget(target)} className="group/share flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[8px] font-semibold text-slate-500 transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-primary" aria-label={`Share via ${label}`} data-testid={`button-share-${target}`}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-50 transition group-hover/share:bg-white group-hover/share:shadow-sm"><Icon className="h-3.5 w-3.5" /></span>{label}</button>)}</div>
+              {!currentShareUrl() && <p className="mt-1 px-1 text-[8px] leading-3 text-slate-400">Create the secure public link first; then reopen Share to send it.</p>}
+              {currentShareUrl() && typeof navigator !== "undefined" && "share" in navigator && <button type="button" onClick={shareCurrentView} className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-xl bg-slate-900 px-3 py-2 text-[9px] font-bold text-white hover:bg-slate-700"><Share2 className="h-3.5 w-3.5" />More sharing options</button>}
+            </div>}
+            {helpPanelOpen && <div className="absolute right-12 bottom-16 w-72 rounded-2xl border border-white/95 bg-white/[0.965] p-3 text-left shadow-[0_22px_55px_-24px_rgba(15,23,42,0.38)] backdrop-blur-2xl" data-testid="container-help-panel">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Workspace controls</p>
+              <div className="mt-2 space-y-1.5 text-[10px] leading-4 text-slate-600"><p><strong className="text-slate-800">Drag</strong> to rotate the scene. In Adjust mode, drag cargo instead.</p><p><strong className="text-slate-800">Right-drag</strong> to pan in fullscreen. Use the wheel or pinch to zoom.</p><p><strong className="text-slate-800">Cargo moves</strong> stay inside the container and are checked for collisions and stack support.</p></div>
+            </div>}
             {warningPanelOpen && (
               <div className="absolute right-12 top-0 w-60 rounded-2xl border border-white/90 bg-white/94 p-3 text-left shadow-[0_20px_55px_-22px_rgba(15,23,42,0.45)] backdrop-blur-xl" data-testid="floating-warning-panel">
                 <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Plan status</p>
@@ -2123,9 +2163,9 @@ export function ContainerViewer3D({
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-900" style={{ backgroundColor: `${box.color}45` }}><Box className="h-3.5 w-3.5" /></span>
                         <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-slate-800">{box.cargoName || `Cargo ${index + 1}`}</span><span className="mt-0.5 block truncate text-[9px] text-slate-500">{fmt(box.l)} × {fmt(box.w)} × {fmt(box.h)} · {unitSystem === "metric" ? `${(box.weight * LB_TO_KG).toFixed(0)} kg` : `${box.weight.toFixed(0)} lb`}</span></span>
                       </button>
-                      {onPlacedChange && <div className="flex shrink-0 gap-0.5">
-                        <button type="button" onClick={() => stageCargo(index, "dock1")} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-blue-50 hover:text-primary" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 1`} data-testid={`button-mobile-stage-dock1-${index}`}><ChevronLeft className="h-3.5 w-3.5" /></button>
-                        <button type="button" onClick={() => stageCargo(index, "dock2")} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-blue-50 hover:text-primary" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 2`} data-testid={`button-mobile-stage-dock2-${index}`}><ChevronRight className="h-3.5 w-3.5" /></button>
+                      {onPlacedChange && <div className="flex shrink-0 gap-1">
+                        <button type="button" onClick={() => stageCargo(index, "dock1")} className="flex h-8 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 text-[8px] font-bold text-slate-500 hover:border-blue-300 hover:bg-blue-50 hover:text-primary" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 1`} title="Move to Dock 1" data-testid={`button-mobile-stage-dock1-${index}`}><Package className="h-3 w-3" />D1</button>
+                        <button type="button" onClick={() => stageCargo(index, "dock2")} className="flex h-8 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 text-[8px] font-bold text-slate-500 hover:border-blue-300 hover:bg-blue-50 hover:text-primary" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 2`} title="Move to Dock 2" data-testid={`button-mobile-stage-dock2-${index}`}><Package className="h-3 w-3" />D2</button>
                       </div>}
                     </div>
                   ))}
@@ -2135,27 +2175,25 @@ export function ContainerViewer3D({
                     <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-slate-800">{entry.box.cargoName || "Cargo item"}</span><span className="mt-0.5 block truncate text-[9px] text-slate-500">{fmt(entry.box.l)} × {fmt(entry.box.w)} × {fmt(entry.box.h)}</span></span>
                     <button type="button" onClick={() => loadStagedCargo(entry.id)} className="rounded-lg bg-slate-900 px-2.5 py-1.5 text-[9px] font-bold text-white" data-testid={`button-mobile-load-staged-${entry.id}`}>Load</button>
                   </div>)}
-                </div> : <div className="px-4 py-7 text-center"><Package className="mx-auto h-6 w-6 text-slate-300" /><p className="mt-2 text-[11px] font-bold text-slate-600">No cargo staged here</p><p className="mt-1 text-[9px] leading-4 text-slate-400">Move a loaded unit here using its left or right arrow.</p></div>}
+                </div> : <div className="px-4 py-7 text-center"><Package className="mx-auto h-6 w-6 text-slate-300" /><p className="mt-2 text-[11px] font-bold text-slate-600">No cargo staged here</p><p className="mt-1 text-[9px] leading-4 text-slate-400">Use the D1 or D2 control beside a loaded unit.</p></div>}
               </div>
             </section>
           )}
           {hoveredCargoIndex !== null && placed[hoveredCargoIndex] && (
             <div
-              className="pointer-events-none absolute left-1/2 top-14 z-10 w-max max-w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-xl border border-white/90 bg-slate-950/[0.88] px-3 py-2 text-white shadow-xl shadow-slate-900/20 backdrop-blur-md"
+              className={`pointer-events-none absolute top-3 z-20 w-max max-w-[calc(100%-6.5rem)] -translate-x-1/2 rounded-2xl border border-white/95 bg-white/[0.94] px-3 py-2 text-slate-700 shadow-[0_14px_36px_-22px_rgba(15,23,42,0.32)] backdrop-blur-xl ${sidebarOpen ? "left-1/2 lg:left-[calc(50%-172px)]" : "left-1/2"}`}
               data-testid="container-cargo-hover-card"
             >
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-sm ring-2 ring-white/20" style={{ backgroundColor: placed[hoveredCargoIndex].color }} />
-                <span className="max-w-44 truncate text-[11px] font-bold">{placed[hoveredCargoIndex].cargoName || "Cargo item"}</span>
-                <span className="h-3 w-px bg-white/20" />
-                <span className="text-[10px] text-slate-200">
-                  {fmt(placed[hoveredCargoIndex].l)} × {fmt(placed[hoveredCargoIndex].w)} × {fmt(placed[hoveredCargoIndex].h)}
+              <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-sm ring-1 ring-slate-300" style={{ backgroundColor: placed[hoveredCargoIndex].color }} />
+                  <strong className="max-w-36 truncate text-[10px] text-slate-800">Unit #{hoveredCargoIndex + 1} · {placed[hoveredCargoIndex].cargoName || "Cargo item"}</strong>
                 </span>
-                <span className="hidden text-[10px] text-slate-300 sm:inline">
-                  {unitSystem === "metric"
-                    ? `${(placed[hoveredCargoIndex].weight * LB_TO_KG).toFixed(0)} kg`
-                    : `${placed[hoveredCargoIndex].weight.toFixed(0)} lb`}
-                </span>
+                <span className="text-[9px] text-slate-500"><strong className="text-slate-700">Size</strong> {fmt(placed[hoveredCargoIndex].l)} × {fmt(placed[hoveredCargoIndex].w)} × {fmt(placed[hoveredCargoIndex].h)}</span>
+                <span className="text-[9px] text-slate-500"><strong className="text-slate-700">Weight</strong> {unitSystem === "metric" ? `${(placed[hoveredCargoIndex].weight * LB_TO_KG).toFixed(0)} kg` : `${placed[hoveredCargoIndex].weight.toFixed(0)} lb`}</span>
+                <span className="hidden h-4 w-px bg-slate-200 sm:block" />
+                <span className="hidden text-[9px] text-slate-500 sm:inline"><strong className="text-slate-700">Container</strong> {fmt(container.lengthIn)} × {fmt(container.widthIn)} × {fmt(container.heightIn)}</span>
+                <span className="hidden text-[9px] text-slate-500 md:inline"><strong className="text-slate-700">Back</strong> {fmt(placed[hoveredCargoIndex].x)} · <strong className="text-slate-700">Doors</strong> {fmt(Math.max(0, container.lengthIn - placed[hoveredCargoIndex].x - placed[hoveredCargoIndex].l))}</span>
               </div>
             </div>
           )}
@@ -2318,9 +2356,9 @@ export function ContainerViewer3D({
                         <span className="mt-0.5 block text-[9px] text-slate-400">{unitSystem === "metric" ? `${(box.weight * LB_TO_KG).toFixed(0)} kg` : `${box.weight.toFixed(0)} lb`} · x {box.x.toFixed(0)} / y {box.y.toFixed(0)}</span>
                       </span>
                     </button>
-                    {onPlacedChange && <div className="flex shrink-0 gap-0.5 opacity-55 transition group-hover:opacity-100 group-focus-within:opacity-100">
-                      <button type="button" onClick={() => stageCargo(index, "dock1")} className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-blue-50 hover:text-primary" title="Move to Dock 1" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 1`} data-testid={`button-stage-dock1-${index}`}><ChevronLeft className="h-3.5 w-3.5" /></button>
-                      <button type="button" onClick={() => stageCargo(index, "dock2")} className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-blue-50 hover:text-primary" title="Move to Dock 2" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 2`} data-testid={`button-stage-dock2-${index}`}><ChevronRight className="h-3.5 w-3.5" /></button>
+                    {onPlacedChange && <div className="flex shrink-0 gap-1 opacity-60 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                      <button type="button" onClick={() => stageCargo(index, "dock1")} className="flex h-7 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 text-[8px] font-bold text-slate-500 hover:border-blue-300 hover:bg-blue-50 hover:text-primary" title="Move to Dock 1" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 1`} data-testid={`button-stage-dock1-${index}`}><Package className="h-3 w-3" />D1</button>
+                      <button type="button" onClick={() => stageCargo(index, "dock2")} className="flex h-7 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 text-[8px] font-bold text-slate-500 hover:border-blue-300 hover:bg-blue-50 hover:text-primary" title="Move to Dock 2" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 2`} data-testid={`button-stage-dock2-${index}`}><Package className="h-3 w-3" />D2</button>
                     </div>}
                   </div>
                   ); })}
@@ -6163,21 +6201,7 @@ export default function ContainerCalculator() {
                       <div key={ci} className="space-y-5" data-testid={`container-result-${ci}`}>
                         {activeResultTab === "plan" && (
                         <Card className="border-slate-200 overflow-hidden">
-                          <div className="bg-gradient-to-r from-primary/5 to-transparent border-b border-slate-200 px-5 py-3 flex items-center justify-between">
-                            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                              <Maximize2 className="w-4 h-4 text-primary" />
-                              3D Loading Visualization
-                              {multiResult.totalContainers > 1 && (
-                                <span className="text-xs font-normal text-slate-500 ml-1">
-                                  ({ci + 1} of {multiResult.totalContainers})
-                                </span>
-                              )}
-                            </h2>
-                            <Badge variant="outline" className="text-xs font-semibold border-blue-200 bg-white text-primary">
-                              {cr.label}
-                            </Badge>
-                          </div>
-                          <CardContent className="p-2 sm:p-3">
+                          <CardContent className="p-1.5 sm:p-2">
                             <div ref={viewerRef}>
                               <ContainerViewer3D
                                 placed={cResult.placed}
