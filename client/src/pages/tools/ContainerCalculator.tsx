@@ -1392,8 +1392,8 @@ export function ContainerViewer3D({
         canvas.height = 104;
         const ctx = canvas.getContext("2d")!;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "rgba(71,85,105,0.92)";
-        ctx.font = "600 36px Inter, Arial, sans-serif";
+        ctx.fillStyle = "rgba(71,85,105,0.8)";
+        ctx.font = "500 27px Inter, Arial, sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(text, 224, 53);
@@ -1506,7 +1506,7 @@ export function ContainerViewer3D({
       label: string,
     ) => {
       if (end - start < 0.025) return;
-      const lineMaterial = new THREE.LineBasicMaterial({ color: 0x334155, transparent: true, opacity: 0.88, depthTest: false });
+      const lineMaterial = new THREE.LineBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.58, depthTest: false });
       const arrowLength = Math.min((end - start) * 0.22, Math.max(0.075, cW * 0.05));
       const arrowWidth = arrowLength * 0.5;
       const points = axis === "length"
@@ -1577,8 +1577,6 @@ export function ContainerViewer3D({
       const measurementY = rulerY + 0.012;
       const beforeLabel = formatSceneLength(box.x);
       const afterLabel = formatSceneLength(Math.max(0, container.lengthIn - box.x - box.l));
-      addMeasurementRange(hoverMeasurementGroup, "length", 0, bX, measurementY, -rulerOffset, 0, beforeLabel);
-      addMeasurementRange(hoverMeasurementGroup, "length", bX + bL, cL, measurementY, -rulerOffset, 0, afterLabel);
       addMeasurementRange(hoverMeasurementGroup, "length", 0, bX, measurementY, cW + rulerOffset, cW, beforeLabel);
       addMeasurementRange(hoverMeasurementGroup, "length", bX + bL, cL, measurementY, cW + rulerOffset, cW, afterLabel);
       addMeasurementRange(hoverMeasurementGroup, "width", 0, bZ, measurementY, cL + rulerOffset, cL, formatSceneLength(box.z));
