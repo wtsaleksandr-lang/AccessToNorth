@@ -601,6 +601,8 @@ export function ContainerViewer3D({
   const [selectedSceneDock, setSelectedSceneDock] = useState<StagingDock | null>(null);
   const [selectedStagedCargoId, setSelectedStagedCargoId] = useState<string | null>(null);
   const [displayControlsOpen, setDisplayControlsOpen] = useState(false);
+  const mobileShortcutBarRef = useRef<HTMLElement>(null);
+  const [mobileShortcutScroll, setMobileShortcutScroll] = useState({ left: false, right: true });
   const [warningPanelOpen, setWarningPanelOpen] = useState(false);
   const [helpPanelOpen, setHelpPanelOpen] = useState(false);
   const [sharePanelOpen, setSharePanelOpen] = useState(false);
@@ -610,6 +612,31 @@ export function ContainerViewer3D({
   const [stagedCargo, setStagedCargo] = useState<StagedCargo[]>([]);
   const viewPanelDragControls = useDragControls();
   const cargoPanelDragControls = useDragControls();
+
+  const updateMobileShortcutScroll = useCallback(() => {
+    const rail = mobileShortcutBarRef.current;
+    if (!rail) return;
+    const maxScrollLeft = Math.max(0, rail.scrollWidth - rail.clientWidth);
+    setMobileShortcutScroll({
+      left: rail.scrollLeft > 4,
+      right: rail.scrollLeft < maxScrollLeft - 4,
+    });
+  }, []);
+
+  useEffect(() => {
+    const rail = mobileShortcutBarRef.current;
+    if (!rail) return;
+    const frame = requestAnimationFrame(updateMobileShortcutScroll);
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(updateMobileShortcutScroll) : null;
+    observer?.observe(rail);
+    rail.addEventListener("scroll", updateMobileShortcutScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
+      rail.removeEventListener("scroll", updateMobileShortcutScroll);
+    };
+  }, [updateMobileShortcutScroll, onExportPdf, onPlacedChange]);
+
   const selectedSceneDockRef = useRef<StagingDock | null>(null);
   const selectedStagedCargoIdRef = useRef<string | null>(null);
   const stagingMutationRef = useRef(false);
@@ -3299,11 +3326,14 @@ export function ContainerViewer3D({
           )}
           </AnimatePresence>
           {!mobilePanelOpen && (
-            <nav
-              className="absolute inset-x-2 bottom-2 z-40 flex h-11 items-center justify-between gap-0.5 overflow-x-auto rounded-2xl border border-white/90 bg-white/[0.92] px-1.5 shadow-[0_12px_34px_-16px_rgba(15,23,42,0.42)] backdrop-blur-xl [scrollbar-width:none] lg:hidden"
-              aria-label="Viewer shortcuts"
-              data-testid="mobile-viewer-shortcut-bar"
-            >
+            <div className="absolute inset-x-2 bottom-2 z-40 lg:hidden" data-testid="mobile-viewer-shortcut-bar-shell">
+              <nav
+                ref={mobileShortcutBarRef}
+                className="flex h-11 items-center gap-1 overflow-x-auto scroll-smooth rounded-2xl border border-white/90 bg-white/[0.92] px-8 shadow-[0_12px_34px_-16px_rgba(15,23,42,0.42)] backdrop-blur-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                aria-label="Viewer shortcuts"
+                data-testid="mobile-viewer-shortcut-bar"
+                onScroll={updateMobileShortcutScroll}
+              >
               <button type="button" onClick={() => { setActiveCargoZone(selectedSceneDock ?? "loaded"); setMobilePanelOpen(true); setDisplayControlsOpen(false); }} className="flex h-9 min-w-10 shrink-0 items-center justify-center gap-1 rounded-xl px-2 text-slate-600 active:bg-blue-50 active:text-primary" aria-label="Open cargo staging" data-testid="button-mobile-cargo-panel">
                 <ListChecks className="h-4 w-4" />
                 <span className="rounded-full bg-blue-50 px-1 text-[8px] font-bold text-primary">{placed.length}</span>
@@ -3315,7 +3345,38 @@ export function ContainerViewer3D({
               <button type="button" onClick={downloadCurrentSnapshot} className="flex h-9 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 active:bg-blue-50 active:text-primary" aria-label="Download scene image" data-testid="button-mobile-snapshot"><ImageDown className="h-4 w-4" /></button>
               {onExportPdf && <button type="button" onClick={onExportPdf} className="flex h-9 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 active:bg-blue-50 active:text-primary" aria-label="Download PDF report" data-testid="button-mobile-pdf"><FileDown className="h-4 w-4" /></button>}
               <button type="button" onClick={toggleFullscreen} className="flex h-9 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 active:bg-blue-50 active:text-primary" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} data-testid="button-mobile-fullscreen">{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
-            </nav>
+              </nav>
+              <AnimatePresence>
+                {mobileShortcutScroll.left && (
+                  <motion.button
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    type="button"
+                    onClick={() => mobileShortcutBarRef.current?.scrollBy({ left: -160, behavior: "smooth" })}
+                    className="absolute inset-y-px left-px flex w-7 items-center justify-center rounded-l-2xl bg-gradient-to-r from-white via-white/95 to-white/20 text-slate-400"
+                    aria-label="Scroll shortcuts left"
+                    data-testid="button-mobile-shortcuts-left"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </motion.button>
+                )}
+                {mobileShortcutScroll.right && (
+                  <motion.button
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    type="button"
+                    onClick={() => mobileShortcutBarRef.current?.scrollBy({ left: 160, behavior: "smooth" })}
+                    className="absolute inset-y-px right-px flex w-7 items-center justify-center rounded-r-2xl bg-gradient-to-l from-white via-white/95 to-white/20 text-slate-400"
+                    aria-label="Scroll shortcuts right"
+                    data-testid="button-mobile-shortcuts-right"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </div>
           )}
           <div
             className={`pointer-events-none absolute top-12 z-20 w-max max-w-[calc(100%-7rem)] -translate-x-1/2 rounded-2xl border border-white/90 bg-white/[0.86] px-3 py-2 text-slate-700 shadow-[0_14px_36px_-22px_rgba(15,23,42,0.32)] backdrop-blur-xl sm:top-3 sm:max-w-[calc(100%-7rem)] ${sidebarOpen ? "left-[42%] lg:left-[calc(50%-172px)]" : "left-[42%] lg:left-1/2"}`}
