@@ -137,6 +137,8 @@ test.describe("tool pages load without runtime errors", () => {
     // without it retain the universal 2D fallback and all load-plan details.
     if (await page.getByTestId("button-arrange-cargo").count()) {
       await expect(page.getByTestId("container-viewer-workspace")).toBeVisible();
+      const viewerCanvas = await page.getByTestId("container-3d-viewer").locator("canvas").elementHandle();
+      expect(viewerCanvas, "The Three.js canvas should mount once the loading plan is ready").not.toBeNull();
       await expect(page.getByTestId("button-container-fullscreen")).toBeVisible();
       await expect(page.getByTestId("container-viewer-sidebar")).toBeVisible();
       await expect(page.getByTestId("container-command-bar")).toHaveCount(0);
@@ -154,6 +156,11 @@ test.describe("tool pages load without runtime errors", () => {
       await expect(page.getByTestId("container-cargo-hover-card")).toContainText("Container");
       await expect(page.getByTestId("container-cargo-hover-card")).toContainText("Back");
       await expect(page.getByTestId("container-cargo-hover-card")).toContainText("Doors");
+      await page.waitForTimeout(150);
+      expect(
+        await viewerCanvas!.evaluate((canvas) => canvas.isConnected),
+        "Hover state must not tear down and replace the active Three.js canvas",
+      ).toBe(true);
       await page.getByTestId("button-container-help").click();
       await expect(page.getByTestId("container-help-panel")).toBeVisible();
       await page.getByTestId("button-container-help").click();

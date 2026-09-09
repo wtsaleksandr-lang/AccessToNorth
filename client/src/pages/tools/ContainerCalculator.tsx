@@ -619,6 +619,16 @@ export function ContainerViewer3D({
     setView: (preset: ContainerViewPreset) => void;
     render: () => void;
   } | null>(null);
+  // Parent callbacks are intentionally kept out of the Three.js scene
+  // lifecycle. The calculator creates these handlers inline, so their
+  // identity changes whenever the parent renders (including when the viewer
+  // publishes its snapshot exporter). Treating those identities as scene
+  // dependencies caused a renderer teardown/rebuild loop: hover outlines
+  // flashed for one frame and orbit gestures lost their pointer capture.
+  const onReadyExportRef = useRef(onReadyExport);
+  const onPlacedChangeRef = useRef(onPlacedChange);
+  onReadyExportRef.current = onReadyExport;
+  onPlacedChangeRef.current = onPlacedChange;
 
   const sequenceOrder = useMemo(
     () => placed
@@ -733,11 +743,11 @@ export function ContainerViewer3D({
     setRedoCount(arrangementRedoRef.current.length);
     setPlacementMessage("Previous cargo position restored.");
     const currentColors = new Map(placed.map((box) => [box.cargoId, box.color]));
-    onPlacedChange?.(previous.map((box) => ({
+    onPlacedChangeRef.current?.(previous.map((box) => ({
       ...box,
       color: currentColors.get(box.cargoId) ?? box.color,
     })));
-  }, [onPlacedChange, placed]);
+  }, [placed]);
 
   const redoArrangement = useCallback(() => {
     const next = arrangementRedoRef.current.pop();
@@ -750,11 +760,11 @@ export function ContainerViewer3D({
     setRedoCount(arrangementRedoRef.current.length);
     setPlacementMessage("Cargo move reapplied.");
     const currentColors = new Map(placed.map((box) => [box.cargoId, box.color]));
-    onPlacedChange?.(next.map((box) => ({
+    onPlacedChangeRef.current?.(next.map((box) => ({
       ...box,
       color: currentColors.get(box.cargoId) ?? box.color,
     })));
-  }, [onPlacedChange, placed]);
+  }, [placed]);
 
   const toggleCargoSelection = useCallback((index: number, additive = true) => {
     setSelectedCargoIndices((current) => {
@@ -785,8 +795,8 @@ export function ContainerViewer3D({
     setHistoryCount(arrangementHistoryRef.current.length);
     setRedoCount(0);
     setPlacementMessage(`${selected.length} selected cargo unit${selected.length === 1 ? "" : "s"} aligned safely.`);
-    onPlacedChange?.(nextLayout);
-  }, [container, onPlacedChange, placed, selectedCargoIndices]);
+    onPlacedChangeRef.current?.(nextLayout);
+  }, [container, placed, selectedCargoIndices]);
 
   const applySelectionRotation = useCallback((direction: ManualRotationDirection) => {
     const selected = [...selectedCargoIndices].filter((index) => placed[index]);
@@ -814,8 +824,8 @@ export function ContainerViewer3D({
     setHistoryCount(arrangementHistoryRef.current.length);
     setRedoCount(0);
     setPlacementMessage(`${selected.length} selected cargo unit${selected.length === 1 ? "" : "s"} rotated safely.`);
-    onPlacedChange?.(nextLayout);
-  }, [container, onPlacedChange, placed, rotationModesByCargoId, selectedCargoIndices]);
+    onPlacedChangeRef.current?.(nextLayout);
+  }, [container, placed, rotationModesByCargoId, selectedCargoIndices]);
 
   const movementStepIn = unitSystem === "metric"
     ? (movementStep === "fine" ? 1 : 10) / IN_TO_CM
@@ -842,8 +852,8 @@ export function ContainerViewer3D({
     setHistoryCount(arrangementHistoryRef.current.length);
     setRedoCount(0);
     setPlacementMessage(`${selected.length} selected cargo unit${selected.length === 1 ? "" : "s"} moved safely.`);
-    onPlacedChange?.(nextLayout);
-  }, [container, onPlacedChange, placed, selectedCargoIndices]);
+    onPlacedChangeRef.current?.(nextLayout);
+  }, [container, placed, selectedCargoIndices]);
 
   const resetArrangement = useCallback(() => {
     arrangementHistoryRef.current = [];
@@ -856,11 +866,11 @@ export function ContainerViewer3D({
     setStagedCargo([]);
     stagingMutationRef.current = restoringStagedCargo;
     const currentColors = new Map(placed.map((box) => [box.cargoId, box.color]));
-    onPlacedChange?.(optimizedLayoutRef.current.map((box) => ({
+    onPlacedChangeRef.current?.(optimizedLayoutRef.current.map((box) => ({
       ...box,
       color: currentColors.get(box.cargoId) ?? box.color,
     })));
-  }, [onPlacedChange, placed, stagedCargo.length]);
+  }, [placed, stagedCargo.length]);
 
   const stageCargo = useCallback((index: number, zone: StagingDock) => {
     const selected = placed[index];
@@ -887,10 +897,10 @@ export function ContainerViewer3D({
       },
     ]);
     stagingMutationRef.current = true;
-    onPlacedChange?.(nextPlaced);
+    onPlacedChangeRef.current?.(nextPlaced);
     setPlacementMessage(`${selected.cargoName || "Cargo item"} moved to ${zone === "dock1" ? "Dock 1" : "Dock 2"}.`);
     setActiveCargoZone(zone);
-  }, [container, onPlacedChange, placed]);
+  }, [container, placed]);
 
   const loadStagedCargo = useCallback((stagedId: string) => {
     const staged = stagedCargo.find((entry) => entry.id === stagedId);
@@ -908,10 +918,10 @@ export function ContainerViewer3D({
     setSelectedCargoIndices(new Set());
     setStagedCargo((current) => current.filter((entry) => entry.id !== stagedId));
     stagingMutationRef.current = true;
-    onPlacedChange?.([...placed.map((box) => ({ ...box })), safePlacement]);
+    onPlacedChangeRef.current?.([...placed.map((box) => ({ ...box })), safePlacement]);
     setPlacementMessage(`${safePlacement.cargoName || "Cargo item"} loaded from the staging dock.`);
     setActiveCargoZone("loaded");
-  }, [container, onPlacedChange, placed, stagedCargo]);
+  }, [container, placed, stagedCargo]);
 
   useEffect(() => {
     const handleEditorShortcut = (event: KeyboardEvent) => {
@@ -992,7 +1002,7 @@ export function ContainerViewer3D({
           failIfMajorPerformanceCaveat: false,
         });
       } catch {
-        onReadyExport?.(null);
+        onReadyExportRef.current?.(null);
         setWebglError(true);
         return;
       }
@@ -1011,7 +1021,7 @@ export function ContainerViewer3D({
 
     const handleContextLost = (event: Event) => {
       event.preventDefault();
-      onReadyExport?.(null);
+      onReadyExportRef.current?.(null);
       if (rendererAttempt < 2) {
         window.setTimeout(() => setRendererAttempt((attempt) => attempt + 1), 200);
       } else {
@@ -1922,7 +1932,7 @@ export function ContainerViewer3D({
         setPlacementMessage(completedDrag.indices.length > 1
           ? `${completedDrag.indices.length} cargo units moved safely. You can undo or continue adjusting.`
           : "Cargo placed safely. You can undo or continue adjusting.");
-        onPlacedChange?.(completedDrag.nextLayout.map((box) => ({ ...box })));
+        onPlacedChangeRef.current?.(completedDrag.nextLayout.map((box) => ({ ...box })));
       } else {
         completedDrag.indices.forEach((index) => {
           const start = completedDrag.startPositions.get(index);
@@ -1996,7 +2006,7 @@ export function ContainerViewer3D({
       render: renderScene,
     };
 
-    if (onReadyExport) {
+    if (onReadyExportRef.current) {
       const exportSnapshots: SnapshotExportFn = () => {
         const s = sceneRef.current;
         if (!s) return null;
@@ -2045,7 +2055,7 @@ export function ContainerViewer3D({
 
         return { iso, top, sideA, front };
       };
-      onReadyExport(exportSnapshots);
+      onReadyExportRef.current(exportSnapshots);
     }
 
     const handleResize = () => {
