@@ -601,6 +601,8 @@ export function ContainerViewer3D({
   const [selectedSceneDock, setSelectedSceneDock] = useState<StagingDock | null>(null);
   const [selectedStagedCargoId, setSelectedStagedCargoId] = useState<string | null>(null);
   const [displayControlsOpen, setDisplayControlsOpen] = useState(false);
+  const mobileShortcutBarRef = useRef<HTMLElement>(null);
+  const [mobileShortcutScroll, setMobileShortcutScroll] = useState({ left: false, right: true });
   const [warningPanelOpen, setWarningPanelOpen] = useState(false);
   const [helpPanelOpen, setHelpPanelOpen] = useState(false);
   const [sharePanelOpen, setSharePanelOpen] = useState(false);
@@ -610,6 +612,31 @@ export function ContainerViewer3D({
   const [stagedCargo, setStagedCargo] = useState<StagedCargo[]>([]);
   const viewPanelDragControls = useDragControls();
   const cargoPanelDragControls = useDragControls();
+
+  const updateMobileShortcutScroll = useCallback(() => {
+    const rail = mobileShortcutBarRef.current;
+    if (!rail) return;
+    const maxScrollLeft = Math.max(0, rail.scrollWidth - rail.clientWidth);
+    setMobileShortcutScroll({
+      left: rail.scrollLeft > 4,
+      right: rail.scrollLeft < maxScrollLeft - 4,
+    });
+  }, []);
+
+  useEffect(() => {
+    const rail = mobileShortcutBarRef.current;
+    if (!rail) return;
+    const frame = requestAnimationFrame(updateMobileShortcutScroll);
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(updateMobileShortcutScroll) : null;
+    observer?.observe(rail);
+    rail.addEventListener("scroll", updateMobileShortcutScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
+      rail.removeEventListener("scroll", updateMobileShortcutScroll);
+    };
+  }, [updateMobileShortcutScroll, onExportPdf, onPlacedChange]);
+
   const selectedSceneDockRef = useRef<StagingDock | null>(null);
   const selectedStagedCargoIdRef = useRef<string | null>(null);
   const stagingMutationRef = useRef(false);
@@ -3118,28 +3145,6 @@ export function ContainerViewer3D({
               <p className="mt-2 text-[9px] leading-4 text-slate-400">Drag, nudge or rotate the group. Collision, boundary and stack-support checks remain active.</p>
             </div>
           )}
-          <div className="absolute right-0 top-0 z-40 flex items-center overflow-hidden rounded-bl-xl border-b border-l border-white/95 bg-white/[0.9] shadow-sm backdrop-blur-md lg:hidden" data-testid="mobile-view-toolbar">
-            <button
-              type="button"
-              onClick={() => {
-                setDisplayControlsOpen((current) => !current);
-                setMobilePanelOpen(false);
-                setWarningPanelOpen(false);
-                setSharePanelOpen(false);
-                setHelpPanelOpen(false);
-              }}
-              className={`flex h-11 items-center gap-1.5 border-r border-slate-200/70 px-3 text-[11px] font-bold transition active:bg-blue-50 ${displayControlsOpen ? "bg-blue-50 text-primary" : "text-slate-700 hover:bg-white/80"}`}
-              aria-label={displayControlsOpen ? "Hide view settings" : "Show view settings"}
-              aria-expanded={displayControlsOpen}
-              aria-controls="mobile-scene-settings"
-              data-testid="button-mobile-scene-settings"
-            >
-              <Settings2 className="h-4 w-4" />
-              <span>View</span>
-              {displayControlsOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-            </button>
-            <button type="button" onClick={toggleFullscreen} className="flex h-11 w-11 items-center justify-center text-slate-600 transition hover:bg-white/80 hover:text-primary active:bg-blue-50" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} title={isFullscreen ? "Exit full screen" : "Open full workspace"} data-testid="button-mobile-fullscreen">{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
-          </div>
           <AnimatePresence initial={false}>
             {displayControlsOpen && (
               <motion.section
@@ -3147,17 +3152,17 @@ export function ContainerViewer3D({
                 drag="y"
                 dragControls={viewPanelDragControls}
                 dragListener={false}
-                dragConstraints={{ top: -110, bottom: 0 }}
+                dragConstraints={{ top: 0, bottom: 110 }}
                 dragElastic={{ top: 0.18, bottom: 0 }}
                 dragSnapToOrigin
                 onDragEnd={(_, info) => {
-                  if (info.offset.y < -44 || info.velocity.y < -420) setDisplayControlsOpen(false);
+                  if (info.offset.y > 44 || info.velocity.y > 420) setDisplayControlsOpen(false);
                 }}
-                initial={{ opacity: 0, y: -12 }}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -12 }}
+                exit={{ opacity: 0, y: 12 }}
                 transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.72 }}
-                className="absolute left-0 right-0 top-11 z-40 overflow-hidden rounded-b-2xl border-b border-white/95 bg-white/[0.96] p-3 text-slate-700 shadow-[0_18px_42px_-24px_rgba(15,23,42,0.46)] backdrop-blur-xl lg:hidden"
+                className="absolute bottom-14 left-0 right-0 z-40 overflow-hidden rounded-t-2xl border-t border-white/95 bg-white/[0.96] p-3 text-slate-700 shadow-[0_-18px_42px_-24px_rgba(15,23,42,0.46)] backdrop-blur-xl lg:hidden"
                 aria-label="View controls"
                 data-testid="mobile-scene-settings-panel"
               >
@@ -3320,35 +3325,59 @@ export function ContainerViewer3D({
             </motion.section>
           )}
           </AnimatePresence>
-          <AnimatePresence initial={false}>
-            {!mobilePanelOpen && !sequenceMode && (
-              <motion.button
-                type="button"
-                initial={{ opacity: 0, y: 12, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 12, scale: 0.96 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
-                onClick={() => {
-                  setActiveCargoZone(selectedSceneDock ?? "loaded");
-                  setMobilePanelOpen(true);
-                  setDisplayControlsOpen(false);
-                  setWarningPanelOpen(false);
-                  setSharePanelOpen(false);
-                  setHelpPanelOpen(false);
-                }}
-                className="absolute bottom-0 right-0 z-30 flex h-11 items-center gap-2 rounded-tl-xl border-l border-t border-white/95 bg-white/[0.92] px-3 text-[11px] font-bold text-slate-700 shadow-sm backdrop-blur-md transition hover:text-primary active:bg-blue-50 lg:hidden"
-                aria-label={selectedStagedCargoId ? "Open staged cargo details" : selectedSceneDock ? `Open ${selectedSceneDock === "dock1" ? "Dock 1" : "Dock 2"}` : selectedCargoIndices.size > 0 ? "Open selected cargo details" : "Open Cargo staging"}
-                aria-expanded={false}
-                aria-controls="mobile-cargo-panel"
-                data-testid="button-mobile-cargo-panel"
+          {!mobilePanelOpen && (
+            <div className="absolute inset-x-2 bottom-2 z-40 lg:hidden" data-testid="mobile-viewer-shortcut-bar-shell">
+              <nav
+                ref={mobileShortcutBarRef}
+                className="flex h-11 items-center gap-1 overflow-x-auto scroll-smooth rounded-2xl border border-white/90 bg-white/[0.92] px-8 shadow-[0_12px_34px_-16px_rgba(15,23,42,0.42)] backdrop-blur-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                aria-label="Viewer shortcuts"
+                data-testid="mobile-viewer-shortcut-bar"
+                onScroll={updateMobileShortcutScroll}
               >
-                {selectedStagedCargoId || selectedSceneDock ? <Package className="h-4 w-4 text-primary" /> : selectedCargoIndices.size > 0 ? <Box className="h-4 w-4 text-primary" /> : <ListChecks className="h-4 w-4 text-primary" />}
-                <span>{selectedStagedCargoId ? "Details" : selectedSceneDock ? selectedSceneDock === "dock1" ? "Dock 1" : "Dock 2" : selectedCargoIndices.size > 0 ? "Details" : "Cargo"}</span>
-                <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[9px] text-primary">{selectedStagedCargoId ? 1 : selectedSceneDock ? stagedByZone[selectedSceneDock].length : selectedCargoIndices.size > 0 ? selectedCargoIndices.size : placed.length}</span>
-                <ChevronUp className="h-3.5 w-3.5 text-slate-400" />
-              </motion.button>
-            )}
-          </AnimatePresence>
+              <button type="button" onClick={() => { setActiveCargoZone(selectedSceneDock ?? "loaded"); setMobilePanelOpen(true); setDisplayControlsOpen(false); }} className="flex h-9 min-w-10 shrink-0 items-center justify-center gap-1 rounded-xl px-2 text-slate-600 active:bg-blue-50 active:text-primary" aria-label="Open cargo staging" data-testid="button-mobile-cargo-panel">
+                <ListChecks className="h-4 w-4" />
+                <span className="rounded-full bg-blue-50 px-1 text-[8px] font-bold text-primary">{placed.length}</span>
+              </button>
+              <button type="button" onClick={() => { cycleCameraView(); setDisplayControlsOpen(false); }} className="flex h-9 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 active:bg-blue-50 active:text-primary" aria-label="Change camera angle" data-testid="button-mobile-cycle-camera"><Camera className="h-4 w-4" /></button>
+              <button type="button" onClick={() => { setArrangeMode(false); setDisplayControlsOpen(false); setSequenceMode((current) => { if (!current) setSequenceStep(1); return !current; }); }} disabled={placed.length === 0} className={`flex h-9 w-10 shrink-0 items-center justify-center rounded-xl disabled:opacity-35 ${sequenceMode ? "bg-indigo-50 text-indigo-600" : "text-slate-600 active:bg-blue-50 active:text-primary"}`} aria-label="Loading sequence" data-testid="button-mobile-loading-sequence"><Play className="h-4 w-4" /></button>
+              {onPlacedChange && <button type="button" onClick={() => { setSequenceMode(false); setDisplayControlsOpen(false); setArrangeMode((current) => !current); setPlacementMessage("Precision tools enabled — select one or more units to align, rotate or nudge."); }} className={`flex h-9 w-10 shrink-0 items-center justify-center rounded-xl ${arrangeMode ? "bg-sky-50 text-sky-600" : "text-slate-600 active:bg-blue-50 active:text-primary"}`} aria-label="Precision cargo tools" data-testid="button-mobile-arrange-cargo"><Crosshair className="h-4 w-4" /></button>}
+              <button type="button" onClick={() => { setDisplayControlsOpen((current) => !current); setSequenceMode(false); }} className={`flex h-9 w-10 shrink-0 items-center justify-center rounded-xl ${displayControlsOpen ? "bg-blue-50 text-primary" : "text-slate-600 active:bg-blue-50 active:text-primary"}`} aria-label="View controls" aria-expanded={displayControlsOpen} aria-controls="mobile-scene-settings" data-testid="button-mobile-scene-settings"><Settings2 className="h-4 w-4" /></button>
+              <button type="button" onClick={downloadCurrentSnapshot} className="flex h-9 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 active:bg-blue-50 active:text-primary" aria-label="Download scene image" data-testid="button-mobile-snapshot"><ImageDown className="h-4 w-4" /></button>
+              {onExportPdf && <button type="button" onClick={onExportPdf} className="flex h-9 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 active:bg-blue-50 active:text-primary" aria-label="Download PDF report" data-testid="button-mobile-pdf"><FileDown className="h-4 w-4" /></button>}
+              <button type="button" onClick={toggleFullscreen} className="flex h-9 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 active:bg-blue-50 active:text-primary" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} data-testid="button-mobile-fullscreen">{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
+              </nav>
+              <AnimatePresence>
+                {mobileShortcutScroll.left && (
+                  <motion.button
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    type="button"
+                    onClick={() => mobileShortcutBarRef.current?.scrollBy({ left: -160, behavior: "smooth" })}
+                    className="absolute inset-y-px left-px flex w-7 items-center justify-center rounded-l-2xl bg-gradient-to-r from-white via-white/95 to-white/20 text-slate-400"
+                    aria-label="Scroll shortcuts left"
+                    data-testid="button-mobile-shortcuts-left"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </motion.button>
+                )}
+                {mobileShortcutScroll.right && (
+                  <motion.button
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    type="button"
+                    onClick={() => mobileShortcutBarRef.current?.scrollBy({ left: 160, behavior: "smooth" })}
+                    className="absolute inset-y-px right-px flex w-7 items-center justify-center rounded-r-2xl bg-gradient-to-l from-white via-white/95 to-white/20 text-slate-400"
+                    aria-label="Scroll shortcuts right"
+                    data-testid="button-mobile-shortcuts-right"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
           <div
             className={`pointer-events-none absolute top-12 z-20 w-max max-w-[calc(100%-7rem)] -translate-x-1/2 rounded-2xl border border-white/90 bg-white/[0.86] px-3 py-2 text-slate-700 shadow-[0_14px_36px_-22px_rgba(15,23,42,0.32)] backdrop-blur-xl sm:top-3 sm:max-w-[calc(100%-7rem)] ${sidebarOpen ? "left-[42%] lg:left-[calc(50%-172px)]" : "left-[42%] lg:left-1/2"}`}
             data-testid="container-cargo-hover-card"
@@ -3412,7 +3441,7 @@ export function ContainerViewer3D({
             )}
           </AnimatePresence>
           {sequenceMode ? (
-            <div className="absolute bottom-3 left-3 right-3 z-30 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:min-w-[390px] lg:bottom-14 rounded-xl border border-indigo-200 bg-white/[0.98] p-2 shadow-lg" data-testid="loading-sequence-controls">
+            <div className="absolute bottom-16 left-3 right-3 z-30 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:min-w-[390px] lg:bottom-14 rounded-xl border border-indigo-200 bg-white/[0.98] p-2 shadow-lg" data-testid="loading-sequence-controls">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -3447,7 +3476,7 @@ export function ContainerViewer3D({
               <p className="mt-1.5 text-center text-[9px] text-slate-500">Suggested order: closed end to doors, lower levels first</p>
             </div>
           ) : !mobilePanelOpen && (
-            <div className={`pointer-events-none absolute bottom-0 left-0 right-[8.75rem] z-20 rounded-tr-xl border-r border-t px-2.5 py-1.5 text-[10px] font-medium sm:left-auto sm:right-[8.75rem] sm:max-w-[65%] lg:hidden ${
+            <div className={`pointer-events-none absolute bottom-14 left-0 right-0 z-20 rounded-tr-xl border-r border-t px-2.5 py-1.5 text-[10px] font-medium sm:left-auto sm:right-[8.75rem] sm:max-w-[65%] lg:hidden ${
               arrangeMode
                 ? placementMessage.includes("overlap") || placementMessage.includes("without enough") || placementMessage.includes("cancelled")
                   ? "border-red-200 bg-red-50/90 text-red-700"
