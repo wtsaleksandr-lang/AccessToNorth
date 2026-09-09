@@ -205,13 +205,26 @@ test.describe("tool pages load without runtime errors", () => {
       await expect(page.getByTestId("button-rotate-selection-right")).toBeVisible();
       await expect(page.getByTestId("button-nudge-doors")).toBeVisible();
       await page.setViewportSize({ width: 390, height: 844 });
+      await expect(page.getByTestId("button-mobile-scene-settings")).toContainText("View");
+      await page.getByTestId("button-mobile-scene-settings").click();
+      await expect(page.getByTestId("mobile-scene-settings-panel")).toBeVisible();
+      await expect(page.getByTestId("button-mobile-view-top")).toBeVisible();
+      await expect(page.getByTestId("button-mobile-quality-auto")).toBeVisible();
+      await page.getByTestId("button-close-mobile-scene-settings").click();
+      await expect(page.getByTestId("mobile-scene-settings-panel")).toBeHidden();
       await expect(page.getByTestId("button-mobile-cargo-panel")).toBeVisible();
+      await expect(page.getByTestId("button-mobile-cargo-panel")).toContainText("Cargo");
       await page.getByTestId("button-mobile-cargo-panel").click();
       await expect(page.getByTestId("mobile-cargo-panel")).toBeVisible();
       await expect(page.getByTestId("button-mobile-cargo-zone-dock1")).toBeVisible();
       await page.getByTestId("button-mobile-select-all-cargo").click();
       await expect(page.getByTestId("mobile-cargo-panel")).toContainText("7 selected");
       await page.getByTestId("button-close-mobile-cargo-panel").click();
+      await expect(page.getByTestId("mobile-cargo-panel")).toBeHidden();
+      expect(
+        await viewerCanvas!.evaluate((canvas) => canvas.isConnected),
+        "Mobile panel transitions must not replace the active Three.js canvas",
+      ).toBe(true);
       await page.setViewportSize({ width: 1280, height: 900 });
       await page.getByTestId("button-loading-sequence").click();
       await expect(page.getByTestId("loading-sequence-controls")).toBeVisible();
