@@ -130,6 +130,41 @@ export function findSafeManualPlacement(
 
 export type ManualAlignment = "closed-end" | "length-center" | "doors" | "side-a" | "width-center" | "side-b";
 export type ManualRotationDirection = "clockwise" | "counterclockwise";
+export type ManualVerticalDirection = "up" | "down";
+
+/**
+ * Moves a selection to the next valid supported stack level while preserving
+ * the group's internal vertical spacing. Cargo can never be left floating.
+ */
+export function moveManualSelectionVertical(
+  boxes: PlacedBox[],
+  selectedIndices: Iterable<number>,
+  container: ContainerSpec,
+  direction: ManualVerticalDirection,
+) {
+  const selected = [...new Set(selectedIndices)].filter((index) => boxes[index]);
+  if (!selected.length) return null;
+  const selectedSet = new Set(selected);
+  const selectedBoxes = selected.map((index) => boxes[index]);
+  const otherBoxes = boxes.filter((_, index) => !selectedSet.has(index));
+  const currentBaseY = Math.min(...selectedBoxes.map((box) => box.y));
+  const levels = [...new Set([
+    0,
+    ...otherBoxes.map((box) => Number((box.y + box.h).toFixed(3))),
+  ])].filter((level) => direction === "up"
+    ? level > currentBaseY + 0.001
+    : level < currentBaseY - 0.001);
+  levels.sort(direction === "up" ? (a, b) => a - b : (a, b) => b - a);
+
+  for (const level of levels) {
+    const deltaY = level - currentBaseY;
+    const candidate = boxes.map((box, index) => selectedSet.has(index)
+      ? { ...box, y: Number((box.y + deltaY).toFixed(3)) }
+      : { ...box });
+    if (validateManualLayout(candidate, container).valid) return candidate;
+  }
+  return null;
+}
 
 export function translateManualSelection(
   boxes: PlacedBox[],
