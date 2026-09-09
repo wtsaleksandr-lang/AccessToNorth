@@ -76,6 +76,7 @@ import {
   Facebook,
   Linkedin,
   MessageCircle,
+  Palette,
 } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -151,11 +152,112 @@ type ManagedShareLink = {
   revokeToken: string;
 };
 
+const CARGO_COLOR_PRESETS = [
+  { name: "Mint", value: "#8FD8C9" },
+  { name: "Sky", value: "#A9C9F7" },
+  { name: "Peach", value: "#F2C6A0" },
+  { name: "Lavender", value: "#C8B5F2" },
+  { name: "Rose", value: "#EEAFC3" },
+  { name: "Aqua", value: "#9EDCE8" },
+  { name: "Leaf", value: "#A9D9AE" },
+  { name: "Sand", value: "#DDD4AA" },
+] as const;
+
 const CARGO_COLORS = [
-  "#8FD8C9", "#A9C9F7", "#F2C6A0", "#C8B5F2", "#EEAFC3",
-  "#9EDCE8", "#C7D0DB", "#F4B69B", "#A9D9AE", "#D8B3E6",
-  "#A7BFF2", "#BBD99D", "#EDB6C6", "#A9D4E8", "#E3B6D9",
+  ...CARGO_COLOR_PRESETS.map(({ value }) => value),
+  "#C7D0DB", "#F4B69B", "#D8B3E6", "#A7BFF2", "#BBD99D", "#A9D4E8", "#E3B6D9",
 ];
+
+function CargoColorPicker({
+  value,
+  onChange,
+  itemLabel,
+  index,
+  size = "desktop",
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  itemLabel: string;
+  index: number;
+  size?: "desktop" | "mobile";
+}) {
+  const [open, setOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      if (!pickerRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePress);
+    return () => document.removeEventListener("pointerdown", closeOnOutsidePress);
+  }, [open]);
+
+  const triggerSize = size === "mobile" ? "h-7 w-7" : "h-6 w-6";
+  const testSurface = size === "mobile" ? "mobile-" : "";
+
+  return (
+    <div ref={pickerRef} className={`relative shrink-0 ${open ? "z-[80]" : "z-0"}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className={`relative ${triggerSize} overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30`}
+        aria-label={`Choose a colour for ${itemLabel}`}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        data-testid={`button-${testSurface}cargo-color-${index}`}
+      >
+        <span className="absolute inset-1 rounded-sm" style={{ backgroundColor: value }} />
+        <span className="absolute bottom-0.5 right-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full border border-white bg-slate-700 text-white shadow-sm">
+          <Palette className="h-1.5 w-1.5" />
+        </span>
+      </button>
+
+      {open && (
+        <div
+          className="absolute left-0 top-full z-[90] mt-1.5 w-44 rounded-2xl border border-white/90 bg-white/95 p-2.5 shadow-[0_18px_48px_-18px_rgba(15,23,42,0.42)] backdrop-blur-md"
+          role="dialog"
+          aria-label={`Cargo colour options for ${itemLabel}`}
+          data-testid={`${testSurface}cargo-color-options-${index}`}
+        >
+          <p className="px-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Quick colours</p>
+          <div className="mt-2 grid grid-cols-4 gap-2">
+            {CARGO_COLOR_PRESETS.map((preset) => {
+              const selected = preset.value.toLowerCase() === value.toLowerCase();
+              return (
+                <button
+                  key={preset.value}
+                  type="button"
+                  onClick={() => { onChange(preset.value); setOpen(false); }}
+                  className={`group flex h-8 w-8 items-center justify-center rounded-full transition hover:-translate-y-0.5 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${selected ? "ring-2 ring-primary ring-offset-2" : "ring-1 ring-slate-200"}`}
+                  style={{ backgroundColor: preset.value }}
+                  aria-label={`${preset.name} cargo colour`}
+                  aria-pressed={selected}
+                  title={preset.name}
+                  data-testid={`button-${testSurface}cargo-color-${index}-${preset.name.toLowerCase()}`}
+                >
+                  <span className="h-2 w-2 rounded-full bg-white/0 transition group-hover:bg-white/55" aria-hidden="true" />
+                </button>
+              );
+            })}
+          </div>
+          <label className="relative mt-2.5 flex cursor-pointer items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-[10px] font-semibold text-slate-600 transition hover:border-primary/30 hover:bg-white hover:text-primary">
+            <span className="flex items-center gap-1.5"><Palette className="h-3.5 w-3.5" />Custom colour</span>
+            <span className="h-4 w-4 rounded-full ring-1 ring-slate-300 ring-offset-1" style={{ backgroundColor: value }} />
+            <input
+              type="color"
+              value={value}
+              onChange={(event) => onChange(event.target.value)}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              aria-label={`Custom colour for ${itemLabel}`}
+              data-testid={`input-${testSurface}cargo-color-${index}`}
+            />
+          </label>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function generateId() {
   return Math.random().toString(36).substr(2, 9);
@@ -5620,20 +5722,13 @@ export default function ContainerCalculator() {
                             <button onClick={() => toggleSelect(item.id)} className="shrink-0 text-slate-400 hover:text-primary" data-testid={`checkbox-cargo-${idx}`}>
                               {selectedIds.has(item.id) ? <CheckSquare className="w-3.5 h-3.5 text-primary" /> : <Square className="w-3.5 h-3.5" />}
                             </button>
-                            <label
-                              className="relative w-7 h-7 rounded-md border border-slate-200 bg-white shadow-sm shrink-0 cursor-pointer overflow-hidden focus-within:ring-2 focus-within:ring-primary/30"
-                              title={`Choose a color for ${item.name || `Cargo ${idx + 1}`}`}
-                            >
-                              <span className="absolute inset-1 rounded" style={{ backgroundColor: item.color }} />
-                              <input
-                                type="color"
-                                value={item.color}
-                                onChange={(e) => updateItem(item.id, "color", e.target.value)}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                aria-label={`Color for ${item.name || `Cargo ${idx + 1}`}`}
-                                data-testid={`input-cargo-color-${idx}`}
-                              />
-                            </label>
+                            <CargoColorPicker
+                              value={item.color}
+                              onChange={(color) => updateItem(item.id, "color", color)}
+                              itemLabel={item.name || `Cargo ${idx + 1}`}
+                              index={idx}
+                              size="mobile"
+                            />
                             <Input
                               placeholder={`Cargo ${idx + 1}`}
                               value={item.name}
@@ -5816,20 +5911,12 @@ export default function ContainerCalculator() {
                                       <Square className="w-3.5 h-3.5" />
                                     )}
                                   </button>
-                                  <label
-                                    className="relative w-6 h-6 rounded-md border border-slate-200 bg-white shadow-sm shrink-0 cursor-pointer overflow-hidden focus-within:ring-2 focus-within:ring-primary/30"
-                                    title={`Choose a color for ${item.name || `Cargo ${idx + 1}`}`}
-                                  >
-                                    <span className="absolute inset-1 rounded-sm" style={{ backgroundColor: item.color }} />
-                                    <input
-                                      type="color"
-                                      value={item.color}
-                                      onChange={(e) => updateItem(item.id, "color", e.target.value)}
-                                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                      aria-label={`Color for ${item.name || `Cargo ${idx + 1}`}`}
-                                      data-testid={`input-cargo-color-${idx}`}
-                                    />
-                                  </label>
+                                  <CargoColorPicker
+                                    value={item.color}
+                                    onChange={(color) => updateItem(item.id, "color", color)}
+                                    itemLabel={item.name || `Cargo ${idx + 1}`}
+                                    index={idx}
+                                  />
                                 </div>
                               </td>
                               <td className="px-0.5 py-1">

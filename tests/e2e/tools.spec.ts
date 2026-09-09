@@ -107,6 +107,10 @@ test.describe("tool pages load without runtime errors", () => {
     await page.getByTestId("input-cargo-height-0").fill("154.94");
     await page.getByTestId("input-cargo-qty-0").fill("7");
     await page.getByTestId("input-cargo-weight-0").fill("5260");
+    await page.getByTestId("button-cargo-color-0").click();
+    await expect(page.getByTestId("cargo-color-options-0")).toBeVisible();
+    await expect(page.getByTestId("button-cargo-color-0-mint")).toBeVisible();
+    await expect(page.getByTestId("button-cargo-color-0-sand")).toBeVisible();
     await page.getByTestId("input-cargo-color-0").evaluate((input: HTMLInputElement) => {
       input.value = "#155e75";
       input.dispatchEvent(new Event("input", { bubbles: true }));
