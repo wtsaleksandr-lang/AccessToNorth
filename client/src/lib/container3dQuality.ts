@@ -30,7 +30,7 @@ export function getContainerRenderProfile(input: ContainerRenderProfileInput): C
   // Never undersample the canvas below its CSS size. The old 0.75 cap made
   // container edges and the floor grid visibly pixelated on high-DPI phones
   // without solving interaction stalls.
-  const pixelRatioCap = input.quality === "quality" ? 1.5 : input.quality === "performance" ? 1 : compact ? 1.2 : 1.25;
+  const pixelRatioCap = input.quality === "quality" ? 2 : input.quality === "performance" ? 1 : 1.5;
   return {
     performanceMode,
     antialias: input.itemCount <= 220,
