@@ -1076,16 +1076,16 @@ export function ContainerViewer3D({
     scene.add(ground);
 
     const gridDivisions = renderProfile.gridDivisions;
-    const grid = new THREE.GridHelper(gridSize, gridDivisions, 0xc7d0da, 0xf2f5f8);
+    const grid = new THREE.GridHelper(gridSize, gridDivisions, 0xb8c2cd, 0xcbd3dc);
     grid.position.set(cL / 2, -0.02, cW / 2);
     if (Array.isArray(grid.material)) {
       grid.material.forEach((m) => {
         (m as THREE.LineBasicMaterial).transparent = true;
-        (m as THREE.LineBasicMaterial).opacity = 0.46;
+        (m as THREE.LineBasicMaterial).opacity = 0.42;
       });
     } else {
       (grid.material as THREE.LineBasicMaterial).transparent = true;
-      (grid.material as THREE.LineBasicMaterial).opacity = 0.46;
+      (grid.material as THREE.LineBasicMaterial).opacity = 0.42;
     }
     scene.add(grid);
 
@@ -1429,13 +1429,13 @@ export function ContainerViewer3D({
           map: texture,
           color: 0xffffff,
           transparent: true,
-          opacity: 0.76,
+          opacity: 0.84,
         });
       } else {
         materials = new THREE.MeshBasicMaterial({
           color: displayColor,
           transparent: true,
-          opacity: 0.76,
+          opacity: 0.84,
         });
       }
 
@@ -1538,22 +1538,12 @@ export function ContainerViewer3D({
     addAxisLabel("DOCK 1", new THREE.Vector3(cL / 2, 0.015, -dockGap - dockDepth / 2));
     addAxisLabel("DOCK 2", new THREE.Vector3(cL / 2, 0.015, cW + dockGap + dockDepth / 2));
 
-    let renderFrameId: number | null = null;
-    let continuousInteraction = false;
-    const paintFrame = () => {
-      renderFrameId = null;
-      renderer.render(scene, camera);
-      if (continuousInteraction) renderFrameId = window.requestAnimationFrame(paintFrame);
-    };
+    // OrbitControls already emits one change event for every camera update.
+    // Render that state immediately and never run a second animation loop:
+    // competing pointer ownership previously left the canvas rendering forever
+    // after a gesture and made drag, wheel zoom, and the surrounding UI stall.
     const renderScene = () => {
-      // Coalesce wheel and pointer events into one browser paint. Rendering
-      // synchronously for every raw input event blocked later input events and
-      // produced the delayed camera jumps reported on mobile and desktop.
-      if (renderFrameId === null) renderFrameId = window.requestAnimationFrame(paintFrame);
-    };
-    const setContinuousInteraction = (active: boolean) => {
-      continuousInteraction = active;
-      renderScene();
+      renderer.render(scene, camera);
     };
 
     const setView = (preset: ContainerViewPreset) => {
@@ -1658,7 +1648,6 @@ export function ContainerViewer3D({
     };
 
     let inspectionPointer: { pointerId: number; clientX: number; clientY: number; index: number } | null = null;
-    let cameraPointerId: number | null = null;
     const handlePointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return;
       updatePointer(event);
@@ -1675,9 +1664,6 @@ export function ContainerViewer3D({
       const intersection = raycaster.intersectObjects(cargoMeshes, false)[0];
 
       if (!arrangeMode) {
-        cameraPointerId = event.pointerId;
-        renderer.domElement.style.cursor = "grabbing";
-        setContinuousInteraction(true);
         if (intersection?.object instanceof THREE.Mesh) {
           inspectionPointer = {
             pointerId: event.pointerId,
@@ -1690,17 +1676,11 @@ export function ContainerViewer3D({
       }
 
       if (!intersection || !(intersection.object instanceof THREE.Mesh)) {
-        cameraPointerId = event.pointerId;
-        renderer.domElement.style.cursor = "grabbing";
-        setContinuousInteraction(true);
         return;
       }
 
       event.preventDefault();
-      // This listener runs in the capture phase. Stop OrbitControls only when
-      // the user deliberately grabs cargo in Adjust mode; empty-space drags
-      // remain dedicated camera gestures.
-      event.stopImmediatePropagation();
+      event.stopPropagation();
       const mesh = intersection.object;
       const index = mesh.userData.placedIndex as number;
       if (event.shiftKey) {
@@ -1738,8 +1718,8 @@ export function ContainerViewer3D({
       };
       renderer.domElement.setPointerCapture(event.pointerId);
       renderer.domElement.style.cursor = "grabbing";
+      orbiting = false;
       controls.enabled = false;
-      setContinuousInteraction(true);
       indices.forEach((selectedIndex) => highlightMesh(cargoMeshes[selectedIndex], 0x0ea5e9));
       setPlacementMessage(indices.length > 1
         ? `Moving ${indices.length} selected units together — relative spacing and stack heights stay locked.`
@@ -1748,11 +1728,24 @@ export function ContainerViewer3D({
     };
 
     let currentHoverIndex: number | null = null;
+    let orbiting = false;
+    const handleOrbitStart = () => {
+      if (dragState) return;
+      orbiting = true;
+      if (currentHoverIndex !== null) {
+        currentHoverIndex = null;
+        setHoveredCargoIndex(null);
+        setCargoHover(null);
+      }
+      renderer.domElement.style.cursor = "grabbing";
+    };
+    const handleOrbitEnd = () => {
+      orbiting = false;
+      renderer.domElement.style.cursor = arrangeMode ? "grab" : "default";
+    };
     const handlePointerMove = (event: PointerEvent) => {
       if (!dragState) {
-        // Never raycast or update React hover state while OrbitControls owns
-        // the pointer. That keeps camera input isolated from the cargo UI.
-        if (cameraPointerId === event.pointerId) return;
+        if (orbiting) return;
         if (event.pointerType === "touch") return;
         updatePointer(event);
         const intersection = raycaster.intersectObjects(cargoMeshes, false)[0];
@@ -1876,11 +1869,11 @@ export function ContainerViewer3D({
       if (!dragState || dragState.pointerId !== event.pointerId) return;
       const completedDrag = dragState;
       dragState = null;
-      setContinuousInteraction(false);
       if (renderer.domElement.hasPointerCapture(event.pointerId)) {
         renderer.domElement.releasePointerCapture(event.pointerId);
       }
       controls.enabled = true;
+      orbiting = false;
       renderer.domElement.style.cursor = arrangeMode ? "grab" : "default";
       completedDrag.indices.forEach((index) => highlightMesh(cargoMeshes[index], null));
 
@@ -1919,12 +1912,6 @@ export function ContainerViewer3D({
     };
 
     const handlePointerUp = (event: PointerEvent) => {
-      const cameraGesture = cameraPointerId === event.pointerId;
-      if (cameraGesture) {
-        cameraPointerId = null;
-        setContinuousInteraction(false);
-        renderer.domElement.style.cursor = arrangeMode ? "grab" : "default";
-      }
       if (inspectionPointer?.pointerId === event.pointerId) {
         const movement = Math.hypot(event.clientX - inspectionPointer.clientX, event.clientY - inspectionPointer.clientY);
         if (movement < 7) {
@@ -1936,21 +1923,14 @@ export function ContainerViewer3D({
         inspectionPointer = null;
         return;
       }
-      if (cameraGesture) return;
       finishDrag(event, true);
     };
     const handlePointerCancel = (event: PointerEvent) => {
       inspectionPointer = null;
-      if (cameraPointerId === event.pointerId) {
-        cameraPointerId = null;
-        setContinuousInteraction(false);
-        renderer.domElement.style.cursor = arrangeMode ? "grab" : "default";
-        return;
-      }
       finishDrag(event, false);
     };
     const handlePointerLeave = () => {
-      if (dragState || cameraPointerId !== null) return;
+      if (dragState || orbiting) return;
       inspectionPointer = null;
       currentHoverIndex = null;
       setHoveredCargoIndex(null);
@@ -1958,11 +1938,13 @@ export function ContainerViewer3D({
     };
 
     renderer.domElement.style.cursor = arrangeMode ? "grab" : "default";
-    renderer.domElement.addEventListener("pointerdown", handlePointerDown, true);
+    renderer.domElement.addEventListener("pointerdown", handlePointerDown);
     renderer.domElement.addEventListener("pointermove", handlePointerMove);
     renderer.domElement.addEventListener("pointerup", handlePointerUp);
     renderer.domElement.addEventListener("pointercancel", handlePointerCancel);
     renderer.domElement.addEventListener("pointerleave", handlePointerLeave);
+    controls.addEventListener("start", handleOrbitStart);
+    controls.addEventListener("end", handleOrbitEnd);
     controls.addEventListener("change", renderScene);
     renderScene();
 
@@ -2053,15 +2035,15 @@ export function ContainerViewer3D({
       sceneRef.current = null;
       resizeObserver?.disconnect();
       window.removeEventListener("resize", handleResize);
-      renderer.domElement.removeEventListener("pointerdown", handlePointerDown, true);
+      renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
       renderer.domElement.removeEventListener("pointermove", handlePointerMove);
       renderer.domElement.removeEventListener("pointerup", handlePointerUp);
       renderer.domElement.removeEventListener("pointercancel", handlePointerCancel);
       renderer.domElement.removeEventListener("pointerleave", handlePointerLeave);
+      controls.removeEventListener("start", handleOrbitStart);
+      controls.removeEventListener("end", handleOrbitEnd);
       controls.removeEventListener("change", renderScene);
       renderer.domElement.removeEventListener("webglcontextlost", handleContextLost);
-      continuousInteraction = false;
-      if (renderFrameId !== null) window.cancelAnimationFrame(renderFrameId);
       controls.dispose();
       const disposeMaterial = (material: THREE.Material) => {
         const map = (material as THREE.MeshStandardMaterial | THREE.MeshBasicMaterial | THREE.SpriteMaterial).map;
