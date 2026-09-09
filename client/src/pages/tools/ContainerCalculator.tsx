@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from "react";
 import { Link } from "wouter";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ToolWorkedExample } from "@/components/ToolWorkedExample";
@@ -41,6 +41,7 @@ import {
   ArrowRight,
   ArrowUpDown,
   ChevronDown,
+  ChevronUp,
   CheckSquare,
   Square,
   Minus,
@@ -2418,10 +2419,62 @@ export function ContainerViewer3D({
               <p className="mt-2 text-[9px] leading-4 text-slate-400">Drag, nudge or rotate the group. Collision, boundary and stack-support checks remain active.</p>
             </div>
           )}
-          <div className="absolute right-3 top-3 z-30 flex items-center gap-1 rounded-full border border-white/95 bg-white/[0.94] p-1 shadow-sm lg:hidden">
-            <button type="button" onClick={() => { setMobilePanelOpen((current) => !current); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`flex h-8 w-8 items-center justify-center rounded-full transition ${mobilePanelOpen ? "bg-blue-50 text-primary" : "text-slate-600"}`} aria-label={mobilePanelOpen ? "Hide cargo and dock panel" : "Show cargo and dock panel"} title={mobilePanelOpen ? "Hide cargo and dock panel" : "Show cargo and dock panel"} data-testid="button-mobile-cargo-panel">{mobilePanelOpen ? <PanelRightClose className="h-4 w-4" /> : <ListChecks className="h-4 w-4" />}</button>
-            <button type="button" onClick={toggleFullscreen} className="flex h-8 w-8 items-center justify-center rounded-full text-slate-600 transition hover:bg-white hover:text-primary" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} title={isFullscreen ? "Exit full screen" : "Open full workspace"}>{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
+          <div className="absolute right-3 top-3 z-40 flex items-center gap-1.5 rounded-2xl border border-white/95 bg-white/[0.94] p-1.5 shadow-[0_12px_30px_-18px_rgba(15,23,42,0.5)] backdrop-blur-md lg:hidden">
+            <button
+              type="button"
+              onClick={() => {
+                setDisplayControlsOpen((current) => !current);
+                setMobilePanelOpen(false);
+                setWarningPanelOpen(false);
+                setSharePanelOpen(false);
+                setHelpPanelOpen(false);
+              }}
+              className={`flex h-10 items-center gap-2 rounded-xl px-3 text-[11px] font-bold transition active:scale-95 ${displayControlsOpen ? "bg-blue-50 text-primary shadow-sm" : "text-slate-700 hover:bg-white"}`}
+              aria-label={displayControlsOpen ? "Hide view settings" : "Show view settings"}
+              aria-expanded={displayControlsOpen}
+              aria-controls="mobile-scene-settings"
+              data-testid="button-mobile-scene-settings"
+            >
+              <Settings2 className="h-4 w-4" />
+              <span>View</span>
+              {displayControlsOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            </button>
+            <button type="button" onClick={toggleFullscreen} className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white hover:text-primary active:scale-95" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} title={isFullscreen ? "Exit full screen" : "Open full workspace"}>{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
           </div>
+          <AnimatePresence initial={false}>
+            {displayControlsOpen && (
+              <motion.section
+                id="mobile-scene-settings"
+                initial={{ opacity: 0, y: -18, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -18, scale: 0.98 }}
+                transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.72 }}
+                className="absolute left-3 right-3 top-16 z-40 overflow-hidden rounded-2xl border border-white/95 bg-white/[0.96] p-3 text-slate-700 shadow-[0_22px_60px_-24px_rgba(15,23,42,0.5)] backdrop-blur-xl lg:hidden"
+                aria-label="3D view settings"
+                data-testid="mobile-scene-settings-panel"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-primary"><Settings2 className="h-4 w-4" /></span>
+                    <div><p className="text-[11px] font-bold text-slate-900">3D view settings</p><p className="mt-0.5 text-[9px] text-slate-500">Display, camera and quality</p></div>
+                  </div>
+                  <button type="button" onClick={() => setDisplayControlsOpen(false)} className="flex h-9 items-center gap-1 rounded-xl bg-slate-100 px-2.5 text-[10px] font-bold text-slate-600 transition hover:bg-slate-200" aria-label="Hide view settings" data-testid="button-close-mobile-scene-settings"><ChevronUp className="h-4 w-4" />Hide</button>
+                </div>
+                <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Display</p>
+                <div className="mt-1.5 grid grid-cols-3 gap-2">{[
+                  { label: "Grid", active: showGrid, set: setShowGrid, icon: Grid3X3 },
+                  { label: "Shell", active: showShell, set: setShowShell, icon: Eye },
+                  { label: "References", active: showLabels, set: setShowLabels, icon: Box },
+                ].map(({ label, active, set, icon: Icon }) => <button key={label} type="button" onClick={() => set(!active)} className={`flex min-h-12 items-center justify-center gap-1.5 rounded-xl border px-2 text-[10px] font-bold transition active:scale-[0.97] ${active ? "border-blue-200 bg-blue-50 text-primary" : "border-slate-200 bg-slate-50 text-slate-400"}`} aria-pressed={active} data-testid={`button-mobile-layer-${label.toLowerCase()}`}><Icon className="h-4 w-4" />{label}</button>)}</div>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <div><p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Camera</p><div className="mt-1.5 grid grid-cols-4 gap-1">{([ ["isometric", "3D"], ["doors", "Doors"], ["side", "Side"], ["top", "Top"] ] as const).map(([preset, label]) => <button key={preset} type="button" onClick={() => setActiveView(preset)} className={`min-h-10 rounded-lg border px-1 text-[9px] font-bold transition active:scale-95 ${activeView === preset ? "border-blue-300 bg-blue-50 text-primary" : "border-slate-200 bg-white text-slate-600"}`} aria-pressed={activeView === preset} data-testid={`button-mobile-view-${preset}`}>{label}</button>)}</div></div>
+                  <div><p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Quality</p><div className="mt-1.5 grid grid-cols-3 gap-1">{([ ["auto", "Auto"], ["performance", "Fast"], ["quality", "High"] ] as const).map(([quality, label]) => <button key={quality} type="button" onClick={() => setRenderQuality(quality)} className={`min-h-10 rounded-lg border px-1 text-[9px] font-bold transition active:scale-95 ${renderQuality === quality ? "border-cyan-300 bg-cyan-50 text-cyan-700" : "border-slate-200 bg-white text-slate-500"}`} aria-pressed={renderQuality === quality} data-testid={`button-mobile-quality-${quality}`}>{label}</button>)}</div></div>
+                </div>
+                <div className="mt-2 flex justify-end"><button type="button" onClick={resetCameraView} className="flex h-9 items-center gap-1.5 rounded-xl px-3 text-[10px] font-bold text-slate-500 transition hover:bg-slate-100 hover:text-primary" data-testid="button-mobile-reset-camera"><Home className="h-3.5 w-3.5" />Reset camera</button></div>
+                <button type="button" onClick={() => setDisplayControlsOpen(false)} className="mx-auto mt-1 block h-5 w-20" aria-label="Collapse view settings"><span className="mx-auto block h-1 w-10 rounded-full bg-slate-300" /></button>
+              </motion.section>
+            )}
+          </AnimatePresence>
           <div className={`absolute right-3 top-3 z-30 hidden max-h-[calc(100%-4.5rem)] flex-col items-center gap-0.5 overflow-visible rounded-2xl border border-white/90 bg-white/[0.98] p-1 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.34)] transition-[right] lg:flex ${sidebarOpen ? "lg:right-[344px]" : ""}`} data-testid="container-floating-tool-rail">
             <button type="button" onClick={() => setSidebarOpen((current) => !current)} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label={sidebarOpen ? "Hide cargo panel" : "Show cargo panel"} data-testid="button-container-sidebar-toggle">{sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}<ViewerHoverLabel>{sidebarOpen ? "Hide cargo panel" : "Show cargo panel"}</ViewerHoverLabel></button>
             <button type="button" onClick={() => { cycleCameraView(); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Change camera angle" data-testid="button-floating-camera"><Camera className="h-4 w-4" /><ViewerHoverLabel>Change camera angle</ViewerHoverLabel></button>
@@ -2469,17 +2522,27 @@ export function ContainerViewer3D({
               </div>
             )}
           </div>
+          <AnimatePresence initial={false}>
           {mobilePanelOpen && (
-            <section className="absolute bottom-3 left-3 right-14 z-30 flex max-h-[68%] min-h-0 flex-col overflow-hidden rounded-2xl border border-white/90 bg-white/[0.98] shadow-[0_24px_70px_-24px_rgba(15,23,42,0.5)] lg:hidden" aria-label="Cargo and staging docks" data-testid="mobile-cargo-panel">
+            <motion.section
+              initial={{ opacity: 0, y: "100%", scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: "100%", scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 390, damping: 36, mass: 0.78 }}
+              className="absolute bottom-3 left-3 right-3 z-40 flex max-h-[72%] min-h-0 flex-col overflow-hidden rounded-2xl border border-white/95 bg-white/[0.97] shadow-[0_26px_72px_-22px_rgba(15,23,42,0.58)] backdrop-blur-xl lg:hidden"
+              id="mobile-cargo-panel"
+              aria-label="Cargo and staging docks"
+              data-testid="mobile-cargo-panel"
+            >
               <div className="border-b border-slate-200 bg-white/90 px-3 pb-3 pt-2.5">
-                <div className="mx-auto mb-2 h-1 w-9 rounded-full bg-slate-200" aria-hidden="true" />
+                <button type="button" onClick={() => setMobilePanelOpen(false)} className="mx-auto mb-1.5 flex h-5 w-24 items-center justify-center" aria-label="Collapse cargo details"><span className="h-1 w-11 rounded-full bg-slate-300" /></button>
                 <div className="flex items-center gap-2.5">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-primary"><Ship className="h-4 w-4" /></div>
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-primary"><ListChecks className="h-4 w-4" /></div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[11px] font-bold text-slate-900">{container.name}</p>
-                    <p className="mt-0.5 truncate text-[9px] text-slate-500">{placed.length} loaded · {unitSystem === "metric" ? `${(loadSummary.totalWeight * LB_TO_KG).toLocaleString(undefined, { maximumFractionDigits: 0 })} kg` : `${loadSummary.totalWeight.toLocaleString(undefined, { maximumFractionDigits: 0 })} lb`}</p>
+                    <p className="truncate text-[11px] font-bold text-slate-900">Cargo &amp; docks</p>
+                    <p className="mt-0.5 truncate text-[9px] text-slate-500">{container.name} · {placed.length} loaded · {unitSystem === "metric" ? `${(loadSummary.totalWeight * LB_TO_KG).toLocaleString(undefined, { maximumFractionDigits: 0 })} kg` : `${loadSummary.totalWeight.toLocaleString(undefined, { maximumFractionDigits: 0 })} lb`}</p>
                   </div>
-                  <button type="button" onClick={() => setMobilePanelOpen(false)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close cargo panel" data-testid="button-close-mobile-cargo-panel"><X className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => setMobilePanelOpen(false)} className="flex h-9 items-center gap-1 rounded-xl bg-slate-100 px-2.5 text-[10px] font-bold text-slate-600 transition hover:bg-slate-200 active:scale-95" aria-label="Hide cargo panel" data-testid="button-close-mobile-cargo-panel"><ChevronDown className="h-4 w-4" />Hide</button>
                 </div>
                 {onPlacedChange ? (
                   <div className="mt-2.5 grid grid-cols-3 rounded-xl bg-slate-100 p-1" role="tablist" aria-label="Cargo workspace zones">
@@ -2523,11 +2586,40 @@ export function ContainerViewer3D({
                   </div>)}
                 </div> : <div className="px-4 py-7 text-center"><Package className="mx-auto h-6 w-6 text-slate-300" /><p className="mt-2 text-[11px] font-bold text-slate-600">No cargo staged here</p><p className="mt-1 text-[9px] leading-4 text-slate-400">Use the D1 or D2 control beside a loaded unit.</p></div>}
               </div>
-            </section>
+            </motion.section>
           )}
+          </AnimatePresence>
+          <AnimatePresence initial={false}>
+            {!mobilePanelOpen && !sequenceMode && (
+              <motion.button
+                type="button"
+                initial={{ opacity: 0, y: 12, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 12, scale: 0.96 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                onClick={() => {
+                  setMobilePanelOpen(true);
+                  setDisplayControlsOpen(false);
+                  setWarningPanelOpen(false);
+                  setSharePanelOpen(false);
+                  setHelpPanelOpen(false);
+                }}
+                className="absolute bottom-3 right-3 z-30 flex h-11 items-center gap-2 rounded-2xl border border-white/95 bg-white/[0.96] px-3.5 text-[11px] font-bold text-slate-700 shadow-[0_14px_34px_-16px_rgba(15,23,42,0.55)] backdrop-blur-md transition hover:text-primary active:scale-95 lg:hidden"
+                aria-label="Show cargo and staging docks"
+                aria-expanded={false}
+                aria-controls="mobile-cargo-panel"
+                data-testid="button-mobile-cargo-panel"
+              >
+                <ListChecks className="h-4 w-4 text-primary" />
+                <span>Cargo</span>
+                <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[9px] text-primary">{placed.length}</span>
+                <ChevronUp className="h-3.5 w-3.5 text-slate-400" />
+              </motion.button>
+            )}
+          </AnimatePresence>
           {hoveredCargoIndex !== null && placed[hoveredCargoIndex] && (
             <div
-              className={`pointer-events-none absolute top-3 z-20 w-max max-w-[calc(100%-6.5rem)] -translate-x-1/2 rounded-2xl border border-white/95 bg-white/[0.98] px-3 py-2 text-slate-700 shadow-[0_14px_36px_-22px_rgba(15,23,42,0.32)] ${sidebarOpen ? "left-1/2 lg:left-[calc(50%-172px)]" : "left-1/2"}`}
+              className={`pointer-events-none absolute top-16 z-20 w-max max-w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-2xl border border-white/95 bg-white/[0.98] px-3 py-2 text-slate-700 shadow-[0_14px_36px_-22px_rgba(15,23,42,0.32)] sm:top-3 sm:max-w-[calc(100%-6.5rem)] ${sidebarOpen ? "left-1/2 lg:left-[calc(50%-172px)]" : "left-1/2"}`}
               data-testid="container-cargo-hover-card"
             >
               <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1">
@@ -2579,7 +2671,7 @@ export function ContainerViewer3D({
               <p className="mt-1.5 text-center text-[9px] text-slate-500">Suggested order: closed end to doors, lower levels first</p>
             </div>
           ) : !mobilePanelOpen && (
-            <div className={`absolute bottom-3 right-3 left-3 z-20 sm:left-auto sm:max-w-[75%] lg:hidden rounded-md border px-2.5 py-1.5 text-[10px] font-medium shadow-sm pointer-events-none ${
+            <div className={`absolute bottom-3 right-[9.25rem] left-3 z-20 sm:left-auto sm:right-[9.25rem] sm:max-w-[65%] lg:hidden rounded-md border px-2.5 py-1.5 text-[10px] font-medium shadow-sm pointer-events-none ${
               arrangeMode
                 ? placementMessage.includes("overlap") || placementMessage.includes("without enough") || placementMessage.includes("cancelled")
                   ? "border-red-200 bg-red-50/90 text-red-700"
