@@ -4244,37 +4244,36 @@ export default function ContainerCalculator() {
         </div>
       )}
       {!isEmbedMode && <Navbar />}
-      <main className={`flex-1 pb-16 ${isEmbedMode ? "pt-6" : "pt-28"}`}>
+      <main className={`flex-1 pb-16 ${isEmbedMode ? "pt-6" : "pt-24 md:pt-28"}`}>
         <div className="mx-auto w-full max-w-[1920px] px-4 md:px-6 xl:px-8">
           {!isEmbedMode && <Breadcrumbs
+            compact
             items={[
               { label: "Tools", href: "/tools" },
               { label: "Container Loading Calculator" },
             ]}
           />}
 
-          <div className="text-center max-w-3xl mx-auto mb-10">
-            <Badge className="mb-3 bg-primary/10 text-primary border-0 px-3 py-1">
-              Free Tool
-            </Badge>
-            <h1
-              className="text-3xl md:text-4xl font-extrabold font-display mb-3 text-slate-900"
-              data-testid="text-calculator-title"
-            >
-              Container Loading Calculator
-            </h1>
-            <p className="text-lg text-slate-600">
-              Plan optimal cargo placement with interactive 3D visualization. See exactly how your
-              goods fit in standard shipping containers.
-            </p>
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-              <Button type="button" size="sm" variant="outline" className="gap-2 bg-white" onClick={openProjectLibrary} data-testid="button-open-project-library"><FolderOpen className="h-4 w-4 text-primary" />Saved plans{savedProjects.length ? ` (${savedProjects.length})` : ""}</Button>
-              <Button type="button" size="sm" variant="outline" className="gap-2 bg-white" onClick={saveCurrentProject} data-testid="button-quick-save-project"><Save className="h-4 w-4 text-emerald-600" />{currentProjectId ? "Save changes" : "Save project"}</Button>
-              <span className="inline-flex items-center gap-1.5 px-2 text-[11px] text-slate-400"><Clock3 className="h-3.5 w-3.5" />{lastSavedAt ? `Autosaved ${new Date(lastSavedAt).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}` : "Autosave ready"}</span>
+          <header className="mb-4 border-b border-slate-200/80 pb-3 sm:mb-5 sm:flex sm:items-end sm:justify-between sm:gap-5">
+            <div className="min-w-0">
+              <h1
+                className="font-display text-2xl font-extrabold leading-tight text-slate-900 md:text-3xl"
+                data-testid="text-calculator-title"
+              >
+                Container Loading Calculator
+              </h1>
+              <p className="mt-1 text-xs leading-5 text-slate-500 sm:text-sm">
+                Plan container loads with an interactive 3D view.
+              </p>
             </div>
-          </div>
+            <div className="mt-3 flex shrink-0 items-center gap-1.5 sm:mt-0" aria-label="Project controls">
+              <Button type="button" size="sm" variant="outline" className="h-9 gap-1.5 bg-white px-2.5 text-xs" onClick={openProjectLibrary} data-testid="button-open-project-library"><FolderOpen className="h-3.5 w-3.5 text-primary" />Plans{savedProjects.length ? ` (${savedProjects.length})` : ""}</Button>
+              <Button type="button" size="sm" variant="outline" className="h-9 gap-1.5 bg-white px-2.5 text-xs" onClick={saveCurrentProject} data-testid="button-quick-save-project"><Save className="h-3.5 w-3.5 text-emerald-600" />{currentProjectId ? "Save changes" : "Save"}</Button>
+              <span className="hidden items-center gap-1.5 px-1 text-[10px] text-slate-400 lg:inline-flex"><Clock3 className="h-3.5 w-3.5" />{lastSavedAt ? `Autosaved ${new Date(lastSavedAt).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}` : "Autosave ready"}</span>
+            </div>
+          </header>
 
-          <div className="max-w-[1800px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="mx-auto grid max-w-[1800px] grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
             <div className="lg:col-span-5 space-y-5">
               <Card id="container-type-setup" className="border-slate-200 scroll-mt-28" data-testid="container-type-section">
                 <CardContent className="p-5">
