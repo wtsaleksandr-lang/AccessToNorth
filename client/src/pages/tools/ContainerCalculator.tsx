@@ -1350,56 +1350,42 @@ export function ContainerViewer3D({
     containerGroup.add(ribs);
 
     const doorX = cL;
-    const doorLineMaterial = new THREE.LineBasicMaterial({ color: 0x7b8794, transparent: true, opacity: 0.42 });
-    const doorPanelMaterial = new THREE.MeshBasicMaterial({ color: 0xf8fafc, transparent: true, opacity: 0.025, side: THREE.DoubleSide, depthWrite: false });
-    const doorOpeningDetails = new THREE.LineSegments(
-      new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(doorX + 0.002, 0, cW / 2), new THREE.Vector3(doorX + 0.002, cH, cW / 2),
-      ]),
-      doorLineMaterial.clone(),
+    const doorLineMaterial = new THREE.LineBasicMaterial({
+      color: 0x7b8794,
+      transparent: true,
+      opacity: 0.5,
+      depthTest: false,
+    });
+    const doorPanelMaterial = new THREE.MeshBasicMaterial({
+      color: 0xf8fafc,
+      transparent: true,
+      opacity: 0.045,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+
+    // The reference shows a closed, plain rear face. Keep it as one clean
+    // panel with only its outer perimeter — no open wings, braces or hardware.
+    const closedDoorPanel = new THREE.Mesh(
+      new THREE.PlaneGeometry(cW, cH),
+      doorPanelMaterial,
     );
-    containerGroup.add(doorOpeningDetails);
+    closedDoorPanel.rotation.y = Math.PI / 2;
+    closedDoorPanel.position.set(doorX + 0.004, cH / 2, cW / 2);
+    closedDoorPanel.renderOrder = 7;
+    containerGroup.add(closedDoorPanel);
 
-    const createOpenDoor = (side: "left" | "right") => {
-      // Each panel swings away from the centre line: the z=0 door opens
-      // toward negative Z and the z=cW door opens toward positive Z.
-      const direction = side === "left" ? -1 : 1;
-      const door = new THREE.Group();
-      const doorWidth = cW * 0.5;
-      door.position.set(doorX + 0.006, 0, side === "left" ? 0 : cW);
-      door.rotation.y = direction * THREE.MathUtils.degToRad(24);
-
-      const panel = new THREE.Mesh(new THREE.PlaneGeometry(doorWidth, cH), doorPanelMaterial.clone());
-      panel.rotation.y = Math.PI / 2;
-      panel.position.set(0, cH / 2, direction * doorWidth / 2);
-      door.add(panel);
-
-      const freeEdge = direction * doorWidth;
-      const lockZ1 = direction * doorWidth * 0.36;
-      const lockZ2 = direction * doorWidth * 0.68;
-      const doorOutline = new THREE.LineSegments(
-        new THREE.BufferGeometry().setFromPoints([
-          new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, cH, 0),
-          new THREE.Vector3(0, cH, 0), new THREE.Vector3(0, cH, freeEdge),
-          new THREE.Vector3(0, cH, freeEdge), new THREE.Vector3(0, 0, freeEdge),
-          new THREE.Vector3(0, 0, freeEdge), new THREE.Vector3(0, 0, 0),
-          new THREE.Vector3(0, cH * 0.5, 0), new THREE.Vector3(0, cH * 0.5, freeEdge),
-          new THREE.Vector3(0, cH * 0.08, 0), new THREE.Vector3(0, cH * 0.92, freeEdge),
-          new THREE.Vector3(0, cH * 0.92, 0), new THREE.Vector3(0, cH * 0.08, freeEdge),
-          new THREE.Vector3(0, cH * 0.1, lockZ1), new THREE.Vector3(0, cH * 0.9, lockZ1),
-          new THREE.Vector3(0, cH * 0.1, lockZ2), new THREE.Vector3(0, cH * 0.9, lockZ2),
-          new THREE.Vector3(0, cH * 0.42, lockZ1), new THREE.Vector3(0, cH * 0.42, lockZ1 + direction * doorWidth * 0.14),
-          new THREE.Vector3(0, cH * 0.42, lockZ2), new THREE.Vector3(0, cH * 0.42, lockZ2 + direction * doorWidth * 0.14),
-        ]),
-        doorLineMaterial.clone(),
-      );
-      doorOutline.renderOrder = 8;
-      door.add(doorOutline);
-
-      containerGroup.add(door);
-    };
-    createOpenDoor("left");
-    createOpenDoor("right");
+    const closedDoorOutline = new THREE.LineSegments(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(doorX + 0.006, 0, 0), new THREE.Vector3(doorX + 0.006, cH, 0),
+        new THREE.Vector3(doorX + 0.006, cH, 0), new THREE.Vector3(doorX + 0.006, cH, cW),
+        new THREE.Vector3(doorX + 0.006, cH, cW), new THREE.Vector3(doorX + 0.006, 0, cW),
+        new THREE.Vector3(doorX + 0.006, 0, cW), new THREE.Vector3(doorX + 0.006, 0, 0),
+      ]),
+      doorLineMaterial,
+    );
+    closedDoorOutline.renderOrder = 8;
+    containerGroup.add(closedDoorOutline);
 
     const formatSceneLength = (inches: number) =>
       unitSystem === "metric"
@@ -1419,8 +1405,8 @@ export function ContainerViewer3D({
         canvas.height = 104;
         const ctx = canvas.getContext("2d")!;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "rgba(71,85,105,0.8)";
-        ctx.font = "500 27px Inter, Arial, sans-serif";
+        ctx.fillStyle = "rgba(30,41,59,0.96)";
+        ctx.font = "600 48px Inter, Arial, sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(text, 224, 53);
@@ -1445,10 +1431,10 @@ export function ContainerViewer3D({
       canvas.height = 80;
       const ctx = canvas.getContext("2d")!;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.font = "500 25px Inter, Arial, sans-serif";
+      ctx.font = "600 52px Inter, Arial, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillStyle = "rgba(71,85,105,0.78)";
+      ctx.fillStyle = "rgba(30,41,59,0.96)";
       ctx.fillText(text, 192, 41);
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
@@ -1499,8 +1485,8 @@ export function ContainerViewer3D({
           );
         }
         const labelScale = isLength
-          ? Math.max(0.3, Math.min(0.43, cW * 0.18))
-          : Math.max(0.27, Math.min(0.38, cW * 0.16));
+          ? Math.max(0.56, Math.min(0.76, cW * 0.3))
+          : Math.max(0.5, Math.min(0.7, cW * 0.28));
         const label = createRulerLabel(formatSceneLength(valueIn), labelScale);
         if (isLength) {
           label.position.set(valueM, rulerY + 0.015, fixed + rulerTick * 2.15);
@@ -1513,7 +1499,7 @@ export function ContainerViewer3D({
 
       const ruler = new THREE.LineSegments(
         new THREE.BufferGeometry().setFromPoints(points),
-        new THREE.LineBasicMaterial({ color: 0x7b8794, transparent: true, opacity: 0.46, depthTest: false }),
+        new THREE.LineBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.72, depthTest: false }),
       );
       ruler.renderOrder = 17;
       draftingRulerGroup.add(ruler);
