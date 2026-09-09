@@ -1413,15 +1413,15 @@ export function ContainerViewer3D({
       let texture = measurementTextureCache.get(text);
       if (!texture) {
         const canvas = document.createElement("canvas");
-        canvas.width = 448;
-        canvas.height = 104;
+        canvas.width = 512;
+        canvas.height = 160;
         const ctx = canvas.getContext("2d")!;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "rgba(30,41,59,0.96)";
-        ctx.font = "600 48px Inter, Arial, sans-serif";
+        ctx.fillStyle = "rgba(15,23,42,1)";
+        ctx.font = "700 72px Inter, Arial, sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(text, 224, 53);
+        ctx.fillText(text, 256, 82);
         texture = new THREE.CanvasTexture(canvas);
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.generateMipmaps = false;
@@ -1429,7 +1429,7 @@ export function ContainerViewer3D({
         measurementTextureCache.set(text, texture);
       }
       const label = new THREE.Mesh(
-        new THREE.PlaneGeometry(scale, scale * 0.232),
+        new THREE.PlaneGeometry(scale, scale * 0.42),
         new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide }),
       );
       label.rotation.x = -Math.PI / 2;
@@ -1440,45 +1440,46 @@ export function ContainerViewer3D({
     const createRulerLabel = (text: string, scale: number) => {
       const canvas = document.createElement("canvas");
       canvas.width = 384;
-      canvas.height = 80;
+      canvas.height = 120;
       const ctx = canvas.getContext("2d")!;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.font = "600 52px Inter, Arial, sans-serif";
+      ctx.font = "700 68px Inter, Arial, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillStyle = "rgba(30,41,59,0.96)";
-      ctx.fillText(text, 192, 41);
+      ctx.fillStyle = "rgba(30,41,59,1)";
+      ctx.fillText(text, 192, 62);
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.generateMipmaps = false;
       texture.minFilter = THREE.LinearFilter;
       const label = new THREE.Mesh(
-        new THREE.PlaneGeometry(scale, scale * 0.208),
+        new THREE.PlaneGeometry(scale, scale * 0.31),
         new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide }),
       );
       label.rotation.x = -Math.PI / 2;
       label.renderOrder = 18;
       return label;
     };
-    const rulerOffset = Math.max(0.13, cW * 0.11);
-    const rulerY = 0.025;
-    const rulerTick = Math.max(0.035, cW * 0.025);
+    const rulerOffset = Math.max(0.18, cW * 0.12);
+    const rulerY = 0.03;
+    const rulerTick = Math.max(0.05, cW * 0.03);
     const draftingRulerGroup = new THREE.Group();
     draftingRulerGroup.name = "top-view-coordinate-rulers";
     draftingRulerGroup.visible = false;
     containerGroup.add(draftingRulerGroup);
 
-    const addCoordinateRuler = (axis: "length" | "width") => {
+    const addCoordinateRuler = (axis: "length" | "width", side: "before" | "after") => {
       const isLength = axis === "length";
       const totalIn = isLength ? container.lengthIn : container.widthIn;
-      const totalM = isLength ? cL : cW;
       const preferredStepIn = unitSystem === "metric"
         ? (isLength ? 2000 : 1000) / 25.4
         : (isLength ? 96 : 36);
       const values = [0];
       for (let value = preferredStepIn; value < totalIn - preferredStepIn * 0.55; value += preferredStepIn) values.push(value);
       values.push(totalIn);
-      const fixed = (isLength ? cW : cL) + rulerOffset;
+      const fixed = isLength
+        ? (side === "after" ? cW + rulerOffset : -rulerOffset)
+        : (side === "after" ? cL + rulerOffset : -rulerOffset);
       const points: THREE.Vector3[] = isLength
         ? [new THREE.Vector3(0, rulerY, fixed), new THREE.Vector3(cL, rulerY, fixed)]
         : [new THREE.Vector3(fixed, rulerY, 0), new THREE.Vector3(fixed, rulerY, cW)];
@@ -1497,29 +1498,33 @@ export function ContainerViewer3D({
           );
         }
         const labelScale = isLength
-          ? Math.max(0.56, Math.min(0.76, cW * 0.3))
-          : Math.max(0.5, Math.min(0.7, cW * 0.28));
+          ? Math.max(0.9, Math.min(1.15, cW * 0.46))
+          : Math.max(0.76, Math.min(0.98, cW * 0.4));
         const label = createRulerLabel(formatSceneLength(valueIn), labelScale);
+        const direction = side === "after" ? 1 : -1;
         if (isLength) {
-          label.position.set(valueM, rulerY + 0.015, fixed + rulerTick * 2.15);
+          label.position.set(valueM, rulerY + 0.018, fixed + direction * rulerTick * 2.65);
+          if (side === "before") label.rotation.z = Math.PI;
         } else {
-          label.position.set(fixed + rulerTick * 2.3, rulerY + 0.015, valueM);
-          label.rotation.z = -Math.PI / 2;
+          label.position.set(fixed + direction * rulerTick * 2.65, rulerY + 0.018, valueM);
+          label.rotation.z = side === "after" ? -Math.PI / 2 : Math.PI / 2;
         }
         draftingRulerGroup.add(label);
       });
 
       const ruler = new THREE.LineSegments(
         new THREE.BufferGeometry().setFromPoints(points),
-        new THREE.LineBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.72, depthTest: false }),
+        new THREE.LineBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.82, depthTest: false }),
       );
       ruler.renderOrder = 17;
       draftingRulerGroup.add(ruler);
     };
-    addCoordinateRuler("length");
-    addCoordinateRuler("width");
+    addCoordinateRuler("length", "before");
+    addCoordinateRuler("length", "after");
+    addCoordinateRuler("width", "before");
+    addCoordinateRuler("width", "after");
 
-    const hoverMeasurementLabelScale = Math.max(0.72, Math.min(0.94, cW * 0.38)) * (compactViewport ? 1.24 : 1);
+    const hoverMeasurementLabelScale = Math.max(1.55, Math.min(2.05, cW * 0.78)) * (compactViewport ? 1.12 : 1);
     const addMeasurementRange = (
       group: THREE.Group,
       axis: "length" | "width",
@@ -1531,7 +1536,7 @@ export function ContainerViewer3D({
       label: string,
     ) => {
       if (end - start < 0.025) return;
-      const lineMaterial = new THREE.LineBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.58, depthTest: false });
+      const lineMaterial = new THREE.LineBasicMaterial({ color: 0x475569, transparent: true, opacity: 0.82, depthTest: false });
       const arrowLength = Math.min((end - start) * 0.22, Math.max(0.075, cW * 0.05));
       const arrowWidth = arrowLength * 0.5;
       const points = axis === "length"
