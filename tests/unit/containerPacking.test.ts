@@ -65,7 +65,7 @@ test("high cargo recommends a high-cube container", () => {
   assert.equal(recommendation?.plan.totalContainers, 1);
 });
 
-test("completed layouts share spare width evenly between both side walls", () => {
+test("completed layouts stay anchored to the container Side A boundary", () => {
   const item = cargo({
     name: "Cartons",
     length: 35,
@@ -78,9 +78,10 @@ test("completed layouts share spare width evenly between both side walls", () =>
   const container = CONTAINER_PRESETS.find((entry) => entry.id === "40dc")!;
   const plan = packIntoContainers([item], container);
   const placed = plan.containers[0].result.placed;
+  const minX = Math.min(...placed.map((box) => box.x));
   const minZ = Math.min(...placed.map((box) => box.z));
-  const maxZ = Math.max(...placed.map((box) => box.z + box.w));
 
-  assert.ok(Math.abs(minZ - (container.widthIn - maxZ)) < 0.001);
+  assert.equal(minX, 0);
+  assert.equal(minZ, 0);
   assert.equal(plan.containers[0].result.floorArea, (420 * 70) / 144);
 });
