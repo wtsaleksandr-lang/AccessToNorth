@@ -144,6 +144,8 @@ type StagedCargo = {
   id: string;
   zone: StagingDock;
   box: PlacedBox;
+  /** World-space centre inside its staging dock, stored in inches. */
+  dockPositionIn?: { x: number; z: number };
 };
 type ShareLifetimeDays = 7 | 30 | 90 | 180;
 type ManagedShareLink = {
@@ -888,7 +890,7 @@ export function ContainerViewer3D({
     })));
   }, [placed, stagedCargo.length]);
 
-  const stageCargo = useCallback((index: number, zone: StagingDock) => {
+  const stageCargo = useCallback((index: number, zone: StagingDock, dockPositionIn?: { x: number; z: number }) => {
     const selected = placed[index];
     if (!selected) return;
     const nextPlaced = placed.filter((_, placedIndex) => placedIndex !== index).map((box) => ({ ...box }));
@@ -911,6 +913,7 @@ export function ContainerViewer3D({
         id: stagedId,
         zone,
         box: { ...selected },
+        dockPositionIn,
       },
     ]);
     stagingMutationRef.current = true;
@@ -1115,16 +1118,16 @@ export function ContainerViewer3D({
     scene.add(ground);
 
     const gridDivisions = renderProfile.gridDivisions;
-    const grid = new THREE.GridHelper(gridSize, gridDivisions, 0xb8c2cd, 0xcbd3dc);
+    const grid = new THREE.GridHelper(gridSize, gridDivisions, 0xffffff, 0xffffff);
     grid.position.set(cL / 2, -0.02, cW / 2);
     if (Array.isArray(grid.material)) {
       grid.material.forEach((m) => {
         (m as THREE.LineBasicMaterial).transparent = true;
-        (m as THREE.LineBasicMaterial).opacity = 0.42;
+        (m as THREE.LineBasicMaterial).opacity = 0.68;
       });
     } else {
       (grid.material as THREE.LineBasicMaterial).transparent = true;
-      (grid.material as THREE.LineBasicMaterial).opacity = 0.42;
+      (grid.material as THREE.LineBasicMaterial).opacity = 0.68;
     }
     scene.add(grid);
 
@@ -1138,9 +1141,11 @@ export function ContainerViewer3D({
     const dockOutlines = {} as Record<StagingDock, THREE.Line>;
     const dockSurfaces = {} as Record<StagingDock, THREE.Mesh>;
     const dockHitMeshes: THREE.Mesh[] = [];
+    const dockBounds = {} as Record<StagingDock, { xMin: number; xMax: number; zMin: number; zMax: number }>;
     const createDockOutline = (zone: StagingDock, zMin: number, zMax: number) => {
       const xMin = -cL * 0.1;
       const xMax = cL * 1.1;
+      dockBounds[zone] = { xMin, xMax, zMin, zMax };
       const radius = Math.min(cL * 0.055, (zMax - zMin) * 0.12);
       const points: THREE.Vector3[] = [];
       const addCorner = (cx: number, cz: number, startAngle: number) => {
@@ -1184,7 +1189,7 @@ export function ContainerViewer3D({
     };
     // Matching mirrored staging zones: equal footprint, corner radius and
     // offset on both sides of the container.
-    const dockDepth = cW * 1.5;
+    const dockDepth = cW * 2.25;
     // Keep a clear working aisle between the loaded container and each staging
     // dock so cargo in the three zones remains visually distinct at a glance.
     const dockGap = cW * 0.42;
@@ -1264,8 +1269,8 @@ export function ContainerViewer3D({
     containerGroup.add(ribs);
 
     const doorX = cL;
-    const doorLineMaterial = new THREE.LineBasicMaterial({ color: 0x687684, transparent: true, opacity: 0.58 });
-    const doorPanelMaterial = new THREE.MeshBasicMaterial({ color: 0xf2f5f8, transparent: true, opacity: 0.08, side: THREE.DoubleSide, depthWrite: false });
+    const doorLineMaterial = new THREE.LineBasicMaterial({ color: 0x687684, transparent: true, opacity: 0.52 });
+    const doorPanelMaterial = new THREE.MeshBasicMaterial({ color: 0xf8fafc, transparent: true, opacity: 0.04, side: THREE.DoubleSide, depthWrite: false });
     const doorOpeningDetails = new THREE.LineSegments(
       new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(doorX + 0.002, 0, cW / 2), new THREE.Vector3(doorX + 0.002, cH, cW / 2),
@@ -1279,7 +1284,7 @@ export function ContainerViewer3D({
       const door = new THREE.Group();
       const doorWidth = cW * 0.49;
       door.position.set(doorX + 0.006, 0, side === "left" ? 0 : cW);
-      door.rotation.y = direction * THREE.MathUtils.degToRad(26);
+      door.rotation.y = direction * THREE.MathUtils.degToRad(38);
 
       const panel = new THREE.Mesh(new THREE.PlaneGeometry(doorWidth, cH), doorPanelMaterial.clone());
       panel.rotation.y = Math.PI / 2;
@@ -1295,6 +1300,8 @@ export function ContainerViewer3D({
           new THREE.Vector3(0, cH, freeEdge), new THREE.Vector3(0, 0, freeEdge),
           new THREE.Vector3(0, 0, freeEdge), new THREE.Vector3(0, 0, 0),
           new THREE.Vector3(0, cH * 0.5, 0), new THREE.Vector3(0, cH * 0.5, freeEdge),
+          new THREE.Vector3(0, cH * 0.08, 0), new THREE.Vector3(0, cH * 0.92, freeEdge),
+          new THREE.Vector3(0, cH * 0.92, 0), new THREE.Vector3(0, cH * 0.08, freeEdge),
           new THREE.Vector3(0, cH * 0.12, lockZ), new THREE.Vector3(0, cH * 0.88, lockZ),
           new THREE.Vector3(0, cH * 0.42, lockZ), new THREE.Vector3(0, cH * 0.42, lockZ + direction * doorWidth * 0.16),
         ]),
@@ -1317,27 +1324,33 @@ export function ContainerViewer3D({
     hoverMeasurementGroup.visible = false;
     scene.add(hoverMeasurementGroup);
     let activeMeasurementIndex: number | null = null;
+    const measurementTextureCache = new Map<string, THREE.CanvasTexture>();
     const createMeasurementLabel = (text: string, scale: number) => {
-      const canvas = document.createElement("canvas");
-      canvas.width = 448;
-      canvas.height = 104;
-      const ctx = canvas.getContext("2d")!;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "rgba(71,85,105,0.92)";
-      ctx.font = "600 36px Inter, Arial, sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(text, 224, 53);
-      const texture = new THREE.CanvasTexture(canvas);
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.generateMipmaps = false;
-      texture.minFilter = THREE.LinearFilter;
+      let texture = measurementTextureCache.get(text);
+      if (!texture) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 448;
+        canvas.height = 104;
+        const ctx = canvas.getContext("2d")!;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "rgba(71,85,105,0.92)";
+        ctx.font = "600 36px Inter, Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, 224, 53);
+        texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.generateMipmaps = false;
+        texture.minFilter = THREE.LinearFilter;
+        measurementTextureCache.set(text, texture);
+      }
       const label = new THREE.Mesh(
         new THREE.PlaneGeometry(scale, scale * 0.232),
         new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide }),
       );
       label.rotation.x = -Math.PI / 2;
       label.renderOrder = 20;
+      label.userData.sharedMeasurementTexture = true;
       return label;
     };
     const createRulerLabel = (text: string, scale: number) => {
@@ -1370,16 +1383,13 @@ export function ContainerViewer3D({
       return label;
     };
     const rulerOffset = Math.max(0.2, cW * 0.2);
-    const rulerZ = cW + rulerOffset;
     const rulerY = 0.025;
     const rulerTick = Math.max(0.055, cW * 0.04);
     const dimensionLabelScale = compactViewport ? 1.55 : 1;
-    const dimensionLineMaterial = new THREE.LineDashedMaterial({
+    const dimensionLineMaterial = new THREE.LineBasicMaterial({
       color: 0x475569,
-      dashSize: Math.max(0.065, cW * 0.035),
-      gapSize: Math.max(0.045, cW * 0.022),
       transparent: true,
-      opacity: 0.86,
+      opacity: 0.76,
       depthTest: false,
     });
     const dimensionTickMaterial = new THREE.LineBasicMaterial({ color: 0x475569, transparent: true, opacity: 0.82, depthTest: false });
@@ -1413,12 +1423,22 @@ export function ContainerViewer3D({
       const edge = side === "start" ? 0 : (isLength ? cW : cL);
       const outward = side === "start" ? -1 : 1;
       const guideGap = rulerTick * 0.9;
+      const arrowLength = Math.max(0.075, cW * 0.045);
+      const arrowWidth = arrowLength * 0.52;
       const baselinePoints: THREE.Vector3[] = isLength
         ? [
             new THREE.Vector3(0, rulerY, fixed), new THREE.Vector3(cL, rulerY, fixed),
+            new THREE.Vector3(0, rulerY, fixed), new THREE.Vector3(arrowLength, rulerY, fixed - arrowWidth),
+            new THREE.Vector3(0, rulerY, fixed), new THREE.Vector3(arrowLength, rulerY, fixed + arrowWidth),
+            new THREE.Vector3(cL, rulerY, fixed), new THREE.Vector3(cL - arrowLength, rulerY, fixed - arrowWidth),
+            new THREE.Vector3(cL, rulerY, fixed), new THREE.Vector3(cL - arrowLength, rulerY, fixed + arrowWidth),
           ]
         : [
             new THREE.Vector3(fixed, rulerY, 0), new THREE.Vector3(fixed, rulerY, cW),
+            new THREE.Vector3(fixed, rulerY, 0), new THREE.Vector3(fixed - arrowWidth, rulerY, arrowLength),
+            new THREE.Vector3(fixed, rulerY, 0), new THREE.Vector3(fixed + arrowWidth, rulerY, arrowLength),
+            new THREE.Vector3(fixed, rulerY, cW), new THREE.Vector3(fixed - arrowWidth, rulerY, cW - arrowLength),
+            new THREE.Vector3(fixed, rulerY, cW), new THREE.Vector3(fixed + arrowWidth, rulerY, cW - arrowLength),
           ];
       const guidePoints: THREE.Vector3[] = isLength
         ? [
@@ -1456,7 +1476,7 @@ export function ContainerViewer3D({
         }
         containerGroup.add(label);
       });
-      const baseline = addRulerSegments(baselinePoints, dimensionLineMaterial, true);
+      const baseline = addRulerSegments(baselinePoints, dimensionLineMaterial);
       baseline.userData.dimensionAxis = axis;
       baseline.userData.dimensionSpan = totalM;
       addRulerSegments(tickPoints, dimensionTickMaterial);
@@ -1471,8 +1491,14 @@ export function ContainerViewer3D({
     const addHeightRuler = (x: number, z: number, outwardX: number) => {
       const baselineX = x + outwardX * rulerOffset;
       const guideGap = rulerTick * 0.9;
+      const arrowLength = Math.max(0.075, cW * 0.045);
+      const arrowWidth = arrowLength * 0.52;
       const baselinePoints: THREE.Vector3[] = [
         new THREE.Vector3(baselineX, 0, z), new THREE.Vector3(baselineX, cH, z),
+        new THREE.Vector3(baselineX, 0, z), new THREE.Vector3(baselineX - arrowWidth, arrowLength, z),
+        new THREE.Vector3(baselineX, 0, z), new THREE.Vector3(baselineX + arrowWidth, arrowLength, z),
+        new THREE.Vector3(baselineX, cH, z), new THREE.Vector3(baselineX - arrowWidth, cH - arrowLength, z),
+        new THREE.Vector3(baselineX, cH, z), new THREE.Vector3(baselineX + arrowWidth, cH - arrowLength, z),
       ];
       const guidePoints: THREE.Vector3[] = [
         new THREE.Vector3(x + outwardX * guideGap, 0, z), new THREE.Vector3(baselineX, 0, z),
@@ -1492,7 +1518,7 @@ export function ContainerViewer3D({
         label.position.set(baselineX + outwardX * rulerTick * 2.8, labelY, z + (z === 0 ? -0.012 : 0.012));
         containerGroup.add(label);
       });
-      const baseline = addRulerSegments(baselinePoints, dimensionLineMaterial, true);
+      const baseline = addRulerSegments(baselinePoints, dimensionLineMaterial);
       baseline.userData.dimensionAxis = "height";
       addRulerSegments(tickPoints, dimensionTickMaterial);
       addRulerSegments(guidePoints, dimensionGuideMaterial);
@@ -1501,30 +1527,54 @@ export function ContainerViewer3D({
     addHeightRuler(0, 0, -1);
     addHeightRuler(cL, cW, 1);
 
-    const addMeasurementRange = (group: THREE.Group, startX: number, endX: number, y: number, z: number, label: string) => {
-      const lineMaterial = new THREE.LineDashedMaterial({
-        color: 0x475569,
-        dashSize: Math.max(0.065, cW * 0.035),
-        gapSize: Math.max(0.045, cW * 0.022),
-        transparent: true,
-        opacity: 0.86,
-        depthTest: false,
-      });
-      const tick = Math.max(cW * 0.045, 0.06);
-      const geometry = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(startX, y, z), new THREE.Vector3(endX, y, z),
-        new THREE.Vector3(startX, y, cW), new THREE.Vector3(startX, y, z + tick),
-        new THREE.Vector3(endX, y, cW), new THREE.Vector3(endX, y, z + tick),
-      ]);
+    const hoverMeasurementLabelScale = Math.max(0.72, Math.min(0.94, cW * 0.38)) * (compactViewport ? 1.24 : 1);
+    const addMeasurementRange = (
+      group: THREE.Group,
+      axis: "length" | "width",
+      start: number,
+      end: number,
+      y: number,
+      fixed: number,
+      edge: number,
+      label: string,
+    ) => {
+      if (end - start < 0.025) return;
+      const lineMaterial = new THREE.LineBasicMaterial({ color: 0x334155, transparent: true, opacity: 0.88, depthTest: false });
+      const arrowLength = Math.min((end - start) * 0.22, Math.max(0.075, cW * 0.05));
+      const arrowWidth = arrowLength * 0.5;
+      const points = axis === "length"
+        ? [
+            new THREE.Vector3(start, y, fixed), new THREE.Vector3(end, y, fixed),
+            new THREE.Vector3(start, y, fixed), new THREE.Vector3(start + arrowLength, y, fixed - arrowWidth),
+            new THREE.Vector3(start, y, fixed), new THREE.Vector3(start + arrowLength, y, fixed + arrowWidth),
+            new THREE.Vector3(end, y, fixed), new THREE.Vector3(end - arrowLength, y, fixed - arrowWidth),
+            new THREE.Vector3(end, y, fixed), new THREE.Vector3(end - arrowLength, y, fixed + arrowWidth),
+            new THREE.Vector3(start, y, edge), new THREE.Vector3(start, y, fixed),
+            new THREE.Vector3(end, y, edge), new THREE.Vector3(end, y, fixed),
+          ]
+        : [
+            new THREE.Vector3(fixed, y, start), new THREE.Vector3(fixed, y, end),
+            new THREE.Vector3(fixed, y, start), new THREE.Vector3(fixed - arrowWidth, y, start + arrowLength),
+            new THREE.Vector3(fixed, y, start), new THREE.Vector3(fixed + arrowWidth, y, start + arrowLength),
+            new THREE.Vector3(fixed, y, end), new THREE.Vector3(fixed - arrowWidth, y, end - arrowLength),
+            new THREE.Vector3(fixed, y, end), new THREE.Vector3(fixed + arrowWidth, y, end - arrowLength),
+            new THREE.Vector3(edge, y, start), new THREE.Vector3(fixed, y, start),
+            new THREE.Vector3(edge, y, end), new THREE.Vector3(fixed, y, end),
+          ];
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
       const lines = new THREE.LineSegments(geometry, lineMaterial);
-      lines.computeLineDistances();
       lines.renderOrder = 19;
       group.add(lines);
-      const labelSprite = createMeasurementLabel(
-        label,
-        Math.max(0.78, Math.min(cL * 0.25, Math.max(0.9, endX - startX) * 0.82)) * (compactViewport ? 1.22 : 1),
-      );
-      labelSprite.position.set((startX + endX) / 2, y + 0.018, z + tick * 1.8);
+      const labelSprite = createMeasurementLabel(label, hoverMeasurementLabelScale);
+      if (axis === "length") {
+        const outward = fixed < edge ? -1 : 1;
+        labelSprite.position.set((start + end) / 2, y + 0.018, fixed + outward * Math.max(0.08, cW * 0.07));
+        if (outward < 0) labelSprite.rotation.z = Math.PI;
+      } else {
+        const outward = fixed < edge ? -1 : 1;
+        labelSprite.position.set(fixed + outward * Math.max(0.08, cW * 0.07), y + 0.018, (start + end) / 2);
+        labelSprite.rotation.z = outward < 0 ? Math.PI / 2 : -Math.PI / 2;
+      }
       group.add(labelSprite);
     };
     const clearHoverMeasurements = () => {
@@ -1537,7 +1587,7 @@ export function ContainerViewer3D({
         } else if (child instanceof THREE.Mesh) {
           child.geometry.dispose();
           const material = child.material as THREE.MeshBasicMaterial;
-          material.map?.dispose();
+          if (!child.userData.sharedMeasurementTexture) material.map?.dispose();
           material.dispose();
         }
       }
@@ -1553,10 +1603,26 @@ export function ContainerViewer3D({
       }
       const bX = inToM(box.x);
       const bL = inToM(box.l);
+      const bZ = inToM(box.z);
+      const bW = inToM(box.w);
+      const bTop = inToM(box.y + box.h);
       const measurementY = rulerY + 0.012;
-      const measurementZ = rulerZ;
-      addMeasurementRange(hoverMeasurementGroup, 0, bX, measurementY, measurementZ, `Back ${formatSceneLength(box.x)}`);
-      addMeasurementRange(hoverMeasurementGroup, bX + bL, cL, measurementY, measurementZ, `Doors ${formatSceneLength(Math.max(0, container.lengthIn - box.x - box.l))}`);
+      const beforeLabel = formatSceneLength(box.x);
+      const afterLabel = formatSceneLength(Math.max(0, container.lengthIn - box.x - box.l));
+      addMeasurementRange(hoverMeasurementGroup, "length", 0, bX, measurementY, -rulerOffset, 0, beforeLabel);
+      addMeasurementRange(hoverMeasurementGroup, "length", bX + bL, cL, measurementY, -rulerOffset, 0, afterLabel);
+      addMeasurementRange(hoverMeasurementGroup, "length", 0, bX, measurementY, cW + rulerOffset, cW, beforeLabel);
+      addMeasurementRange(hoverMeasurementGroup, "length", bX + bL, cL, measurementY, cW + rulerOffset, cW, afterLabel);
+      addMeasurementRange(hoverMeasurementGroup, "width", 0, bZ, measurementY, cL + rulerOffset, cL, formatSceneLength(box.z));
+      addMeasurementRange(hoverMeasurementGroup, "width", bZ + bW, cW, measurementY, cL + rulerOffset, cL, formatSceneLength(Math.max(0, container.widthIn - box.z - box.w)));
+
+      const cargoLengthLabel = createMeasurementLabel(formatSceneLength(box.l), hoverMeasurementLabelScale * 0.86);
+      cargoLengthLabel.position.set(bX + bL / 2, bTop + 0.015, bZ + bW * 0.28);
+      hoverMeasurementGroup.add(cargoLengthLabel);
+      const cargoWidthLabel = createMeasurementLabel(formatSceneLength(box.w), hoverMeasurementLabelScale * 0.86);
+      cargoWidthLabel.position.set(bX + bL * 0.72, bTop + 0.017, bZ + bW / 2);
+      cargoWidthLabel.rotation.z = -Math.PI / 2;
+      hoverMeasurementGroup.add(cargoWidthLabel);
       hoverMeasurementGroup.visible = true;
     };
     for (let idx = 0; idx < placed.length; idx++) {
@@ -1650,21 +1716,41 @@ export function ContainerViewer3D({
     }
 
     const stagedMeshes: THREE.Mesh[] = [];
-    const dockCursors: Record<StagingDock, number> = { dock1: 0, dock2: 0 };
-    const dockRows: Record<StagingDock, number> = { dock1: 0, dock2: 0 };
+    const occupiedDockPlacements: Record<StagingDock, Array<{ x: number; z: number; l: number; w: number }>> = {
+      dock1: [],
+      dock2: [],
+    };
+    const dockPositionIsOpen = (zone: StagingDock, x: number, z: number, l: number, width: number) =>
+      occupiedDockPlacements[zone].every((other) => (
+        Math.abs(x - other.x) >= (l + other.l) / 2 + 0.025
+        || Math.abs(z - other.z) >= (width + other.w) / 2 + 0.025
+      ));
+    const findInitialDockPosition = (zone: StagingDock, l: number, width: number, saved?: { x: number; z: number }) => {
+      const bounds = dockBounds[zone];
+      const clampX = (value: number) => Math.min(bounds.xMax - l / 2, Math.max(bounds.xMin + l / 2, value));
+      const clampZ = (value: number) => Math.min(bounds.zMax - width / 2, Math.max(bounds.zMin + width / 2, value));
+      if (saved) {
+        const x = clampX(inToM(saved.x));
+        const z = clampZ(inToM(saved.z));
+        if (dockPositionIsOpen(zone, x, z, l, width)) return new THREE.Vector3(x, 0, z);
+      }
+      const gap = 0.05;
+      const innerZ = zone === "dock1" ? bounds.zMax - width / 2 : bounds.zMin + width / 2;
+      const rowDirection = zone === "dock1" ? -1 : 1;
+      for (let row = 0; row < 24; row++) {
+        const z = clampZ(innerZ + rowDirection * row * (width + gap));
+        for (let x = bounds.xMin + l / 2; x <= bounds.xMax - l / 2 + 0.001; x += l + gap) {
+          if (dockPositionIsOpen(zone, x, z, l, width)) return new THREE.Vector3(x, 0, z);
+        }
+      }
+      return new THREE.Vector3(clampX((bounds.xMin + bounds.xMax) / 2), 0, clampZ((bounds.zMin + bounds.zMax) / 2));
+    };
     for (const staged of stagedCargo) {
       const { box, zone } = staged;
       const bL = inToM(box.l);
       const bW = inToM(box.w);
       const bH = inToM(box.h);
-      const gap = 0.04;
-      if (dockCursors[zone] + bL > cL) {
-        dockCursors[zone] = 0;
-        dockRows[zone] += 1;
-      }
-      const dockCenterZ = zone === "dock1" ? -dockGap - dockDepth / 2 : cW + dockGap + dockDepth / 2;
-      const rowDirection = zone === "dock1" ? -1 : 1;
-      const rowOffset = dockRows[zone] * Math.max(bW + gap, cW * 0.32) * rowDirection;
+      const dockPosition = findInitialDockPosition(zone, bL, bW, staged.dockPositionIn);
       const stagedMesh = new THREE.Mesh(
         new THREE.BoxGeometry(bL * 0.996, bH * 0.996, bW * 0.996),
         new THREE.MeshBasicMaterial({
@@ -1673,7 +1759,7 @@ export function ContainerViewer3D({
           opacity: 0.7,
         }),
       );
-      stagedMesh.position.set(dockCursors[zone] + bL / 2, bH / 2, dockCenterZ + rowOffset);
+      stagedMesh.position.set(dockPosition.x, bH / 2, dockPosition.z);
       stagedMesh.castShadow = false;
       stagedMesh.receiveShadow = false;
       stagedMesh.userData = { stagedId: staged.id, zone, l: bL, w: bW, h: bH };
@@ -1687,7 +1773,7 @@ export function ContainerViewer3D({
       stagedEdges.position.copy(stagedMesh.position);
       stagedMesh.userData.linkedEdges = stagedEdges;
       scene.add(stagedEdges);
-      dockCursors[zone] += bL + gap;
+      occupiedDockPlacements[zone].push({ x: dockPosition.x, z: dockPosition.z, l: bL, w: bW });
     }
 
     function addAxisLabel(text: string, pos: THREE.Vector3) {
@@ -1842,6 +1928,14 @@ export function ContainerViewer3D({
     };
 
     const highlightMesh = (mesh: THREE.Mesh, color: number | null) => {
+      const linkedEdges = mesh.userData.linkedEdges as THREE.LineSegments | undefined;
+      if (linkedEdges) {
+        const edgeMaterial = linkedEdges.material as THREE.LineBasicMaterial;
+        edgeMaterial.color.setHex(color ?? 0x66717d);
+        edgeMaterial.opacity = color === null ? 0.34 : 0.9;
+        edgeMaterial.needsUpdate = true;
+        linkedEdges.scale.setScalar(color === null ? 1 : 1.01);
+      }
       const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
       materials.forEach((material) => {
         if (!(material instanceof THREE.MeshStandardMaterial)) return;
@@ -1857,9 +1951,9 @@ export function ContainerViewer3D({
         const outlineMaterial = outline.material as THREE.LineDashedMaterial;
         const surfaceMaterial = dockSurfaces[dock].material as THREE.MeshBasicMaterial;
         outline.visible = showGrid || active;
-        outlineMaterial.color.setHex(active ? mode === "drop" ? 0x059669 : 0x0284c7 : 0x8f99a5);
+        outlineMaterial.color.setHex(active ? 0x0284c7 : 0x8f99a5);
         outlineMaterial.opacity = active ? mode === "drop" ? 0.96 : 0.88 : 0.56;
-        surfaceMaterial.color.setHex(mode === "drop" ? 0x34d399 : 0x38bdf8);
+        surfaceMaterial.color.setHex(0x38bdf8);
         surfaceMaterial.opacity = active ? mode === "drop" ? 0.12 : mode === "hover" ? 0.055 : 0.08 : 0;
         outlineMaterial.needsUpdate = true;
         surfaceMaterial.needsUpdate = true;
@@ -1875,7 +1969,7 @@ export function ContainerViewer3D({
         const edgeMaterial = edges?.material as THREE.LineBasicMaterial | undefined;
         material.opacity = active ? 0.84 : 0.7;
         if (edgeMaterial && edges) {
-          edgeMaterial.color.setHex(active ? mode === "drop" ? 0x059669 : mode === "invalid" ? 0xdc2626 : 0x0284c7 : 0x737d88);
+          edgeMaterial.color.setHex(active ? mode === "invalid" ? 0xdc2626 : 0x0284c7 : 0x737d88);
           edgeMaterial.opacity = active ? 0.9 : 0.4;
           edgeMaterial.needsUpdate = true;
           edges.scale.setScalar(active ? 1.012 : 1);
@@ -1909,6 +2003,147 @@ export function ContainerViewer3D({
       mesh.position.copy(position);
       const linkedEdges = mesh.userData.linkedEdges as THREE.LineSegments | undefined;
       linkedEdges?.position.copy(position);
+    };
+
+    const resolveDockPlacement = (
+      zone: StagingDock,
+      rawX: number,
+      rawZ: number,
+      mesh: THREE.Mesh,
+      stagedId: string | null,
+      preferredStart?: THREE.Vector3 | null,
+    ) => {
+      const bounds = dockBounds[zone];
+      const length = mesh.userData.l as number;
+      const width = mesh.userData.w as number;
+      const halfLength = length / 2;
+      const halfWidth = width / 2;
+      const clampX = (value: number) => Math.min(bounds.xMax - halfLength, Math.max(bounds.xMin + halfLength, value));
+      const clampZ = (value: number) => Math.min(bounds.zMax - halfWidth, Math.max(bounds.zMin + halfWidth, value));
+      const x = clampX(rawX);
+      const z = clampZ(rawZ);
+      const others = stagedMeshes.filter((other) => (
+        other !== mesh
+        && other.userData.stagedId !== stagedId
+        && other.userData.zone === zone
+      ));
+      const isOpen = (candidateX: number, candidateZ: number) => others.every((other) => {
+        const otherLength = other.userData.l as number;
+        const otherWidth = other.userData.w as number;
+        return Math.abs(candidateX - other.position.x) >= (length + otherLength) / 2 + 0.025
+          || Math.abs(candidateZ - other.position.z) >= (width + otherWidth) / 2 + 0.025;
+      });
+      const magneticThreshold = Math.max(
+        inToM(compactViewport ? 8 : 5),
+        Math.min(cW * 0.24, Math.min(length, width) * 0.32),
+      );
+      const xGuides = [bounds.xMin + halfLength, (bounds.xMin + bounds.xMax) / 2, bounds.xMax - halfLength];
+      const zGuides = [bounds.zMin + halfWidth, (bounds.zMin + bounds.zMax) / 2, bounds.zMax - halfWidth];
+      if (preferredStart) {
+        xGuides.push(preferredStart.x);
+        zGuides.push(preferredStart.z);
+      }
+      others.forEach((other) => {
+        const otherLength = other.userData.l as number;
+        const otherWidth = other.userData.w as number;
+        xGuides.push(
+          other.position.x,
+          other.position.x - otherLength / 2 - halfLength - 0.025,
+          other.position.x + otherLength / 2 + halfLength + 0.025,
+        );
+        zGuides.push(
+          other.position.z,
+          other.position.z - otherWidth / 2 - halfWidth - 0.025,
+          other.position.z + otherWidth / 2 + halfWidth + 0.025,
+        );
+      });
+      const nearX = Array.from(new Set(xGuides.map(clampX).filter((guide) => Math.abs(guide - x) <= magneticThreshold)))
+        .sort((a, b) => Math.abs(a - x) - Math.abs(b - x));
+      const nearZ = Array.from(new Set(zGuides.map(clampZ).filter((guide) => Math.abs(guide - z) <= magneticThreshold)))
+        .sort((a, b) => Math.abs(a - z) - Math.abs(b - z));
+      const candidates = [
+        ...nearX.flatMap((candidateX) => nearZ.map((candidateZ) => ({ x: candidateX, z: candidateZ, snapped: true }))),
+        ...nearX.map((candidateX) => ({ x: candidateX, z, snapped: true })),
+        ...nearZ.map((candidateZ) => ({ x, z: candidateZ, snapped: true })),
+        { x, z, snapped: false },
+      ];
+      const resolved = candidates.find((candidate) => isOpen(candidate.x, candidate.z));
+      return resolved ? { position: new THREE.Vector3(resolved.x, (mesh.userData.h as number) / 2, resolved.z), snapped: resolved.snapped } : null;
+    };
+
+    const resolveContainerPlacement = (
+      box: PlacedBox,
+      rawX: number,
+      rawZ: number,
+      otherBoxes: PlacedBox[],
+      preferredY: number,
+    ) => {
+      const halfLength = inToM(box.l) / 2;
+      const halfWidth = inToM(box.w) / 2;
+      const clampX = (value: number) => Math.min(cL - halfLength, Math.max(halfLength, value));
+      const clampZ = (value: number) => Math.min(cW - halfWidth, Math.max(halfWidth, value));
+      const snap = inToM(1);
+      const baseX = clampX(Math.round(rawX / snap) * snap);
+      const baseZ = clampZ(Math.round(rawZ / snap) * snap);
+      const magneticThreshold = Math.max(
+        inToM(compactViewport ? 10 : 6),
+        Math.min(cW * 0.22, Math.min(inToM(box.l), inToM(box.w)) * 0.28),
+      );
+      const xGuides = [
+        halfLength,
+        cL - halfLength,
+        inToM(box.x) + halfLength,
+      ];
+      const zGuides = [
+        halfWidth,
+        cW - halfWidth,
+        inToM(box.z) + halfWidth,
+      ];
+      otherBoxes.forEach((other) => {
+        xGuides.push(
+          inToM(other.x) - halfLength,
+          inToM(other.x + other.l) + halfLength,
+        );
+        zGuides.push(
+          inToM(other.z) - halfWidth,
+          inToM(other.z + other.w) + halfWidth,
+        );
+      });
+      const nearX = Array.from(new Set(xGuides.map(clampX).filter((guide) => Math.abs(guide - baseX) <= magneticThreshold)))
+        .sort((a, b) => Math.abs(a - baseX) - Math.abs(b - baseX));
+      const nearZ = Array.from(new Set(zGuides.map(clampZ).filter((guide) => Math.abs(guide - baseZ) <= magneticThreshold)))
+        .sort((a, b) => Math.abs(a - baseZ) - Math.abs(b - baseZ));
+      const horizontalCandidates = [
+        ...nearX.flatMap((x) => nearZ.map((z) => ({ x, z, snapped: true }))),
+        ...nearX.map((x) => ({ x, z: baseZ, snapped: true })),
+        ...nearZ.map((z) => ({ x: baseX, z, snapped: true })),
+        { x: baseX, z: baseZ, snapped: false },
+      ];
+      const verticalLevels = Array.from(new Set([
+        preferredY,
+        0,
+        ...otherBoxes.filter((other) => other.stackable).map((other) => Number((other.y + other.h).toFixed(3))),
+      ]))
+        .filter((level) => level >= 0 && level + box.h <= container.heightIn + 0.05)
+        .sort((a, b) => Math.abs(a - preferredY) - Math.abs(b - preferredY));
+      for (const horizontal of horizontalCandidates) {
+        for (const y of verticalLevels) {
+          const candidate: PlacedBox = {
+            ...box,
+            x: Number(((horizontal.x - halfLength) / 0.0254).toFixed(3)),
+            z: Number(((horizontal.z - halfWidth) / 0.0254).toFixed(3)),
+            y,
+          };
+          if (validateManualPlacement(candidate, otherBoxes, container).valid) {
+            return {
+              box: candidate,
+              position: new THREE.Vector3(horizontal.x, inToM(y) + inToM(box.h) / 2, horizontal.z),
+              snapped: horizontal.snapped,
+            };
+          }
+        }
+      }
+      return null;
     };
 
     const placementText = (reason: "inside" | "collision" | "unsupported" | null) => {
@@ -2163,15 +2398,27 @@ export function ContainerViewer3D({
         if (stagedDock) {
           const dockMin = stagedDock === "dock1" ? -dockGap - dockDepth : cW + dockGap;
           const dockMax = stagedDock === "dock1" ? -dockGap : cW + dockGap + dockDepth;
-          const dockX = Math.min(cL - halfLength, Math.max(halfLength, unclampedX));
+          const resolvedDockPosition = resolveDockPlacement(
+            stagedDock,
+            unclampedX,
+            unclampedZ,
+            mesh,
+            staged.id,
+            stagedDock === staged.zone ? dragState.stagedStartPosition : null,
+          );
+          const dockX = Math.min(dockBounds[stagedDock].xMax - halfLength, Math.max(dockBounds[stagedDock].xMin + halfLength, unclampedX));
           const dockZ = Math.min(dockMax - halfWidth, Math.max(dockMin + halfWidth, unclampedZ));
-          moveMesh(mesh, new THREE.Vector3(dockX, halfHeight, dockZ));
+          moveMesh(mesh, resolvedDockPosition?.position ?? new THREE.Vector3(dockX, halfHeight, dockZ));
           dragState.dropZone = stagedDock;
           dragState.nextLayout = null;
-          dragState.valid = true;
-          setDockFocus(stagedDock, "drop");
-          setStagedCargoFocus(staged.id, "drop");
-          setPlacementMessage(`Release to stage this unit in ${stagedDock === "dock1" ? "Dock 1" : "Dock 2"}.`);
+          dragState.valid = Boolean(resolvedDockPosition);
+          setDockFocus(stagedDock, resolvedDockPosition ? "drop" : "hover");
+          setStagedCargoFocus(staged.id, resolvedDockPosition ? "drop" : "invalid");
+          setPlacementMessage(resolvedDockPosition
+            ? resolvedDockPosition.snapped
+              ? `Aligned in ${stagedDock === "dock1" ? "Dock 1" : "Dock 2"} — release to place.`
+              : `Release to place freely in ${stagedDock === "dock1" ? "Dock 1" : "Dock 2"}.`
+            : "That dock position overlaps another unit — move into the highlighted open area.");
           return;
         }
 
@@ -2182,33 +2429,20 @@ export function ContainerViewer3D({
         dragState.dropZone = null;
         setDockFocus(null);
         if (overContainer) {
-          const nextX = Math.min(cL - halfLength, Math.max(halfLength, Math.round(unclampedX / snap) * snap));
-          const nextZ = Math.min(cW - halfWidth, Math.max(halfWidth, Math.round(unclampedZ / snap) * snap));
-          const horizontalCandidate: PlacedBox = {
-            ...staged.box,
-            x: Number(((nextX - halfLength) / 0.0254).toFixed(3)),
-            z: Number(((nextZ - halfWidth) / 0.0254).toFixed(3)),
-            y: 0,
-          };
-          const verticalLevels = Array.from(new Set([
-            0,
-            ...placed.filter((box) => box.stackable).map((box) => Number((box.y + box.h).toFixed(3))),
-          ]))
-            .filter((level) => level >= 0 && level + staged.box.h <= container.heightIn + 0.05)
-            .sort((a, b) => a - b);
-          let candidate: PlacedBox | null = null;
-          for (const level of verticalLevels) {
-            const levelCandidate = { ...horizontalCandidate, y: level };
-            if (validateManualPlacement(levelCandidate, placed, container).valid) {
-              candidate = levelCandidate;
-              break;
-            }
-          }
-          dragState.nextLayout = candidate ? [...placed.map((box) => ({ ...box })), candidate] : null;
-          dragState.valid = candidate !== null;
-          moveMesh(mesh, new THREE.Vector3(nextX, inToM(candidate?.y ?? 0) + halfHeight, nextZ));
-          setStagedCargoFocus(staged.id, candidate ? "drop" : "invalid");
-          setPlacementMessage(candidate ? "Release to load this unit here." : "No safe placement is available at this position.");
+          const resolved = resolveContainerPlacement(staged.box, unclampedX, unclampedZ, placed, staged.box.y);
+          dragState.nextLayout = resolved ? [...placed.map((box) => ({ ...box })), resolved.box] : null;
+          dragState.valid = Boolean(resolved);
+          moveMesh(mesh, resolved?.position ?? new THREE.Vector3(
+            Math.min(cL - halfLength, Math.max(halfLength, Math.round(unclampedX / snap) * snap)),
+            halfHeight,
+            Math.min(cW - halfWidth, Math.max(halfWidth, Math.round(unclampedZ / snap) * snap)),
+          ));
+          setStagedCargoFocus(staged.id, resolved ? "drop" : "invalid");
+          setPlacementMessage(resolved
+            ? resolved.snapped
+              ? "Aligned to an available cargo slot — release to load."
+              : "Valid space — release to load this unit."
+            : "No safe placement is available here. Move near an open slot and it will align automatically.");
           return;
         }
 
@@ -2227,17 +2461,22 @@ export function ContainerViewer3D({
             : null
         : null;
       if (candidateDock) {
-        const dockMin = candidateDock === "dock1" ? -dockGap - dockDepth : cW + dockGap;
-        const dockMax = candidateDock === "dock1" ? -dockGap : cW + dockGap + dockDepth;
-        const dockX = Math.min(cL - halfLength, Math.max(halfLength, unclampedX));
-        const dockZ = Math.min(dockMax - halfWidth, Math.max(dockMin + halfWidth, unclampedZ));
+        const bounds = dockBounds[candidateDock];
+        const resolvedDockPosition = resolveDockPlacement(candidateDock, unclampedX, unclampedZ, mesh, null);
+        const dockX = Math.min(bounds.xMax - halfLength, Math.max(bounds.xMin + halfLength, unclampedX));
+        const dockZ = Math.min(bounds.zMax - halfWidth, Math.max(bounds.zMin + halfWidth, unclampedZ));
         if (dragState.dropZone !== candidateDock) setDockFocus(candidateDock, "drop");
         dragState.dropZone = candidateDock;
         dragState.nextLayout = null;
-        dragState.valid = true;
-        moveMesh(mesh, new THREE.Vector3(dockX, halfHeight, dockZ));
-        highlightMesh(mesh, 0x10b981);
-        setPlacementMessage(`Release to move this unit to ${candidateDock === "dock1" ? "Dock 1" : "Dock 2"}.`);
+        dragState.valid = Boolean(resolvedDockPosition);
+        moveMesh(mesh, resolvedDockPosition?.position ?? new THREE.Vector3(dockX, halfHeight, dockZ));
+        highlightMesh(mesh, resolvedDockPosition ? 0x0284c7 : 0xef4444);
+        setDockFocus(candidateDock, resolvedDockPosition ? "drop" : "hover");
+        setPlacementMessage(resolvedDockPosition
+          ? resolvedDockPosition.snapped
+            ? `Aligned in ${candidateDock === "dock1" ? "Dock 1" : "Dock 2"} — release to place.`
+            : `Release to place freely in ${candidateDock === "dock1" ? "Dock 1" : "Dock 2"}.`
+          : "That dock position overlaps another unit.");
         renderScene();
         return;
       }
@@ -2263,7 +2502,7 @@ export function ContainerViewer3D({
         dragState.indices.forEach((selectedIndex) => {
           const start = dragState!.startPositions.get(selectedIndex)!;
           moveMesh(cargoMeshes[selectedIndex], new THREE.Vector3(start.x + inToM(deltaX), start.y, start.z + inToM(deltaZ)));
-          highlightMesh(cargoMeshes[selectedIndex], validation.valid ? 0x10b981 : 0xef4444);
+          highlightMesh(cargoMeshes[selectedIndex], validation.valid ? 0x0284c7 : 0xef4444);
         });
         setPlacementMessage(validation.valid
           ? `${dragState.indices.length} units can be placed here safely.`
@@ -2271,42 +2510,29 @@ export function ContainerViewer3D({
         renderScene();
         return;
       }
-      const horizontalCandidate: PlacedBox = {
+      const otherBoxes = placed.filter((_, index) => index !== dragState!.index);
+      const resolved = resolveContainerPlacement(current, unclampedX, unclampedZ, otherBoxes, current.y);
+      const candidate = resolved?.box ?? {
         ...current,
         x: Number(((nextX - halfLength) / 0.0254).toFixed(3)),
         z: Number(((nextZ - halfWidth) / 0.0254).toFixed(3)),
       };
-      const otherBoxes = placed.filter((_, index) => index !== dragState!.index);
-      const verticalLevels = Array.from(new Set([
-        current.y,
-        0,
-        ...otherBoxes.filter((box) => box.stackable).map((box) => Number((box.y + box.h).toFixed(3))),
-      ]))
-        .filter((level) => level >= 0 && level + current.h <= container.heightIn + 0.05)
-        .sort((a, b) => Math.abs(a - current.y) - Math.abs(b - current.y));
-
-      let candidate = horizontalCandidate;
-      for (const level of verticalLevels) {
-        const levelCandidate = { ...horizontalCandidate, y: level };
-        if (validateManualPlacement(levelCandidate, otherBoxes, container).valid) {
-          candidate = levelCandidate;
-          break;
-        }
-      }
       const nextLayout = placed.map((box, index) => index === dragState!.index ? candidate : box);
       const validation = validateManualLayout(nextLayout, container);
-      const nextPosition = new THREE.Vector3(nextX, inToM(candidate.y) + halfHeight, nextZ);
+      const nextPosition = resolved?.position ?? new THREE.Vector3(nextX, inToM(candidate.y) + halfHeight, nextZ);
 
       dragState.nextLayout = nextLayout;
-      dragState.valid = validation.valid;
+      dragState.valid = Boolean(resolved) && validation.valid;
       moveMesh(mesh, nextPosition);
-      highlightMesh(mesh, validation.valid ? 0x10b981 : 0xef4444);
+      highlightMesh(mesh, dragState.valid ? 0x0284c7 : 0xef4444);
       setPlacementMessage(
-        validation.valid && Math.abs(candidate.y - current.y) > 0.05
+        dragState.valid && resolved?.snapped
+          ? "Aligned to an available slot — release to place cargo."
+          : dragState.valid && Math.abs(candidate.y - current.y) > 0.05
           ? candidate.y <= 0.05
             ? "Valid position — cargo snapped safely to the container floor."
             : "Valid position — cargo snapped safely onto a supported level."
-          : placementText(validation.reason),
+          : dragState.valid ? "Valid space — release to place cargo." : placementText(validation.reason),
       );
       renderScene();
     };
@@ -2339,14 +2565,18 @@ export function ContainerViewer3D({
           setSelectedSceneDock(null);
           setActiveCargoZone("loaded");
           setPlacementMessage("Cargo loaded at the selected position.");
-        } else if (commit && moved && completedDrag.dropZone && staged && completedDrag.dropZone !== staged.zone) {
+        } else if (commit && moved && completedDrag.valid && completedDrag.dropZone && staged) {
+          const dockPositionIn = {
+            x: Number((completedDrag.mesh.position.x / 0.0254).toFixed(3)),
+            z: Number((completedDrag.mesh.position.z / 0.0254).toFixed(3)),
+          };
           setStagedCargo((current) => current.map((entry) => entry.id === completedDrag.stagedId
-            ? { ...entry, zone: completedDrag.dropZone! }
+            ? { ...entry, zone: completedDrag.dropZone!, dockPositionIn }
             : entry));
           selectedSceneDockRef.current = completedDrag.dropZone;
           setSelectedSceneDock(completedDrag.dropZone);
           setActiveCargoZone(completedDrag.dropZone);
-          setPlacementMessage(`Cargo moved to ${completedDrag.dropZone === "dock1" ? "Dock 1" : "Dock 2"}.`);
+          setPlacementMessage(`Cargo placed in ${completedDrag.dropZone === "dock1" ? "Dock 1" : "Dock 2"}.`);
         } else {
           moveMesh(completedDrag.mesh, completedDrag.stagedStartPosition);
           setPlacementMessage(moved && !completedDrag.valid
@@ -2364,10 +2594,14 @@ export function ContainerViewer3D({
         const start = completedDrag.startPositions.get(index);
         return Boolean(start && start.distanceTo(cargoMeshes[index].position) > 0.001);
       });
-      if (commit && moved && completedDrag.dropZone && completedDrag.indices.length === 1) {
+      if (commit && moved && completedDrag.valid && completedDrag.dropZone && completedDrag.indices.length === 1) {
         const start = completedDrag.startPositions.get(completedDrag.index);
+        const dockPositionIn = {
+          x: Number((completedDrag.mesh.position.x / 0.0254).toFixed(3)),
+          z: Number((completedDrag.mesh.position.z / 0.0254).toFixed(3)),
+        };
         if (start) moveMesh(completedDrag.mesh, start);
-        stageCargo(completedDrag.index, completedDrag.dropZone);
+        stageCargo(completedDrag.index, completedDrag.dropZone, dockPositionIn);
         selectedSceneDockRef.current = completedDrag.dropZone;
         setDockFocus(completedDrag.dropZone, "selected");
         setCargoHover(null);
@@ -2614,6 +2848,8 @@ export function ContainerViewer3D({
           disposeMaterial(obj.material);
         }
       });
+      measurementTextureCache.forEach((texture) => texture.dispose());
+      measurementTextureCache.clear();
       renderer.dispose();
       if (el.contains(renderer.domElement)) {
         el.removeChild(renderer.domElement);
@@ -2892,7 +3128,7 @@ export function ContainerViewer3D({
               </motion.section>
             )}
           </AnimatePresence>
-          <div className={`absolute right-3 top-3 z-30 hidden max-h-[calc(100%-4.5rem)] flex-col items-center gap-0.5 overflow-visible rounded-2xl border border-white/90 bg-white/[0.98] p-1 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.34)] transition-[right] lg:flex ${sidebarOpen ? "lg:right-[344px]" : ""}`} data-testid="container-floating-tool-rail">
+          <div className={`absolute right-3 top-3 z-30 hidden max-h-[calc(100%-4.5rem)] flex-col items-center gap-0.5 overflow-visible bg-transparent p-1 transition-[right] lg:flex ${sidebarOpen ? "lg:right-[344px]" : ""}`} data-testid="container-floating-tool-rail">
             <button type="button" onClick={() => setSidebarOpen((current) => !current)} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label={sidebarOpen ? "Hide cargo panel" : "Show cargo panel"} data-testid="button-container-sidebar-toggle">{sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}<ViewerHoverLabel>{sidebarOpen ? "Hide cargo panel" : "Show cargo panel"}</ViewerHoverLabel></button>
             <button type="button" onClick={() => { cycleCameraView(); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Change camera angle" data-testid="button-floating-camera"><Camera className="h-4 w-4" /><ViewerHoverLabel>Change camera angle</ViewerHoverLabel></button>
             <button type="button" onClick={() => { setArrangeMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setSequenceMode((current) => { if (!current) setSequenceStep(1); return !current; }); }} disabled={placed.length === 0} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md disabled:opacity-35 ${sequenceMode ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:text-primary"}`} aria-label="Loading sequence" data-testid="button-loading-sequence"><Play className="h-4 w-4" /><ViewerHoverLabel>Loading sequence</ViewerHoverLabel></button>
@@ -2930,7 +3166,7 @@ export function ContainerViewer3D({
             </div>}
             {helpPanelOpen && <div className="absolute right-12 bottom-16 w-72 rounded-2xl border border-white/95 bg-white/[0.98] p-3 text-left shadow-[0_22px_55px_-24px_rgba(15,23,42,0.38)]" data-testid="container-help-panel">
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Workspace controls</p>
-              <div className="mt-2 space-y-1.5 text-[10px] leading-4 text-slate-600"><p><strong className="text-slate-800">Tap cargo</strong> to select it, then drag it directly. Drag empty grid space to rotate the scene.</p><p><strong className="text-slate-800">Right-drag</strong> to pan in fullscreen. Use the wheel or pinch to zoom.</p><p><strong className="text-slate-800">Cargo moves</strong> stay inside the container and are checked for collisions and stack support.</p></div>
+              <div className="mt-2 space-y-1.5 text-[10px] leading-4 text-slate-600"><p><strong className="text-slate-800">Tap cargo</strong> to select it, then drag it directly. Drag empty grid space to rotate the scene.</p><p><strong className="text-slate-800">Right-drag</strong> to pan in fullscreen. Use the wheel or pinch to zoom.</p><p><strong className="text-slate-800">Blue alignment</strong> means the unit fits. Docks allow free placement and gently align near open edges or the previous slot.</p></div>
             </div>}
             {warningPanelOpen && (
               <div className="absolute right-12 top-0 w-60 rounded-2xl border border-white/90 bg-white/[0.98] p-3 text-left shadow-[0_20px_55px_-22px_rgba(15,23,42,0.45)]" data-testid="floating-warning-panel">
