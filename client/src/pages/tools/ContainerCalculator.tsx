@@ -111,7 +111,7 @@ import { calculateContainerBalance, centerContainerCargoLayout } from "@/lib/con
 import { compareContainerPlans, type ContainerPlanComparison } from "@/lib/containerComparison";
 import { consumePalletPlanTransfer } from "@/lib/palletTransfer";
 import { consumeContainerShareTransfer } from "@/lib/containerShareTransfer";
-import { getContainerRenderProfile, type ContainerRenderQuality } from "@/lib/container3dQuality";
+import { getCargoStencilLayout, getContainerRenderProfile, type ContainerRenderQuality } from "@/lib/container3dQuality";
 import {
   buildContainerPlanReview,
   diagnoseUnplacedCargo,
@@ -1478,39 +1478,11 @@ export function ContainerViewer3D({
       const displayColor = baseColor.clone().lerp(new THREE.Color(0xffffff), luminance < 0.45 ? 0.34 : 0.1);
 
       const useDetailedLabel = showLabels && renderProfile.detailedLabels;
-      let materials: THREE.Material;
-      if (useDetailedLabel) {
-        const unitReference = `#${idx + 1}`;
-        const canvas = document.createElement("canvas");
-        canvas.width = 192;
-        canvas.height = 192;
-        const ctx = canvas.getContext("2d")!;
-        ctx.fillStyle = displayColor.getStyle();
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = "rgba(71,85,105,0.2)";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillStyle = "#334155";
-        ctx.font = "bold 36px Inter, Arial, sans-serif";
-        ctx.fillText(unitReference, canvas.width / 2, canvas.height / 2);
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.colorSpace = THREE.SRGBColorSpace;
-        texture.anisotropy = 1;
-        materials = new THREE.MeshBasicMaterial({
-          map: texture,
-          color: 0xffffff,
-          transparent: true,
-          opacity: 0.84,
-        });
-      } else {
-        materials = new THREE.MeshBasicMaterial({
-          color: displayColor,
-          transparent: true,
-          opacity: 0.84,
-        });
-      }
+      const materials = new THREE.MeshBasicMaterial({
+        color: displayColor,
+        transparent: true,
+        opacity: 0.84,
+      });
 
       const boxMesh = new THREE.Mesh(boxGeo, materials);
       boxMesh.position.set(bX + bL / 2, bY + bH / 2, bZ + bW / 2);
@@ -1528,6 +1500,45 @@ export function ContainerViewer3D({
       };
       scene.add(boxMesh);
       cargoMeshes.push(boxMesh);
+
+      if (useDetailedLabel) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 256;
+        canvas.height = 96;
+        const ctx = canvas.getContext("2d")!;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "rgba(51,65,85,0.86)";
+        ctx.font = "700 46px Inter, Arial, sans-serif";
+        ctx.fillText(`#${idx + 1}`, canvas.width / 2, canvas.height / 2 + 1);
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.generateMipmaps = false;
+        texture.minFilter = THREE.LinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        texture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+
+        const stencilLayout = getCargoStencilLayout(bL, bW);
+        const stencilGeometry = new THREE.PlaneGeometry(stencilLayout.widthM, stencilLayout.heightM);
+        if (stencilLayout.rotateQuarterTurn) stencilGeometry.rotateZ(Math.PI / 2);
+        stencilGeometry.rotateX(-Math.PI / 2);
+        const stencil = new THREE.Mesh(
+          stencilGeometry,
+          new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            alphaTest: 0.08,
+            depthTest: true,
+            depthWrite: false,
+            side: THREE.DoubleSide,
+          }),
+        );
+        stencil.position.set(0, bH / 2 + 0.004, 0);
+        stencil.renderOrder = 8;
+        stencil.userData.cargoStencil = true;
+        boxMesh.add(stencil);
+      }
 
       const edgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(bL, bH, bW));
       const edgeMat = new THREE.LineBasicMaterial({

@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getContainerRenderProfile } from "../../client/src/lib/container3dQuality";
+import {
+  CARGO_STENCIL_ASPECT_RATIO,
+  getCargoStencilLayout,
+  getContainerRenderProfile,
+} from "../../client/src/lib/container3dQuality";
 
 test("auto quality uses a lightweight profile on mobile", () => {
   const profile = getContainerRenderProfile({
@@ -81,4 +85,15 @@ test("quality override retains premium rendering within safe limits", () => {
   assert.equal(profile.antialias, true);
   assert.equal(profile.pixelRatio, 2);
   assert.equal(profile.shadows, false);
+});
+
+test("cargo reference stencils preserve their aspect ratio on rectangular cargo", () => {
+  const lengthAligned = getCargoStencilLayout(1.8, 0.7);
+  const widthAligned = getCargoStencilLayout(0.7, 1.8);
+
+  assert.ok(Math.abs(lengthAligned.widthM / lengthAligned.heightM - CARGO_STENCIL_ASPECT_RATIO) < 0.0001);
+  assert.ok(lengthAligned.widthM <= 1.8 * 0.52);
+  assert.ok(lengthAligned.heightM <= 0.7 * 0.24);
+  assert.equal(lengthAligned.rotateQuarterTurn, false);
+  assert.equal(widthAligned.rotateQuarterTurn, true);
 });
