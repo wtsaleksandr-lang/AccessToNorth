@@ -3174,6 +3174,21 @@ export function ContainerViewer3D({
     return `${inches.toFixed(1)} in`;
   };
 
+  const selectedActionIndices = [...selectedCargoIndices].filter((index) => placed[index]);
+  const selectedActionLocked = selectedActionIndices.some(
+    (index) => rotationModesByCargoId?.[placed[index].cargoId] === "fixed",
+  );
+  const canRotateSelectionLeft = selectedActionIndices.length > 0
+    && !selectedActionLocked
+    && rotateManualSelection(placed, selectedActionIndices, container, "counterclockwise") !== null;
+  const canRotateSelectionRight = selectedActionIndices.length > 0
+    && !selectedActionLocked
+    && rotateManualSelection(placed, selectedActionIndices, container, "clockwise") !== null;
+  const canStackSelectionUp = selectedActionIndices.length > 0
+    && moveManualSelectionVertical(placed, selectedActionIndices, container, "up") !== null;
+  const canLowerSelection = selectedActionIndices.length > 0
+    && moveManualSelectionVertical(placed, selectedActionIndices, container, "down") !== null;
+
   const cycleCameraView = () => {
     const views: ContainerViewPreset[] = ["isometric", "doors", "side", "top"];
     const next = views[(views.indexOf(activeView) + 1) % views.length];
@@ -3303,6 +3318,21 @@ export function ContainerViewer3D({
           data-testid="container-3d-viewer"
         >
           <div ref={mountRef} className="absolute inset-0" />
+          {!arrangeMode && onPlacedChange && selectedActionIndices.length > 0 && (
+            <div className="absolute left-3 top-16 z-30 w-[min(390px,calc(100%-1.5rem))] rounded-2xl border border-white/90 bg-white/[0.96] p-2.5 shadow-[0_18px_44px_-24px_rgba(15,23,42,0.5)] backdrop-blur-xl" data-testid="selected-cargo-quick-actions">
+              <div className="flex items-center justify-between gap-2 px-1">
+                <div><p className="text-[10px] font-bold text-slate-800">{selectedActionIndices.length === 1 ? `Unit #${selectedActionIndices[0] + 1} selected` : `${selectedActionIndices.length} units selected`}</p><p className="mt-0.5 text-[8px] text-slate-400">Move or rotate safely</p></div>
+                <button type="button" onClick={() => setArrangeMode(true)} className="rounded-lg px-2 py-1 text-[8px] font-bold text-primary hover:bg-blue-50" data-testid="button-open-more-cargo-tools">More tools</button>
+              </div>
+              <div className="mt-2 grid grid-cols-4 gap-1">
+                <button type="button" onClick={() => applySelectionRotation("counterclockwise")} disabled={!canRotateSelectionLeft} className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl border border-slate-200 bg-white text-[8px] font-bold text-slate-600 transition hover:border-blue-300 hover:text-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label="Rotate selected cargo 90 degrees left" data-testid="button-quick-rotate-left"><RotateCcw className="h-4 w-4" /><span>Rotate left</span></button>
+                <button type="button" onClick={() => applySelectionRotation("clockwise")} disabled={!canRotateSelectionRight} className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl border border-slate-200 bg-white text-[8px] font-bold text-slate-600 transition hover:border-blue-300 hover:text-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label="Rotate selected cargo 90 degrees right" data-testid="button-quick-rotate-right"><RotateCw className="h-4 w-4" /><span>Rotate right</span></button>
+                <button type="button" onClick={() => moveSelectionVertically("up")} disabled={!canStackSelectionUp} className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl border border-slate-200 bg-white text-[8px] font-bold text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-30" aria-label="Stack selected cargo on the next supported unit" data-testid="button-quick-stack-up"><span className="relative flex h-5 w-5 items-center justify-center"><Layers className="absolute bottom-0 h-3.5 w-3.5" /><ArrowUp className="absolute -top-1 h-3 w-3" /></span><span>Stack up</span></button>
+                <button type="button" onClick={() => moveSelectionVertically("down")} disabled={!canLowerSelection} className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl border border-slate-200 bg-white text-[8px] font-bold text-slate-600 transition hover:border-amber-300 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-30" aria-label="Lower selected cargo to the next supported level" data-testid="button-quick-lower"><span className="relative flex h-5 w-5 items-center justify-center"><Layers className="absolute top-0 h-3.5 w-3.5" /><ArrowDown className="absolute -bottom-1 h-3 w-3" /></span><span>Lower</span></button>
+              </div>
+              <p className="mt-1.5 px-1 text-[8px] leading-3 text-slate-400">Stacking snaps to a supported surface. Unavailable actions are dimmed.</p>
+            </div>
+          )}
           {arrangeMode && <div className="absolute left-3 top-3 z-30 flex items-center gap-2">
             <button type="button" onClick={undoArrangement} disabled={historyCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/95 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white disabled:opacity-40" data-testid="button-undo-cargo-move"><Undo2 className="mr-1 inline h-3.5 w-3.5" />Undo</button><button type="button" onClick={redoArrangement} disabled={redoCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/95 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white disabled:opacity-40" data-testid="button-redo-cargo-move"><Redo2 className="mr-1 inline h-3.5 w-3.5" />Redo</button><button type="button" onClick={resetArrangement} className="h-8 rounded-lg border border-white/80 bg-white/95 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white" data-testid="button-reset-cargo-layout"><RotateCcw className="mr-1 inline h-3.5 w-3.5" />Reset</button>
           </div>}
@@ -3602,6 +3632,12 @@ export function ContainerViewer3D({
                     <div className="grid grid-cols-2 gap-1">
                       <button type="button" onClick={() => { stageCargo(cargoContextCard.index, "dock1"); setCargoContextCard(null); }} onMouseEnter={() => previewDock("dock1")} onMouseLeave={restoreDockPreview} className="flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-[9px] font-bold text-slate-600 transition hover:bg-blue-50 hover:text-primary" data-testid="button-context-move-dock1"><Package className="h-3.5 w-3.5" />Move to D1</button>
                       <button type="button" onClick={() => { stageCargo(cargoContextCard.index, "dock2"); setCargoContextCard(null); }} onMouseEnter={() => previewDock("dock2")} onMouseLeave={restoreDockPreview} className="flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-[9px] font-bold text-slate-600 transition hover:bg-blue-50 hover:text-primary" data-testid="button-context-move-dock2"><Package className="h-3.5 w-3.5" />Move to D2</button>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1 px-1 pb-1">
+                      <button type="button" onClick={() => { applySelectionRotation("counterclockwise"); setCargoContextCard(null); }} disabled={!canRotateSelectionLeft} className="flex min-h-10 flex-col items-center justify-center rounded-lg text-[8px] font-bold text-slate-600 hover:bg-blue-50 hover:text-primary disabled:opacity-30" aria-label="Rotate left"><RotateCcw className="h-3.5 w-3.5" />Left</button>
+                      <button type="button" onClick={() => { applySelectionRotation("clockwise"); setCargoContextCard(null); }} disabled={!canRotateSelectionRight} className="flex min-h-10 flex-col items-center justify-center rounded-lg text-[8px] font-bold text-slate-600 hover:bg-blue-50 hover:text-primary disabled:opacity-30" aria-label="Rotate right"><RotateCw className="h-3.5 w-3.5" />Right</button>
+                      <button type="button" onClick={() => { moveSelectionVertically("up"); setCargoContextCard(null); }} disabled={!canStackSelectionUp} className="flex min-h-10 flex-col items-center justify-center rounded-lg text-[8px] font-bold text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-30" aria-label="Stack up"><ArrowUp className="h-3.5 w-3.5" />Stack</button>
+                      <button type="button" onClick={() => { moveSelectionVertically("down"); setCargoContextCard(null); }} disabled={!canLowerSelection} className="flex min-h-10 flex-col items-center justify-center rounded-lg text-[8px] font-bold text-slate-600 hover:bg-amber-50 hover:text-amber-700 disabled:opacity-30" aria-label="Lower"><ArrowDown className="h-3.5 w-3.5" />Lower</button>
                     </div>
                     <button type="button" onClick={() => { setArrangeMode(true); setCargoContextCard(null); setPlacementMessage("Precision tools enabled — align, rotate or nudge the selected cargo."); }} className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-[10px] font-semibold text-slate-700 transition hover:bg-white/80 hover:text-primary" data-testid="button-cargo-precision-tools"><Crosshair className="h-4 w-4" />Open precision tools</button>
                   </>}
