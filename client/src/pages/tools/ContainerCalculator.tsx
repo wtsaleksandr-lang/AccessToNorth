@@ -102,6 +102,7 @@ import {
   alignManualSelection,
   findSafeManualPlacement,
   rotateManualSelection,
+  moveManualSelectionVertical,
   translateManualSelection,
   validateManualLayout,
   validateManualPlacement,
@@ -589,6 +590,7 @@ export function ContainerViewer3D({
   const [showGrid, setShowGrid] = useState(true);
   const [showShell, setShowShell] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
+  const [showMeasurements, setShowMeasurements] = useState(true);
   const [renderQuality, setRenderQuality] = useState<ContainerRenderQuality>("auto");
   const [hoveredCargoIndex, setHoveredCargoIndex] = useState<number | null>(null);
   const [selectedCargoIndices, setSelectedCargoIndices] = useState<Set<number>>(new Set());
@@ -949,6 +951,31 @@ export function ContainerViewer3D({
     setHistoryCount(arrangementHistoryRef.current.length);
     setRedoCount(0);
     setPlacementMessage(`${selected.length} selected cargo unit${selected.length === 1 ? "" : "s"} moved safely.`);
+    onPlacedChangeRef.current?.(nextLayout);
+  }, [container, placed, selectedCargoIndices]);
+
+  const moveSelectionVertically = useCallback((direction: "up" | "down") => {
+    const selected = [...selectedCargoIndices].filter((index) => placed[index]);
+    if (!selected.length) {
+      setPlacementMessage("Select one or more cargo units before moving vertically.");
+      return;
+    }
+    const nextLayout = moveManualSelectionVertical(placed, selected, container, direction);
+    if (!nextLayout) {
+      setPlacementMessage(direction === "up"
+        ? "No higher supported stack position is available at this footprint."
+        : "No lower supported position is available without a collision.");
+      setWarningPanelOpen(true);
+      return;
+    }
+    arrangementHistoryRef.current = [
+      ...arrangementHistoryRef.current,
+      placed.map((box) => ({ ...box })),
+    ].slice(-20);
+    arrangementRedoRef.current = [];
+    setHistoryCount(arrangementHistoryRef.current.length);
+    setRedoCount(0);
+    setPlacementMessage(`${selected.length} selected cargo unit${selected.length === 1 ? "" : "s"} moved ${direction} to a supported level.`);
     onPlacedChangeRef.current?.(nextLayout);
   }, [container, placed, selectedCargoIndices]);
 
@@ -1669,6 +1696,14 @@ export function ContainerViewer3D({
       }
     };
     const updateHoverMeasurements = (index: number | null) => {
+      if (!showMeasurements) {
+        activeMeasurementIndex = null;
+        activeMeasurementSideKey = null;
+        clearHoverMeasurements();
+        hoverMeasurementGroup.visible = false;
+        draftingRulerGroup.visible = false;
+        return;
+      }
       const box = index === null ? null : placed[index];
       if (!box) {
         activeMeasurementIndex = null;
@@ -1731,8 +1766,8 @@ export function ContainerViewer3D({
       const widthLineX = bX + bL * (cameraSeesPositiveX ? 0.7 : 0.3);
       addInternalTopMeasurement(
         "length",
-        bX + bL * 0.08,
-        bX + bL * 0.92,
+        bX,
+        bX + bL,
         measurementY,
         lengthLineZ,
         formatSceneLength(box.l),
@@ -1741,8 +1776,8 @@ export function ContainerViewer3D({
       );
       addInternalTopMeasurement(
         "width",
-        bZ + bW * 0.08,
-        bZ + bW * 0.92,
+        bZ,
+        bZ + bW,
         measurementY + 0.002,
         widthLineX,
         formatSceneLength(box.w),
@@ -1999,7 +2034,7 @@ export function ContainerViewer3D({
     };
 
     const setView = (preset: ContainerViewPreset) => {
-      draftingRulerGroup.visible = activeMeasurementIndex === null;
+      draftingRulerGroup.visible = showMeasurements && activeMeasurementIndex === null;
       camera.up.set(0, 1, 0);
       controls.target.set(cL / 2, cH * 0.4, cW / 2);
       const viewScale = compactViewport ? 1.06 : 1;
@@ -3093,6 +3128,7 @@ export function ContainerViewer3D({
     showGrid,
     showShell,
     showLabels,
+    showMeasurements,
     renderQuality,
     stagedCargo,
     loadStagedCargo,
@@ -3280,10 +3316,10 @@ export function ContainerViewer3D({
                   <button type="button" onClick={() => setSelectedCargoIndices(new Set())} className="rounded-md px-2 py-1 text-slate-400 hover:bg-white hover:text-slate-700">Clear</button>
                 </div>
               </div>
-              <div className="mt-2 grid grid-cols-3 gap-1 text-[8px] font-bold text-slate-500 sm:grid-cols-6">
+              <div className="mt-2 grid grid-cols-4 gap-1 text-[8px] font-bold text-slate-500 sm:grid-cols-8">
                 <button type="button" onClick={() => applySelectionRotation("counterclockwise")} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Rotate selected cargo left" title="Rotate 90° left (Q)" data-testid="button-rotate-selection-left"><RotateCcw className="h-3.5 w-3.5" /><span>Left 90°</span></button>
                 <button type="button" onClick={() => nudgeSelection(-movementStepIn, 0)} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Move selected cargo toward the closed end" title="Move toward closed end (↑)" data-testid="button-nudge-closed-end"><ArrowUp className="h-3.5 w-3.5" /><span>Closed</span></button>
-                <button type="button" onClick={() => applySelectionRotation("clockwise")} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Rotate selected cargo right" title="Rotate 90° right (E)" data-testid="button-rotate-selection-right"><RotateCw className="h-3.5 w-3.5" /><span>Right 90°</span></button>
+                <button type="button" onClick={() => applySelectionRotation("clockwise")} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Rotate selected cargo right" title="Rotate 90° right (E)" data-testid="button-rotate-selection-right"><RotateCw className="h-3.5 w-3.5" /><span>Right 90°</span></button><button type="button" onClick={() => moveSelectionVertically("up")} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Stack selected cargo upward" title="Move to next supported stack level" data-testid="button-stack-selection-up"><ChevronUp className="h-3.5 w-3.5" /><span>Stack up</span></button><button type="button" onClick={() => moveSelectionVertically("down")} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Lower selected cargo" title="Move to next supported level or floor" data-testid="button-stack-selection-down"><ChevronDown className="h-3.5 w-3.5" /><span>Lower</span></button>
                 <button type="button" onClick={() => nudgeSelection(0, -movementStepIn)} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Move selected cargo toward side A" title="Move toward side A (←)" data-testid="button-nudge-side-a"><ArrowLeft className="h-3.5 w-3.5" /><span>Side A</span></button>
                 <button type="button" onClick={() => nudgeSelection(movementStepIn, 0)} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Move selected cargo toward the doors" title="Move toward doors (↓)" data-testid="button-nudge-doors"><ArrowDown className="h-3.5 w-3.5" /><span>Doors</span></button>
                 <button type="button" onClick={() => nudgeSelection(0, movementStepIn)} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Move selected cargo toward side B" title="Move toward side B (→)" data-testid="button-nudge-side-b"><ArrowRight className="h-3.5 w-3.5" /><span>Side B</span></button>
@@ -3320,10 +3356,11 @@ export function ContainerViewer3D({
                   </div>
                 </div>
                 <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Display</p>
-                <div className="mt-1.5 grid grid-cols-3 gap-2">{[
+                <div className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-4">{[
                   { label: "Grid", active: showGrid, set: setShowGrid, icon: Grid3X3 },
                   { label: "Shell", active: showShell, set: setShowShell, icon: Eye },
                   { label: "References", active: showLabels, set: setShowLabels, icon: Box },
+                  { label: "Measures", active: showMeasurements, set: setShowMeasurements, icon: Ruler },
                 ].map(({ label, active, set, icon: Icon }) => <button key={label} type="button" onClick={() => set(!active)} className={`flex min-h-12 items-center justify-center gap-1.5 rounded-xl border px-2 text-[10px] font-bold transition active:scale-[0.97] ${active ? "border-blue-200 bg-blue-50 text-primary" : "border-slate-200 bg-slate-50 text-slate-400"}`} aria-pressed={active} data-testid={`button-mobile-layer-${label.toLowerCase()}`}><Icon className="h-4 w-4" />{label}</button>)}</div>
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <div><p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Camera</p><div className="mt-1.5 grid grid-cols-4 gap-1">{([ ["isometric", "3D"], ["doors", "Doors"], ["side", "Side"], ["top", "Top"] ] as const).map(([preset, label]) => <button key={preset} type="button" onClick={() => setActiveView(preset)} className={`min-h-10 rounded-lg border px-1 text-[9px] font-bold transition active:scale-95 ${activeView === preset ? "border-blue-300 bg-blue-50 text-primary" : "border-slate-200 bg-white text-slate-600"}`} aria-pressed={activeView === preset} data-testid={`button-mobile-view-${preset}`}>{label}</button>)}</div></div>
@@ -3359,11 +3396,12 @@ export function ContainerViewer3D({
             <button type="button" onClick={toggleFullscreen} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} data-testid="button-container-fullscreen">{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}<ViewerHoverLabel>{isFullscreen ? "Exit full screen" : "Open full workspace"}</ViewerHoverLabel></button>
             {displayControlsOpen && <div className="absolute right-12 top-28 w-64 rounded-2xl border border-white/95 bg-white/[0.98] p-3 text-left text-slate-700 shadow-[0_20px_55px_-22px_rgba(15,23,42,0.32)]" data-testid="floating-display-controls">
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">View controls</p>
-              <div className="mt-2 grid grid-cols-3 gap-2">{[
+              <div className="mt-2 grid grid-cols-4 gap-2">{[
                 { label: "Grid", active: showGrid, set: setShowGrid, icon: Grid3X3 },
                 { label: "Shell", active: showShell, set: setShowShell, icon: Eye },
                 { label: "Refs", active: showLabels, set: setShowLabels, icon: Box },
-              ].map(({ label, active, set, icon: Icon }) => <button key={label} type="button" onClick={() => set(!active)} className={`flex flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-[9px] font-bold transition hover:-translate-y-0.5 hover:shadow-sm ${active ? "border-blue-200 bg-blue-50 text-primary" : "border-slate-200 bg-slate-100 text-slate-400"}`} aria-pressed={active} data-testid={`button-container-layer-${label === "Refs" ? "labels" : label.toLowerCase()}`}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm"><Icon className="h-3.5 w-3.5" /></span>{label}</button>)}</div>
+                { label: "Measure", active: showMeasurements, set: setShowMeasurements, icon: Ruler },
+              ].map(({ label, active, set, icon: Icon }) => <button key={label} type="button" onClick={() => set(!active)} className={`flex flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-[9px] font-bold transition hover:-translate-y-0.5 hover:shadow-sm ${active ? "border-blue-200 bg-blue-50 text-primary" : "border-slate-200 bg-slate-100 text-slate-400"}`} aria-pressed={active} data-testid={`button-container-layer-${label === "Refs" ? "labels" : label === "Measure" ? "measurements" : label.toLowerCase()}`}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm"><Icon className="h-3.5 w-3.5" /></span>{label}</button>)}</div>
               <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">Camera angle</p>
               <div className="mt-1.5 grid grid-cols-4 gap-1.5">{([ ["isometric", "3D"], ["doors", "Doors"], ["side", "Side"], ["top", "Top"] ] as const).map(([preset, label]) => <button key={preset} type="button" onClick={() => setActiveView(preset)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${activeView === preset ? "border-blue-300 bg-blue-50 text-primary" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`} aria-pressed={activeView === preset} data-testid={`button-container-view-${preset}`}>{label}</button>)}</div>
               <div className="mt-2 flex justify-end"><button type="button" onClick={resetCameraView} className="rounded-lg px-2 py-1 text-[9px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-primary" data-testid="button-reset-camera"><Home className="mr-1 inline h-3 w-3" />Reset camera</button></div>
