@@ -147,6 +147,11 @@ type StagedCargo = {
   /** World-space centre inside its staging dock, stored in inches. */
   dockPositionIn?: { x: number; z: number };
 };
+type CargoContextCardState = {
+  index: number;
+  x: number;
+  y: number;
+};
 type ShareLifetimeDays = 7 | 30 | 90 | 180;
 type ManagedShareLink = {
   token: string;
@@ -587,6 +592,7 @@ export function ContainerViewer3D({
   const [renderQuality, setRenderQuality] = useState<ContainerRenderQuality>("auto");
   const [hoveredCargoIndex, setHoveredCargoIndex] = useState<number | null>(null);
   const [selectedCargoIndices, setSelectedCargoIndices] = useState<Set<number>>(new Set());
+  const [cargoContextCard, setCargoContextCard] = useState<CargoContextCardState | null>(null);
   const [movementStep, setMovementStep] = useState<"fine" | "coarse">("fine");
   const selectedCargoIndicesRef = useRef<Set<number>>(new Set());
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -706,6 +712,54 @@ export function ContainerViewer3D({
     selectedCargoIndicesRef.current = selectedCargoIndices;
     sceneRef.current?.setCargoHover(hoveredCargoIndex);
   }, [hoveredCargoIndex, selectedCargoIndices]);
+
+  useEffect(() => {
+    const selectedIndex = [...selectedCargoIndices][0];
+    if (selectedIndex === undefined) return;
+    const selectedBox = placed[selectedIndex];
+    if (selectedBox) {
+      const groupId = selectedBox.cargoId || `${selectedBox.cargoName}-${selectedBox.l}-${selectedBox.w}-${selectedBox.h}`;
+      setExpandedCargoGroups((current) => current.has(groupId) ? current : new Set([...current, groupId]));
+    }
+    let scrollFrame = 0;
+    const renderFrame = window.requestAnimationFrame(() => {
+      scrollFrame = window.requestAnimationFrame(() => {
+        const candidates = workspaceRef.current?.querySelectorAll<HTMLElement>(`[data-cargo-list-index="${selectedIndex}"]`);
+        const visibleRow = candidates ? [...candidates].find((element) => element.offsetParent !== null) : null;
+        visibleRow?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(renderFrame);
+      window.cancelAnimationFrame(scrollFrame);
+    };
+  }, [activeCargoZone, mobilePanelOpen, placed, selectedCargoIndices, sidebarOpen]);
+
+  useEffect(() => {
+    if (!displayControlsOpen && !warningPanelOpen && !helpPanelOpen && !sharePanelOpen) return;
+    const closeShortcutPopover = (event: PointerEvent) => {
+      if (!window.matchMedia("(min-width: 1024px)").matches) return;
+      const target = event.target;
+      if (target instanceof Element && target.closest('[data-testid="container-floating-tool-rail"]')) return;
+      setDisplayControlsOpen(false);
+      setWarningPanelOpen(false);
+      setHelpPanelOpen(false);
+      setSharePanelOpen(false);
+    };
+    document.addEventListener("pointerdown", closeShortcutPopover);
+    return () => document.removeEventListener("pointerdown", closeShortcutPopover);
+  }, [displayControlsOpen, helpPanelOpen, sharePanelOpen, warningPanelOpen]);
+
+  const revealCargoInList = useCallback((index: number) => {
+    setActiveCargoZone("loaded");
+    setCargoContextCard(null);
+    if (typeof window !== "undefined" && window.innerWidth < 1024) setMobilePanelOpen(true);
+    else setSidebarOpen(true);
+    const next = new Set([index]);
+    selectedCargoIndicesRef.current = next;
+    setSelectedCargoIndices(next);
+    setHoveredCargoIndex(index);
+  }, []);
 
   const toggleFullscreen = useCallback(async () => {
     const workspace = workspaceRef.current;
@@ -1920,7 +1974,7 @@ export function ContainerViewer3D({
     };
     let dragState: DragState | null = null;
 
-    const updatePointer = (event: PointerEvent) => {
+    const updatePointer = (event: { clientX: number; clientY: number }) => {
       const bounds = renderer.domElement.getBoundingClientRect();
       pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
       pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
@@ -2153,8 +2207,61 @@ export function ContainerViewer3D({
       return "Valid position — release to place cargo.";
     };
 
+    const selectLoadedCargo = (index: number, message = "Cargo selected — drag it to reposition. Right-click or long-press for stats.") => {
+      const next = new Set([index]);
+      selectedCargoIndicesRef.current = next;
+      setSelectedCargoIndices(next);
+      setHoveredCargoIndex(index);
+      setCargoHover(index);
+      setActiveCargoZone("loaded");
+      setSelectedSceneDock(null);
+      selectedSceneDockRef.current = null;
+      setDockFocus(null);
+      selectedStagedCargoIdRef.current = null;
+      setSelectedStagedCargoId(null);
+      setStagedCargoFocus(null);
+      setPlacementMessage(message);
+    };
+    const openCargoStats = (index: number, clientX: number, clientY: number) => {
+      selectLoadedCargo(index);
+      const bounds = el.getBoundingClientRect();
+      const cardWidth = Math.min(292, Math.max(260, bounds.width - 24));
+      const x = Math.min(Math.max(12, clientX - bounds.left + 10), Math.max(12, bounds.width - cardWidth - 12));
+      const y = Math.min(Math.max(54, clientY - bounds.top + 10), Math.max(54, bounds.height - 390));
+      setCargoContextCard({ index, x, y });
+    };
+
     let inspectionPointer: { pointerId: number; clientX: number; clientY: number; index: number } | null = null;
     let dockInspectionPointer: { pointerId: number; clientX: number; clientY: number; zone: StagingDock; stagedId: string | null } | null = null;
+    let longPressTimer: number | null = null;
+    let longPressPointer: { pointerId: number; clientX: number; clientY: number; index: number } | null = null;
+    let longPressTriggeredPointerId: number | null = null;
+    const cancelLongPress = () => {
+      if (longPressTimer !== null) window.clearTimeout(longPressTimer);
+      longPressTimer = null;
+      longPressPointer = null;
+    };
+    const beginLongPress = (event: PointerEvent, index: number) => {
+      if (event.pointerType !== "touch") return;
+      cancelLongPress();
+      longPressPointer = { pointerId: event.pointerId, clientX: event.clientX, clientY: event.clientY, index };
+      longPressTimer = window.setTimeout(() => {
+        const pending = longPressPointer;
+        if (!pending) return;
+        longPressTimer = null;
+        longPressPointer = null;
+        longPressTriggeredPointerId = pending.pointerId;
+        inspectionPointer = null;
+        if (dragState && !dragState.activated && dragState.pointerId === pending.pointerId) {
+          dragState = null;
+          if (renderer.domElement.hasPointerCapture(pending.pointerId)) renderer.domElement.releasePointerCapture(pending.pointerId);
+          controls.enabled = true;
+          setInteractionResolution(false);
+        }
+        openCargoStats(pending.index, pending.clientX, pending.clientY);
+        if (navigator.vibrate) navigator.vibrate(18);
+      }, 520);
+    };
     const handlePointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return;
       updatePointer(event);
@@ -2163,12 +2270,13 @@ export function ContainerViewer3D({
       const dockIntersection = intersection || stagedIntersection
         ? null
         : raycaster.intersectObjects(dockHitMeshes, false)[0];
+      setCargoContextCard(null);
 
       if (stagedIntersection?.object instanceof THREE.Mesh) {
         const zone = stagedIntersection.object.userData.zone as StagingDock | undefined;
         const stagedId = stagedIntersection.object.userData.stagedId as string | undefined;
         if (zone && stagedId) {
-          const directStagedManipulation = event.pointerType === "touch" || selectedStagedCargoIdRef.current === stagedId;
+          const directStagedManipulation = selectedStagedCargoIdRef.current === stagedId;
           if (!directStagedManipulation) {
             dockInspectionPointer = { pointerId: event.pointerId, clientX: event.clientX, clientY: event.clientY, zone, stagedId };
             return;
@@ -2216,16 +2324,19 @@ export function ContainerViewer3D({
         }
       }
 
+      if (intersection?.object instanceof THREE.Mesh) {
+        beginLongPress(event, intersection.object.userData.placedIndex as number);
+      }
+
       if (!intersection && dockIntersection?.object instanceof THREE.Mesh) {
         const zone = dockIntersection.object.userData.zone as StagingDock | undefined;
         if (zone) dockInspectionPointer = { pointerId: event.pointerId, clientX: event.clientX, clientY: event.clientY, zone, stagedId: null };
         return;
       }
 
-      const directManipulation = arrangeMode
-        || event.pointerType === "touch"
-        || (intersection?.object instanceof THREE.Mesh
-          && selectedCargoIndicesRef.current.has(intersection.object.userData.placedIndex as number));
+      const selectedIntersection = intersection?.object instanceof THREE.Mesh
+        && selectedCargoIndicesRef.current.has(intersection.object.userData.placedIndex as number);
+      const directManipulation = selectedIntersection || (arrangeMode && event.pointerType !== "touch");
       if (!directManipulation) {
         if (intersection?.object instanceof THREE.Mesh) {
           inspectionPointer = {
@@ -2311,6 +2422,8 @@ export function ContainerViewer3D({
     let orbiting = false;
     const handleOrbitStart = () => {
       if (dragState) return;
+      cancelLongPress();
+      setCargoContextCard(null);
       orbiting = true;
       setInteractionResolution(true);
       if (currentHoverIndex !== null) {
@@ -2330,6 +2443,13 @@ export function ContainerViewer3D({
       renderer.domElement.style.cursor = arrangeMode ? "grab" : "default";
     };
     const handlePointerMove = (event: PointerEvent) => {
+      if (longPressPointer?.pointerId === event.pointerId) {
+        const longPressMovement = Math.hypot(
+          event.clientX - longPressPointer.clientX,
+          event.clientY - longPressPointer.clientY,
+        );
+        if (longPressMovement > 8) cancelLongPress();
+      }
       if (!dragState) {
         if (orbiting || event.buttons !== 0) return;
         if (event.pointerType === "touch") return;
@@ -2594,6 +2714,16 @@ export function ContainerViewer3D({
         const start = completedDrag.startPositions.get(index);
         return Boolean(start && start.distanceTo(cargoMeshes[index].position) > 0.001);
       });
+      if (event.pointerType === "touch" && !completedDrag.activated && !moved) {
+        selectedCargoIndicesRef.current = new Set();
+        setSelectedCargoIndices(new Set());
+        setHoveredCargoIndex(null);
+        setCargoHover(null);
+        setCargoContextCard(null);
+        setPlacementMessage("Cargo deselected — tap a unit to select it.");
+        renderScene();
+        return;
+      }
       if (commit && moved && completedDrag.valid && completedDrag.dropZone && completedDrag.indices.length === 1) {
         const start = completedDrag.startPositions.get(completedDrag.index);
         const dockPositionIn = {
@@ -2632,22 +2762,17 @@ export function ContainerViewer3D({
     };
 
     const handlePointerUp = (event: PointerEvent) => {
+      cancelLongPress();
+      if (longPressTriggeredPointerId === event.pointerId) {
+        longPressTriggeredPointerId = null;
+        inspectionPointer = null;
+        dockInspectionPointer = null;
+        return;
+      }
       if (inspectionPointer?.pointerId === event.pointerId) {
         const movement = Math.hypot(event.clientX - inspectionPointer.clientX, event.clientY - inspectionPointer.clientY);
         if (movement < 7) {
-          const next = new Set([inspectionPointer.index]);
-          selectedCargoIndicesRef.current = next;
-          setSelectedCargoIndices(next);
-          setHoveredCargoIndex(inspectionPointer.index);
-          setCargoHover(inspectionPointer.index);
-          setActiveCargoZone("loaded");
-          setSelectedSceneDock(null);
-          selectedSceneDockRef.current = null;
-          setDockFocus(null);
-          selectedStagedCargoIdRef.current = null;
-          setSelectedStagedCargoId(null);
-          setStagedCargoFocus(null);
-          setPlacementMessage("Cargo selected — drag it to reposition, or open Details for precise controls.");
+          selectLoadedCargo(inspectionPointer.index);
         }
         inspectionPointer = null;
         return;
@@ -2677,11 +2802,14 @@ export function ContainerViewer3D({
       finishDrag(event, true);
     };
     const handlePointerCancel = (event: PointerEvent) => {
+      cancelLongPress();
+      if (longPressTriggeredPointerId === event.pointerId) longPressTriggeredPointerId = null;
       inspectionPointer = null;
       dockInspectionPointer = null;
       finishDrag(event, false);
     };
     const handlePointerLeave = () => {
+      cancelLongPress();
       if (dragState || orbiting) return;
       inspectionPointer = null;
       dockInspectionPointer = null;
@@ -2695,12 +2823,21 @@ export function ContainerViewer3D({
     };
     let wheelRestoreTimer: number | null = null;
     const handleWheelActivity = () => {
+      setCargoContextCard(null);
       setInteractionResolution(true);
       if (wheelRestoreTimer !== null) window.clearTimeout(wheelRestoreTimer);
       wheelRestoreTimer = window.setTimeout(() => {
         wheelRestoreTimer = null;
         setInteractionResolution(false);
       }, 140);
+    };
+    const handleContextMenu = (event: MouseEvent) => {
+      updatePointer(event);
+      const intersection = raycaster.intersectObjects(cargoMeshes, false)[0];
+      if (!intersection?.object || !(intersection.object instanceof THREE.Mesh)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      openCargoStats(intersection.object.userData.placedIndex as number, event.clientX, event.clientY);
     };
 
     renderer.domElement.style.cursor = arrangeMode ? "grab" : "default";
@@ -2710,6 +2847,7 @@ export function ContainerViewer3D({
     renderer.domElement.addEventListener("pointercancel", handlePointerCancel);
     renderer.domElement.addEventListener("pointerleave", handlePointerLeave);
     renderer.domElement.addEventListener("wheel", handleWheelActivity, { passive: true });
+    renderer.domElement.addEventListener("contextmenu", handleContextMenu);
     controls.addEventListener("start", handleOrbitStart);
     controls.addEventListener("end", handleOrbitEnd);
     controls.addEventListener("change", renderScene);
@@ -2816,11 +2954,13 @@ export function ContainerViewer3D({
       renderer.domElement.removeEventListener("pointercancel", handlePointerCancel);
       renderer.domElement.removeEventListener("pointerleave", handlePointerLeave);
       renderer.domElement.removeEventListener("wheel", handleWheelActivity);
+      renderer.domElement.removeEventListener("contextmenu", handleContextMenu);
       controls.removeEventListener("start", handleOrbitStart);
       controls.removeEventListener("end", handleOrbitEnd);
       controls.removeEventListener("change", renderScene);
       renderer.domElement.removeEventListener("webglcontextlost", handleContextLost);
       if (wheelRestoreTimer !== null) window.clearTimeout(wheelRestoreTimer);
+      cancelLongPress();
       if (renderFrameId !== null) window.cancelAnimationFrame(renderFrameId);
       if (compositionFrameId !== null) window.cancelAnimationFrame(compositionFrameId);
       controls.dispose();
@@ -3009,6 +3149,14 @@ export function ContainerViewer3D({
     link.click();
   };
 
+  const previewDock = (zone: StagingDock) => sceneRef.current?.setDockFocus(zone, "hover");
+  const restoreDockPreview = () => sceneRef.current?.setDockFocus(selectedSceneDock, "selected");
+  const infoCargoIndex = selectedCargoIndices.size === 1
+    ? [...selectedCargoIndices][0]
+    : hoveredCargoIndex;
+  const infoCargo = infoCargoIndex !== null && infoCargoIndex !== undefined ? placed[infoCargoIndex] : null;
+  const contextCargo = cargoContextCard ? placed[cargoContextCard.index] : null;
+
   return (
     <div
       ref={workspaceRef}
@@ -3132,7 +3280,7 @@ export function ContainerViewer3D({
             <button type="button" onClick={() => setSidebarOpen((current) => !current)} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label={sidebarOpen ? "Hide cargo panel" : "Show cargo panel"} data-testid="button-container-sidebar-toggle">{sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}<ViewerHoverLabel>{sidebarOpen ? "Hide cargo panel" : "Show cargo panel"}</ViewerHoverLabel></button>
             <button type="button" onClick={() => { cycleCameraView(); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Change camera angle" data-testid="button-floating-camera"><Camera className="h-4 w-4" /><ViewerHoverLabel>Change camera angle</ViewerHoverLabel></button>
             <button type="button" onClick={() => { setArrangeMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setSequenceMode((current) => { if (!current) setSequenceStep(1); return !current; }); }} disabled={placed.length === 0} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md disabled:opacity-35 ${sequenceMode ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:text-primary"}`} aria-label="Loading sequence" data-testid="button-loading-sequence"><Play className="h-4 w-4" /><ViewerHoverLabel>Loading sequence</ViewerHoverLabel></button>
-            {onPlacedChange && <button type="button" onClick={() => { setSequenceMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setArrangeMode((current) => !current); setPlacementMessage("Select a cargo item and drag it to a new position."); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${arrangeMode ? "bg-sky-50 text-sky-600" : "text-slate-600 hover:text-primary"}`} aria-label="Adjust cargo layout" data-testid="button-arrange-cargo"><MousePointerClick className="h-4 w-4" /><ViewerHoverLabel>Adjust cargo layout</ViewerHoverLabel></button>}
+            {onPlacedChange && <button type="button" onClick={() => { setSequenceMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setArrangeMode((current) => !current); setPlacementMessage("Precision tools enabled — select one or more units to align, rotate or nudge."); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${arrangeMode ? "bg-sky-50 text-sky-600" : "text-slate-600 hover:text-primary"}`} aria-label="Precision cargo tools" data-testid="button-arrange-cargo"><Crosshair className="h-4 w-4" /><ViewerHoverLabel>Precision cargo tools</ViewerHoverLabel></button>}
             <div className="my-0.5 h-px w-6 bg-slate-200" />
             <button type="button" onClick={() => { setDisplayControlsOpen((current) => !current); setSharePanelOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${displayControlsOpen ? "bg-blue-50 text-primary" : "text-slate-600 hover:text-primary"}`} aria-label="View controls" data-testid="button-floating-settings"><Settings2 className="h-4 w-4" /><ViewerHoverLabel>View controls</ViewerHoverLabel></button>
             <button type="button" onClick={() => { setWarningPanelOpen((current) => !current); setSharePanelOpen(false); setDisplayControlsOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${warningPanelOpen ? "bg-slate-900 text-white" : "text-slate-600 hover:text-primary"}`} aria-label="Placement checks" data-testid="button-floating-warnings"><AlertTriangle className="h-4 w-4" />{hasPlacementWarning && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />}<ViewerHoverLabel>Placement checks</ViewerHoverLabel></button>
@@ -3166,12 +3314,12 @@ export function ContainerViewer3D({
             </div>}
             {helpPanelOpen && <div className="absolute right-12 bottom-16 w-72 rounded-2xl border border-white/95 bg-white/[0.98] p-3 text-left shadow-[0_22px_55px_-24px_rgba(15,23,42,0.38)]" data-testid="container-help-panel">
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Workspace controls</p>
-              <div className="mt-2 space-y-1.5 text-[10px] leading-4 text-slate-600"><p><strong className="text-slate-800">Tap cargo</strong> to select it, then drag it directly. Drag empty grid space to rotate the scene.</p><p><strong className="text-slate-800">Right-drag</strong> to pan in fullscreen. Use the wheel or pinch to zoom.</p><p><strong className="text-slate-800">Blue alignment</strong> means the unit fits. Docks allow free placement and gently align near open edges or the previous slot.</p></div>
+              <div className="mt-2 space-y-1.5 text-[10px] leading-4 text-slate-600"><p><strong className="text-slate-800">Tap cargo</strong> once to select it; drag the selected unit to move it. Tap it again without dragging to deselect.</p><p><strong className="text-slate-800">Right-click or long-press</strong> a unit for clearances and actions. Drag empty grid space to rotate.</p><p><strong className="text-slate-800">Blue alignment</strong> means the unit fits. Docks allow free placement and gently align near open edges or the previous slot.</p></div>
             </div>}
             {warningPanelOpen && (
               <div className="absolute right-12 top-0 w-60 rounded-2xl border border-white/90 bg-white/[0.98] p-3 text-left shadow-[0_20px_55px_-22px_rgba(15,23,42,0.45)]" data-testid="floating-warning-panel">
                 <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Plan status</p>
-                <div className="mt-2 flex gap-2 rounded-xl bg-slate-50 p-2.5"><AlertTriangle className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${hasPlacementWarning ? "text-red-500" : "text-emerald-500"}`} /><p className="text-[10px] leading-4 text-slate-600">{arrangeMode || hasPlacementWarning ? placementMessage : "No active placement warnings. Use Adjust layout to validate manual moves."}</p></div>
+                <div className="mt-2 flex gap-2 rounded-xl bg-slate-50 p-2.5"><AlertTriangle className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${hasPlacementWarning ? "text-red-500" : "text-emerald-500"}`} /><p className="text-[10px] leading-4 text-slate-600">{arrangeMode || hasPlacementWarning ? placementMessage : "No active placement warnings. Open Precision cargo tools for multi-select alignment and validation."}</p></div>
               </div>
             )}
           </div>
@@ -3234,15 +3382,15 @@ export function ContainerViewer3D({
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 [scrollbar-color:#cbd5e1_transparent] [scrollbar-width:thin]">
                 {activeCargoZone === "loaded" || !onPlacedChange ? <div className="space-y-1">
                   {placed.map((box, index) => (
-                    <div key={`${box.cargoId}-mobile-${index}`} className={`flex items-center gap-1.5 rounded-xl border p-1.5 transition ${selectedCargoIndices.has(index) ? "border-blue-300 bg-blue-50/80 ring-2 ring-blue-100" : hoveredCargoIndex === index ? "border-sky-300 bg-white" : "border-transparent bg-white/60"}`} data-testid={`mobile-container-cargo-row-${index}`}>
+                    <div key={`${box.cargoId}-mobile-${index}`} className={`flex items-center gap-1.5 rounded-xl border p-1.5 transition ${selectedCargoIndices.has(index) ? "border-blue-300 bg-blue-50/80 ring-2 ring-blue-100" : hoveredCargoIndex === index ? "border-sky-300 bg-white" : "border-transparent bg-white/60"}`} data-cargo-list-index={index} data-testid={`mobile-container-cargo-row-${index}`}>
                       {onPlacedChange && arrangeMode && <button type="button" onClick={() => toggleCargoSelection(index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-primary" aria-label={`${selectedCargoIndices.has(index) ? "Deselect" : "Select"} ${box.cargoName || "cargo item"}`} aria-pressed={selectedCargoIndices.has(index)} data-testid={`button-mobile-select-container-cargo-${index}`}>{selectedCargoIndices.has(index) ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 text-slate-400" />}</button>}
                       <button type="button" onClick={() => { const next = new Set([index]); selectedCargoIndicesRef.current = next; setSelectedCargoIndices(next); setSelectedStagedCargoId(null); setSelectedSceneDock(null); setHoveredCargoIndex(index); sceneRef.current?.setCargoHover(index); sceneRef.current?.setStagedCargoFocus(null); sceneRef.current?.setDockFocus(null); }} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg p-0.5 text-left" data-testid={`button-mobile-container-cargo-${index}`}>
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-900" style={{ backgroundColor: `${box.color}45` }}><Box className="h-3.5 w-3.5" /></span>
                         <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-slate-800">{box.cargoName || `Cargo ${index + 1}`}</span><span className="mt-0.5 block truncate text-[9px] text-slate-500">{fmt(box.l)} × {fmt(box.w)} × {fmt(box.h)} · {unitSystem === "metric" ? `${(box.weight * LB_TO_KG).toFixed(0)} kg` : `${box.weight.toFixed(0)} lb`}</span></span>
                       </button>
                       {onPlacedChange && <div className="flex shrink-0 gap-1">
-                        <button type="button" onClick={() => stageCargo(index, "dock1")} className="flex h-8 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 text-[8px] font-bold text-slate-500 hover:border-blue-300 hover:bg-blue-50 hover:text-primary" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 1`} title="Move to Dock 1" data-testid={`button-mobile-stage-dock1-${index}`}><Package className="h-3 w-3" />D1</button>
-                        <button type="button" onClick={() => stageCargo(index, "dock2")} className="flex h-8 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 text-[8px] font-bold text-slate-500 hover:border-blue-300 hover:bg-blue-50 hover:text-primary" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 2`} title="Move to Dock 2" data-testid={`button-mobile-stage-dock2-${index}`}><Package className="h-3 w-3" />D2</button>
+                        <button type="button" onClick={() => stageCargo(index, "dock1")} onPointerEnter={() => previewDock("dock1")} onPointerLeave={restoreDockPreview} onFocus={() => previewDock("dock1")} onBlur={restoreDockPreview} className="flex h-8 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 text-[8px] font-bold text-slate-500 hover:border-blue-300 hover:bg-blue-50 hover:text-primary" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 1`} title="Move to Dock 1" data-testid={`button-mobile-stage-dock1-${index}`}><Package className="h-3 w-3" />D1</button>
+                        <button type="button" onClick={() => stageCargo(index, "dock2")} onPointerEnter={() => previewDock("dock2")} onPointerLeave={restoreDockPreview} onFocus={() => previewDock("dock2")} onBlur={restoreDockPreview} className="flex h-8 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 text-[8px] font-bold text-slate-500 hover:border-blue-300 hover:bg-blue-50 hover:text-primary" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 2`} title="Move to Dock 2" data-testid={`button-mobile-stage-dock2-${index}`}><Package className="h-3 w-3" />D2</button>
                       </div>}
                     </div>
                   ))}
@@ -3288,24 +3436,68 @@ export function ContainerViewer3D({
               </motion.button>
             )}
           </AnimatePresence>
-          {hoveredCargoIndex !== null && placed[hoveredCargoIndex] && (
-            <div
-              className={`pointer-events-none absolute top-12 z-20 w-max max-w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-2xl border border-white/95 bg-white/[0.98] px-3 py-2 text-slate-700 shadow-[0_14px_36px_-22px_rgba(15,23,42,0.32)] sm:top-3 sm:max-w-[calc(100%-6.5rem)] ${sidebarOpen ? "left-1/2 lg:left-[calc(50%-172px)]" : "left-1/2"}`}
-              data-testid="container-cargo-hover-card"
-            >
-              <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1">
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-sm ring-1 ring-slate-300" style={{ backgroundColor: placed[hoveredCargoIndex].color }} />
-                  <strong className="max-w-36 truncate text-[10px] text-slate-800">Unit #{hoveredCargoIndex + 1} · {placed[hoveredCargoIndex].cargoName || "Cargo item"}</strong>
-                </span>
-                <span className="text-[9px] text-slate-500"><strong className="text-slate-700">Size</strong> {fmt(placed[hoveredCargoIndex].l)} × {fmt(placed[hoveredCargoIndex].w)} × {fmt(placed[hoveredCargoIndex].h)}</span>
-                <span className="text-[9px] text-slate-500"><strong className="text-slate-700">Weight</strong> {unitSystem === "metric" ? `${(placed[hoveredCargoIndex].weight * LB_TO_KG).toFixed(0)} kg` : `${placed[hoveredCargoIndex].weight.toFixed(0)} lb`}</span>
-                <span className="hidden h-4 w-px bg-slate-200 sm:block" />
-                <span className="hidden text-[9px] text-slate-500 sm:inline"><strong className="text-slate-700">Container</strong> {fmt(container.lengthIn)} × {fmt(container.widthIn)} × {fmt(container.heightIn)}</span>
-                <span className="hidden text-[9px] text-slate-500 md:inline"><strong className="text-slate-700">Back</strong> {fmt(placed[hoveredCargoIndex].x)} · <strong className="text-slate-700">Doors</strong> {fmt(Math.max(0, container.lengthIn - placed[hoveredCargoIndex].x - placed[hoveredCargoIndex].l))}</span>
-              </div>
-            </div>
-          )}
+          <div
+            className={`pointer-events-none absolute top-12 z-20 w-max max-w-[calc(100%-7rem)] -translate-x-1/2 rounded-2xl border border-white/90 bg-white/[0.86] px-3 py-2 text-slate-700 shadow-[0_14px_36px_-22px_rgba(15,23,42,0.32)] backdrop-blur-xl sm:top-3 sm:max-w-[calc(100%-7rem)] ${sidebarOpen ? "left-[42%] lg:left-[calc(50%-172px)]" : "left-[42%] lg:left-1/2"}`}
+            data-testid="container-cargo-hover-card"
+          >
+            {infoCargo && infoCargoIndex !== null && infoCargoIndex !== undefined ? <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-0.5">
+              <span className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-sm ring-1 ring-slate-300" style={{ backgroundColor: infoCargo.color }} />
+                <strong className="max-w-32 truncate text-[10px] text-slate-800">Unit #{infoCargoIndex + 1}</strong>
+              </span>
+              <span className="text-[9px] text-slate-500"><strong className="text-slate-700">Size</strong> {fmt(infoCargo.l)} × {fmt(infoCargo.w)} × {fmt(infoCargo.h)}</span>
+              <span className="hidden text-[9px] text-slate-500 sm:inline"><strong className="text-slate-700">Weight</strong> {unitSystem === "metric" ? `${(infoCargo.weight * LB_TO_KG).toFixed(0)} kg` : `${infoCargo.weight.toFixed(0)} lb`}</span>
+              <span className="basis-full text-center text-[8px] font-medium text-slate-400 sm:basis-auto sm:text-left">
+                <span className="sm:hidden">Tap again to deselect · Drag to move · Long-press for stats</span>
+                <span className="hidden sm:inline">Drag selected cargo to move · Right-click for stats</span>
+              </span>
+            </div> : <p className="text-center text-[9px] font-medium text-slate-500"><span className="sm:hidden">Tap cargo to select · Drag grid to rotate · Long-press for stats</span><span className="hidden sm:inline">Click cargo to select · Drag grid to rotate · Right-click cargo for stats</span></p>}
+          </div>
+          <AnimatePresence>
+            {cargoContextCard && contextCargo && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 5 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.97, y: 4 }}
+                transition={{ duration: 0.14, ease: "easeOut" }}
+                className="absolute z-50 w-[min(292px,calc(100%-24px))] overflow-hidden rounded-[22px] border border-white/90 bg-white/[0.84] text-slate-700 shadow-[0_24px_70px_-28px_rgba(15,23,42,0.5)] backdrop-blur-2xl"
+                style={{ left: cargoContextCard.x, top: cargoContextCard.y }}
+                onPointerDown={(event) => event.stopPropagation()}
+                data-testid="cargo-stats-card"
+              >
+                <div className="flex items-center justify-between gap-3 border-b border-slate-200/70 px-4 py-3">
+                  <div className="min-w-0"><p className="truncate text-xs font-bold text-slate-900">Unit #{cargoContextCard.index + 1} · {contextCargo.cargoName || "Cargo item"}</p><p className="mt-0.5 truncate text-[9px] text-slate-500">{fmt(contextCargo.l)} × {fmt(contextCargo.w)} × {fmt(contextCargo.h)} · {unitSystem === "metric" ? `${(contextCargo.weight * LB_TO_KG).toFixed(0)} kg` : `${contextCargo.weight.toFixed(0)} lb`}</p></div>
+                  <button type="button" onClick={() => setCargoContextCard(null)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-white hover:text-slate-700" aria-label="Close cargo statistics"><X className="h-3.5 w-3.5" /></button>
+                </div>
+                <div className="p-2">
+                  <button type="button" onClick={() => revealCargoInList(cargoContextCard.index)} className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-[10px] font-semibold text-slate-700 transition hover:bg-white/80 hover:text-primary" data-testid="button-show-cargo-in-list"><ListChecks className="h-4 w-4" />Show in cargo list</button>
+                  {onPlacedChange && <>
+                    <div className="grid grid-cols-2 gap-1">
+                      <button type="button" onClick={() => { stageCargo(cargoContextCard.index, "dock1"); setCargoContextCard(null); }} onMouseEnter={() => previewDock("dock1")} onMouseLeave={restoreDockPreview} className="flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-[9px] font-bold text-slate-600 transition hover:bg-blue-50 hover:text-primary" data-testid="button-context-move-dock1"><Package className="h-3.5 w-3.5" />Move to D1</button>
+                      <button type="button" onClick={() => { stageCargo(cargoContextCard.index, "dock2"); setCargoContextCard(null); }} onMouseEnter={() => previewDock("dock2")} onMouseLeave={restoreDockPreview} className="flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-[9px] font-bold text-slate-600 transition hover:bg-blue-50 hover:text-primary" data-testid="button-context-move-dock2"><Package className="h-3.5 w-3.5" />Move to D2</button>
+                    </div>
+                    <button type="button" onClick={() => { setArrangeMode(true); setCargoContextCard(null); setPlacementMessage("Precision tools enabled — align, rotate or nudge the selected cargo."); }} className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-[10px] font-semibold text-slate-700 transition hover:bg-white/80 hover:text-primary" data-testid="button-cargo-precision-tools"><Crosshair className="h-4 w-4" />Open precision tools</button>
+                  </>}
+                </div>
+                <div className="border-y border-slate-200/70 bg-white/30 px-4 py-3">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Clearance to container</p>
+                  <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 text-[10px]">
+                    {([
+                      ["Closed end", contextCargo.x],
+                      ["Doors", Math.max(0, container.lengthIn - contextCargo.x - contextCargo.l)],
+                      ["Side A", contextCargo.z],
+                      ["Side B", Math.max(0, container.widthIn - contextCargo.z - contextCargo.w)],
+                      ["Floor", contextCargo.y],
+                      ["Ceiling", Math.max(0, container.heightIn - contextCargo.y - contextCargo.h)],
+                    ] as const).map(([label, value]) => <Fragment key={label}><dt className="text-slate-500">{label}</dt><dd className="font-bold tabular-nums text-slate-800">{fmt(value)}</dd></Fragment>)}
+                  </dl>
+                </div>
+                <div className="p-2">
+                  <button type="button" onClick={() => { const validation = validateManualLayout(placed, container); setPlacementMessage(validation.valid ? "Placement rechecked — this layout passes boundary, collision and support checks." : "Placement check found an issue. Open Placement checks for details."); setCargoContextCard(null); }} className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-[10px] font-semibold text-slate-600 transition hover:bg-white/80 hover:text-primary" data-testid="button-recheck-cargo-placement"><RotateCcw className="h-4 w-4" />Recheck placement</button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           {sequenceMode ? (
             <div className="absolute bottom-3 left-3 right-3 z-30 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:min-w-[390px] lg:bottom-14 rounded-xl border border-indigo-200 bg-white/[0.98] p-2 shadow-lg" data-testid="loading-sequence-controls">
               <div className="flex items-center gap-2">
@@ -3454,6 +3646,7 @@ export function ContainerViewer3D({
                     onMouseEnter={() => setHoveredCargoIndex(index)}
                     onMouseLeave={() => setHoveredCargoIndex(null)}
                     className={`group flex w-full items-center gap-1 rounded-xl border p-1.5 text-left transition ${selectedCargoIndices.has(index) ? "border-blue-300 bg-blue-50/70 shadow-sm ring-2 ring-blue-100" : hoveredCargoIndex === index ? "border-blue-300 bg-white shadow-sm ring-2 ring-blue-100" : "border-transparent hover:border-slate-200 hover:bg-white"}`}
+                    data-cargo-list-index={index}
                     data-testid={`container-cargo-row-${index}`}
                   >
                     {onPlacedChange && arrangeMode && <button type="button" onClick={() => toggleCargoSelection(index)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-primary hover:bg-white" aria-label={`${selectedCargoIndices.has(index) ? "Deselect" : "Select"} ${box.cargoName || "cargo item"}`} aria-pressed={selectedCargoIndices.has(index)} data-testid={`button-select-container-cargo-${index}`}>{selectedCargoIndices.has(index) ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 text-slate-400" />}</button>}
@@ -3474,8 +3667,8 @@ export function ContainerViewer3D({
                       </span>
                     </button>
                     {onPlacedChange && <div className="flex shrink-0 gap-1 opacity-60 transition group-hover:opacity-100 group-focus-within:opacity-100">
-                      <button type="button" onClick={() => stageCargo(index, "dock1")} className="flex h-7 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 text-[8px] font-bold text-slate-500 hover:border-blue-300 hover:bg-blue-50 hover:text-primary" title="Move to Dock 1" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 1`} data-testid={`button-stage-dock1-${index}`}><Package className="h-3 w-3" />D1</button>
-                      <button type="button" onClick={() => stageCargo(index, "dock2")} className="flex h-7 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 text-[8px] font-bold text-slate-500 hover:border-blue-300 hover:bg-blue-50 hover:text-primary" title="Move to Dock 2" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 2`} data-testid={`button-stage-dock2-${index}`}><Package className="h-3 w-3" />D2</button>
+                      <button type="button" onClick={() => stageCargo(index, "dock1")} onMouseEnter={() => previewDock("dock1")} onMouseLeave={restoreDockPreview} onFocus={() => previewDock("dock1")} onBlur={restoreDockPreview} className="flex h-7 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 text-[8px] font-bold text-slate-500 hover:border-blue-300 hover:bg-blue-50 hover:text-primary" title="Move to Dock 1" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 1`} data-testid={`button-stage-dock1-${index}`}><Package className="h-3 w-3" />D1</button>
+                      <button type="button" onClick={() => stageCargo(index, "dock2")} onMouseEnter={() => previewDock("dock2")} onMouseLeave={restoreDockPreview} onFocus={() => previewDock("dock2")} onBlur={restoreDockPreview} className="flex h-7 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 text-[8px] font-bold text-slate-500 hover:border-blue-300 hover:bg-blue-50 hover:text-primary" title="Move to Dock 2" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 2`} data-testid={`button-stage-dock2-${index}`}><Package className="h-3 w-3" />D2</button>
                     </div>}
                   </div>
                   ); })}
