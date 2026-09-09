@@ -13,10 +13,11 @@ test("auto quality uses a lightweight profile on mobile", () => {
   });
 
   assert.equal(profile.performanceMode, true);
-  assert.equal(profile.antialias, false);
+  assert.equal(profile.antialias, true);
   assert.equal(profile.shadows, false);
-  assert.equal(profile.pixelRatio, 0.75);
-  assert.equal(profile.detailedLabels, false);
+  assert.equal(profile.pixelRatio, 1.2);
+  assert.equal(profile.gridDivisions, 44);
+  assert.equal(profile.detailedLabels, true);
 });
 
 test("large plans automatically disable expensive labels and shadows", () => {
@@ -34,6 +35,23 @@ test("large plans automatically disable expensive labels and shadows", () => {
   assert.equal(profile.shadows, false);
 });
 
+test("fast mode stays full-resolution and antialiased", () => {
+  const profile = getContainerRenderProfile({
+    quality: "performance",
+    viewportWidth: 390,
+    devicePixelRatio: 3,
+    itemCount: 24,
+    deviceMemoryGb: 4,
+    hardwareConcurrency: 4,
+  });
+
+  assert.equal(profile.performanceMode, true);
+  assert.equal(profile.pixelRatio, 1);
+  assert.equal(profile.antialias, true);
+  assert.equal(profile.gridDivisions, 44);
+  assert.equal(profile.detailedLabels, true);
+});
+
 test("quality override retains premium rendering within safe limits", () => {
   const profile = getContainerRenderProfile({
     quality: "quality",
@@ -46,6 +64,6 @@ test("quality override retains premium rendering within safe limits", () => {
 
   assert.equal(profile.performanceMode, false);
   assert.equal(profile.antialias, true);
-  assert.equal(profile.pixelRatio, 1.35);
+  assert.equal(profile.pixelRatio, 1.5);
   assert.equal(profile.shadows, false);
 });
