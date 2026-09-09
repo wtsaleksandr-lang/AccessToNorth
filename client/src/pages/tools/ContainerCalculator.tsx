@@ -1413,15 +1413,15 @@ export function ContainerViewer3D({
       let texture = measurementTextureCache.get(text);
       if (!texture) {
         const canvas = document.createElement("canvas");
-        canvas.width = 512;
-        canvas.height = 160;
+        canvas.width = 384;
+        canvas.height = 112;
         const ctx = canvas.getContext("2d")!;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = "rgba(15,23,42,1)";
-        ctx.font = "700 72px Inter, Arial, sans-serif";
+        ctx.font = "600 48px Inter, Arial, sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(text, 256, 82);
+        ctx.fillText(text, 192, 57);
         texture = new THREE.CanvasTexture(canvas);
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.generateMipmaps = false;
@@ -1429,7 +1429,7 @@ export function ContainerViewer3D({
         measurementTextureCache.set(text, texture);
       }
       const label = new THREE.Mesh(
-        new THREE.PlaneGeometry(scale, scale * 0.42),
+        new THREE.PlaneGeometry(scale, scale * 0.29),
         new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide }),
       );
       label.rotation.x = -Math.PI / 2;
@@ -1524,7 +1524,7 @@ export function ContainerViewer3D({
     addCoordinateRuler("width", "before");
     addCoordinateRuler("width", "after");
 
-    const hoverMeasurementLabelScale = Math.max(1.55, Math.min(2.05, cW * 0.78)) * (compactViewport ? 1.12 : 1);
+    const hoverMeasurementLabelScale = Math.max(0.68, Math.min(0.88, cW * 0.34)) * (compactViewport ? 1.05 : 1);
     const addMeasurementRange = (
       group: THREE.Group,
       axis: "length" | "width",
@@ -1604,21 +1604,31 @@ export function ContainerViewer3D({
       const bZ = inToM(box.z);
       const bW = inToM(box.w);
       const bTop = inToM(box.y + box.h);
-      const measurementY = rulerY + 0.012;
-      const beforeLabel = formatSceneLength(box.x);
-      const afterLabel = formatSceneLength(Math.max(0, container.lengthIn - box.x - box.l));
-      addMeasurementRange(hoverMeasurementGroup, "length", 0, bX, measurementY, cW + rulerOffset, cW, beforeLabel);
-      addMeasurementRange(hoverMeasurementGroup, "length", bX + bL, cL, measurementY, cW + rulerOffset, cW, afterLabel);
-      addMeasurementRange(hoverMeasurementGroup, "width", 0, bZ, measurementY, cL + rulerOffset, cL, formatSceneLength(box.z));
-      addMeasurementRange(hoverMeasurementGroup, "width", bZ + bW, cW, measurementY, cL + rulerOffset, cL, formatSceneLength(Math.max(0, container.widthIn - box.z - box.w)));
+      const measurementY = bTop + 0.022;
+      const cargoRulerGap = Math.max(0.055, cW * 0.028);
 
-      const cargoLengthLabel = createMeasurementLabel(formatSceneLength(box.l), hoverMeasurementLabelScale * 0.86);
-      cargoLengthLabel.position.set(bX + bL / 2, bTop + 0.015, bZ + bW * 0.28);
-      hoverMeasurementGroup.add(cargoLengthLabel);
-      const cargoWidthLabel = createMeasurementLabel(formatSceneLength(box.w), hoverMeasurementLabelScale * 0.86);
-      cargoWidthLabel.position.set(bX + bL * 0.72, bTop + 0.017, bZ + bW / 2);
-      cargoWidthLabel.rotation.z = -Math.PI / 2;
-      hoverMeasurementGroup.add(cargoWidthLabel);
+      // Match the reference: measure only the selected cargo footprint.
+      // Do not surround it with remaining-space ranges, which creates visual noise.
+      addMeasurementRange(
+        hoverMeasurementGroup,
+        "length",
+        bX,
+        bX + bL,
+        measurementY,
+        bZ - cargoRulerGap,
+        bZ,
+        formatSceneLength(box.l),
+      );
+      addMeasurementRange(
+        hoverMeasurementGroup,
+        "width",
+        bZ,
+        bZ + bW,
+        measurementY + 0.002,
+        bX + bL + cargoRulerGap,
+        bX + bL,
+        formatSceneLength(box.w),
+      );
       hoverMeasurementGroup.visible = true;
     };
     for (let idx = 0; idx < placed.length; idx++) {
