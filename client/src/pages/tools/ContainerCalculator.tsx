@@ -1459,88 +1459,13 @@ export function ContainerViewer3D({
       containerGroup.add(segments);
       return segments;
     };
-    const rulerValues = (totalIn: number, stepIn: number) => {
+    const heightValuesIn = (() => {
+      const stepIn = unitSystem === "metric" ? (compactViewport ? 1250 : 1000) / 25.4 : compactViewport ? 48 : 36;
       const values = [0];
-      for (let value = stepIn; value < totalIn - stepIn * 0.6; value += stepIn) values.push(value);
-      values.push(totalIn);
+      for (let value = stepIn; value < container.heightIn - stepIn * 0.6; value += stepIn) values.push(value);
+      values.push(container.heightIn);
       return values;
-    };
-    const lengthValuesIn = rulerValues(container.lengthIn, unitSystem === "metric" ? (compactViewport ? 4000 : 2000) / 25.4 : compactViewport ? 192 : 96);
-    const widthValuesIn = rulerValues(container.widthIn, unitSystem === "metric" ? (compactViewport ? 1250 : 1000) / 25.4 : compactViewport ? 48 : 36);
-    const heightValuesIn = rulerValues(container.heightIn, unitSystem === "metric" ? (compactViewport ? 1250 : 1000) / 25.4 : compactViewport ? 48 : 36);
-
-    const addFloorRuler = (axis: "length" | "width", side: "start" | "end") => {
-      const isLength = axis === "length";
-      const valuesIn = isLength ? lengthValuesIn : widthValuesIn;
-      const totalM = isLength ? cL : cW;
-      const fixed = side === "start" ? -rulerOffset : (isLength ? cW : cL) + rulerOffset;
-      const edge = side === "start" ? 0 : (isLength ? cW : cL);
-      const outward = side === "start" ? -1 : 1;
-      const guideGap = rulerTick * 0.9;
-      const arrowLength = Math.max(0.075, cW * 0.045);
-      const arrowWidth = arrowLength * 0.52;
-      const baselinePoints: THREE.Vector3[] = isLength
-        ? [
-            new THREE.Vector3(0, rulerY, fixed), new THREE.Vector3(cL, rulerY, fixed),
-            new THREE.Vector3(0, rulerY, fixed), new THREE.Vector3(arrowLength, rulerY, fixed - arrowWidth),
-            new THREE.Vector3(0, rulerY, fixed), new THREE.Vector3(arrowLength, rulerY, fixed + arrowWidth),
-            new THREE.Vector3(cL, rulerY, fixed), new THREE.Vector3(cL - arrowLength, rulerY, fixed - arrowWidth),
-            new THREE.Vector3(cL, rulerY, fixed), new THREE.Vector3(cL - arrowLength, rulerY, fixed + arrowWidth),
-          ]
-        : [
-            new THREE.Vector3(fixed, rulerY, 0), new THREE.Vector3(fixed, rulerY, cW),
-            new THREE.Vector3(fixed, rulerY, 0), new THREE.Vector3(fixed - arrowWidth, rulerY, arrowLength),
-            new THREE.Vector3(fixed, rulerY, 0), new THREE.Vector3(fixed + arrowWidth, rulerY, arrowLength),
-            new THREE.Vector3(fixed, rulerY, cW), new THREE.Vector3(fixed - arrowWidth, rulerY, cW - arrowLength),
-            new THREE.Vector3(fixed, rulerY, cW), new THREE.Vector3(fixed + arrowWidth, rulerY, cW - arrowLength),
-          ];
-      const guidePoints: THREE.Vector3[] = isLength
-        ? [
-            new THREE.Vector3(0, rulerY, edge + outward * guideGap), new THREE.Vector3(0, rulerY, fixed),
-            new THREE.Vector3(cL, rulerY, edge + outward * guideGap), new THREE.Vector3(cL, rulerY, fixed),
-          ]
-        : [
-            new THREE.Vector3(edge + outward * guideGap, rulerY, 0), new THREE.Vector3(fixed, rulerY, 0),
-            new THREE.Vector3(edge + outward * guideGap, rulerY, cW), new THREE.Vector3(fixed, rulerY, cW),
-          ];
-      const tickPoints: THREE.Vector3[] = [];
-      valuesIn.forEach((valueIn) => {
-        const valueM = inToM(valueIn);
-        if (isLength) {
-          tickPoints.push(
-            new THREE.Vector3(valueM, rulerY, fixed - rulerTick),
-            new THREE.Vector3(valueM, rulerY, fixed + rulerTick),
-          );
-        } else {
-          tickPoints.push(
-            new THREE.Vector3(fixed - rulerTick, rulerY, valueM),
-            new THREE.Vector3(fixed + rulerTick, rulerY, valueM),
-          );
-        }
-        const labelScale = (isLength
-          ? Math.max(0.46, Math.min(0.7, cW * 0.29))
-          : Math.max(0.4, Math.min(0.6, cW * 0.25))) * dimensionLabelScale;
-        const label = createRulerLabel(formatSceneLength(valueIn), labelScale);
-        if (isLength) {
-          label.position.set(valueM, rulerY + 0.018, fixed + outward * rulerTick * 2.5);
-          label.rotation.z = side === "start" ? Math.PI : 0;
-        } else {
-          label.position.set(fixed + outward * rulerTick * 2.7, rulerY + 0.018, valueM);
-          label.rotation.z = side === "start" ? Math.PI / 2 : -Math.PI / 2;
-        }
-        containerGroup.add(label);
-      });
-      const baseline = addRulerSegments(baselinePoints, dimensionLineMaterial);
-      baseline.userData.dimensionAxis = axis;
-      baseline.userData.dimensionSpan = totalM;
-      addRulerSegments(tickPoints, dimensionTickMaterial);
-      addRulerSegments(guidePoints, dimensionGuideMaterial);
-    };
-
-    addFloorRuler("length", "start");
-    addFloorRuler("length", "end");
-    addFloorRuler("width", "start");
-    addFloorRuler("width", "end");
+    })();
 
     const addHeightRuler = (x: number, z: number, outwardX: number) => {
       const baselineX = x + outwardX * rulerOffset;
@@ -1631,6 +1556,74 @@ export function ContainerViewer3D({
       }
       group.add(labelSprite);
     };
+
+    const addReferenceRange = (
+      group: THREE.Group,
+      axis: "length" | "width",
+      start: number,
+      end: number,
+      y: number,
+      fixed: number,
+      edge: number,
+      label: string,
+    ) => {
+      if (end - start >= 0.025) {
+        addMeasurementRange(group, axis, start, end, y, fixed, edge, label);
+        return;
+      }
+      // Keep zero-clearance labels visible, as in the reference application.
+      const zeroLabel = createMeasurementLabel(label, hoverMeasurementLabelScale * 0.78);
+      if (axis === "length") {
+        const outward = fixed < edge ? -1 : 1;
+        zeroLabel.position.set(start, y + 0.02, fixed + outward * Math.max(0.08, cW * 0.07));
+        if (outward < 0) zeroLabel.rotation.z = Math.PI;
+      } else {
+        const outward = fixed < edge ? -1 : 1;
+        zeroLabel.position.set(fixed + outward * Math.max(0.08, cW * 0.07), y + 0.02, start);
+        zeroLabel.rotation.z = outward < 0 ? Math.PI / 2 : -Math.PI / 2;
+      }
+      group.add(zeroLabel);
+    };
+
+    if (placed.length > 0) {
+      const loadMinX = inToM(Math.min(...placed.map((box) => box.x)));
+      const loadMaxX = inToM(Math.max(...placed.map((box) => box.x + box.l)));
+      const loadMinZ = inToM(Math.min(...placed.map((box) => box.z)));
+      const loadMaxZ = inToM(Math.max(...placed.map((box) => box.z + box.w)));
+      const referenceY = rulerY + 0.01;
+      const nearLength = -rulerOffset;
+      const farLength = cW + rulerOffset;
+      const outerNearLength = -rulerOffset * 2.15;
+      const outerFarLength = cW + rulerOffset * 2.15;
+      const nearWidth = -rulerOffset;
+      const farWidth = cL + rulerOffset;
+      const outerNearWidth = -rulerOffset * 2.15;
+      const outerFarWidth = cL + rulerOffset * 2.15;
+
+      // Overall container baselines sit outside the segmented cargo/clearance
+      // baselines. This creates the same two-tier drafting hierarchy as the
+      // supplied reference: full envelope first, exact load position second.
+      addReferenceRange(containerGroup, "length", 0, cL, referenceY, outerNearLength, 0, formatSceneLength(container.lengthIn));
+      addReferenceRange(containerGroup, "length", 0, cL, referenceY, outerFarLength, cW, formatSceneLength(container.lengthIn));
+      addReferenceRange(containerGroup, "width", 0, cW, referenceY, outerNearWidth, 0, formatSceneLength(container.widthIn));
+      addReferenceRange(containerGroup, "width", 0, cW, referenceY, outerFarWidth, cL, formatSceneLength(container.widthIn));
+
+      const addLengthSegments = (fixed: number, edge: number) => {
+        addReferenceRange(containerGroup, "length", 0, loadMinX, referenceY, fixed, edge, formatSceneLength(loadMinX / 0.0254));
+        addReferenceRange(containerGroup, "length", loadMinX, loadMaxX, referenceY, fixed, edge, formatSceneLength((loadMaxX - loadMinX) / 0.0254));
+        addReferenceRange(containerGroup, "length", loadMaxX, cL, referenceY, fixed, edge, formatSceneLength((cL - loadMaxX) / 0.0254));
+      };
+      const addWidthSegments = (fixed: number, edge: number) => {
+        addReferenceRange(containerGroup, "width", 0, loadMinZ, referenceY, fixed, edge, formatSceneLength(loadMinZ / 0.0254));
+        addReferenceRange(containerGroup, "width", loadMinZ, loadMaxZ, referenceY, fixed, edge, formatSceneLength((loadMaxZ - loadMinZ) / 0.0254));
+        addReferenceRange(containerGroup, "width", loadMaxZ, cW, referenceY, fixed, edge, formatSceneLength((cW - loadMaxZ) / 0.0254));
+      };
+      addLengthSegments(nearLength, 0);
+      addLengthSegments(farLength, cW);
+      addWidthSegments(nearWidth, 0);
+      addWidthSegments(farWidth, cL);
+    }
+
     const clearHoverMeasurements = () => {
       while (hoverMeasurementGroup.children.length > 0) {
         const child = hoverMeasurementGroup.children.pop()!;
