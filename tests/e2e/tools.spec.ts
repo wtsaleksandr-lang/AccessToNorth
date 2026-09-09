@@ -205,6 +205,13 @@ test.describe("tool pages load without runtime errors", () => {
       await expect(page.getByTestId("button-rotate-selection-right")).toBeVisible();
       await expect(page.getByTestId("button-nudge-doors")).toBeVisible();
       await page.setViewportSize({ width: 390, height: 844 });
+      const mobileViewerBox = await page.getByTestId("container-3d-viewer").boundingBox();
+      const mobileToolbarBox = await page.getByTestId("mobile-view-toolbar").boundingBox();
+      expect(mobileViewerBox).not.toBeNull();
+      expect(mobileToolbarBox).not.toBeNull();
+      expect(mobileViewerBox!.width).toBeGreaterThanOrEqual(370);
+      expect(Math.abs(mobileToolbarBox!.x + mobileToolbarBox!.width - (mobileViewerBox!.x + mobileViewerBox!.width))).toBeLessThanOrEqual(2);
+      expect(Math.abs(mobileToolbarBox!.y - mobileViewerBox!.y)).toBeLessThanOrEqual(2);
       await expect(page.getByTestId("button-mobile-scene-settings")).toContainText("View");
       await page.getByTestId("button-mobile-scene-settings").click();
       await expect(page.getByTestId("mobile-scene-settings-panel")).toBeVisible();
@@ -214,6 +221,10 @@ test.describe("tool pages load without runtime errors", () => {
       await expect(page.getByTestId("mobile-scene-settings-panel")).toBeHidden();
       await expect(page.getByTestId("button-mobile-cargo-panel")).toBeVisible();
       await expect(page.getByTestId("button-mobile-cargo-panel")).toContainText("Cargo");
+      const mobileCargoToggleBox = await page.getByTestId("button-mobile-cargo-panel").boundingBox();
+      expect(mobileCargoToggleBox).not.toBeNull();
+      expect(Math.abs(mobileCargoToggleBox!.x + mobileCargoToggleBox!.width - (mobileViewerBox!.x + mobileViewerBox!.width))).toBeLessThanOrEqual(2);
+      expect(Math.abs(mobileCargoToggleBox!.y + mobileCargoToggleBox!.height - (mobileViewerBox!.y + mobileViewerBox!.height))).toBeLessThanOrEqual(2);
       await page.getByTestId("button-mobile-cargo-panel").click();
       await expect(page.getByTestId("mobile-cargo-panel")).toBeVisible();
       await expect(page.getByTestId("button-mobile-cargo-zone-dock1")).toBeVisible();

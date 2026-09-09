@@ -1058,7 +1058,10 @@ export function ContainerViewer3D({
     applyViewportComposition(w, h);
 
     const initialTarget = new THREE.Vector3(cL / 2, cH * 0.38, cW / 2);
-    const initialScale = compactViewport ? 1.22 : 1;
+    // Keep the container legible on narrow screens. The viewer itself provides
+    // ample orbit/zoom room, so the initial mobile composition should not make
+    // the actual loading plan a small object in a large grid.
+    const initialScale = compactViewport ? 1.05 : 1;
     camera.position.set(
       initialTarget.x + cL * 0.9 * initialScale,
       initialTarget.y + cH * 1.27 * initialScale,
@@ -1299,20 +1302,26 @@ export function ContainerViewer3D({
     const createRulerLabel = (text: string, scale: number) => {
       const canvas = document.createElement("canvas");
       canvas.width = 384;
-      canvas.height = 84;
+      canvas.height = 96;
       const ctx = canvas.getContext("2d")!;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "rgba(71,85,105,0.88)";
-      ctx.font = "600 32px Inter, Arial, sans-serif";
+      ctx.font = "700 38px Inter, Arial, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(text, 192, 43);
+      // A light keyline keeps dimensions readable over either the grid or cargo
+      // without turning every marking into a heavy floating card.
+      ctx.lineWidth = 8;
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "rgba(255,255,255,0.92)";
+      ctx.strokeText(text, 192, 49);
+      ctx.fillStyle = "rgba(51,65,85,0.96)";
+      ctx.fillText(text, 192, 49);
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.generateMipmaps = false;
       texture.minFilter = THREE.LinearFilter;
       const label = new THREE.Mesh(
-        new THREE.PlaneGeometry(scale, scale * 0.219),
+        new THREE.PlaneGeometry(scale, scale * 0.25),
         new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide }),
       );
       label.rotation.x = -Math.PI / 2;
@@ -1323,16 +1332,37 @@ export function ContainerViewer3D({
     const rulerZ = cW + rulerOffset;
     const rulerY = 0.025;
     const rulerTick = Math.max(0.055, cW * 0.04);
-    const rulerMaterial = new THREE.LineBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.7, depthTest: false });
+    const dimensionLabelScale = compactViewport ? 1.55 : 1;
+    const dimensionLineMaterial = new THREE.LineDashedMaterial({
+      color: 0x475569,
+      dashSize: Math.max(0.065, cW * 0.035),
+      gapSize: Math.max(0.045, cW * 0.022),
+      transparent: true,
+      opacity: 0.86,
+      depthTest: false,
+    });
+    const dimensionTickMaterial = new THREE.LineBasicMaterial({ color: 0x475569, transparent: true, opacity: 0.82, depthTest: false });
+    const dimensionGuideMaterial = new THREE.LineBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.42, depthTest: false });
+    const addRulerSegments = (
+      points: THREE.Vector3[],
+      material: THREE.LineBasicMaterial | THREE.LineDashedMaterial,
+      dashed = false,
+    ) => {
+      const segments = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(points), material.clone());
+      if (dashed) segments.computeLineDistances();
+      segments.renderOrder = 17;
+      containerGroup.add(segments);
+      return segments;
+    };
     const rulerValues = (totalIn: number, stepIn: number) => {
       const values = [0];
       for (let value = stepIn; value < totalIn - stepIn * 0.6; value += stepIn) values.push(value);
       values.push(totalIn);
       return values;
     };
-    const lengthValuesIn = rulerValues(container.lengthIn, unitSystem === "metric" ? 2000 / 25.4 : 96);
-    const widthValuesIn = rulerValues(container.widthIn, unitSystem === "metric" ? 1000 / 25.4 : 36);
-    const heightValuesIn = rulerValues(container.heightIn, unitSystem === "metric" ? 1000 / 25.4 : 36);
+    const lengthValuesIn = rulerValues(container.lengthIn, unitSystem === "metric" ? (compactViewport ? 4000 : 2000) / 25.4 : compactViewport ? 192 : 96);
+    const widthValuesIn = rulerValues(container.widthIn, unitSystem === "metric" ? (compactViewport ? 1250 : 1000) / 25.4 : compactViewport ? 48 : 36);
+    const heightValuesIn = rulerValues(container.heightIn, unitSystem === "metric" ? (compactViewport ? 1250 : 1000) / 25.4 : compactViewport ? 48 : 36);
 
     const addFloorRuler = (axis: "length" | "width", side: "start" | "end") => {
       const isLength = axis === "length";
@@ -1341,33 +1371,40 @@ export function ContainerViewer3D({
       const fixed = side === "start" ? -rulerOffset : (isLength ? cW : cL) + rulerOffset;
       const edge = side === "start" ? 0 : (isLength ? cW : cL);
       const outward = side === "start" ? -1 : 1;
-      const points: THREE.Vector3[] = isLength
+      const guideGap = rulerTick * 0.9;
+      const baselinePoints: THREE.Vector3[] = isLength
         ? [
             new THREE.Vector3(0, rulerY, fixed), new THREE.Vector3(cL, rulerY, fixed),
-            new THREE.Vector3(0, rulerY, edge), new THREE.Vector3(0, rulerY, fixed),
-            new THREE.Vector3(cL, rulerY, edge), new THREE.Vector3(cL, rulerY, fixed),
           ]
         : [
             new THREE.Vector3(fixed, rulerY, 0), new THREE.Vector3(fixed, rulerY, cW),
-            new THREE.Vector3(edge, rulerY, 0), new THREE.Vector3(fixed, rulerY, 0),
-            new THREE.Vector3(edge, rulerY, cW), new THREE.Vector3(fixed, rulerY, cW),
           ];
+      const guidePoints: THREE.Vector3[] = isLength
+        ? [
+            new THREE.Vector3(0, rulerY, edge + outward * guideGap), new THREE.Vector3(0, rulerY, fixed),
+            new THREE.Vector3(cL, rulerY, edge + outward * guideGap), new THREE.Vector3(cL, rulerY, fixed),
+          ]
+        : [
+            new THREE.Vector3(edge + outward * guideGap, rulerY, 0), new THREE.Vector3(fixed, rulerY, 0),
+            new THREE.Vector3(edge + outward * guideGap, rulerY, cW), new THREE.Vector3(fixed, rulerY, cW),
+          ];
+      const tickPoints: THREE.Vector3[] = [];
       valuesIn.forEach((valueIn) => {
         const valueM = inToM(valueIn);
         if (isLength) {
-          points.push(
+          tickPoints.push(
             new THREE.Vector3(valueM, rulerY, fixed - rulerTick),
             new THREE.Vector3(valueM, rulerY, fixed + rulerTick),
           );
         } else {
-          points.push(
+          tickPoints.push(
             new THREE.Vector3(fixed - rulerTick, rulerY, valueM),
             new THREE.Vector3(fixed + rulerTick, rulerY, valueM),
           );
         }
-        const labelScale = isLength
+        const labelScale = (isLength
           ? Math.max(0.46, Math.min(0.7, cW * 0.29))
-          : Math.max(0.4, Math.min(0.6, cW * 0.25));
+          : Math.max(0.4, Math.min(0.6, cW * 0.25))) * dimensionLabelScale;
         const label = createRulerLabel(formatSceneLength(valueIn), labelScale);
         if (isLength) {
           label.position.set(valueM, rulerY + 0.018, fixed + outward * rulerTick * 2.5);
@@ -1378,11 +1415,11 @@ export function ContainerViewer3D({
         }
         containerGroup.add(label);
       });
-      const ruler = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(points), rulerMaterial.clone());
-      ruler.renderOrder = 17;
-      ruler.userData.dimensionAxis = axis;
-      ruler.userData.dimensionSpan = totalM;
-      containerGroup.add(ruler);
+      const baseline = addRulerSegments(baselinePoints, dimensionLineMaterial, true);
+      baseline.userData.dimensionAxis = axis;
+      baseline.userData.dimensionSpan = totalM;
+      addRulerSegments(tickPoints, dimensionTickMaterial);
+      addRulerSegments(guidePoints, dimensionGuideMaterial);
     };
 
     addFloorRuler("length", "start");
@@ -1392,35 +1429,46 @@ export function ContainerViewer3D({
 
     const addHeightRuler = (x: number, z: number, outwardX: number) => {
       const baselineX = x + outwardX * rulerOffset;
-      const points: THREE.Vector3[] = [
-        new THREE.Vector3(x, 0, z), new THREE.Vector3(baselineX, 0, z),
-        new THREE.Vector3(x, cH, z), new THREE.Vector3(baselineX, cH, z),
+      const guideGap = rulerTick * 0.9;
+      const baselinePoints: THREE.Vector3[] = [
         new THREE.Vector3(baselineX, 0, z), new THREE.Vector3(baselineX, cH, z),
       ];
+      const guidePoints: THREE.Vector3[] = [
+        new THREE.Vector3(x + outwardX * guideGap, 0, z), new THREE.Vector3(baselineX, 0, z),
+        new THREE.Vector3(x + outwardX * guideGap, cH, z), new THREE.Vector3(baselineX, cH, z),
+      ];
+      const tickPoints: THREE.Vector3[] = [];
       heightValuesIn.forEach((valueIn) => {
         const y = inToM(valueIn);
-        points.push(
+        tickPoints.push(
           new THREE.Vector3(baselineX - rulerTick, y, z),
           new THREE.Vector3(baselineX + rulerTick, y, z),
         );
-        const labelScale = Math.max(0.4, Math.min(0.6, cW * 0.25));
+        const labelScale = Math.max(0.4, Math.min(0.6, cW * 0.25)) * dimensionLabelScale;
         const label = createRulerLabel(formatSceneLength(valueIn), labelScale);
         label.rotation.set(0, 0, outwardX < 0 ? Math.PI / 2 : -Math.PI / 2);
         const labelY = Math.max(labelScale / 2, Math.min(cH - labelScale / 2, y));
         label.position.set(baselineX + outwardX * rulerTick * 2.8, labelY, z + (z === 0 ? -0.012 : 0.012));
         containerGroup.add(label);
       });
-      const ruler = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(points), rulerMaterial.clone());
-      ruler.renderOrder = 17;
-      ruler.userData.dimensionAxis = "height";
-      containerGroup.add(ruler);
+      const baseline = addRulerSegments(baselinePoints, dimensionLineMaterial, true);
+      baseline.userData.dimensionAxis = "height";
+      addRulerSegments(tickPoints, dimensionTickMaterial);
+      addRulerSegments(guidePoints, dimensionGuideMaterial);
     };
 
     addHeightRuler(0, 0, -1);
     addHeightRuler(cL, cW, 1);
 
     const addMeasurementRange = (group: THREE.Group, startX: number, endX: number, y: number, z: number, label: string) => {
-      const lineMaterial = new THREE.LineBasicMaterial({ color: 0x718096, transparent: true, opacity: 0.72, depthTest: false });
+      const lineMaterial = new THREE.LineDashedMaterial({
+        color: 0x475569,
+        dashSize: Math.max(0.065, cW * 0.035),
+        gapSize: Math.max(0.045, cW * 0.022),
+        transparent: true,
+        opacity: 0.86,
+        depthTest: false,
+      });
       const tick = Math.max(cW * 0.045, 0.06);
       const geometry = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(startX, y, z), new THREE.Vector3(endX, y, z),
@@ -1428,9 +1476,13 @@ export function ContainerViewer3D({
         new THREE.Vector3(endX, y, cW), new THREE.Vector3(endX, y, z + tick),
       ]);
       const lines = new THREE.LineSegments(geometry, lineMaterial);
+      lines.computeLineDistances();
       lines.renderOrder = 19;
       group.add(lines);
-      const labelSprite = createMeasurementLabel(label, Math.max(0.78, Math.min(cL * 0.25, Math.max(0.9, endX - startX) * 0.82)));
+      const labelSprite = createMeasurementLabel(
+        label,
+        Math.max(0.78, Math.min(cL * 0.25, Math.max(0.9, endX - startX) * 0.82)) * (compactViewport ? 1.22 : 1),
+      );
       labelSprite.position.set((startX + endX) / 2, y + 0.018, z + tick * 1.8);
       group.add(labelSprite);
     };
@@ -1678,7 +1730,7 @@ export function ContainerViewer3D({
     const setView = (preset: ContainerViewPreset) => {
       camera.up.set(0, 1, 0);
       controls.target.set(cL / 2, cH * 0.4, cW / 2);
-      const viewScale = compactViewport ? 1.18 : 1;
+      const viewScale = compactViewport ? 1.06 : 1;
       if (preset === "doors") {
         camera.position.set(
           controls.target.x + cL * 0.92 * viewScale,
@@ -2419,7 +2471,7 @@ export function ContainerViewer3D({
               <p className="mt-2 text-[9px] leading-4 text-slate-400">Drag, nudge or rotate the group. Collision, boundary and stack-support checks remain active.</p>
             </div>
           )}
-          <div className="absolute right-3 top-3 z-40 flex items-center gap-1.5 rounded-2xl border border-white/95 bg-white/[0.94] p-1.5 shadow-[0_12px_30px_-18px_rgba(15,23,42,0.5)] backdrop-blur-md lg:hidden">
+          <div className="absolute right-0 top-0 z-40 flex items-center overflow-hidden rounded-bl-xl border-b border-l border-white/95 bg-white/[0.9] shadow-sm backdrop-blur-md lg:hidden" data-testid="mobile-view-toolbar">
             <button
               type="button"
               onClick={() => {
@@ -2429,7 +2481,7 @@ export function ContainerViewer3D({
                 setSharePanelOpen(false);
                 setHelpPanelOpen(false);
               }}
-              className={`flex h-10 items-center gap-2 rounded-xl px-3 text-[11px] font-bold transition active:scale-95 ${displayControlsOpen ? "bg-blue-50 text-primary shadow-sm" : "text-slate-700 hover:bg-white"}`}
+              className={`flex h-11 items-center gap-1.5 border-r border-slate-200/70 px-3 text-[11px] font-bold transition active:bg-blue-50 ${displayControlsOpen ? "bg-blue-50 text-primary" : "text-slate-700 hover:bg-white/80"}`}
               aria-label={displayControlsOpen ? "Hide view settings" : "Show view settings"}
               aria-expanded={displayControlsOpen}
               aria-controls="mobile-scene-settings"
@@ -2439,17 +2491,17 @@ export function ContainerViewer3D({
               <span>View</span>
               {displayControlsOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
             </button>
-            <button type="button" onClick={toggleFullscreen} className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white hover:text-primary active:scale-95" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} title={isFullscreen ? "Exit full screen" : "Open full workspace"}>{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
+            <button type="button" onClick={toggleFullscreen} className="flex h-11 w-11 items-center justify-center text-slate-600 transition hover:bg-white/80 hover:text-primary active:bg-blue-50" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} title={isFullscreen ? "Exit full screen" : "Open full workspace"} data-testid="button-mobile-fullscreen">{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
           </div>
           <AnimatePresence initial={false}>
             {displayControlsOpen && (
               <motion.section
                 id="mobile-scene-settings"
-                initial={{ opacity: 0, y: -18, scale: 0.98 }}
+                initial={{ opacity: 0, y: -12 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -18, scale: 0.98 }}
+                exit={{ opacity: 0, y: -12 }}
                 transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.72 }}
-                className="absolute left-3 right-3 top-16 z-40 overflow-hidden rounded-2xl border border-white/95 bg-white/[0.96] p-3 text-slate-700 shadow-[0_22px_60px_-24px_rgba(15,23,42,0.5)] backdrop-blur-xl lg:hidden"
+                className="absolute left-0 right-0 top-11 z-40 overflow-hidden rounded-b-2xl border-b border-white/95 bg-white/[0.96] p-3 text-slate-700 shadow-[0_18px_42px_-24px_rgba(15,23,42,0.46)] backdrop-blur-xl lg:hidden"
                 aria-label="3D view settings"
                 data-testid="mobile-scene-settings-panel"
               >
@@ -2529,7 +2581,7 @@ export function ContainerViewer3D({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: "100%", scale: 0.98 }}
               transition={{ type: "spring", stiffness: 390, damping: 36, mass: 0.78 }}
-              className="absolute bottom-3 left-3 right-3 z-40 flex max-h-[72%] min-h-0 flex-col overflow-hidden rounded-2xl border border-white/95 bg-white/[0.97] shadow-[0_26px_72px_-22px_rgba(15,23,42,0.58)] backdrop-blur-xl lg:hidden"
+              className="absolute bottom-0 left-0 right-0 z-40 flex max-h-[72%] min-h-0 flex-col overflow-hidden rounded-t-2xl border-t border-white/95 bg-white/[0.97] shadow-[0_-18px_52px_-28px_rgba(15,23,42,0.5)] backdrop-blur-xl lg:hidden"
               id="mobile-cargo-panel"
               aria-label="Cargo and staging docks"
               data-testid="mobile-cargo-panel"
@@ -2604,7 +2656,7 @@ export function ContainerViewer3D({
                   setSharePanelOpen(false);
                   setHelpPanelOpen(false);
                 }}
-                className="absolute bottom-3 right-3 z-30 flex h-11 items-center gap-2 rounded-2xl border border-white/95 bg-white/[0.96] px-3.5 text-[11px] font-bold text-slate-700 shadow-[0_14px_34px_-16px_rgba(15,23,42,0.55)] backdrop-blur-md transition hover:text-primary active:scale-95 lg:hidden"
+                className="absolute bottom-0 right-0 z-30 flex h-11 items-center gap-2 rounded-tl-xl border-l border-t border-white/95 bg-white/[0.92] px-3 text-[11px] font-bold text-slate-700 shadow-sm backdrop-blur-md transition hover:text-primary active:bg-blue-50 lg:hidden"
                 aria-label="Show cargo and staging docks"
                 aria-expanded={false}
                 aria-controls="mobile-cargo-panel"
@@ -2619,7 +2671,7 @@ export function ContainerViewer3D({
           </AnimatePresence>
           {hoveredCargoIndex !== null && placed[hoveredCargoIndex] && (
             <div
-              className={`pointer-events-none absolute top-16 z-20 w-max max-w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-2xl border border-white/95 bg-white/[0.98] px-3 py-2 text-slate-700 shadow-[0_14px_36px_-22px_rgba(15,23,42,0.32)] sm:top-3 sm:max-w-[calc(100%-6.5rem)] ${sidebarOpen ? "left-1/2 lg:left-[calc(50%-172px)]" : "left-1/2"}`}
+              className={`pointer-events-none absolute top-12 z-20 w-max max-w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-2xl border border-white/95 bg-white/[0.98] px-3 py-2 text-slate-700 shadow-[0_14px_36px_-22px_rgba(15,23,42,0.32)] sm:top-3 sm:max-w-[calc(100%-6.5rem)] ${sidebarOpen ? "left-1/2 lg:left-[calc(50%-172px)]" : "left-1/2"}`}
               data-testid="container-cargo-hover-card"
             >
               <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1">
@@ -2671,7 +2723,7 @@ export function ContainerViewer3D({
               <p className="mt-1.5 text-center text-[9px] text-slate-500">Suggested order: closed end to doors, lower levels first</p>
             </div>
           ) : !mobilePanelOpen && (
-            <div className={`absolute bottom-3 right-[9.25rem] left-3 z-20 sm:left-auto sm:right-[9.25rem] sm:max-w-[65%] lg:hidden rounded-md border px-2.5 py-1.5 text-[10px] font-medium shadow-sm pointer-events-none ${
+            <div className={`pointer-events-none absolute bottom-0 left-0 right-[8.75rem] z-20 rounded-tr-xl border-r border-t px-2.5 py-1.5 text-[10px] font-medium sm:left-auto sm:right-[8.75rem] sm:max-w-[65%] lg:hidden ${
               arrangeMode
                 ? placementMessage.includes("overlap") || placementMessage.includes("without enough") || placementMessage.includes("cancelled")
                   ? "border-red-200 bg-red-50/90 text-red-700"
@@ -6622,8 +6674,8 @@ export default function ContainerCalculator() {
                     return (
                       <div key={ci} className="space-y-5" data-testid={`container-result-${ci}`}>
                         {activeResultTab === "plan" && (
-                        <Card className="border-slate-200 overflow-hidden">
-                          <CardContent className="p-1.5 sm:p-2">
+                        <Card className="-mx-3 overflow-hidden rounded-xl border-slate-200 sm:mx-0">
+                          <CardContent className="p-1 sm:p-2">
                             <div ref={viewerRef}>
                               <ContainerViewer3D
                                 placed={cResult.placed}
