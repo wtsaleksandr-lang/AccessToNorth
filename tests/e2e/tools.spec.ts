@@ -161,9 +161,9 @@ test.describe("tool pages load without runtime errors", () => {
       await expect(page.getByTestId("button-viewer-export-pdf")).toBeVisible();
       await expect(page.getByTestId("container-floating-tool-rail").locator("button").first()).toHaveAttribute("data-testid", "button-container-sidebar-toggle");
       await page.getByTestId("button-container-cargo-0").hover();
-      await expect(page.getByTestId("container-cargo-hover-card")).toContainText("Container");
-      await expect(page.getByTestId("container-cargo-hover-card")).toContainText("Back");
-      await expect(page.getByTestId("container-cargo-hover-card")).toContainText("Doors");
+      await expect(page.getByTestId("container-cargo-hover-card")).toContainText("Unit #1");
+      await expect(page.getByTestId("container-cargo-hover-card")).toContainText("Right-click for stats");
+      await expect(page.getByTestId("container-cargo-row-0")).toHaveAttribute("data-cargo-list-index", "0");
       await page.waitForTimeout(150);
       expect(
         await viewerCanvas!.evaluate((canvas) => canvas.isConnected),
@@ -190,6 +190,7 @@ test.describe("tool pages load without runtime errors", () => {
       await page.getByTestId("button-container-view-doors").click();
       await page.getByTestId("button-container-layer-grid").click();
       await expect(page.getByTestId("button-arrange-cargo")).toBeVisible();
+      await expect(page.getByTestId("button-arrange-cargo")).toHaveAttribute("aria-label", "Precision cargo tools");
       await page.getByTestId("button-arrange-cargo").click();
       await expect(page.getByTestId("button-reset-cargo-layout")).toBeVisible();
       await expect(page.getByTestId("button-redo-cargo-move")).toBeDisabled();
