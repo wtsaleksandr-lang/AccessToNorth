@@ -5394,8 +5394,8 @@ export default function ContainerCalculator() {
               </Card>
             </div>
 
-            <div className="lg:col-span-7 space-y-5">
-              <Card id="packing-list-setup" className="border-slate-200 scroll-mt-28" data-testid="packing-list-section">
+            <div className="contents">
+              <Card id="packing-list-setup" className="border-slate-200 scroll-mt-28 lg:col-span-7" data-testid="packing-list-section">
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -7233,7 +7233,7 @@ export default function ContainerCalculator() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4 }}
-                  className="space-y-5 lg:w-[calc(171.4286%+1.5rem)] lg:-ml-[calc(71.4286%+1.5rem)]"
+                  className="space-y-5 lg:col-span-12"
                   data-testid="results-section"
                 >
                   {recommendation
