@@ -1140,7 +1140,9 @@ export function ContainerViewer3D({
     // Matching mirrored staging zones: equal footprint, corner radius and
     // offset on both sides of the container.
     const dockDepth = cW * 1.5;
-    const dockGap = cW * 0.24;
+    // Keep a clear working aisle between the loaded container and each staging
+    // dock so cargo in the three zones remains visually distinct at a glance.
+    const dockGap = cW * 0.42;
     createDockOutline(-dockGap - dockDepth, -dockGap);
     createDockOutline(cW + dockGap, cW + dockGap + dockDepth);
 
@@ -1272,21 +1274,21 @@ export function ContainerViewer3D({
     let activeMeasurementIndex: number | null = null;
     const createMeasurementLabel = (text: string, scale: number) => {
       const canvas = document.createElement("canvas");
-      canvas.width = 384;
-      canvas.height = 80;
+      canvas.width = 448;
+      canvas.height = 104;
       const ctx = canvas.getContext("2d")!;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = "rgba(71,85,105,0.92)";
-      ctx.font = "600 28px Inter, Arial, sans-serif";
+      ctx.font = "600 36px Inter, Arial, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(text, 192, 41);
+      ctx.fillText(text, 224, 53);
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.generateMipmaps = false;
       texture.minFilter = THREE.LinearFilter;
       const label = new THREE.Mesh(
-        new THREE.PlaneGeometry(scale, scale * 0.208),
+        new THREE.PlaneGeometry(scale, scale * 0.232),
         new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide }),
       );
       label.rotation.x = -Math.PI / 2;
@@ -1295,15 +1297,15 @@ export function ContainerViewer3D({
     };
     const createRulerLabel = (text: string, scale: number) => {
       const canvas = document.createElement("canvas");
-      canvas.width = 256;
-      canvas.height = 56;
+      canvas.width = 384;
+      canvas.height = 84;
       const ctx = canvas.getContext("2d")!;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = "rgba(71,85,105,0.88)";
-      ctx.font = "600 23px Inter, Arial, sans-serif";
+      ctx.font = "600 32px Inter, Arial, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(text, 128, 28);
+      ctx.fillText(text, 192, 43);
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.generateMipmaps = false;
@@ -1316,11 +1318,11 @@ export function ContainerViewer3D({
       label.renderOrder = 18;
       return label;
     };
-    const rulerOffset = Math.max(0.14, cW * 0.14);
+    const rulerOffset = Math.max(0.2, cW * 0.2);
     const rulerZ = cW + rulerOffset;
     const rulerY = 0.025;
-    const rulerTick = Math.max(0.04, cW * 0.03);
-    const rulerMaterial = new THREE.LineBasicMaterial({ color: 0x718096, transparent: true, opacity: 0.62, depthTest: false });
+    const rulerTick = Math.max(0.055, cW * 0.04);
+    const rulerMaterial = new THREE.LineBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.7, depthTest: false });
     const rulerValues = (totalIn: number, stepIn: number) => {
       const values = [0];
       for (let value = stepIn; value < totalIn - stepIn * 0.6; value += stepIn) values.push(value);
@@ -1363,8 +1365,8 @@ export function ContainerViewer3D({
           );
         }
         const labelScale = isLength
-          ? Math.max(0.34, Math.min(0.52, cW * 0.22))
-          : Math.max(0.3, Math.min(0.44, cW * 0.19));
+          ? Math.max(0.46, Math.min(0.7, cW * 0.29))
+          : Math.max(0.4, Math.min(0.6, cW * 0.25));
         const label = createRulerLabel(formatSceneLength(valueIn), labelScale);
         if (isLength) {
           label.position.set(valueM, rulerY + 0.018, fixed + outward * rulerTick * 2.5);
@@ -1400,7 +1402,7 @@ export function ContainerViewer3D({
           new THREE.Vector3(baselineX - rulerTick, y, z),
           new THREE.Vector3(baselineX + rulerTick, y, z),
         );
-        const labelScale = Math.max(0.3, Math.min(0.44, cW * 0.19));
+        const labelScale = Math.max(0.4, Math.min(0.6, cW * 0.25));
         const label = createRulerLabel(formatSceneLength(valueIn), labelScale);
         label.rotation.set(0, 0, outwardX < 0 ? Math.PI / 2 : -Math.PI / 2);
         const labelY = Math.max(labelScale / 2, Math.min(cH - labelScale / 2, y));
@@ -1418,7 +1420,7 @@ export function ContainerViewer3D({
 
     const addMeasurementRange = (group: THREE.Group, startX: number, endX: number, y: number, z: number, label: string) => {
       const lineMaterial = new THREE.LineBasicMaterial({ color: 0x718096, transparent: true, opacity: 0.72, depthTest: false });
-      const tick = Math.max(cW * 0.035, 0.045);
+      const tick = Math.max(cW * 0.045, 0.06);
       const geometry = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(startX, y, z), new THREE.Vector3(endX, y, z),
         new THREE.Vector3(startX, y, cW), new THREE.Vector3(startX, y, z + tick),
@@ -1427,7 +1429,7 @@ export function ContainerViewer3D({
       const lines = new THREE.LineSegments(geometry, lineMaterial);
       lines.renderOrder = 19;
       group.add(lines);
-      const labelSprite = createMeasurementLabel(label, Math.max(0.62, Math.min(cL * 0.22, Math.max(0.8, endX - startX) * 0.72)));
+      const labelSprite = createMeasurementLabel(label, Math.max(0.78, Math.min(cL * 0.25, Math.max(0.9, endX - startX) * 0.82)));
       labelSprite.position.set((startX + endX) / 2, y + 0.018, z + tick * 1.8);
       group.add(labelSprite);
     };
