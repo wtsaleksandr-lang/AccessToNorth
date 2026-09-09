@@ -27,14 +27,19 @@ export function getContainerRenderProfile(input: ContainerRenderProfileInput): C
   const performanceMode = input.quality === "performance"
     || (input.quality === "auto" && (compact || constrainedDevice || largePlan));
 
-  const pixelRatioCap = input.quality === "quality" ? 1.35 : performanceMode ? 0.75 : 1;
+  // Never undersample the canvas below its CSS size. The old 0.75 cap made
+  // container edges and the floor grid visibly pixelated on high-DPI phones
+  // without solving interaction stalls.
+  const pixelRatioCap = input.quality === "quality" ? 1.5 : input.quality === "performance" ? 1 : compact ? 1.2 : 1.25;
   return {
     performanceMode,
-    antialias: input.quality === "quality" && !performanceMode,
-    pixelRatio: Math.max(0.65, Math.min(input.devicePixelRatio || 1, pixelRatioCap)),
+    antialias: input.itemCount <= 220,
+    pixelRatio: Math.max(1, Math.min(input.devicePixelRatio || 1, pixelRatioCap)),
     shadows: false,
     shadowMapSize: performanceMode ? 0 : compact ? 512 : 1024,
-    gridDivisions: performanceMode ? 64 : 100,
-    detailedLabels: !performanceMode && input.itemCount <= 120,
+    gridDivisions: performanceMode ? 44 : input.quality === "quality" ? 72 : 60,
+    // Face labels reuse the cargo mesh material, so they do not add scene
+    // draw calls. Keep references crisp for ordinary plans in every mode.
+    detailedLabels: input.itemCount <= (performanceMode ? 60 : 120),
   };
 }
