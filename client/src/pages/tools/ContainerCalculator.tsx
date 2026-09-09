@@ -1364,28 +1364,40 @@ export function ContainerViewer3D({
       depthWrite: false,
     });
 
-    // The reference shows a closed, plain rear face. Keep it as one clean
-    // panel with only its outer perimeter — no open wings, braces or hardware.
-    const closedDoorPanel = new THREE.Mesh(
-      new THREE.PlaneGeometry(cW, cH),
-      doorPanelMaterial,
-    );
-    closedDoorPanel.rotation.y = Math.PI / 2;
-    closedDoorPanel.position.set(doorX + 0.004, cH / 2, cW / 2);
-    closedDoorPanel.renderOrder = 7;
-    containerGroup.add(closedDoorPanel);
+    // Match the reference: two plain door leaves form a compact V outside
+    // the container. Their faces stay completely clean, with perimeter lines only.
+    const doorTipX = doorX + cW * 0.28;
+    const doorTipZ = cW / 2;
+    const addPlainDoorLeaf = (hingeZ: number) => {
+      const vertices = new Float32Array([
+        doorX + 0.006, 0, hingeZ,
+        doorX + 0.006, cH, hingeZ,
+        doorTipX, cH, doorTipZ,
+        doorX + 0.006, 0, hingeZ,
+        doorTipX, cH, doorTipZ,
+        doorTipX, 0, doorTipZ,
+      ]);
+      const panelGeometry = new THREE.BufferGeometry();
+      panelGeometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
+      panelGeometry.computeVertexNormals();
+      const panel = new THREE.Mesh(panelGeometry, doorPanelMaterial.clone());
+      panel.renderOrder = 7;
+      containerGroup.add(panel);
 
-    const closedDoorOutline = new THREE.LineSegments(
-      new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(doorX + 0.006, 0, 0), new THREE.Vector3(doorX + 0.006, cH, 0),
-        new THREE.Vector3(doorX + 0.006, cH, 0), new THREE.Vector3(doorX + 0.006, cH, cW),
-        new THREE.Vector3(doorX + 0.006, cH, cW), new THREE.Vector3(doorX + 0.006, 0, cW),
-        new THREE.Vector3(doorX + 0.006, 0, cW), new THREE.Vector3(doorX + 0.006, 0, 0),
-      ]),
-      doorLineMaterial,
-    );
-    closedDoorOutline.renderOrder = 8;
-    containerGroup.add(closedDoorOutline);
+      const outline = new THREE.LineSegments(
+        new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(doorX + 0.006, 0, hingeZ), new THREE.Vector3(doorX + 0.006, cH, hingeZ),
+          new THREE.Vector3(doorX + 0.006, cH, hingeZ), new THREE.Vector3(doorTipX, cH, doorTipZ),
+          new THREE.Vector3(doorTipX, cH, doorTipZ), new THREE.Vector3(doorTipX, 0, doorTipZ),
+          new THREE.Vector3(doorTipX, 0, doorTipZ), new THREE.Vector3(doorX + 0.006, 0, hingeZ),
+        ]),
+        doorLineMaterial.clone(),
+      );
+      outline.renderOrder = 8;
+      containerGroup.add(outline);
+    };
+    addPlainDoorLeaf(0);
+    addPlainDoorLeaf(cW);
 
     const formatSceneLength = (inches: number) =>
       unitSystem === "metric"
