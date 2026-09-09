@@ -15,7 +15,7 @@ test("auto quality uses a lightweight profile on mobile", () => {
   assert.equal(profile.performanceMode, true);
   assert.equal(profile.antialias, true);
   assert.equal(profile.shadows, false);
-  assert.equal(profile.pixelRatio, 1.2);
+  assert.equal(profile.pixelRatio, 1.5);
   assert.equal(profile.gridDivisions, 44);
   assert.equal(profile.detailedLabels, true);
 });
@@ -33,6 +33,21 @@ test("large plans automatically disable expensive labels and shadows", () => {
   assert.equal(profile.performanceMode, true);
   assert.equal(profile.detailedLabels, false);
   assert.equal(profile.shadows, false);
+});
+
+test("auto quality keeps a sharp canvas on desktop", () => {
+  const profile = getContainerRenderProfile({
+    quality: "auto",
+    viewportWidth: 1440,
+    devicePixelRatio: 2,
+    itemCount: 24,
+    deviceMemoryGb: 8,
+    hardwareConcurrency: 8,
+  });
+
+  assert.equal(profile.performanceMode, false);
+  assert.equal(profile.pixelRatio, 1.5);
+  assert.equal(profile.antialias, true);
 });
 
 test("fast mode stays full-resolution and antialiased", () => {
@@ -64,6 +79,6 @@ test("quality override retains premium rendering within safe limits", () => {
 
   assert.equal(profile.performanceMode, false);
   assert.equal(profile.antialias, true);
-  assert.equal(profile.pixelRatio, 1.5);
+  assert.equal(profile.pixelRatio, 2);
   assert.equal(profile.shadows, false);
 });
