@@ -617,6 +617,7 @@ export function ContainerViewer3D({
     containerGroup: THREE.Group;
     setCargoHover: (index: number | null) => void;
     setView: (preset: ContainerViewPreset) => void;
+    setSidebarComposition: (open: boolean) => void;
     render: () => void;
   } | null>(null);
   // Parent callbacks are intentionally kept out of the Three.js scene
@@ -627,8 +628,10 @@ export function ContainerViewer3D({
   // flashed for one frame and orbit gestures lost their pointer capture.
   const onReadyExportRef = useRef(onReadyExport);
   const onPlacedChangeRef = useRef(onPlacedChange);
+  const sidebarOpenRef = useRef(sidebarOpen);
   onReadyExportRef.current = onReadyExport;
   onPlacedChangeRef.current = onPlacedChange;
+  sidebarOpenRef.current = sidebarOpen;
 
   const sequenceOrder = useMemo(
     () => placed
@@ -1038,13 +1041,16 @@ export function ContainerViewer3D({
     const cL = inToM(container.lengthIn);
     const cW = inToM(container.widthIn);
     const cH = inToM(container.heightIn);
+    let renderWidth = w;
+    let renderHeight = h;
+    let currentCompositionOffset = sidebarOpenRef.current && w >= 1024 ? 344 : 0;
 
-    const applyViewportComposition = (viewportWidth: number, viewportHeight: number) => {
+    const applyViewportComposition = (viewportWidth: number, viewportHeight: number, panelOffset = currentCompositionOffset) => {
       camera.clearViewOffset();
-      if (sidebarOpen && viewportWidth >= 1024) {
+      if (panelOffset > 0 && viewportWidth >= 1024) {
         // Render one uninterrupted scene, but compose the load in the open
         // space to the left of the floating 320px inspector.
-        camera.setViewOffset(viewportWidth + 344, viewportHeight, 344, 0, viewportWidth, viewportHeight);
+        camera.setViewOffset(viewportWidth + panelOffset, viewportHeight, panelOffset, 0, viewportWidth, viewportHeight);
       }
       camera.updateProjectionMatrix();
     };
@@ -1152,11 +1158,19 @@ export function ContainerViewer3D({
     containerGroup.add(containerWire);
 
     const floor = new THREE.Mesh(
-      new THREE.BoxGeometry(cL, 0.035, cW),
-      new THREE.MeshBasicMaterial({ color: 0xbfc6ce }),
+      new THREE.PlaneGeometry(cL, cW),
+      new THREE.MeshBasicMaterial({
+        color: 0xcbd2da,
+        transparent: true,
+        opacity: 0.78,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      }),
     );
-    floor.position.set(cL / 2, -0.015, cW / 2);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set(cL / 2, -0.001, cW / 2);
     floor.receiveShadow = false;
+    floor.renderOrder = 1;
     containerGroup.add(floor);
 
     const wallMat = new THREE.MeshBasicMaterial({
@@ -1249,7 +1263,7 @@ export function ContainerViewer3D({
 
     const formatSceneLength = (inches: number) =>
       unitSystem === "metric"
-        ? `${(inches * IN_TO_CM).toFixed(0)} cm`
+        ? `${Math.round(inches * 25.4)} mm`
         : `${inches.toFixed(1)} in`;
     const cargoMeshes: THREE.Mesh[] = [];
     const hoverMeasurementGroup = new THREE.Group();
@@ -1302,58 +1316,105 @@ export function ContainerViewer3D({
       label.renderOrder = 18;
       return label;
     };
-    const rulerOffset = Math.max(0.16, cW * 0.16);
+    const rulerOffset = Math.max(0.14, cW * 0.14);
     const rulerZ = cW + rulerOffset;
     const rulerY = 0.025;
-    const rulerTick = Math.max(0.045, cW * 0.035);
-    const rulerMaterial = new THREE.LineBasicMaterial({ color: 0x718096, transparent: true, opacity: 0.56, depthTest: false });
-    const rulerPoints: THREE.Vector3[] = [
-      new THREE.Vector3(0, rulerY, rulerZ), new THREE.Vector3(cL, rulerY, rulerZ),
-      new THREE.Vector3(0, rulerY, cW), new THREE.Vector3(0, rulerY, rulerZ + rulerTick),
-      new THREE.Vector3(cL, rulerY, cW), new THREE.Vector3(cL, rulerY, rulerZ + rulerTick),
-    ];
-    const rulerValuesIn: number[] = [0];
-    const preferredStepIn = unitSystem === "metric" ? 200 / IN_TO_CM : 96;
-    for (let value = preferredStepIn; value < container.lengthIn; value += preferredStepIn) rulerValuesIn.push(value);
-    rulerValuesIn.push(container.lengthIn);
-    rulerValuesIn.forEach((valueIn) => {
-      const x = inToM(valueIn);
-      rulerPoints.push(
-        new THREE.Vector3(x, rulerY, rulerZ - rulerTick),
-        new THREE.Vector3(x, rulerY, rulerZ + rulerTick),
-      );
-      const label = createRulerLabel(formatSceneLength(valueIn), Math.max(0.42, Math.min(0.62, cW * 0.26)));
-      label.position.set(x, rulerY + 0.02, rulerZ + rulerTick * 2.4);
-      containerGroup.add(label);
-    });
-    const lengthRuler = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(rulerPoints), rulerMaterial);
-    lengthRuler.renderOrder = 17;
-    containerGroup.add(lengthRuler);
+    const rulerTick = Math.max(0.04, cW * 0.03);
+    const rulerMaterial = new THREE.LineBasicMaterial({ color: 0x718096, transparent: true, opacity: 0.62, depthTest: false });
+    const rulerValues = (totalIn: number, stepIn: number) => {
+      const values = [0];
+      for (let value = stepIn; value < totalIn - stepIn * 0.6; value += stepIn) values.push(value);
+      values.push(totalIn);
+      return values;
+    };
+    const lengthValuesIn = rulerValues(container.lengthIn, unitSystem === "metric" ? 2000 / 25.4 : 96);
+    const widthValuesIn = rulerValues(container.widthIn, unitSystem === "metric" ? 1000 / 25.4 : 36);
+    const heightValuesIn = rulerValues(container.heightIn, unitSystem === "metric" ? 1000 / 25.4 : 36);
 
-    // Width and height callouts complete the container envelope without a
-    // separate header card. They stay in the scene and move with the model.
-    const endGuideX = cL + rulerOffset * 0.72;
-    const envelopeGuides = new THREE.LineSegments(
-      new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(cL, rulerY, 0), new THREE.Vector3(endGuideX, rulerY, 0),
-        new THREE.Vector3(cL, rulerY, cW), new THREE.Vector3(endGuideX, rulerY, cW),
-        new THREE.Vector3(endGuideX, rulerY, 0), new THREE.Vector3(endGuideX, rulerY, cW),
-        new THREE.Vector3(0, 0, rulerZ), new THREE.Vector3(0, cH, rulerZ),
-        new THREE.Vector3(0, 0, cW), new THREE.Vector3(0, 0, rulerZ + rulerTick),
-        new THREE.Vector3(0, cH, cW), new THREE.Vector3(0, cH, rulerZ + rulerTick),
-      ]),
-      rulerMaterial.clone(),
-    );
-    envelopeGuides.renderOrder = 17;
-    containerGroup.add(envelopeGuides);
-    const widthLabel = createRulerLabel(`W ${formatSceneLength(container.widthIn)}`, Math.max(0.5, Math.min(0.74, cW * 0.31)));
-    widthLabel.position.set(endGuideX + 0.035, rulerY + 0.02, cW / 2);
-    widthLabel.rotation.z = Math.PI / 2;
-    containerGroup.add(widthLabel);
-    const heightLabel = createRulerLabel(`H ${formatSceneLength(container.heightIn)}`, Math.max(0.5, Math.min(0.74, cH * 0.28)));
-    heightLabel.position.set(-rulerOffset * 0.65, rulerY + 0.02, cW / 2);
-    heightLabel.rotation.z = Math.PI / 2;
-    containerGroup.add(heightLabel);
+    const addFloorRuler = (axis: "length" | "width", side: "start" | "end") => {
+      const isLength = axis === "length";
+      const valuesIn = isLength ? lengthValuesIn : widthValuesIn;
+      const totalM = isLength ? cL : cW;
+      const fixed = side === "start" ? -rulerOffset : (isLength ? cW : cL) + rulerOffset;
+      const edge = side === "start" ? 0 : (isLength ? cW : cL);
+      const outward = side === "start" ? -1 : 1;
+      const points: THREE.Vector3[] = isLength
+        ? [
+            new THREE.Vector3(0, rulerY, fixed), new THREE.Vector3(cL, rulerY, fixed),
+            new THREE.Vector3(0, rulerY, edge), new THREE.Vector3(0, rulerY, fixed),
+            new THREE.Vector3(cL, rulerY, edge), new THREE.Vector3(cL, rulerY, fixed),
+          ]
+        : [
+            new THREE.Vector3(fixed, rulerY, 0), new THREE.Vector3(fixed, rulerY, cW),
+            new THREE.Vector3(edge, rulerY, 0), new THREE.Vector3(fixed, rulerY, 0),
+            new THREE.Vector3(edge, rulerY, cW), new THREE.Vector3(fixed, rulerY, cW),
+          ];
+      valuesIn.forEach((valueIn) => {
+        const valueM = inToM(valueIn);
+        if (isLength) {
+          points.push(
+            new THREE.Vector3(valueM, rulerY, fixed - rulerTick),
+            new THREE.Vector3(valueM, rulerY, fixed + rulerTick),
+          );
+        } else {
+          points.push(
+            new THREE.Vector3(fixed - rulerTick, rulerY, valueM),
+            new THREE.Vector3(fixed + rulerTick, rulerY, valueM),
+          );
+        }
+        const labelScale = isLength
+          ? Math.max(0.34, Math.min(0.52, cW * 0.22))
+          : Math.max(0.3, Math.min(0.44, cW * 0.19));
+        const label = createRulerLabel(formatSceneLength(valueIn), labelScale);
+        if (isLength) {
+          label.position.set(valueM, rulerY + 0.018, fixed + outward * rulerTick * 2.5);
+          label.rotation.z = side === "start" ? Math.PI : 0;
+        } else {
+          label.position.set(fixed + outward * rulerTick * 2.7, rulerY + 0.018, valueM);
+          label.rotation.z = side === "start" ? Math.PI / 2 : -Math.PI / 2;
+        }
+        containerGroup.add(label);
+      });
+      const ruler = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(points), rulerMaterial.clone());
+      ruler.renderOrder = 17;
+      ruler.userData.dimensionAxis = axis;
+      ruler.userData.dimensionSpan = totalM;
+      containerGroup.add(ruler);
+    };
+
+    addFloorRuler("length", "start");
+    addFloorRuler("length", "end");
+    addFloorRuler("width", "start");
+    addFloorRuler("width", "end");
+
+    const addHeightRuler = (x: number, z: number, outwardX: number) => {
+      const baselineX = x + outwardX * rulerOffset;
+      const points: THREE.Vector3[] = [
+        new THREE.Vector3(x, 0, z), new THREE.Vector3(baselineX, 0, z),
+        new THREE.Vector3(x, cH, z), new THREE.Vector3(baselineX, cH, z),
+        new THREE.Vector3(baselineX, 0, z), new THREE.Vector3(baselineX, cH, z),
+      ];
+      heightValuesIn.forEach((valueIn) => {
+        const y = inToM(valueIn);
+        points.push(
+          new THREE.Vector3(baselineX - rulerTick, y, z),
+          new THREE.Vector3(baselineX + rulerTick, y, z),
+        );
+        const labelScale = Math.max(0.3, Math.min(0.44, cW * 0.19));
+        const label = createRulerLabel(formatSceneLength(valueIn), labelScale);
+        label.rotation.set(0, 0, outwardX < 0 ? Math.PI / 2 : -Math.PI / 2);
+        const labelY = Math.max(labelScale / 2, Math.min(cH - labelScale / 2, y));
+        label.position.set(baselineX + outwardX * rulerTick * 2.8, labelY, z + (z === 0 ? -0.012 : 0.012));
+        containerGroup.add(label);
+      });
+      const ruler = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(points), rulerMaterial.clone());
+      ruler.renderOrder = 17;
+      ruler.userData.dimensionAxis = "height";
+      containerGroup.add(ruler);
+    };
+
+    addHeightRuler(0, 0, -1);
+    addHeightRuler(cL, cW, 1);
 
     const addMeasurementRange = (group: THREE.Group, startX: number, endX: number, y: number, z: number, label: string) => {
       const lineMaterial = new THREE.LineBasicMaterial({ color: 0x718096, transparent: true, opacity: 0.72, depthTest: false });
@@ -1566,8 +1627,31 @@ export function ContainerViewer3D({
     const restingPixelRatio = renderProfile.pixelRatio;
     const movingPixelRatio = Math.min(restingPixelRatio, 1.25);
     let currentPixelRatio = restingPixelRatio;
-    let renderWidth = w;
-    let renderHeight = h;
+    let compositionFrameId: number | null = null;
+    const setSidebarComposition = (open: boolean) => {
+      sidebarOpenRef.current = open;
+      const targetOffset = open && renderWidth >= 1024 ? 344 : 0;
+      if (Math.abs(targetOffset - currentCompositionOffset) < 0.5) {
+        currentCompositionOffset = targetOffset;
+        applyViewportComposition(renderWidth, renderHeight);
+        renderScene();
+        return;
+      }
+      if (compositionFrameId !== null) window.cancelAnimationFrame(compositionFrameId);
+      const startOffset = currentCompositionOffset;
+      const startedAt = performance.now();
+      const durationMs = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 180;
+      const animateComposition = (now: number) => {
+        const progress = durationMs === 0 ? 1 : Math.min(1, (now - startedAt) / durationMs);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        currentCompositionOffset = startOffset + (targetOffset - startOffset) * eased;
+        applyViewportComposition(renderWidth, renderHeight);
+        renderScene();
+        if (progress < 1) compositionFrameId = window.requestAnimationFrame(animateComposition);
+        else compositionFrameId = null;
+      };
+      compositionFrameId = window.requestAnimationFrame(animateComposition);
+    };
     const setInteractionResolution = (active: boolean) => {
       const nextPixelRatio = active ? movingPixelRatio : restingPixelRatio;
       if (nextPixelRatio === currentPixelRatio) return;
@@ -2003,6 +2087,7 @@ export function ContainerViewer3D({
       containerGroup,
       setCargoHover,
       setView,
+      setSidebarComposition,
       render: renderScene,
     };
 
@@ -2065,6 +2150,7 @@ export function ContainerViewer3D({
       renderWidth = nw;
       renderHeight = nh;
       camera.aspect = nw / nh;
+      currentCompositionOffset = sidebarOpenRef.current && nw >= 1024 ? 344 : 0;
       applyViewportComposition(nw, nh);
       renderer.setSize(nw, nh);
       renderScene();
@@ -2094,6 +2180,7 @@ export function ContainerViewer3D({
       renderer.domElement.removeEventListener("webglcontextlost", handleContextLost);
       if (wheelRestoreTimer !== null) window.clearTimeout(wheelRestoreTimer);
       if (renderFrameId !== null) window.cancelAnimationFrame(renderFrameId);
+      if (compositionFrameId !== null) window.cancelAnimationFrame(compositionFrameId);
       controls.dispose();
       const disposeMaterial = (material: THREE.Material) => {
         const map = (material as THREE.MeshStandardMaterial | THREE.MeshBasicMaterial | THREE.SpriteMaterial).map;
@@ -2136,7 +2223,6 @@ export function ContainerViewer3D({
     showShell,
     showLabels,
     renderQuality,
-    sidebarOpen,
     stagedCargo,
     loadStagedCargo,
     stageCargo,
@@ -2145,6 +2231,10 @@ export function ContainerViewer3D({
   useEffect(() => {
     sceneRef.current?.setView(activeView);
   }, [activeView]);
+
+  useEffect(() => {
+    sceneRef.current?.setSidebarComposition(sidebarOpen);
+  }, [sidebarOpen]);
 
   useEffect(() => {
     const sceneState = sceneRef.current;

@@ -295,12 +295,33 @@ export function packBoxes(items: CargoItem[], container: ContainerSpec): Loading
   const totalVolumeIn3 = placed.reduce((sum, item) => sum + item.l * item.w * item.h, 0);
   const containerVolumeIn3 = cL * cW * cH;
   const totalPiecesAll = includedItems.reduce((sum, item) => sum + item.quantity, 0);
-  let maxX = 0;
-  let maxZ = 0;
+  // The packing search starts from Side A. Once a collision-safe layout is
+  // complete, translate the whole load laterally so unused floor clearance is
+  // shared equally between both side walls. This preserves every relative
+  // position and the closed-end-to-doors loading order while avoiding a load
+  // that appears (and is) unnecessarily pressed against one wall.
+  if (placed.length > 0) {
+    const minZ = Math.min(...placed.map((item) => item.z));
+    const maxZ = Math.max(...placed.map((item) => item.z + item.w));
+    const lateralShift = (cW - (maxZ - minZ)) / 2 - minZ;
+    if (Math.abs(lateralShift) > 0.01) {
+      placed.forEach((item) => {
+        item.z += lateralShift;
+      });
+    }
+  }
+
+  let minX = Number.POSITIVE_INFINITY;
+  let minZ = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxZ = Number.NEGATIVE_INFINITY;
   for (const item of placed) {
+    minX = Math.min(minX, item.x);
+    minZ = Math.min(minZ, item.z);
     maxX = Math.max(maxX, item.x + item.l);
     maxZ = Math.max(maxZ, item.z + item.w);
   }
+  const occupiedFloorAreaIn2 = placed.length > 0 ? (maxX - minX) * (maxZ - minZ) : 0;
 
   return {
     placed,
@@ -311,7 +332,7 @@ export function packBoxes(items: CargoItem[], container: ContainerSpec): Loading
     maxPayload: maxPay,
     volumeUtil: (totalVolumeIn3 / containerVolumeIn3) * 100,
     weightUtil: (totalWeight / maxPay) * 100,
-    floorArea: sqInToSqFt(maxX * maxZ),
+    floorArea: sqInToSqFt(occupiedFloorAreaIn2),
     containerFloorArea: sqInToSqFt(cL * cW),
     piecesLoaded: placed.length,
     piecesTotal: totalPiecesAll,
