@@ -1408,6 +1408,7 @@ export function ContainerViewer3D({
     hoverMeasurementGroup.visible = false;
     scene.add(hoverMeasurementGroup);
     let activeMeasurementIndex: number | null = null;
+    let activeMeasurementSideKey: string | null = null;
     const measurementTextureCache = new Map<string, THREE.CanvasTexture>();
     const createMeasurementLabel = (text: string, scale: number) => {
       let texture = measurementTextureCache.get(text);
@@ -1591,32 +1592,47 @@ export function ContainerViewer3D({
       }
     };
     const updateHoverMeasurements = (index: number | null) => {
-      if (index === activeMeasurementIndex) return;
-      activeMeasurementIndex = index;
-      clearHoverMeasurements();
       const box = index === null ? null : placed[index];
       if (!box) {
+        if (activeMeasurementIndex === null && !hoverMeasurementGroup.visible) return;
+        activeMeasurementIndex = null;
+        activeMeasurementSideKey = null;
+        clearHoverMeasurements();
         hoverMeasurementGroup.visible = false;
         return;
       }
+
       const bX = inToM(box.x);
       const bL = inToM(box.l);
       const bZ = inToM(box.z);
       const bW = inToM(box.w);
       const bTop = inToM(box.y + box.h);
+      const cameraSeesPositiveZ = camera.position.z >= bZ + bW / 2;
+      const cameraSeesPositiveX = camera.position.x >= bX + bL / 2;
+      const sideKey = `${index}:${cameraSeesPositiveZ ? "z+" : "z-"}:${cameraSeesPositiveX ? "x+" : "x-"}`;
+      if (index === activeMeasurementIndex && sideKey === activeMeasurementSideKey) return;
+
+      activeMeasurementIndex = index;
+      activeMeasurementSideKey = sideKey;
+      clearHoverMeasurements();
+
       const measurementY = bTop + 0.022;
       const cargoRulerGap = Math.max(0.055, cW * 0.028);
+      const lengthEdge = cameraSeesPositiveZ ? bZ + bW : bZ;
+      const lengthGuide = lengthEdge + (cameraSeesPositiveZ ? cargoRulerGap : -cargoRulerGap);
+      const widthEdge = cameraSeesPositiveX ? bX + bL : bX;
+      const widthGuide = widthEdge + (cameraSeesPositiveX ? cargoRulerGap : -cargoRulerGap);
 
-      // Match the reference: measure only the selected cargo footprint.
-      // Do not surround it with remaining-space ranges, which creates visual noise.
+      // Keep each guide attached to the two cargo edges facing the camera.
+      // Rebuild only when the camera crosses to another side of the unit.
       addMeasurementRange(
         hoverMeasurementGroup,
         "length",
         bX,
         bX + bL,
         measurementY,
-        bZ - cargoRulerGap,
-        bZ,
+        lengthGuide,
+        lengthEdge,
         formatSceneLength(box.l),
       );
       addMeasurementRange(
@@ -1625,8 +1641,8 @@ export function ContainerViewer3D({
         bZ,
         bZ + bW,
         measurementY + 0.002,
-        bX + bL + cargoRulerGap,
-        bX + bL,
+        widthGuide,
+        widthEdge,
         formatSceneLength(box.w),
       );
       hoverMeasurementGroup.visible = true;
@@ -2803,7 +2819,11 @@ export function ContainerViewer3D({
     renderer.domElement.addEventListener("contextmenu", handleContextMenu);
     controls.addEventListener("start", handleOrbitStart);
     controls.addEventListener("end", handleOrbitEnd);
-    controls.addEventListener("change", renderScene);
+    const handleControlsChange = () => {
+      updateHoverMeasurements(activeMeasurementIndex);
+      renderScene();
+    };
+    controls.addEventListener("change", handleControlsChange);
     setDockFocus(selectedSceneDockRef.current);
     setStagedCargoFocus(selectedStagedCargoIdRef.current);
     renderScene();
@@ -2910,7 +2930,7 @@ export function ContainerViewer3D({
       renderer.domElement.removeEventListener("contextmenu", handleContextMenu);
       controls.removeEventListener("start", handleOrbitStart);
       controls.removeEventListener("end", handleOrbitEnd);
-      controls.removeEventListener("change", renderScene);
+      controls.removeEventListener("change", handleControlsChange);
       renderer.domElement.removeEventListener("webglcontextlost", handleContextLost);
       if (wheelRestoreTimer !== null) window.clearTimeout(wheelRestoreTimer);
       cancelLongPress();
