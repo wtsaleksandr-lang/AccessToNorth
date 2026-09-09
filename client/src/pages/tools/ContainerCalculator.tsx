@@ -591,6 +591,7 @@ export function ContainerViewer3D({
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
   const [activeCargoZone, setActiveCargoZone] = useState<CargoWorkspaceZone>("loaded");
   const [selectedSceneDock, setSelectedSceneDock] = useState<StagingDock | null>(null);
+  const [selectedStagedCargoId, setSelectedStagedCargoId] = useState<string | null>(null);
   const [displayControlsOpen, setDisplayControlsOpen] = useState(false);
   const [warningPanelOpen, setWarningPanelOpen] = useState(false);
   const [helpPanelOpen, setHelpPanelOpen] = useState(false);
@@ -602,6 +603,7 @@ export function ContainerViewer3D({
   const viewPanelDragControls = useDragControls();
   const cargoPanelDragControls = useDragControls();
   const selectedSceneDockRef = useRef<StagingDock | null>(null);
+  const selectedStagedCargoIdRef = useRef<string | null>(null);
   const stagingMutationRef = useRef(false);
   const arrangementHistoryRef = useRef<PlacedBox[][]>([]);
   const arrangementRedoRef = useRef<PlacedBox[][]>([]);
@@ -622,6 +624,7 @@ export function ContainerViewer3D({
     containerGroup: THREE.Group;
     setCargoHover: (index: number | null) => void;
     setDockFocus: (zone: StagingDock | null, mode?: "selected" | "hover" | "drop") => void;
+    setStagedCargoFocus: (id: string | null, mode?: "selected" | "hover" | "drop" | "invalid") => void;
     setView: (preset: ContainerViewPreset) => void;
     setSidebarComposition: (open: boolean) => void;
     render: () => void;
@@ -639,6 +642,7 @@ export function ContainerViewer3D({
   onPlacedChangeRef.current = onPlacedChange;
   sidebarOpenRef.current = sidebarOpen;
   selectedSceneDockRef.current = selectedSceneDock;
+  selectedStagedCargoIdRef.current = selectedStagedCargoId;
 
   const sequenceOrder = useMemo(
     () => placed
@@ -872,6 +876,8 @@ export function ContainerViewer3D({
     setRedoCount(0);
     setPlacementMessage("The optimized loading plan has been restored.");
     setSelectedCargoIndices(new Set());
+    setSelectedSceneDock(null);
+    setSelectedStagedCargoId(null);
     const restoringStagedCargo = stagedCargo.length > 0;
     setStagedCargo([]);
     stagingMutationRef.current = restoringStagedCargo;
@@ -898,10 +904,11 @@ export function ContainerViewer3D({
     setRedoCount(0);
     setHoveredCargoIndex(null);
     setSelectedCargoIndices(new Set());
+    const stagedId = `${selected.cargoId}-${Date.now()}-${index}`;
     setStagedCargo((current) => [
       ...current,
       {
-        id: `${selected.cargoId}-${Date.now()}-${index}`,
+        id: stagedId,
         zone,
         box: { ...selected },
       },
@@ -911,6 +918,7 @@ export function ContainerViewer3D({
     setPlacementMessage(`${selected.cargoName || "Cargo item"} moved to ${zone === "dock1" ? "Dock 1" : "Dock 2"}.`);
     setActiveCargoZone(zone);
     setSelectedSceneDock(zone);
+    setSelectedStagedCargoId(stagedId);
   }, [container, placed]);
 
   const loadStagedCargo = useCallback((stagedId: string) => {
@@ -929,6 +937,7 @@ export function ContainerViewer3D({
     setSelectedCargoIndices(new Set());
     setStagedCargo((current) => current.filter((entry) => entry.id !== stagedId));
     setSelectedSceneDock(null);
+    setSelectedStagedCargoId(null);
     stagingMutationRef.current = true;
     onPlacedChangeRef.current?.([...placed.map((box) => ({ ...box })), safePlacement]);
     setPlacementMessage(`${safePlacement.cargoName || "Cargo item"} loaded from the staging dock.`);
@@ -1667,7 +1676,7 @@ export function ContainerViewer3D({
       stagedMesh.position.set(dockCursors[zone] + bL / 2, bH / 2, dockCenterZ + rowOffset);
       stagedMesh.castShadow = false;
       stagedMesh.receiveShadow = false;
-      stagedMesh.userData = { stagedId: staged.id, zone };
+      stagedMesh.userData = { stagedId: staged.id, zone, l: bL, w: bW, h: bH };
       scene.add(stagedMesh);
       stagedMeshes.push(stagedMesh);
 
@@ -1676,6 +1685,7 @@ export function ContainerViewer3D({
         new THREE.LineBasicMaterial({ color: 0x737d88, transparent: true, opacity: 0.4 }),
       );
       stagedEdges.position.copy(stagedMesh.position);
+      stagedMesh.userData.linkedEdges = stagedEdges;
       scene.add(stagedEdges);
       dockCursors[zone] += bL + gap;
     }
@@ -1805,6 +1815,7 @@ export function ContainerViewer3D({
     const pointer = new THREE.Vector2();
     const dragIntersection = new THREE.Vector3();
     type DragState = {
+      source: "loaded" | "staged";
       pointerId: number;
       startClientX: number;
       startClientY: number;
@@ -1813,6 +1824,8 @@ export function ContainerViewer3D({
       index: number;
       indices: number[];
       startPositions: Map<number, THREE.Vector3>;
+      stagedId: string | null;
+      stagedStartPosition: THREE.Vector3 | null;
       offset: THREE.Vector3;
       plane: THREE.Plane;
       nextLayout: PlacedBox[] | null;
@@ -1854,6 +1867,24 @@ export function ContainerViewer3D({
       renderScene();
     };
 
+    const setStagedCargoFocus = (id: string | null, mode: "selected" | "hover" | "drop" | "invalid" = "selected") => {
+      stagedMeshes.forEach((mesh) => {
+        const active = mesh.userData.stagedId === id;
+        const material = mesh.material as THREE.MeshBasicMaterial;
+        const edges = mesh.userData.linkedEdges as THREE.LineSegments | undefined;
+        const edgeMaterial = edges?.material as THREE.LineBasicMaterial | undefined;
+        material.opacity = active ? 0.84 : 0.7;
+        if (edgeMaterial && edges) {
+          edgeMaterial.color.setHex(active ? mode === "drop" ? 0x059669 : mode === "invalid" ? 0xdc2626 : 0x0284c7 : 0x737d88);
+          edgeMaterial.opacity = active ? 0.9 : 0.4;
+          edgeMaterial.needsUpdate = true;
+          edges.scale.setScalar(active ? 1.012 : 1);
+        }
+        material.needsUpdate = true;
+      });
+      renderScene();
+    };
+
     const setCargoHover = (index: number | null) => {
       updateHoverMeasurements(index);
       cargoMeshes.forEach((mesh) => {
@@ -1888,7 +1919,7 @@ export function ContainerViewer3D({
     };
 
     let inspectionPointer: { pointerId: number; clientX: number; clientY: number; index: number } | null = null;
-    let dockInspectionPointer: { pointerId: number; clientX: number; clientY: number; zone: StagingDock } | null = null;
+    let dockInspectionPointer: { pointerId: number; clientX: number; clientY: number; zone: StagingDock; stagedId: string | null } | null = null;
     const handlePointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return;
       updatePointer(event);
@@ -1900,15 +1931,59 @@ export function ContainerViewer3D({
 
       if (stagedIntersection?.object instanceof THREE.Mesh) {
         const zone = stagedIntersection.object.userData.zone as StagingDock | undefined;
-        if (zone) {
-          dockInspectionPointer = { pointerId: event.pointerId, clientX: event.clientX, clientY: event.clientY, zone };
+        const stagedId = stagedIntersection.object.userData.stagedId as string | undefined;
+        if (zone && stagedId) {
+          const directStagedManipulation = event.pointerType === "touch" || selectedStagedCargoIdRef.current === stagedId;
+          if (!directStagedManipulation) {
+            dockInspectionPointer = { pointerId: event.pointerId, clientX: event.clientX, clientY: event.clientY, zone, stagedId };
+            return;
+          }
+          event.preventDefault();
+          event.stopPropagation();
+          const mesh = stagedIntersection.object;
+          const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -mesh.position.y);
+          if (!raycaster.ray.intersectPlane(plane, dragIntersection)) return;
+          selectedStagedCargoIdRef.current = stagedId;
+          setSelectedStagedCargoId(stagedId);
+          selectedSceneDockRef.current = zone;
+          setSelectedSceneDock(zone);
+          selectedCargoIndicesRef.current = new Set();
+          setSelectedCargoIndices(new Set());
+          setHoveredCargoIndex(null);
+          setCargoHover(null);
+          setDockFocus(zone, "selected");
+          setStagedCargoFocus(stagedId, "selected");
+          dragState = {
+            source: "staged",
+            pointerId: event.pointerId,
+            startClientX: event.clientX,
+            startClientY: event.clientY,
+            activated: false,
+            mesh,
+            index: -1,
+            indices: [],
+            startPositions: new Map(),
+            stagedId,
+            stagedStartPosition: mesh.position.clone(),
+            offset: dragIntersection.clone().sub(mesh.position),
+            plane,
+            nextLayout: null,
+            dropZone: zone,
+            valid: false,
+          };
+          renderer.domElement.setPointerCapture(event.pointerId);
+          renderer.domElement.style.cursor = "grab";
+          orbiting = false;
+          controls.enabled = false;
+          setInteractionResolution(true);
+          setPlacementMessage("Staged cargo selected — drag it into the container or to the other dock.");
           return;
         }
       }
 
       if (!intersection && dockIntersection?.object instanceof THREE.Mesh) {
         const zone = dockIntersection.object.userData.zone as StagingDock | undefined;
-        if (zone) dockInspectionPointer = { pointerId: event.pointerId, clientX: event.clientX, clientY: event.clientY, zone };
+        if (zone) dockInspectionPointer = { pointerId: event.pointerId, clientX: event.clientX, clientY: event.clientY, zone, stagedId: null };
         return;
       }
 
@@ -1941,6 +2016,9 @@ export function ContainerViewer3D({
       setSelectedSceneDock(null);
       selectedSceneDockRef.current = null;
       setDockFocus(null);
+      selectedStagedCargoIdRef.current = null;
+      setSelectedStagedCargoId(null);
+      setStagedCargoFocus(null);
       if (event.shiftKey) {
         const next = new Set(selectedCargoIndicesRef.current);
         if (next.has(index)) next.delete(index);
@@ -1963,6 +2041,7 @@ export function ContainerViewer3D({
       if (!raycaster.ray.intersectPlane(plane, dragIntersection)) return;
 
       dragState = {
+        source: "loaded",
         pointerId: event.pointerId,
         startClientX: event.clientX,
         startClientY: event.clientY,
@@ -1971,6 +2050,8 @@ export function ContainerViewer3D({
         index,
         indices,
         startPositions: new Map(indices.map((selectedIndex) => [selectedIndex, cargoMeshes[selectedIndex].position.clone()])),
+        stagedId: null,
+        stagedStartPosition: null,
         offset: dragIntersection.clone().sub(mesh.position),
         plane,
         nextLayout: null,
@@ -1991,6 +2072,7 @@ export function ContainerViewer3D({
 
     let currentHoverIndex: number | null = null;
     let currentHoverDock: StagingDock | null = null;
+    let currentHoverStagedId: string | null = null;
     let orbiting = false;
     const handleOrbitStart = () => {
       if (dragState) return;
@@ -2002,7 +2084,9 @@ export function ContainerViewer3D({
         setCargoHover(null);
       }
       currentHoverDock = null;
+      currentHoverStagedId = null;
       setDockFocus(selectedSceneDockRef.current);
+      setStagedCargoFocus(selectedStagedCargoIdRef.current);
       renderer.domElement.style.cursor = "grabbing";
     };
     const handleOrbitEnd = () => {
@@ -2033,6 +2117,13 @@ export function ContainerViewer3D({
           : stagedIntersection?.object instanceof THREE.Mesh
             ? stagedIntersection.object.userData.zone as StagingDock
             : null;
+        const nextStagedId = stagedIntersection?.object instanceof THREE.Mesh
+          ? stagedIntersection.object.userData.stagedId as string
+          : null;
+        if (nextStagedId !== currentHoverStagedId) {
+          currentHoverStagedId = nextStagedId;
+          setStagedCargoFocus(nextStagedId ?? selectedStagedCargoIdRef.current, nextStagedId ? "hover" : "selected");
+        }
         if (nextDock !== currentHoverDock) {
           currentHoverDock = nextDock;
           setDockFocus(nextDock ?? selectedSceneDockRef.current, nextDock ? "hover" : "selected");
@@ -2061,6 +2152,73 @@ export function ContainerViewer3D({
       const snap = inToM(1);
       const unclampedX = dragIntersection.x - dragState.offset.x;
       const unclampedZ = dragIntersection.z - dragState.offset.z;
+      if (dragState.source === "staged" && dragState.stagedId) {
+        const staged = stagedCargo.find((entry) => entry.id === dragState!.stagedId);
+        if (!staged) return;
+        const stagedDock: StagingDock | null = unclampedZ >= -dockGap - dockDepth && unclampedZ <= -dockGap
+          ? "dock1"
+          : unclampedZ >= cW + dockGap && unclampedZ <= cW + dockGap + dockDepth
+            ? "dock2"
+            : null;
+        if (stagedDock) {
+          const dockMin = stagedDock === "dock1" ? -dockGap - dockDepth : cW + dockGap;
+          const dockMax = stagedDock === "dock1" ? -dockGap : cW + dockGap + dockDepth;
+          const dockX = Math.min(cL - halfLength, Math.max(halfLength, unclampedX));
+          const dockZ = Math.min(dockMax - halfWidth, Math.max(dockMin + halfWidth, unclampedZ));
+          moveMesh(mesh, new THREE.Vector3(dockX, halfHeight, dockZ));
+          dragState.dropZone = stagedDock;
+          dragState.nextLayout = null;
+          dragState.valid = true;
+          setDockFocus(stagedDock, "drop");
+          setStagedCargoFocus(staged.id, "drop");
+          setPlacementMessage(`Release to stage this unit in ${stagedDock === "dock1" ? "Dock 1" : "Dock 2"}.`);
+          return;
+        }
+
+        const overContainer = unclampedX >= -halfLength
+          && unclampedX <= cL + halfLength
+          && unclampedZ >= -halfWidth
+          && unclampedZ <= cW + halfWidth;
+        dragState.dropZone = null;
+        setDockFocus(null);
+        if (overContainer) {
+          const nextX = Math.min(cL - halfLength, Math.max(halfLength, Math.round(unclampedX / snap) * snap));
+          const nextZ = Math.min(cW - halfWidth, Math.max(halfWidth, Math.round(unclampedZ / snap) * snap));
+          const horizontalCandidate: PlacedBox = {
+            ...staged.box,
+            x: Number(((nextX - halfLength) / 0.0254).toFixed(3)),
+            z: Number(((nextZ - halfWidth) / 0.0254).toFixed(3)),
+            y: 0,
+          };
+          const verticalLevels = Array.from(new Set([
+            0,
+            ...placed.filter((box) => box.stackable).map((box) => Number((box.y + box.h).toFixed(3))),
+          ]))
+            .filter((level) => level >= 0 && level + staged.box.h <= container.heightIn + 0.05)
+            .sort((a, b) => a - b);
+          let candidate: PlacedBox | null = null;
+          for (const level of verticalLevels) {
+            const levelCandidate = { ...horizontalCandidate, y: level };
+            if (validateManualPlacement(levelCandidate, placed, container).valid) {
+              candidate = levelCandidate;
+              break;
+            }
+          }
+          dragState.nextLayout = candidate ? [...placed.map((box) => ({ ...box })), candidate] : null;
+          dragState.valid = candidate !== null;
+          moveMesh(mesh, new THREE.Vector3(nextX, inToM(candidate?.y ?? 0) + halfHeight, nextZ));
+          setStagedCargoFocus(staged.id, candidate ? "drop" : "invalid");
+          setPlacementMessage(candidate ? "Release to load this unit here." : "No safe placement is available at this position.");
+          return;
+        }
+
+        dragState.nextLayout = null;
+        dragState.valid = false;
+        moveMesh(mesh, new THREE.Vector3(unclampedX, halfHeight, unclampedZ));
+        setStagedCargoFocus(staged.id, "invalid");
+        setPlacementMessage("Move the unit over the container or a staging dock.");
+        return;
+      }
       const candidateDock: StagingDock | null = dragState.indices.length === 1
         ? unclampedZ >= -dockGap - dockDepth && unclampedZ <= -dockGap
           ? "dock1"
@@ -2164,6 +2322,42 @@ export function ContainerViewer3D({
       orbiting = false;
       setInteractionResolution(false);
       renderer.domElement.style.cursor = selectedCargoIndicesRef.current.size > 0 ? "grab" : "default";
+      if (completedDrag.source === "staged" && completedDrag.stagedId && completedDrag.stagedStartPosition) {
+        const staged = stagedCargo.find((entry) => entry.id === completedDrag.stagedId);
+        const moved = completedDrag.stagedStartPosition.distanceTo(completedDrag.mesh.position) > 0.001;
+        if (commit && moved && completedDrag.valid && completedDrag.nextLayout) {
+          setStagedCargo((current) => current.filter((entry) => entry.id !== completedDrag.stagedId));
+          stagingMutationRef.current = true;
+          onPlacedChangeRef.current?.(completedDrag.nextLayout);
+          const nextIndex = placed.length;
+          const nextSelection = new Set([nextIndex]);
+          selectedCargoIndicesRef.current = nextSelection;
+          setSelectedCargoIndices(nextSelection);
+          selectedStagedCargoIdRef.current = null;
+          setSelectedStagedCargoId(null);
+          selectedSceneDockRef.current = null;
+          setSelectedSceneDock(null);
+          setActiveCargoZone("loaded");
+          setPlacementMessage("Cargo loaded at the selected position.");
+        } else if (commit && moved && completedDrag.dropZone && staged && completedDrag.dropZone !== staged.zone) {
+          setStagedCargo((current) => current.map((entry) => entry.id === completedDrag.stagedId
+            ? { ...entry, zone: completedDrag.dropZone! }
+            : entry));
+          selectedSceneDockRef.current = completedDrag.dropZone;
+          setSelectedSceneDock(completedDrag.dropZone);
+          setActiveCargoZone(completedDrag.dropZone);
+          setPlacementMessage(`Cargo moved to ${completedDrag.dropZone === "dock1" ? "Dock 1" : "Dock 2"}.`);
+        } else {
+          moveMesh(completedDrag.mesh, completedDrag.stagedStartPosition);
+          setPlacementMessage(moved && !completedDrag.valid
+            ? "Invalid move cancelled — the unit remains in its staging dock."
+            : "Staged cargo selected — drag it into the container or open Details.");
+        }
+        setDockFocus(selectedSceneDockRef.current);
+        setStagedCargoFocus(selectedStagedCargoIdRef.current);
+        renderScene();
+        return;
+      }
       completedDrag.indices.forEach((index) => highlightMesh(cargoMeshes[index], null));
 
       const moved = completedDrag.indices.some((index) => {
@@ -2216,6 +2410,9 @@ export function ContainerViewer3D({
           setSelectedSceneDock(null);
           selectedSceneDockRef.current = null;
           setDockFocus(null);
+          selectedStagedCargoIdRef.current = null;
+          setSelectedStagedCargoId(null);
+          setStagedCargoFocus(null);
           setPlacementMessage("Cargo selected — drag it to reposition, or open Details for precise controls.");
         }
         inspectionPointer = null;
@@ -2231,9 +2428,14 @@ export function ContainerViewer3D({
           setSelectedCargoIndices(new Set());
           setHoveredCargoIndex(null);
           setCargoHover(null);
+          selectedStagedCargoIdRef.current = dockInspectionPointer.stagedId;
+          setSelectedStagedCargoId(dockInspectionPointer.stagedId);
           setActiveCargoZone(zone);
           setDockFocus(zone, "selected");
-          setPlacementMessage(`${zone === "dock1" ? "Dock 1" : "Dock 2"} selected — drag cargo here, or open it to manage staged units.`);
+          setStagedCargoFocus(dockInspectionPointer.stagedId, "selected");
+          setPlacementMessage(dockInspectionPointer.stagedId
+            ? "Staged cargo selected — drag it into the container, or open Details."
+            : `${zone === "dock1" ? "Dock 1" : "Dock 2"} selected — drag cargo here, or open it to manage staged units.`);
         }
         dockInspectionPointer = null;
         return;
@@ -2251,9 +2453,11 @@ export function ContainerViewer3D({
       dockInspectionPointer = null;
       currentHoverIndex = null;
       currentHoverDock = null;
+      currentHoverStagedId = null;
       setHoveredCargoIndex(null);
       setCargoHover(null);
       setDockFocus(selectedSceneDockRef.current);
+      setStagedCargoFocus(selectedStagedCargoIdRef.current);
     };
     let wheelRestoreTimer: number | null = null;
     const handleWheelActivity = () => {
@@ -2276,6 +2480,7 @@ export function ContainerViewer3D({
     controls.addEventListener("end", handleOrbitEnd);
     controls.addEventListener("change", renderScene);
     setDockFocus(selectedSceneDockRef.current);
+    setStagedCargoFocus(selectedStagedCargoIdRef.current);
     renderScene();
 
     sceneRef.current = {
@@ -2288,6 +2493,7 @@ export function ContainerViewer3D({
       containerGroup,
       setCargoHover,
       setDockFocus,
+      setStagedCargoFocus,
       setView,
       setSidebarComposition,
       render: renderScene,
@@ -2441,6 +2647,10 @@ export function ContainerViewer3D({
   useEffect(() => {
     sceneRef.current?.setDockFocus(selectedSceneDock, "selected");
   }, [selectedSceneDock]);
+
+  useEffect(() => {
+    sceneRef.current?.setStagedCargoFocus(selectedStagedCargoId, "selected");
+  }, [selectedStagedCargoId]);
 
   useEffect(() => {
     const sceneState = sceneRef.current;
@@ -2769,7 +2979,7 @@ export function ContainerViewer3D({
                 {onPlacedChange ? (
                   <div className="mt-2.5 grid grid-cols-3 rounded-xl bg-slate-100 p-1" role="tablist" aria-label="Cargo workspace zones">
                     {([ ["dock1", "Dock 1"], ["loaded", "Loaded"], ["dock2", "Dock 2"] ] as const).map(([zone, label]) => (
-                      <button key={zone} type="button" role="tab" aria-selected={activeCargoZone === zone} onClick={() => { setActiveCargoZone(zone); setSelectedSceneDock(zone === "loaded" ? null : zone); }} className={`flex items-center justify-center gap-1 rounded-lg px-1.5 py-1.5 text-[9px] font-bold transition ${activeCargoZone === zone ? "bg-white text-primary shadow-sm" : "text-slate-500"}`} data-testid={`button-mobile-cargo-zone-${zone}`}>
+                      <button key={zone} type="button" role="tab" aria-selected={activeCargoZone === zone} onClick={() => { setActiveCargoZone(zone); setSelectedSceneDock(zone === "loaded" ? null : zone); if (zone === "loaded") setSelectedStagedCargoId(null); }} className={`flex items-center justify-center gap-1 rounded-lg px-1.5 py-1.5 text-[9px] font-bold transition ${activeCargoZone === zone ? "bg-white text-primary shadow-sm" : "text-slate-500"}`} data-testid={`button-mobile-cargo-zone-${zone}`}>
                         {zone === "loaded" ? <Box className="h-3 w-3" /> : <Package className="h-3 w-3" />}<span>{label}</span><span className={`min-w-4 rounded-full px-1 text-center text-[8px] ${activeCargoZone === zone ? "bg-blue-50 text-primary" : "bg-slate-200/70 text-slate-500"}`}>{zone === "loaded" ? placed.length : stagedByZone[zone].length}</span>
                       </button>
                     ))}
@@ -2790,7 +3000,7 @@ export function ContainerViewer3D({
                   {placed.map((box, index) => (
                     <div key={`${box.cargoId}-mobile-${index}`} className={`flex items-center gap-1.5 rounded-xl border p-1.5 transition ${selectedCargoIndices.has(index) ? "border-blue-300 bg-blue-50/80 ring-2 ring-blue-100" : hoveredCargoIndex === index ? "border-sky-300 bg-white" : "border-transparent bg-white/60"}`} data-testid={`mobile-container-cargo-row-${index}`}>
                       {onPlacedChange && arrangeMode && <button type="button" onClick={() => toggleCargoSelection(index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-primary" aria-label={`${selectedCargoIndices.has(index) ? "Deselect" : "Select"} ${box.cargoName || "cargo item"}`} aria-pressed={selectedCargoIndices.has(index)} data-testid={`button-mobile-select-container-cargo-${index}`}>{selectedCargoIndices.has(index) ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 text-slate-400" />}</button>}
-                      <button type="button" onClick={() => { setHoveredCargoIndex(index); sceneRef.current?.setCargoHover(index); }} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg p-0.5 text-left" data-testid={`button-mobile-container-cargo-${index}`}>
+                      <button type="button" onClick={() => { const next = new Set([index]); selectedCargoIndicesRef.current = next; setSelectedCargoIndices(next); setSelectedStagedCargoId(null); setSelectedSceneDock(null); setHoveredCargoIndex(index); sceneRef.current?.setCargoHover(index); sceneRef.current?.setStagedCargoFocus(null); sceneRef.current?.setDockFocus(null); }} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg p-0.5 text-left" data-testid={`button-mobile-container-cargo-${index}`}>
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-900" style={{ backgroundColor: `${box.color}45` }}><Box className="h-3.5 w-3.5" /></span>
                         <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-slate-800">{box.cargoName || `Cargo ${index + 1}`}</span><span className="mt-0.5 block truncate text-[9px] text-slate-500">{fmt(box.l)} × {fmt(box.w)} × {fmt(box.h)} · {unitSystem === "metric" ? `${(box.weight * LB_TO_KG).toFixed(0)} kg` : `${box.weight.toFixed(0)} lb`}</span></span>
                       </button>
@@ -2801,9 +3011,11 @@ export function ContainerViewer3D({
                     </div>
                   ))}
                 </div> : stagedByZone[activeCargoZone].length > 0 ? <div className="space-y-1">
-                  {stagedByZone[activeCargoZone].map((entry) => <div key={`${entry.id}-mobile`} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm" data-testid={`mobile-staged-cargo-${entry.id}`}>
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-900" style={{ backgroundColor: `${entry.box.color}45` }}><Package className="h-4 w-4" /></span>
-                    <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-slate-800">{entry.box.cargoName || "Cargo item"}</span><span className="mt-0.5 block truncate text-[9px] text-slate-500">{fmt(entry.box.l)} × {fmt(entry.box.w)} × {fmt(entry.box.h)}</span></span>
+                  {stagedByZone[activeCargoZone].map((entry) => <div key={`${entry.id}-mobile`} className={`flex items-center gap-2 rounded-xl border p-2 shadow-sm ${selectedStagedCargoId === entry.id ? "border-blue-300 bg-blue-50/80 ring-2 ring-blue-100" : "border-slate-200 bg-white"}`} data-testid={`mobile-staged-cargo-${entry.id}`}>
+                    <button type="button" onClick={() => { setSelectedStagedCargoId(entry.id); setSelectedSceneDock(entry.zone); setSelectedCargoIndices(new Set()); sceneRef.current?.setStagedCargoFocus(entry.id); sceneRef.current?.setDockFocus(entry.zone); }} className="flex min-w-0 flex-1 items-center gap-2 text-left" aria-pressed={selectedStagedCargoId === entry.id}>
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-900" style={{ backgroundColor: `${entry.box.color}45` }}><Package className="h-4 w-4" /></span>
+                      <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-slate-800">{entry.box.cargoName || "Cargo item"}</span><span className="mt-0.5 block truncate text-[9px] text-slate-500">{fmt(entry.box.l)} × {fmt(entry.box.w)} × {fmt(entry.box.h)}</span></span>
+                    </button>
                     <button type="button" onClick={() => loadStagedCargo(entry.id)} className="rounded-lg bg-slate-900 px-2.5 py-1.5 text-[9px] font-bold text-white" data-testid={`button-mobile-load-staged-${entry.id}`}>Load</button>
                   </div>)}
                 </div> : <div className="px-4 py-7 text-center"><Package className="mx-auto h-6 w-6 text-slate-300" /><p className="mt-2 text-[11px] font-bold text-slate-600">No cargo staged here</p><p className="mt-1 text-[9px] leading-4 text-slate-400">Use the D1 or D2 control beside a loaded unit.</p></div>}
@@ -2828,14 +3040,14 @@ export function ContainerViewer3D({
                   setHelpPanelOpen(false);
                 }}
                 className="absolute bottom-0 right-0 z-30 flex h-11 items-center gap-2 rounded-tl-xl border-l border-t border-white/95 bg-white/[0.92] px-3 text-[11px] font-bold text-slate-700 shadow-sm backdrop-blur-md transition hover:text-primary active:bg-blue-50 lg:hidden"
-                aria-label={selectedSceneDock ? `Open ${selectedSceneDock === "dock1" ? "Dock 1" : "Dock 2"}` : selectedCargoIndices.size > 0 ? "Open selected cargo details" : "Open Cargo staging"}
+                aria-label={selectedStagedCargoId ? "Open staged cargo details" : selectedSceneDock ? `Open ${selectedSceneDock === "dock1" ? "Dock 1" : "Dock 2"}` : selectedCargoIndices.size > 0 ? "Open selected cargo details" : "Open Cargo staging"}
                 aria-expanded={false}
                 aria-controls="mobile-cargo-panel"
                 data-testid="button-mobile-cargo-panel"
               >
-                {selectedSceneDock ? <Package className="h-4 w-4 text-primary" /> : selectedCargoIndices.size > 0 ? <Box className="h-4 w-4 text-primary" /> : <ListChecks className="h-4 w-4 text-primary" />}
-                <span>{selectedSceneDock ? selectedSceneDock === "dock1" ? "Dock 1" : "Dock 2" : selectedCargoIndices.size > 0 ? "Details" : "Cargo"}</span>
-                <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[9px] text-primary">{selectedSceneDock ? stagedByZone[selectedSceneDock].length : selectedCargoIndices.size > 0 ? selectedCargoIndices.size : placed.length}</span>
+                {selectedStagedCargoId || selectedSceneDock ? <Package className="h-4 w-4 text-primary" /> : selectedCargoIndices.size > 0 ? <Box className="h-4 w-4 text-primary" /> : <ListChecks className="h-4 w-4 text-primary" />}
+                <span>{selectedStagedCargoId ? "Details" : selectedSceneDock ? selectedSceneDock === "dock1" ? "Dock 1" : "Dock 2" : selectedCargoIndices.size > 0 ? "Details" : "Cargo"}</span>
+                <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[9px] text-primary">{selectedStagedCargoId ? 1 : selectedSceneDock ? stagedByZone[selectedSceneDock].length : selectedCargoIndices.size > 0 ? selectedCargoIndices.size : placed.length}</span>
                 <ChevronUp className="h-3.5 w-3.5 text-slate-400" />
               </motion.button>
             )}
@@ -2901,7 +3113,9 @@ export function ContainerViewer3D({
                   : "border-sky-200 bg-white/90 text-slate-700"
                 : "border-white/80 bg-white/75 text-slate-600"
             }`}>
-              {selectedSceneDock
+              {selectedStagedCargoId
+                ? "Staged cargo selected · Drag into the container or open Details"
+                : selectedSceneDock
                 ? `${selectedSceneDock === "dock1" ? "Dock 1" : "Dock 2"} selected · Drag cargo here or open the dock`
                 : selectedCargoIndices.size > 0
                   ? `${selectedCargoIndices.size === 1 ? "Cargo selected" : `${selectedCargoIndices.size} units selected`} · Drag to move or open Details`
@@ -2946,7 +3160,7 @@ export function ContainerViewer3D({
                     type="button"
                     role="tab"
                     aria-selected={activeCargoZone === zone}
-                    onClick={() => { setActiveCargoZone(zone); setSelectedSceneDock(zone === "loaded" ? null : zone); }}
+                    onClick={() => { setActiveCargoZone(zone); setSelectedSceneDock(zone === "loaded" ? null : zone); if (zone === "loaded") setSelectedStagedCargoId(null); }}
                     className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] font-bold transition ${activeCargoZone === zone ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
                     data-testid={`button-cargo-zone-${zone}`}
                   >
@@ -3033,9 +3247,11 @@ export function ContainerViewer3D({
                 </div>)}
               </div> : (
                 stagedByZone[activeCargoZone].length > 0 ? <div className="space-y-1">
-                  {stagedByZone[activeCargoZone].map((entry) => <div key={entry.id} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm" data-testid={`staged-cargo-${entry.id}`}>
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-900" style={{ backgroundColor: `${entry.box.color}45` }}><Package className="h-4 w-4" /></span>
-                    <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-slate-800">{entry.box.cargoName || "Cargo item"}</span><span className="mt-0.5 block truncate text-[9px] text-slate-500">{fmt(entry.box.l)} × {fmt(entry.box.w)} × {fmt(entry.box.h)}</span></span>
+                  {stagedByZone[activeCargoZone].map((entry) => <div key={entry.id} className={`flex items-center gap-2 rounded-xl border p-2 shadow-sm ${selectedStagedCargoId === entry.id ? "border-blue-300 bg-blue-50/80 ring-2 ring-blue-100" : "border-slate-200 bg-white"}`} data-testid={`staged-cargo-${entry.id}`}>
+                    <button type="button" onClick={() => { setSelectedStagedCargoId(entry.id); setSelectedSceneDock(entry.zone); setSelectedCargoIndices(new Set()); sceneRef.current?.setStagedCargoFocus(entry.id); sceneRef.current?.setDockFocus(entry.zone); }} className="flex min-w-0 flex-1 items-center gap-2 text-left" aria-pressed={selectedStagedCargoId === entry.id}>
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-900" style={{ backgroundColor: `${entry.box.color}45` }}><Package className="h-4 w-4" /></span>
+                      <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-slate-800">{entry.box.cargoName || "Cargo item"}</span><span className="mt-0.5 block truncate text-[9px] text-slate-500">{fmt(entry.box.l)} × {fmt(entry.box.w)} × {fmt(entry.box.h)}</span></span>
+                    </button>
                     <button type="button" onClick={() => loadStagedCargo(entry.id)} className="rounded-lg bg-slate-900 px-2 py-1.5 text-[9px] font-bold text-white hover:bg-slate-700" data-testid={`button-load-staged-${entry.id}`}>Load</button>
                   </div>)}
                 </div> : <div className="mx-2 mt-8 rounded-2xl border border-dashed border-slate-300 bg-white/70 px-4 py-7 text-center">
