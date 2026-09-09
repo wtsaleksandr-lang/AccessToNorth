@@ -1258,7 +1258,7 @@ export function ContainerViewer3D({
     const containerEdges = new THREE.EdgesGeometry(new THREE.BoxGeometry(cL, cH, cW));
     const containerWire = new THREE.LineSegments(
       containerEdges,
-      new THREE.LineBasicMaterial({ color: 0x718096, transparent: true, opacity: 0.46 })
+      new THREE.LineBasicMaterial({ color: 0x7b8794, transparent: true, opacity: 0.38 })
     );
     containerWire.position.set(cL / 2, cH / 2, cW / 2);
     containerGroup.add(containerWire);
@@ -1323,8 +1323,8 @@ export function ContainerViewer3D({
     containerGroup.add(ribs);
 
     const doorX = cL;
-    const doorLineMaterial = new THREE.LineBasicMaterial({ color: 0x687684, transparent: true, opacity: 0.58, depthTest: false });
-    const doorPanelMaterial = new THREE.MeshBasicMaterial({ color: 0xf8fafc, transparent: true, opacity: 0.07, side: THREE.DoubleSide, depthWrite: false });
+    const doorLineMaterial = new THREE.LineBasicMaterial({ color: 0x7b8794, transparent: true, opacity: 0.42 });
+    const doorPanelMaterial = new THREE.MeshBasicMaterial({ color: 0xf8fafc, transparent: true, opacity: 0.025, side: THREE.DoubleSide, depthWrite: false });
     const doorOpeningDetails = new THREE.LineSegments(
       new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(doorX + 0.002, 0, cW / 2), new THREE.Vector3(doorX + 0.002, cH, cW / 2),
@@ -1340,7 +1340,7 @@ export function ContainerViewer3D({
       const door = new THREE.Group();
       const doorWidth = cW * 0.5;
       door.position.set(doorX + 0.006, 0, side === "left" ? 0 : cW);
-      door.rotation.y = direction * THREE.MathUtils.degToRad(42);
+      door.rotation.y = direction * THREE.MathUtils.degToRad(24);
 
       const panel = new THREE.Mesh(new THREE.PlaneGeometry(doorWidth, cH), doorPanelMaterial.clone());
       panel.rotation.y = Math.PI / 2;
@@ -1415,101 +1415,84 @@ export function ContainerViewer3D({
     const createRulerLabel = (text: string, scale: number) => {
       const canvas = document.createElement("canvas");
       canvas.width = 384;
-      canvas.height = 96;
+      canvas.height = 80;
       const ctx = canvas.getContext("2d")!;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.font = "700 38px Inter, Arial, sans-serif";
+      ctx.font = "500 25px Inter, Arial, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      // A light keyline keeps dimensions readable over either the grid or cargo
-      // without turning every marking into a heavy floating card.
-      ctx.lineWidth = 8;
-      ctx.lineJoin = "round";
-      ctx.strokeStyle = "rgba(255,255,255,0.92)";
-      ctx.strokeText(text, 192, 49);
-      ctx.fillStyle = "rgba(51,65,85,0.96)";
-      ctx.fillText(text, 192, 49);
+      ctx.fillStyle = "rgba(71,85,105,0.78)";
+      ctx.fillText(text, 192, 41);
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.generateMipmaps = false;
       texture.minFilter = THREE.LinearFilter;
       const label = new THREE.Mesh(
-        new THREE.PlaneGeometry(scale, scale * 0.25),
+        new THREE.PlaneGeometry(scale, scale * 0.208),
         new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide }),
       );
       label.rotation.x = -Math.PI / 2;
       label.renderOrder = 18;
       return label;
     };
-    const rulerOffset = Math.max(0.2, cW * 0.2);
+    const rulerOffset = Math.max(0.13, cW * 0.11);
     const rulerY = 0.025;
-    const rulerTick = Math.max(0.055, cW * 0.04);
-    const dimensionLabelScale = compactViewport ? 1.55 : 1;
-    const dimensionLineMaterial = new THREE.LineBasicMaterial({
-      color: 0x475569,
-      transparent: true,
-      opacity: 0.76,
-      depthTest: false,
-    });
-    const dimensionTickMaterial = new THREE.LineBasicMaterial({ color: 0x475569, transparent: true, opacity: 0.82, depthTest: false });
-    const dimensionGuideMaterial = new THREE.LineBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.42, depthTest: false });
-    const addRulerSegments = (
-      points: THREE.Vector3[],
-      material: THREE.LineBasicMaterial | THREE.LineDashedMaterial,
-      dashed = false,
-    ) => {
-      const segments = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(points), material.clone());
-      if (dashed) segments.computeLineDistances();
-      segments.renderOrder = 17;
-      containerGroup.add(segments);
-      return segments;
-    };
-    const heightValuesIn = (() => {
-      const stepIn = unitSystem === "metric" ? (compactViewport ? 1250 : 1000) / 25.4 : compactViewport ? 48 : 36;
+    const rulerTick = Math.max(0.035, cW * 0.025);
+    const draftingRulerGroup = new THREE.Group();
+    draftingRulerGroup.name = "top-view-coordinate-rulers";
+    draftingRulerGroup.visible = false;
+    containerGroup.add(draftingRulerGroup);
+
+    const addCoordinateRuler = (axis: "length" | "width") => {
+      const isLength = axis === "length";
+      const totalIn = isLength ? container.lengthIn : container.widthIn;
+      const totalM = isLength ? cL : cW;
+      const preferredStepIn = unitSystem === "metric"
+        ? (isLength ? 2000 : 1000) / 25.4
+        : (isLength ? 96 : 36);
       const values = [0];
-      for (let value = stepIn; value < container.heightIn - stepIn * 0.6; value += stepIn) values.push(value);
-      values.push(container.heightIn);
-      return values;
-    })();
+      for (let value = preferredStepIn; value < totalIn - preferredStepIn * 0.55; value += preferredStepIn) values.push(value);
+      values.push(totalIn);
+      const fixed = (isLength ? cW : cL) + rulerOffset;
+      const points: THREE.Vector3[] = isLength
+        ? [new THREE.Vector3(0, rulerY, fixed), new THREE.Vector3(cL, rulerY, fixed)]
+        : [new THREE.Vector3(fixed, rulerY, 0), new THREE.Vector3(fixed, rulerY, cW)];
 
-    const addHeightRuler = (x: number, z: number, outwardX: number) => {
-      const baselineX = x + outwardX * rulerOffset;
-      const guideGap = rulerTick * 0.9;
-      const arrowLength = Math.max(0.075, cW * 0.045);
-      const arrowWidth = arrowLength * 0.52;
-      const baselinePoints: THREE.Vector3[] = [
-        new THREE.Vector3(baselineX, 0, z), new THREE.Vector3(baselineX, cH, z),
-        new THREE.Vector3(baselineX, 0, z), new THREE.Vector3(baselineX - arrowWidth, arrowLength, z),
-        new THREE.Vector3(baselineX, 0, z), new THREE.Vector3(baselineX + arrowWidth, arrowLength, z),
-        new THREE.Vector3(baselineX, cH, z), new THREE.Vector3(baselineX - arrowWidth, cH - arrowLength, z),
-        new THREE.Vector3(baselineX, cH, z), new THREE.Vector3(baselineX + arrowWidth, cH - arrowLength, z),
-      ];
-      const guidePoints: THREE.Vector3[] = [
-        new THREE.Vector3(x + outwardX * guideGap, 0, z), new THREE.Vector3(baselineX, 0, z),
-        new THREE.Vector3(x + outwardX * guideGap, cH, z), new THREE.Vector3(baselineX, cH, z),
-      ];
-      const tickPoints: THREE.Vector3[] = [];
-      heightValuesIn.forEach((valueIn) => {
-        const y = inToM(valueIn);
-        tickPoints.push(
-          new THREE.Vector3(baselineX - rulerTick, y, z),
-          new THREE.Vector3(baselineX + rulerTick, y, z),
-        );
-        const labelScale = Math.max(0.4, Math.min(0.6, cW * 0.25)) * dimensionLabelScale;
+      values.forEach((valueIn) => {
+        const valueM = inToM(valueIn);
+        if (isLength) {
+          points.push(
+            new THREE.Vector3(valueM, rulerY, fixed - rulerTick),
+            new THREE.Vector3(valueM, rulerY, fixed + rulerTick),
+          );
+        } else {
+          points.push(
+            new THREE.Vector3(fixed - rulerTick, rulerY, valueM),
+            new THREE.Vector3(fixed + rulerTick, rulerY, valueM),
+          );
+        }
+        const labelScale = isLength
+          ? Math.max(0.3, Math.min(0.43, cW * 0.18))
+          : Math.max(0.27, Math.min(0.38, cW * 0.16));
         const label = createRulerLabel(formatSceneLength(valueIn), labelScale);
-        label.rotation.set(0, 0, outwardX < 0 ? Math.PI / 2 : -Math.PI / 2);
-        const labelY = Math.max(labelScale / 2, Math.min(cH - labelScale / 2, y));
-        label.position.set(baselineX + outwardX * rulerTick * 2.8, labelY, z + (z === 0 ? -0.012 : 0.012));
-        containerGroup.add(label);
+        if (isLength) {
+          label.position.set(valueM, rulerY + 0.015, fixed + rulerTick * 2.15);
+        } else {
+          label.position.set(fixed + rulerTick * 2.3, rulerY + 0.015, valueM);
+          label.rotation.z = -Math.PI / 2;
+        }
+        draftingRulerGroup.add(label);
       });
-      const baseline = addRulerSegments(baselinePoints, dimensionLineMaterial);
-      baseline.userData.dimensionAxis = "height";
-      addRulerSegments(tickPoints, dimensionTickMaterial);
-      addRulerSegments(guidePoints, dimensionGuideMaterial);
-    };
 
-    addHeightRuler(0, 0, -1);
-    addHeightRuler(cL, cW, 1);
+      const ruler = new THREE.LineSegments(
+        new THREE.BufferGeometry().setFromPoints(points),
+        new THREE.LineBasicMaterial({ color: 0x7b8794, transparent: true, opacity: 0.46, depthTest: false }),
+      );
+      ruler.renderOrder = 17;
+      draftingRulerGroup.add(ruler);
+    };
+    addCoordinateRuler("length");
+    addCoordinateRuler("width");
 
     const hoverMeasurementLabelScale = Math.max(0.72, Math.min(0.94, cW * 0.38)) * (compactViewport ? 1.24 : 1);
     const addMeasurementRange = (
@@ -1561,73 +1544,6 @@ export function ContainerViewer3D({
       }
       group.add(labelSprite);
     };
-
-    const addReferenceRange = (
-      group: THREE.Group,
-      axis: "length" | "width",
-      start: number,
-      end: number,
-      y: number,
-      fixed: number,
-      edge: number,
-      label: string,
-    ) => {
-      if (end - start >= 0.025) {
-        addMeasurementRange(group, axis, start, end, y, fixed, edge, label);
-        return;
-      }
-      // Keep zero-clearance labels visible, as in the reference application.
-      const zeroLabel = createMeasurementLabel(label, hoverMeasurementLabelScale * 0.78);
-      if (axis === "length") {
-        const outward = fixed < edge ? -1 : 1;
-        zeroLabel.position.set(start, y + 0.02, fixed + outward * Math.max(0.08, cW * 0.07));
-        if (outward < 0) zeroLabel.rotation.z = Math.PI;
-      } else {
-        const outward = fixed < edge ? -1 : 1;
-        zeroLabel.position.set(fixed + outward * Math.max(0.08, cW * 0.07), y + 0.02, start);
-        zeroLabel.rotation.z = outward < 0 ? Math.PI / 2 : -Math.PI / 2;
-      }
-      group.add(zeroLabel);
-    };
-
-    if (placed.length > 0) {
-      const loadMinX = inToM(Math.min(...placed.map((box) => box.x)));
-      const loadMaxX = inToM(Math.max(...placed.map((box) => box.x + box.l)));
-      const loadMinZ = inToM(Math.min(...placed.map((box) => box.z)));
-      const loadMaxZ = inToM(Math.max(...placed.map((box) => box.z + box.w)));
-      const referenceY = rulerY + 0.01;
-      const nearLength = -rulerOffset;
-      const farLength = cW + rulerOffset;
-      const outerNearLength = -rulerOffset * 2.15;
-      const outerFarLength = cW + rulerOffset * 2.15;
-      const nearWidth = -rulerOffset;
-      const farWidth = cL + rulerOffset;
-      const outerNearWidth = -rulerOffset * 2.15;
-      const outerFarWidth = cL + rulerOffset * 2.15;
-
-      // Overall container baselines sit outside the segmented cargo/clearance
-      // baselines. This creates the same two-tier drafting hierarchy as the
-      // supplied reference: full envelope first, exact load position second.
-      addReferenceRange(containerGroup, "length", 0, cL, referenceY, outerNearLength, 0, formatSceneLength(container.lengthIn));
-      addReferenceRange(containerGroup, "length", 0, cL, referenceY, outerFarLength, cW, formatSceneLength(container.lengthIn));
-      addReferenceRange(containerGroup, "width", 0, cW, referenceY, outerNearWidth, 0, formatSceneLength(container.widthIn));
-      addReferenceRange(containerGroup, "width", 0, cW, referenceY, outerFarWidth, cL, formatSceneLength(container.widthIn));
-
-      const addLengthSegments = (fixed: number, edge: number) => {
-        addReferenceRange(containerGroup, "length", 0, loadMinX, referenceY, fixed, edge, formatSceneLength(loadMinX / 0.0254));
-        addReferenceRange(containerGroup, "length", loadMinX, loadMaxX, referenceY, fixed, edge, formatSceneLength((loadMaxX - loadMinX) / 0.0254));
-        addReferenceRange(containerGroup, "length", loadMaxX, cL, referenceY, fixed, edge, formatSceneLength((cL - loadMaxX) / 0.0254));
-      };
-      const addWidthSegments = (fixed: number, edge: number) => {
-        addReferenceRange(containerGroup, "width", 0, loadMinZ, referenceY, fixed, edge, formatSceneLength(loadMinZ / 0.0254));
-        addReferenceRange(containerGroup, "width", loadMinZ, loadMaxZ, referenceY, fixed, edge, formatSceneLength((loadMaxZ - loadMinZ) / 0.0254));
-        addReferenceRange(containerGroup, "width", loadMaxZ, cW, referenceY, fixed, edge, formatSceneLength((cW - loadMaxZ) / 0.0254));
-      };
-      addLengthSegments(nearLength, 0);
-      addLengthSegments(farLength, cW);
-      addWidthSegments(nearWidth, 0);
-      addWidthSegments(farWidth, cL);
-    }
 
     const clearHoverMeasurements = () => {
       while (hoverMeasurementGroup.children.length > 0) {
@@ -1915,6 +1831,7 @@ export function ContainerViewer3D({
     };
 
     const setView = (preset: ContainerViewPreset) => {
+      draftingRulerGroup.visible = preset === "top";
       camera.up.set(0, 1, 0);
       controls.target.set(cL / 2, cH * 0.4, cW / 2);
       const viewScale = compactViewport ? 1.06 : 1;
