@@ -6,6 +6,7 @@ import {
   findSafeManualPlacement,
   getSupportRatio,
   isInsideContainer,
+  moveManualSelectionVertical,
   rotateManualSelection,
   validateManualLayout,
   validateManualPlacement,
@@ -139,4 +140,32 @@ test("group rotation is rejected when the rotated footprint collides", () => {
   const selected = box({ x: 20, z: 0, l: 40, w: 10 });
   const blocker = box({ x: 30, z: 10, l: 20, w: 20 });
   assert.equal(rotateManualSelection([selected, blocker], [0], container, "clockwise"), null);
+});
+
+
+test("vertical movement snaps cargo onto the next supported stack level", () => {
+  const lower = box({ x: 0, y: 0, h: 10 });
+  const selected = box({ x: 0, y: 0, h: 8 });
+  const raised = moveManualSelectionVertical([lower, selected], [1], container, "up");
+
+  assert.ok(raised);
+  assert.equal(raised[1].y, 10);
+  assert.equal(validateManualLayout(raised, container).valid, true);
+});
+
+test("vertical movement lowers cargo to the next supported level or floor", () => {
+  const support = box({ x: 0, y: 0, h: 10 });
+  const selected = box({ x: 0, y: 10, h: 8 });
+  const lowered = moveManualSelectionVertical([support, selected], [1], container, "down");
+
+  assert.equal(lowered, null);
+  const floorCargo = moveManualSelectionVertical([selected], [0], container, "down");
+  assert.ok(floorCargo);
+  assert.equal(floorCargo[0].y, 0);
+});
+
+test("vertical movement rejects unsupported floating positions", () => {
+  const distantSupport = box({ x: 40, y: 0, h: 10 });
+  const selected = box({ x: 0, y: 0, h: 8 });
+  assert.equal(moveManualSelectionVertical([distantSupport, selected], [1], container, "up"), null);
 });
