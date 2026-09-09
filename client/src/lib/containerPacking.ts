@@ -295,21 +295,9 @@ export function packBoxes(items: CargoItem[], container: ContainerSpec): Loading
   const totalVolumeIn3 = placed.reduce((sum, item) => sum + item.l * item.w * item.h, 0);
   const containerVolumeIn3 = cL * cW * cH;
   const totalPiecesAll = includedItems.reduce((sum, item) => sum + item.quantity, 0);
-  // The packing search starts from Side A. Once a collision-safe layout is
-  // complete, translate the whole load laterally so unused floor clearance is
-  // shared equally between both side walls. This preserves every relative
-  // position and the closed-end-to-doors loading order while avoiding a load
-  // that appears (and is) unnecessarily pressed against one wall.
-  if (placed.length > 0) {
-    const minZ = Math.min(...placed.map((item) => item.z));
-    const maxZ = Math.max(...placed.map((item) => item.z + item.w));
-    const lateralShift = (cW - (maxZ - minZ)) / 2 - minZ;
-    if (Math.abs(lateralShift) > 0.01) {
-      placed.forEach((item) => {
-        item.z += lateralShift;
-      });
-    }
-  }
+  // Preserve the packer's Side A origin. The load must remain registered to
+  // the physical container boundary so the 3D model, clearances and exported
+  // coordinates all share the same zero point.
 
   let minX = Number.POSITIVE_INFINITY;
   let minZ = Number.POSITIVE_INFINITY;
