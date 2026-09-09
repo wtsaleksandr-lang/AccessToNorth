@@ -1537,9 +1537,9 @@ export function ContainerViewer3D({
       label: string,
     ) => {
       if (end - start < 0.025) return;
-      const lineMaterial = new THREE.LineBasicMaterial({ color: 0x475569, transparent: true, opacity: 0.82, depthTest: false });
-      const arrowLength = Math.min((end - start) * 0.22, Math.max(0.075, cW * 0.05));
-      const arrowWidth = arrowLength * 0.5;
+      const lineMaterial = new THREE.LineBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.46, depthTest: false });
+      const arrowLength = Math.min((end - start) * 0.12, Math.max(0.04, cW * 0.026));
+      const arrowWidth = arrowLength * 0.36;
       const points = axis === "length"
         ? [
             new THREE.Vector3(start, y, fixed), new THREE.Vector3(end, y, fixed),
@@ -1576,6 +1576,83 @@ export function ContainerViewer3D({
       group.add(labelSprite);
     };
 
+    const addInternalTopMeasurement = (
+      axis: "length" | "width",
+      start: number,
+      end: number,
+      y: number,
+      fixed: number,
+      label: string,
+      labelScale: number,
+      labelShift: number,
+    ) => {
+      if (end - start < 0.025) return;
+      const arrowLength = Math.min((end - start) * 0.1, Math.max(0.028, cW * 0.018));
+      const arrowWidth = arrowLength * 0.32;
+      const points = axis === "length"
+        ? [
+            new THREE.Vector3(start, y, fixed), new THREE.Vector3(end, y, fixed),
+            new THREE.Vector3(start, y, fixed), new THREE.Vector3(start + arrowLength, y, fixed - arrowWidth),
+            new THREE.Vector3(start, y, fixed), new THREE.Vector3(start + arrowLength, y, fixed + arrowWidth),
+            new THREE.Vector3(end, y, fixed), new THREE.Vector3(end - arrowLength, y, fixed - arrowWidth),
+            new THREE.Vector3(end, y, fixed), new THREE.Vector3(end - arrowLength, y, fixed + arrowWidth),
+          ]
+        : [
+            new THREE.Vector3(fixed, y, start), new THREE.Vector3(fixed, y, end),
+            new THREE.Vector3(fixed, y, start), new THREE.Vector3(fixed - arrowWidth, y, start + arrowLength),
+            new THREE.Vector3(fixed, y, start), new THREE.Vector3(fixed + arrowWidth, y, start + arrowLength),
+            new THREE.Vector3(fixed, y, end), new THREE.Vector3(fixed - arrowWidth, y, end - arrowLength),
+            new THREE.Vector3(fixed, y, end), new THREE.Vector3(fixed + arrowWidth, y, end - arrowLength),
+          ];
+      const lines = new THREE.LineSegments(
+        new THREE.BufferGeometry().setFromPoints(points),
+        new THREE.LineBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.38, depthTest: false }),
+      );
+      lines.renderOrder = 19;
+      hoverMeasurementGroup.add(lines);
+
+      const labelMesh = createMeasurementLabel(label, labelScale);
+      if (axis === "length") {
+        labelMesh.position.set((start + end) / 2, y + 0.006, fixed + labelShift);
+      } else {
+        labelMesh.position.set(fixed + labelShift, y + 0.006, (start + end) / 2);
+        labelMesh.rotation.z = -Math.PI / 2;
+      }
+      hoverMeasurementGroup.add(labelMesh);
+    };
+
+    const addInternalHeightMeasurement = (
+      x: number,
+      z: number,
+      startY: number,
+      endY: number,
+      label: string,
+      labelScale: number,
+      facePositiveZ: boolean,
+    ) => {
+      if (endY - startY < 0.025) return;
+      const arrowLength = Math.min((endY - startY) * 0.1, Math.max(0.028, cW * 0.018));
+      const arrowWidth = arrowLength * 0.32;
+      const points = [
+        new THREE.Vector3(x, startY, z), new THREE.Vector3(x, endY, z),
+        new THREE.Vector3(x, startY, z), new THREE.Vector3(x - arrowWidth, startY + arrowLength, z),
+        new THREE.Vector3(x, startY, z), new THREE.Vector3(x + arrowWidth, startY + arrowLength, z),
+        new THREE.Vector3(x, endY, z), new THREE.Vector3(x - arrowWidth, endY - arrowLength, z),
+        new THREE.Vector3(x, endY, z), new THREE.Vector3(x + arrowWidth, endY - arrowLength, z),
+      ];
+      const lines = new THREE.LineSegments(
+        new THREE.BufferGeometry().setFromPoints(points),
+        new THREE.LineBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.38, depthTest: false }),
+      );
+      lines.renderOrder = 19;
+      hoverMeasurementGroup.add(lines);
+
+      const labelMesh = createMeasurementLabel(label, labelScale);
+      labelMesh.rotation.set(0, facePositiveZ ? 0 : Math.PI, Math.PI / 2);
+      labelMesh.position.set(x + labelScale * 0.12, (startY + endY) / 2, z + (facePositiveZ ? 0.008 : -0.008));
+      hoverMeasurementGroup.add(labelMesh);
+    };
+
     const clearHoverMeasurements = () => {
       while (hoverMeasurementGroup.children.length > 0) {
         const child = hoverMeasurementGroup.children.pop()!;
@@ -1594,19 +1671,21 @@ export function ContainerViewer3D({
     const updateHoverMeasurements = (index: number | null) => {
       const box = index === null ? null : placed[index];
       if (!box) {
-        if (activeMeasurementIndex === null && !hoverMeasurementGroup.visible) return;
         activeMeasurementIndex = null;
         activeMeasurementSideKey = null;
         clearHoverMeasurements();
         hoverMeasurementGroup.visible = false;
+        draftingRulerGroup.visible = true;
         return;
       }
 
       const bX = inToM(box.x);
       const bL = inToM(box.l);
+      const bY = inToM(box.y);
+      const bH = inToM(box.h);
       const bZ = inToM(box.z);
       const bW = inToM(box.w);
-      const bTop = inToM(box.y + box.h);
+      const bTop = bY + bH;
       const cameraSeesPositiveZ = camera.position.z >= bZ + bW / 2;
       const cameraSeesPositiveX = camera.position.x >= bX + bL / 2;
       const sideKey = `${index}:${cameraSeesPositiveZ ? "z+" : "z-"}:${cameraSeesPositiveX ? "x+" : "x-"}`;
@@ -1615,35 +1694,70 @@ export function ContainerViewer3D({
       activeMeasurementIndex = index;
       activeMeasurementSideKey = sideKey;
       clearHoverMeasurements();
+      draftingRulerGroup.visible = false;
 
       const measurementY = bTop + 0.022;
       const cargoRulerGap = Math.max(0.055, cW * 0.028);
-      const lengthEdge = cameraSeesPositiveZ ? bZ + bW : bZ;
-      const lengthGuide = lengthEdge + (cameraSeesPositiveZ ? cargoRulerGap : -cargoRulerGap);
-      const widthEdge = cameraSeesPositiveX ? bX + bL : bX;
-      const widthGuide = widthEdge + (cameraSeesPositiveX ? cargoRulerGap : -cargoRulerGap);
+      const visibleContainerZEdge = cameraSeesPositiveZ ? cW : 0;
+      const outsideContainerZ = visibleContainerZEdge + (cameraSeesPositiveZ ? rulerOffset : -rulerOffset);
 
-      // Keep each guide attached to the two cargo edges facing the camera.
-      // Rebuild only when the camera crosses to another side of the unit.
+      // Hover/selection replaces the 2,000 mm ruler with the remaining
+      // distances from the selected unit to the two container ends.
       addMeasurementRange(
         hoverMeasurementGroup,
         "length",
+        0,
         bX,
-        bX + bL,
-        measurementY,
-        lengthGuide,
-        lengthEdge,
-        formatSceneLength(box.l),
+        rulerY + 0.012,
+        outsideContainerZ,
+        visibleContainerZEdge,
+        formatSceneLength(box.x),
       );
       addMeasurementRange(
         hoverMeasurementGroup,
+        "length",
+        bX + bL,
+        cL,
+        rulerY + 0.012,
+        outsideContainerZ,
+        visibleContainerZEdge,
+        formatSceneLength(Math.max(0, container.lengthIn - box.x - box.l)),
+      );
+
+      // The selected unit's own L/W/H measurements stay inside its footprint
+      // and on the visible vertical face, using lighter compact arrows.
+      const internalScale = Math.max(0.42, Math.min(0.66, Math.min(bL, bW) * 0.72));
+      const lengthLineZ = bZ + bW * (cameraSeesPositiveZ ? 0.7 : 0.3);
+      const widthLineX = bX + bL * (cameraSeesPositiveX ? 0.7 : 0.3);
+      addInternalTopMeasurement(
+        "length",
+        bX + bL * 0.08,
+        bX + bL * 0.92,
+        measurementY,
+        lengthLineZ,
+        formatSceneLength(box.l),
+        internalScale,
+        cameraSeesPositiveZ ? -bW * 0.12 : bW * 0.12,
+      );
+      addInternalTopMeasurement(
         "width",
-        bZ,
-        bZ + bW,
+        bZ + bW * 0.08,
+        bZ + bW * 0.92,
         measurementY + 0.002,
-        widthGuide,
-        widthEdge,
+        widthLineX,
         formatSceneLength(box.w),
+        internalScale,
+        cameraSeesPositiveX ? -bL * 0.12 : bL * 0.12,
+      );
+      const heightFaceZ = cameraSeesPositiveZ ? bZ + bW + 0.004 : bZ - 0.004;
+      addInternalHeightMeasurement(
+        bX + bL * (cameraSeesPositiveX ? 0.82 : 0.18),
+        heightFaceZ,
+        bY + bH * 0.08,
+        bTop - bH * 0.08,
+        formatSceneLength(box.h),
+        Math.max(0.42, Math.min(0.64, bH * 0.62)),
+        cameraSeesPositiveZ,
       );
       hoverMeasurementGroup.visible = true;
     };
@@ -1885,7 +1999,7 @@ export function ContainerViewer3D({
     };
 
     const setView = (preset: ContainerViewPreset) => {
-      draftingRulerGroup.visible = preset === "top";
+      draftingRulerGroup.visible = activeMeasurementIndex === null;
       camera.up.set(0, 1, 0);
       controls.target.set(cL / 2, cH * 0.4, cW / 2);
       const viewScale = compactViewport ? 1.06 : 1;
