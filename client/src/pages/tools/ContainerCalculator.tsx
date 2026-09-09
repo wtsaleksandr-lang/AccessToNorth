@@ -1459,86 +1459,13 @@ export function ContainerViewer3D({
       containerGroup.add(segments);
       return segments;
     };
-    const rulerValues = (totalIn: number, stepIn: number) => {
+    const heightValuesIn = (() => {
+      const stepIn = unitSystem === "metric" ? (compactViewport ? 1250 : 1000) / 25.4 : compactViewport ? 48 : 36;
       const values = [0];
-      for (let value = stepIn; value < totalIn - stepIn * 0.6; value += stepIn) values.push(value);
-      values.push(totalIn);
+      for (let value = stepIn; value < container.heightIn - stepIn * 0.6; value += stepIn) values.push(value);
+      values.push(container.heightIn);
       return values;
-    };
-    const lengthValuesIn = rulerValues(container.lengthIn, unitSystem === "metric" ? (compactViewport ? 4000 : 2000) / 25.4 : compactViewport ? 192 : 96);
-    const widthValuesIn = rulerValues(container.widthIn, unitSystem === "metric" ? (compactViewport ? 1250 : 1000) / 25.4 : compactViewport ? 48 : 36);
-    const heightValuesIn = rulerValues(container.heightIn, unitSystem === "metric" ? (compactViewport ? 1250 : 1000) / 25.4 : compactViewport ? 48 : 36);
-
-    const addFloorRuler = (axis: "length" | "width", side: "start" | "end") => {
-      const isLength = axis === "length";
-      const valuesIn = isLength ? lengthValuesIn : widthValuesIn;
-      const totalM = isLength ? cL : cW;
-      const fixed = side === "start" ? -rulerOffset : (isLength ? cW : cL) + rulerOffset;
-      const edge = side === "start" ? 0 : (isLength ? cW : cL);
-      const outward = side === "start" ? -1 : 1;
-      const guideGap = rulerTick * 0.9;
-      const arrowLength = Math.max(0.075, cW * 0.045);
-      const arrowWidth = arrowLength * 0.52;
-      const baselinePoints: THREE.Vector3[] = isLength
-        ? [
-            new THREE.Vector3(0, rulerY, fixed), new THREE.Vector3(cL, rulerY, fixed),
-            new THREE.Vector3(0, rulerY, fixed), new THREE.Vector3(arrowLength, rulerY, fixed - arrowWidth),
-            new THREE.Vector3(0, rulerY, fixed), new THREE.Vector3(arrowLength, rulerY, fixed + arrowWidth),
-            new THREE.Vector3(cL, rulerY, fixed), new THREE.Vector3(cL - arrowLength, rulerY, fixed - arrowWidth),
-            new THREE.Vector3(cL, rulerY, fixed), new THREE.Vector3(cL - arrowLength, rulerY, fixed + arrowWidth),
-          ]
-        : [
-            new THREE.Vector3(fixed, rulerY, 0), new THREE.Vector3(fixed, rulerY, cW),
-            new THREE.Vector3(fixed, rulerY, 0), new THREE.Vector3(fixed - arrowWidth, rulerY, arrowLength),
-            new THREE.Vector3(fixed, rulerY, 0), new THREE.Vector3(fixed + arrowWidth, rulerY, arrowLength),
-            new THREE.Vector3(fixed, rulerY, cW), new THREE.Vector3(fixed - arrowWidth, rulerY, cW - arrowLength),
-            new THREE.Vector3(fixed, rulerY, cW), new THREE.Vector3(fixed + arrowWidth, rulerY, cW - arrowLength),
-          ];
-      const guidePoints: THREE.Vector3[] = isLength
-        ? [
-            new THREE.Vector3(0, rulerY, edge + outward * guideGap), new THREE.Vector3(0, rulerY, fixed),
-            new THREE.Vector3(cL, rulerY, edge + outward * guideGap), new THREE.Vector3(cL, rulerY, fixed),
-          ]
-        : [
-            new THREE.Vector3(edge + outward * guideGap, rulerY, 0), new THREE.Vector3(fixed, rulerY, 0),
-            new THREE.Vector3(edge + outward * guideGap, rulerY, cW), new THREE.Vector3(fixed, rulerY, cW),
-          ];
-      const tickPoints: THREE.Vector3[] = [];
-      valuesIn.forEach((valueIn) => {
-        const valueM = inToM(valueIn);
-        if (isLength) {
-          tickPoints.push(
-            new THREE.Vector3(valueM, rulerY, fixed - rulerTick),
-            new THREE.Vector3(valueM, rulerY, fixed + rulerTick),
-          );
-        } else {
-          tickPoints.push(
-            new THREE.Vector3(fixed - rulerTick, rulerY, valueM),
-            new THREE.Vector3(fixed + rulerTick, rulerY, valueM),
-          );
-        }
-        const labelScale = (isLength
-          ? Math.max(0.46, Math.min(0.7, cW * 0.29))
-          : Math.max(0.4, Math.min(0.6, cW * 0.25))) * dimensionLabelScale;
-        const label = createRulerLabel(formatSceneLength(valueIn), labelScale);
-        if (isLength) {
-          label.position.set(valueM, rulerY + 0.018, fixed + outward * rulerTick * 2.5);
-          label.rotation.z = side === "start" ? Math.PI : 0;
-        } else {
-          label.position.set(fixed + outward * rulerTick * 2.7, rulerY + 0.018, valueM);
-          label.rotation.z = side === "start" ? Math.PI / 2 : -Math.PI / 2;
-        }
-        containerGroup.add(label);
-      });
-      const baseline = addRulerSegments(baselinePoints, dimensionLineMaterial);
-      baseline.userData.dimensionAxis = axis;
-      baseline.userData.dimensionSpan = totalM;
-      addRulerSegments(tickPoints, dimensionTickMaterial);
-      addRulerSegments(guidePoints, dimensionGuideMaterial);
-    };
-
-    // The reference view uses envelope dimensions rather than a generic
-    // coordinate ruler. These are added after the range helper below.
+    })();
 
     const addHeightRuler = (x: number, z: number, outwardX: number) => {
       const baselineX = x + outwardX * rulerOffset;
