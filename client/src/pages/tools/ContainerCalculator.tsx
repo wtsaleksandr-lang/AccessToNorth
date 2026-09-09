@@ -1020,7 +1020,8 @@ export function ContainerViewer3D({
 
     const scene = new THREE.Scene();
 
-    const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 1000);
+    const compactViewport = w < 768;
+    const camera = new THREE.PerspectiveCamera(compactViewport ? 52 : 45, w / h, 0.1, 1000);
 
     const cL = inToM(container.lengthIn);
     const cW = inToM(container.widthIn);
@@ -1037,8 +1038,14 @@ export function ContainerViewer3D({
     };
     applyViewportComposition(w, h);
 
-    camera.position.set(cL * 1.4, cH * 1.65, cW * 2.35);
-    camera.lookAt(cL / 2, cH * 0.38, cW / 2);
+    const initialTarget = new THREE.Vector3(cL / 2, cH * 0.38, cW / 2);
+    const initialScale = compactViewport ? 1.22 : 1;
+    camera.position.set(
+      initialTarget.x + cL * 0.9 * initialScale,
+      initialTarget.y + cH * 1.27 * initialScale,
+      initialTarget.z + cW * 1.85 * initialScale,
+    );
+    camera.lookAt(initialTarget);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = false;
@@ -1046,7 +1053,7 @@ export function ContainerViewer3D({
     controls.rotateSpeed = 0.62;
     controls.zoomSpeed = 0.78;
     controls.panSpeed = 0.55;
-    controls.target.set(cL / 2, cH * 0.38, cW / 2);
+    controls.target.copy(initialTarget);
     controls.minDistance = 1;
     controls.maxDistance = 30;
     if (cameraViewRef.current?.containerId === container.id) {
@@ -1055,7 +1062,10 @@ export function ContainerViewer3D({
     }
     controls.update();
 
-    const gridSize = Math.max(cL, cW) * 18;
+    // Keep enough floor around both docks without drawing hundreds of metres
+    // of distant line work. The previous oversized grid caused severe moiré
+    // and spent GPU time on geometry that was never useful to the planner.
+    const gridSize = Math.max(cL * 4, cW * 18);
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(gridSize * 1.4, gridSize * 1.4),
       new THREE.MeshBasicMaterial({ color: 0xe6eaef }),
@@ -1066,16 +1076,16 @@ export function ContainerViewer3D({
     scene.add(ground);
 
     const gridDivisions = renderProfile.gridDivisions;
-    const grid = new THREE.GridHelper(gridSize, gridDivisions, 0xd2d9e1, 0xffffff);
+    const grid = new THREE.GridHelper(gridSize, gridDivisions, 0xc7d0da, 0xf2f5f8);
     grid.position.set(cL / 2, -0.02, cW / 2);
     if (Array.isArray(grid.material)) {
       grid.material.forEach((m) => {
         (m as THREE.LineBasicMaterial).transparent = true;
-        (m as THREE.LineBasicMaterial).opacity = 0.72;
+        (m as THREE.LineBasicMaterial).opacity = 0.46;
       });
     } else {
       (grid.material as THREE.LineBasicMaterial).transparent = true;
-      (grid.material as THREE.LineBasicMaterial).opacity = 0.72;
+      (grid.material as THREE.LineBasicMaterial).opacity = 0.46;
     }
     scene.add(grid);
 
@@ -1528,25 +1538,53 @@ export function ContainerViewer3D({
     addAxisLabel("DOCK 1", new THREE.Vector3(cL / 2, 0.015, -dockGap - dockDepth / 2));
     addAxisLabel("DOCK 2", new THREE.Vector3(cL / 2, 0.015, cW + dockGap + dockDepth / 2));
 
-    const renderScene = () => {
-      // OrbitControls already limits renders to actual camera changes. Render
-      // immediately so pointer and wheel input are visible in the same event
-      // instead of waiting behind other work on the main thread.
+    let renderFrameId: number | null = null;
+    let continuousInteraction = false;
+    const paintFrame = () => {
+      renderFrameId = null;
       renderer.render(scene, camera);
+      if (continuousInteraction) renderFrameId = window.requestAnimationFrame(paintFrame);
+    };
+    const renderScene = () => {
+      // Coalesce wheel and pointer events into one browser paint. Rendering
+      // synchronously for every raw input event blocked later input events and
+      // produced the delayed camera jumps reported on mobile and desktop.
+      if (renderFrameId === null) renderFrameId = window.requestAnimationFrame(paintFrame);
+    };
+    const setContinuousInteraction = (active: boolean) => {
+      continuousInteraction = active;
+      renderScene();
     };
 
     const setView = (preset: ContainerViewPreset) => {
       camera.up.set(0, 1, 0);
       controls.target.set(cL / 2, cH * 0.4, cW / 2);
+      const viewScale = compactViewport ? 1.18 : 1;
       if (preset === "doors") {
-        camera.position.set(cL * 1.42, cH * 0.82, cW * 0.5);
+        camera.position.set(
+          controls.target.x + cL * 0.92 * viewScale,
+          controls.target.y + cH * 0.42 * viewScale,
+          controls.target.z,
+        );
       } else if (preset === "side") {
-        camera.position.set(cL * 0.52, cH * 0.78, cW * 3.05);
+        camera.position.set(
+          controls.target.x + cL * 0.02,
+          controls.target.y + cH * 0.38 * viewScale,
+          controls.target.z + cW * 2.55 * viewScale,
+        );
       } else if (preset === "top") {
         camera.up.set(0, 0, -1);
-        camera.position.set(cL * 0.5, Math.max(cL * 1.05, cH * 3.4), cW * 0.5);
+        camera.position.set(
+          controls.target.x,
+          controls.target.y + Math.max(cL * 1.05, cH * 3.4) * viewScale,
+          controls.target.z,
+        );
       } else {
-        camera.position.set(cL * 1.35, cH * 1.62, cW * 2.35);
+        camera.position.set(
+          controls.target.x + cL * 0.85 * viewScale,
+          controls.target.y + cH * 1.22 * viewScale,
+          controls.target.z + cW * 1.85 * viewScale,
+        );
       }
       camera.lookAt(controls.target);
       controls.update();
@@ -1639,6 +1677,7 @@ export function ContainerViewer3D({
       if (!arrangeMode) {
         cameraPointerId = event.pointerId;
         renderer.domElement.style.cursor = "grabbing";
+        setContinuousInteraction(true);
         if (intersection?.object instanceof THREE.Mesh) {
           inspectionPointer = {
             pointerId: event.pointerId,
@@ -1653,6 +1692,7 @@ export function ContainerViewer3D({
       if (!intersection || !(intersection.object instanceof THREE.Mesh)) {
         cameraPointerId = event.pointerId;
         renderer.domElement.style.cursor = "grabbing";
+        setContinuousInteraction(true);
         return;
       }
 
@@ -1699,6 +1739,7 @@ export function ContainerViewer3D({
       renderer.domElement.setPointerCapture(event.pointerId);
       renderer.domElement.style.cursor = "grabbing";
       controls.enabled = false;
+      setContinuousInteraction(true);
       indices.forEach((selectedIndex) => highlightMesh(cargoMeshes[selectedIndex], 0x0ea5e9));
       setPlacementMessage(indices.length > 1
         ? `Moving ${indices.length} selected units together — relative spacing and stack heights stay locked.`
@@ -1835,6 +1876,7 @@ export function ContainerViewer3D({
       if (!dragState || dragState.pointerId !== event.pointerId) return;
       const completedDrag = dragState;
       dragState = null;
+      setContinuousInteraction(false);
       if (renderer.domElement.hasPointerCapture(event.pointerId)) {
         renderer.domElement.releasePointerCapture(event.pointerId);
       }
@@ -1880,6 +1922,7 @@ export function ContainerViewer3D({
       const cameraGesture = cameraPointerId === event.pointerId;
       if (cameraGesture) {
         cameraPointerId = null;
+        setContinuousInteraction(false);
         renderer.domElement.style.cursor = arrangeMode ? "grab" : "default";
       }
       if (inspectionPointer?.pointerId === event.pointerId) {
@@ -1900,6 +1943,7 @@ export function ContainerViewer3D({
       inspectionPointer = null;
       if (cameraPointerId === event.pointerId) {
         cameraPointerId = null;
+        setContinuousInteraction(false);
         renderer.domElement.style.cursor = arrangeMode ? "grab" : "default";
         return;
       }
@@ -2016,6 +2060,8 @@ export function ContainerViewer3D({
       renderer.domElement.removeEventListener("pointerleave", handlePointerLeave);
       controls.removeEventListener("change", renderScene);
       renderer.domElement.removeEventListener("webglcontextlost", handleContextLost);
+      continuousInteraction = false;
+      if (renderFrameId !== null) window.cancelAnimationFrame(renderFrameId);
       controls.dispose();
       const disposeMaterial = (material: THREE.Material) => {
         const map = (material as THREE.MeshStandardMaterial | THREE.MeshBasicMaterial | THREE.SpriteMaterial).map;
