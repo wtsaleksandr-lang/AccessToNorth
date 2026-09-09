@@ -977,7 +977,8 @@ export function ContainerViewer3D({
     try {
       renderer = new THREE.WebGLRenderer({
         antialias: renderProfile.antialias,
-        alpha: true,
+        alpha: false,
+        stencil: false,
         powerPreference: "high-performance",
         failIfMajorPerformanceCaveat: false,
       });
@@ -985,7 +986,8 @@ export function ContainerViewer3D({
       try {
         renderer = new THREE.WebGLRenderer({
           antialias: false,
-          alpha: true,
+          alpha: false,
+          stencil: false,
           powerPreference: "low-power",
           failIfMajorPerformanceCaveat: false,
         });
@@ -997,7 +999,7 @@ export function ContainerViewer3D({
     }
     renderer.setSize(w, h);
     renderer.setPixelRatio(renderProfile.pixelRatio);
-    renderer.setClearColor(0x000000, 0);
+    renderer.setClearColor(0xe6eaef, 1);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.NoToneMapping;
     renderer.toneMappingExposure = 1;
@@ -1538,12 +1540,31 @@ export function ContainerViewer3D({
     addAxisLabel("DOCK 1", new THREE.Vector3(cL / 2, 0.015, -dockGap - dockDepth / 2));
     addAxisLabel("DOCK 2", new THREE.Vector3(cL / 2, 0.015, cW + dockGap + dockDepth / 2));
 
-    // OrbitControls already emits one change event for every camera update.
-    // Render that state immediately and never run a second animation loop:
-    // competing pointer ownership previously left the canvas rendering forever
-    // after a gesture and made drag, wheel zoom, and the surrounding UI stall.
-    const renderScene = () => {
+    // OrbitControls can emit several camera changes between browser paints.
+    // Keep only the latest camera state and draw it once on the next frame.
+    // This is deliberately a one-shot scheduler, not a continuous render loop.
+    let renderFrameId: number | null = null;
+    const paintFrame = () => {
+      renderFrameId = null;
       renderer.render(scene, camera);
+    };
+    const renderScene = () => {
+      if (renderFrameId === null) {
+        renderFrameId = window.requestAnimationFrame(paintFrame);
+      }
+    };
+    const restingPixelRatio = renderProfile.pixelRatio;
+    const movingPixelRatio = Math.min(restingPixelRatio, 1.25);
+    let currentPixelRatio = restingPixelRatio;
+    let renderWidth = w;
+    let renderHeight = h;
+    const setInteractionResolution = (active: boolean) => {
+      const nextPixelRatio = active ? movingPixelRatio : restingPixelRatio;
+      if (nextPixelRatio === currentPixelRatio) return;
+      currentPixelRatio = nextPixelRatio;
+      renderer.setPixelRatio(nextPixelRatio);
+      renderer.setSize(renderWidth, renderHeight, false);
+      renderScene();
     };
 
     const setView = (preset: ContainerViewPreset) => {
@@ -1720,6 +1741,7 @@ export function ContainerViewer3D({
       renderer.domElement.style.cursor = "grabbing";
       orbiting = false;
       controls.enabled = false;
+      setInteractionResolution(true);
       indices.forEach((selectedIndex) => highlightMesh(cargoMeshes[selectedIndex], 0x0ea5e9));
       setPlacementMessage(indices.length > 1
         ? `Moving ${indices.length} selected units together — relative spacing and stack heights stay locked.`
@@ -1732,6 +1754,7 @@ export function ContainerViewer3D({
     const handleOrbitStart = () => {
       if (dragState) return;
       orbiting = true;
+      setInteractionResolution(true);
       if (currentHoverIndex !== null) {
         currentHoverIndex = null;
         setHoveredCargoIndex(null);
@@ -1741,11 +1764,12 @@ export function ContainerViewer3D({
     };
     const handleOrbitEnd = () => {
       orbiting = false;
+      setInteractionResolution(false);
       renderer.domElement.style.cursor = arrangeMode ? "grab" : "default";
     };
     const handlePointerMove = (event: PointerEvent) => {
       if (!dragState) {
-        if (orbiting) return;
+        if (orbiting || event.buttons !== 0) return;
         if (event.pointerType === "touch") return;
         updatePointer(event);
         const intersection = raycaster.intersectObjects(cargoMeshes, false)[0];
@@ -1874,6 +1898,7 @@ export function ContainerViewer3D({
       }
       controls.enabled = true;
       orbiting = false;
+      setInteractionResolution(false);
       renderer.domElement.style.cursor = arrangeMode ? "grab" : "default";
       completedDrag.indices.forEach((index) => highlightMesh(cargoMeshes[index], null));
 
@@ -1936,6 +1961,15 @@ export function ContainerViewer3D({
       setHoveredCargoIndex(null);
       setCargoHover(null);
     };
+    let wheelRestoreTimer: number | null = null;
+    const handleWheelActivity = () => {
+      setInteractionResolution(true);
+      if (wheelRestoreTimer !== null) window.clearTimeout(wheelRestoreTimer);
+      wheelRestoreTimer = window.setTimeout(() => {
+        wheelRestoreTimer = null;
+        setInteractionResolution(false);
+      }, 140);
+    };
 
     renderer.domElement.style.cursor = arrangeMode ? "grab" : "default";
     renderer.domElement.addEventListener("pointerdown", handlePointerDown);
@@ -1943,6 +1977,7 @@ export function ContainerViewer3D({
     renderer.domElement.addEventListener("pointerup", handlePointerUp);
     renderer.domElement.addEventListener("pointercancel", handlePointerCancel);
     renderer.domElement.addEventListener("pointerleave", handlePointerLeave);
+    renderer.domElement.addEventListener("wheel", handleWheelActivity, { passive: true });
     controls.addEventListener("start", handleOrbitStart);
     controls.addEventListener("end", handleOrbitEnd);
     controls.addEventListener("change", renderScene);
@@ -2017,6 +2052,8 @@ export function ContainerViewer3D({
       if (!mountRef.current) return;
       const nw = mountRef.current.clientWidth;
       const nh = mountRef.current.clientHeight;
+      renderWidth = nw;
+      renderHeight = nh;
       camera.aspect = nw / nh;
       applyViewportComposition(nw, nh);
       renderer.setSize(nw, nh);
@@ -2040,10 +2077,13 @@ export function ContainerViewer3D({
       renderer.domElement.removeEventListener("pointerup", handlePointerUp);
       renderer.domElement.removeEventListener("pointercancel", handlePointerCancel);
       renderer.domElement.removeEventListener("pointerleave", handlePointerLeave);
+      renderer.domElement.removeEventListener("wheel", handleWheelActivity);
       controls.removeEventListener("start", handleOrbitStart);
       controls.removeEventListener("end", handleOrbitEnd);
       controls.removeEventListener("change", renderScene);
       renderer.domElement.removeEventListener("webglcontextlost", handleContextLost);
+      if (wheelRestoreTimer !== null) window.clearTimeout(wheelRestoreTimer);
+      if (renderFrameId !== null) window.cancelAnimationFrame(renderFrameId);
       controls.dispose();
       const disposeMaterial = (material: THREE.Material) => {
         const map = (material as THREE.MeshStandardMaterial | THREE.MeshBasicMaterial | THREE.SpriteMaterial).map;
