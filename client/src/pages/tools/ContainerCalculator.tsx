@@ -1323,8 +1323,8 @@ export function ContainerViewer3D({
     containerGroup.add(ribs);
 
     const doorX = cL;
-    const doorLineMaterial = new THREE.LineBasicMaterial({ color: 0x687684, transparent: true, opacity: 0.52 });
-    const doorPanelMaterial = new THREE.MeshBasicMaterial({ color: 0xf8fafc, transparent: true, opacity: 0.04, side: THREE.DoubleSide, depthWrite: false });
+    const doorLineMaterial = new THREE.LineBasicMaterial({ color: 0x687684, transparent: true, opacity: 0.58, depthTest: false });
+    const doorPanelMaterial = new THREE.MeshBasicMaterial({ color: 0xf8fafc, transparent: true, opacity: 0.07, side: THREE.DoubleSide, depthWrite: false });
     const doorOpeningDetails = new THREE.LineSegments(
       new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(doorX + 0.002, 0, cW / 2), new THREE.Vector3(doorX + 0.002, cH, cW / 2),
@@ -1334,11 +1334,13 @@ export function ContainerViewer3D({
     containerGroup.add(doorOpeningDetails);
 
     const createOpenDoor = (side: "left" | "right") => {
-      const direction = side === "left" ? 1 : -1;
+      // Each panel swings away from the centre line: the z=0 door opens
+      // toward negative Z and the z=cW door opens toward positive Z.
+      const direction = side === "left" ? -1 : 1;
       const door = new THREE.Group();
-      const doorWidth = cW * 0.49;
+      const doorWidth = cW * 0.5;
       door.position.set(doorX + 0.006, 0, side === "left" ? 0 : cW);
-      door.rotation.y = direction * THREE.MathUtils.degToRad(38);
+      door.rotation.y = direction * THREE.MathUtils.degToRad(42);
 
       const panel = new THREE.Mesh(new THREE.PlaneGeometry(doorWidth, cH), doorPanelMaterial.clone());
       panel.rotation.y = Math.PI / 2;
@@ -1346,7 +1348,8 @@ export function ContainerViewer3D({
       door.add(panel);
 
       const freeEdge = direction * doorWidth;
-      const lockZ = direction * doorWidth * 0.56;
+      const lockZ1 = direction * doorWidth * 0.36;
+      const lockZ2 = direction * doorWidth * 0.68;
       const doorOutline = new THREE.LineSegments(
         new THREE.BufferGeometry().setFromPoints([
           new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, cH, 0),
@@ -1356,8 +1359,10 @@ export function ContainerViewer3D({
           new THREE.Vector3(0, cH * 0.5, 0), new THREE.Vector3(0, cH * 0.5, freeEdge),
           new THREE.Vector3(0, cH * 0.08, 0), new THREE.Vector3(0, cH * 0.92, freeEdge),
           new THREE.Vector3(0, cH * 0.92, 0), new THREE.Vector3(0, cH * 0.08, freeEdge),
-          new THREE.Vector3(0, cH * 0.12, lockZ), new THREE.Vector3(0, cH * 0.88, lockZ),
-          new THREE.Vector3(0, cH * 0.42, lockZ), new THREE.Vector3(0, cH * 0.42, lockZ + direction * doorWidth * 0.16),
+          new THREE.Vector3(0, cH * 0.1, lockZ1), new THREE.Vector3(0, cH * 0.9, lockZ1),
+          new THREE.Vector3(0, cH * 0.1, lockZ2), new THREE.Vector3(0, cH * 0.9, lockZ2),
+          new THREE.Vector3(0, cH * 0.42, lockZ1), new THREE.Vector3(0, cH * 0.42, lockZ1 + direction * doorWidth * 0.14),
+          new THREE.Vector3(0, cH * 0.42, lockZ2), new THREE.Vector3(0, cH * 0.42, lockZ2 + direction * doorWidth * 0.14),
         ]),
         doorLineMaterial.clone(),
       );
