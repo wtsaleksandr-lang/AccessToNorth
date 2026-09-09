@@ -984,9 +984,9 @@ export function ContainerViewer3D({
     // Two quiet staging areas make the loading direction immediately clear
     // and leave room for the upcoming dock-based manual workflow.
     const createDockOutline = (zMin: number, zMax: number) => {
-      const xMin = -cL * 0.12;
-      const xMax = cL * 1.12;
-      const radius = Math.min(cL * 0.08, (zMax - zMin) * 0.18);
+      const xMin = -cL * 0.1;
+      const xMax = cL * 1.1;
+      const radius = Math.min(cL * 0.055, (zMax - zMin) * 0.12);
       const points: THREE.Vector3[] = [];
       const addCorner = (cx: number, cz: number, startAngle: number) => {
         for (let step = 0; step <= 8; step++) {
@@ -1000,15 +1000,17 @@ export function ContainerViewer3D({
       addCorner(xMin + radius, zMin + radius, Math.PI);
       points.push(points[0].clone());
       const geometry = new THREE.BufferGeometry().setFromPoints(points);
-      const material = new THREE.LineDashedMaterial({ color: 0x89939f, dashSize: 0.18, gapSize: 0.12, transparent: true, opacity: 0.62 });
+      const material = new THREE.LineDashedMaterial({ color: 0x8f99a5, dashSize: 0.14, gapSize: 0.1, transparent: true, opacity: 0.56 });
       const outline = new THREE.Line(geometry, material);
       outline.computeLineDistances();
       outline.visible = showGrid;
       scene.add(outline);
       gridObjects.push(outline);
     };
+    // Matching mirrored staging zones: equal footprint, corner radius and
+    // offset on both sides of the container.
     const dockDepth = cW * 1.5;
-    const dockGap = cW * 0.28;
+    const dockGap = cW * 0.24;
     createDockOutline(-dockGap - dockDepth, -dockGap);
     createDockOutline(cW + dockGap, cW + dockGap + dockDepth);
 
@@ -1135,40 +1137,46 @@ export function ContainerViewer3D({
       canvas.width = 384;
       canvas.height = 80;
       const ctx = canvas.getContext("2d")!;
-      ctx.fillStyle = "rgba(255,255,255,0.94)";
-      ctx.roundRect(4, 4, 376, 72, 20);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(100,116,139,0.3)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.fillStyle = "#475569";
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "rgba(71,85,105,0.92)";
       ctx.font = "600 28px Inter, Arial, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(text, 192, 41);
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
-      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
-      sprite.scale.set(scale, scale * 0.208, 1);
-      sprite.renderOrder = 20;
-      return sprite;
+      texture.generateMipmaps = false;
+      texture.minFilter = THREE.LinearFilter;
+      const label = new THREE.Mesh(
+        new THREE.PlaneGeometry(scale, scale * 0.208),
+        new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide }),
+      );
+      label.rotation.x = -Math.PI / 2;
+      label.renderOrder = 20;
+      return label;
     };
     const createRulerLabel = (text: string, scale: number) => {
       const canvas = document.createElement("canvas");
       canvas.width = 256;
       canvas.height = 56;
       const ctx = canvas.getContext("2d")!;
-      ctx.fillStyle = "rgba(71,85,105,0.9)";
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "rgba(71,85,105,0.88)";
       ctx.font = "600 23px Inter, Arial, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(text, 128, 28);
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
-      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
-      sprite.scale.set(scale, scale * 0.219, 1);
-      sprite.renderOrder = 18;
-      return sprite;
+      texture.generateMipmaps = false;
+      texture.minFilter = THREE.LinearFilter;
+      const label = new THREE.Mesh(
+        new THREE.PlaneGeometry(scale, scale * 0.219),
+        new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide }),
+      );
+      label.rotation.x = -Math.PI / 2;
+      label.renderOrder = 18;
+      return label;
     };
     const rulerOffset = Math.max(0.16, cW * 0.16);
     const rulerZ = cW + rulerOffset;
@@ -1191,7 +1199,7 @@ export function ContainerViewer3D({
         new THREE.Vector3(x, rulerY, rulerZ + rulerTick),
       );
       const label = createRulerLabel(formatSceneLength(valueIn), Math.max(0.42, Math.min(0.62, cW * 0.26)));
-      label.position.set(x, rulerY + 0.035, rulerZ + rulerTick * 2.4);
+      label.position.set(x, rulerY + 0.02, rulerZ + rulerTick * 2.4);
       containerGroup.add(label);
     });
     const lengthRuler = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(rulerPoints), rulerMaterial);
@@ -1215,11 +1223,12 @@ export function ContainerViewer3D({
     envelopeGuides.renderOrder = 17;
     containerGroup.add(envelopeGuides);
     const widthLabel = createRulerLabel(`W ${formatSceneLength(container.widthIn)}`, Math.max(0.5, Math.min(0.74, cW * 0.31)));
-    widthLabel.position.set(endGuideX + 0.035, rulerY + 0.04, cW / 2);
+    widthLabel.position.set(endGuideX + 0.035, rulerY + 0.02, cW / 2);
+    widthLabel.rotation.z = Math.PI / 2;
     containerGroup.add(widthLabel);
     const heightLabel = createRulerLabel(`H ${formatSceneLength(container.heightIn)}`, Math.max(0.5, Math.min(0.74, cH * 0.28)));
-    heightLabel.material.rotation = Math.PI / 2;
-    heightLabel.position.set(0, cH / 2, rulerZ + rulerTick * 2.2);
+    heightLabel.position.set(-rulerOffset * 0.65, rulerY + 0.02, cW / 2);
+    heightLabel.rotation.z = Math.PI / 2;
     containerGroup.add(heightLabel);
 
     const addMeasurementRange = (group: THREE.Group, startX: number, endX: number, y: number, z: number, label: string) => {
@@ -1234,7 +1243,7 @@ export function ContainerViewer3D({
       lines.renderOrder = 19;
       group.add(lines);
       const labelSprite = createMeasurementLabel(label, Math.max(0.62, Math.min(cL * 0.22, Math.max(0.8, endX - startX) * 0.72)));
-      labelSprite.position.set((startX + endX) / 2, y + Math.max(0.06, cH * 0.025), z);
+      labelSprite.position.set((startX + endX) / 2, y + 0.018, z + tick * 1.8);
       group.add(labelSprite);
     };
     const clearHoverMeasurements = () => {
@@ -1244,9 +1253,11 @@ export function ContainerViewer3D({
           child.geometry.dispose();
           const materials = Array.isArray(child.material) ? child.material : [child.material];
           materials.forEach((material) => material.dispose());
-        } else if (child instanceof THREE.Sprite) {
-          child.material.map?.dispose();
-          child.material.dispose();
+        } else if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          const material = child.material as THREE.MeshBasicMaterial;
+          material.map?.dispose();
+          material.dispose();
         }
       }
     };
@@ -1391,16 +1402,25 @@ export function ContainerViewer3D({
       canvas.width = 256;
       canvas.height = 64;
       const ctx = canvas.getContext("2d")!;
-      ctx.fillStyle = "#64748b";
-      ctx.font = "bold 28px Inter, sans-serif";
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "rgba(100,116,139,0.72)";
+      ctx.font = "600 24px Inter, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(text, 128, 40);
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, 128, 32);
       const texture = new THREE.CanvasTexture(canvas);
-      const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
-      const sprite = new THREE.Sprite(spriteMat);
-      sprite.position.copy(pos);
-      sprite.scale.set(cL * 0.3, cL * 0.075, 1);
-      scene.add(sprite);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.generateMipmaps = false;
+      texture.minFilter = THREE.LinearFilter;
+      const label = new THREE.Mesh(
+        new THREE.PlaneGeometry(cL * 0.18, cL * 0.045),
+        new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide }),
+      );
+      label.rotation.x = -Math.PI / 2;
+      label.position.copy(pos);
+      label.position.y = 0.012;
+      label.renderOrder = 16;
+      scene.add(label);
     }
 
     addAxisLabel("DOCK 1", new THREE.Vector3(cL / 2, 0.015, -dockGap - dockDepth / 2));
@@ -2090,26 +2110,9 @@ export function ContainerViewer3D({
           data-testid="container-3d-viewer"
         >
           <div ref={mountRef} className="absolute inset-0" />
-          <div className="absolute left-3 top-3 z-30 flex items-center gap-2">
-            <div className="relative" data-testid="container-scene-actions">
-              <button type="button" onClick={() => { setDisplayControlsOpen((current) => !current); setSharePanelOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-10 w-10 items-center justify-center rounded-full border border-white/95 bg-white/[0.94] transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:text-primary hover:shadow-md ${displayControlsOpen ? "text-primary shadow-sm" : "text-slate-600"}`} aria-label="Scene settings" data-testid="button-floating-settings"><Settings2 className="h-4 w-4" />{!displayControlsOpen && <ViewerHoverLabel side="right">Scene settings</ViewerHoverLabel>}</button>
-              {displayControlsOpen && (
-                <div className="absolute left-0 top-12 w-64 rounded-2xl border border-white/95 bg-white/[0.98] p-3 text-left text-slate-700 shadow-[0_20px_55px_-22px_rgba(15,23,42,0.32)]" data-testid="floating-display-controls">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Scene settings</p>
-                  <div className="mt-2 grid grid-cols-3 gap-2">{[
-                    { label: "Grid", active: showGrid, set: setShowGrid, icon: Grid3X3 },
-                    { label: "Shell", active: showShell, set: setShowShell, icon: Eye },
-                    { label: "Refs", active: showLabels, set: setShowLabels, icon: Box },
-                  ].map(({ label, active, set, icon: Icon }) => <button key={label} type="button" onClick={() => set(!active)} className={`flex flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-[9px] font-bold transition hover:-translate-y-0.5 hover:shadow-sm ${active ? "border-blue-200 bg-blue-50 text-primary" : "border-slate-200 bg-slate-100 text-slate-400"}`} aria-pressed={active} data-testid={`button-container-layer-${label === "Refs" ? "labels" : label.toLowerCase()}`}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm"><Icon className="h-3.5 w-3.5" /></span>{label}</button>)}</div>
-                  <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">Camera angle</p>
-                  <div className="mt-1.5 grid grid-cols-4 gap-1.5">{([ ["isometric", "3D"], ["doors", "Doors"], ["side", "Side"], ["top", "Top"] ] as const).map(([preset, label]) => <button key={preset} type="button" onClick={() => setActiveView(preset)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${activeView === preset ? "border-blue-300 bg-blue-50 text-primary" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`} aria-pressed={activeView === preset} data-testid={`button-container-view-${preset}`}>{label}</button>)}</div>
-                  <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">Rendering</p>
-                  <div className="mt-1.5 grid grid-cols-3 gap-1.5">{([ ["auto", "Auto"], ["performance", "Fast"], ["quality", "High"] ] as const).map(([quality, label]) => <button key={quality} type="button" onClick={() => setRenderQuality(quality)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${renderQuality === quality ? "border-cyan-300 bg-cyan-50 text-cyan-700" : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"}`} aria-pressed={renderQuality === quality} data-testid={`button-container-quality-${quality}`}>{label}</button>)}</div>
-                </div>
-              )}
-            </div>
-            {arrangeMode && <><button type="button" onClick={undoArrangement} disabled={historyCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/95 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white disabled:opacity-40" data-testid="button-undo-cargo-move"><Undo2 className="mr-1 inline h-3.5 w-3.5" />Undo</button><button type="button" onClick={redoArrangement} disabled={redoCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/95 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white disabled:opacity-40" data-testid="button-redo-cargo-move"><Redo2 className="mr-1 inline h-3.5 w-3.5" />Redo</button><button type="button" onClick={resetArrangement} className="h-8 rounded-lg border border-white/80 bg-white/95 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white" data-testid="button-reset-cargo-layout"><RotateCcw className="mr-1 inline h-3.5 w-3.5" />Reset</button></>}
-          </div>
+          {arrangeMode && <div className="absolute left-3 top-3 z-30 flex items-center gap-2">
+            <button type="button" onClick={undoArrangement} disabled={historyCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/95 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white disabled:opacity-40" data-testid="button-undo-cargo-move"><Undo2 className="mr-1 inline h-3.5 w-3.5" />Undo</button><button type="button" onClick={redoArrangement} disabled={redoCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/95 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white disabled:opacity-40" data-testid="button-redo-cargo-move"><Redo2 className="mr-1 inline h-3.5 w-3.5" />Redo</button><button type="button" onClick={resetArrangement} className="h-8 rounded-lg border border-white/80 bg-white/95 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white" data-testid="button-reset-cargo-layout"><RotateCcw className="mr-1 inline h-3.5 w-3.5" />Reset</button>
+          </div>}
           {arrangeMode && selectedCargoIndices.size > 0 && (
             <div className="absolute left-3 top-14 z-20 w-[min(430px,calc(100%-5rem))] rounded-2xl border border-white/90 bg-white/[0.98] p-3 shadow-[0_18px_45px_-22px_rgba(15,23,42,0.5)]" data-testid="cargo-group-controls">
               <div className="flex items-center justify-between gap-3">
@@ -2137,20 +2140,34 @@ export function ContainerViewer3D({
             <button type="button" onClick={toggleFullscreen} className="flex h-8 w-8 items-center justify-center rounded-full text-slate-600 transition hover:bg-white hover:text-primary" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} title={isFullscreen ? "Exit full screen" : "Open full workspace"}>{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
           </div>
           <div className={`absolute right-3 top-3 z-30 hidden max-h-[calc(100%-4.5rem)] flex-col items-center gap-0.5 overflow-visible rounded-2xl border border-white/90 bg-white/[0.98] p-1 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.34)] transition-[right] lg:flex ${sidebarOpen ? "lg:right-[344px]" : ""}`} data-testid="container-floating-tool-rail">
-            {onPlacedChange && <button type="button" onClick={() => { setSequenceMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setArrangeMode((current) => !current); setPlacementMessage("Select a cargo item and drag it to a new position."); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${arrangeMode ? "bg-sky-50 text-sky-600" : "text-slate-600 hover:text-primary"}`} aria-label="Adjust cargo layout" data-testid="button-arrange-cargo"><MousePointerClick className="h-4 w-4" /><ViewerHoverLabel>Adjust cargo layout</ViewerHoverLabel></button>}
-            <button type="button" onClick={() => { setArrangeMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setSequenceMode((current) => { if (!current) setSequenceStep(1); return !current; }); }} disabled={placed.length === 0} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md disabled:opacity-35 ${sequenceMode ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:text-primary"}`} aria-label="Loading sequence" data-testid="button-loading-sequence"><Play className="h-4 w-4" /><ViewerHoverLabel>Play loading sequence</ViewerHoverLabel></button>
-            <div className="my-0.5 h-px w-6 bg-slate-200" />
-            <button type="button" onClick={() => { cycleCameraView(); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Change camera angle" data-testid="button-floating-camera"><Camera className="h-4 w-4" /><ViewerHoverLabel>Next camera angle</ViewerHoverLabel></button>
-            <button type="button" onClick={resetCameraView} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Reset camera view" data-testid="button-reset-camera"><Home className="h-4 w-4" /><ViewerHoverLabel>Reset camera</ViewerHoverLabel></button>
-            <div className="my-0.5 h-px w-6 bg-slate-200" />
-            {onSaveProject && <button type="button" onClick={() => runExternalAction(onSaveProject)} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:text-emerald-600 hover:shadow-md" aria-label="Save project" data-testid="button-save-scene"><Save className="h-4 w-4" /><ViewerHoverLabel>Save project</ViewerHoverLabel></button>}
-            <button type="button" onClick={() => { setSharePanelOpen((current) => !current); setHelpPanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${sharePanelOpen ? "bg-blue-50 text-primary" : "text-slate-600 hover:text-primary"}`} aria-label="Share loading plan" data-testid="button-share-scene"><Share2 className="h-4 w-4" /><ViewerHoverLabel>Share loading plan</ViewerHoverLabel></button>
-            {onExportPdf && <button type="button" onClick={onExportPdf} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Download PDF report" data-testid="button-floating-pdf"><FileDown className="h-4 w-4" /><ViewerHoverLabel>Download PDF report</ViewerHoverLabel></button>}
-            <button type="button" onClick={downloadCurrentSnapshot} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Download scene image" data-testid="button-floating-snapshot"><ImageDown className="h-4 w-4" /><ViewerHoverLabel>Download scene image</ViewerHoverLabel></button>
-            <button type="button" onClick={() => { setHelpPanelOpen((current) => !current); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${helpPanelOpen ? "bg-blue-50 text-primary" : "text-slate-600 hover:text-primary"}`} aria-label="Workspace help" data-testid="button-container-help"><CircleHelp className="h-4 w-4" /><ViewerHoverLabel>Workspace help</ViewerHoverLabel></button>
-            <button type="button" onClick={() => { setWarningPanelOpen((current) => !current); setSharePanelOpen(false); setDisplayControlsOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${warningPanelOpen ? "bg-slate-900 text-white" : "text-slate-600 hover:text-primary"}`} aria-label="Placement checks" data-testid="button-floating-warnings"><AlertTriangle className="h-4 w-4" />{hasPlacementWarning && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />}<ViewerHoverLabel>Placement checks</ViewerHoverLabel></button>
             <button type="button" onClick={() => setSidebarOpen((current) => !current)} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label={sidebarOpen ? "Hide cargo panel" : "Show cargo panel"} data-testid="button-container-sidebar-toggle">{sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}<ViewerHoverLabel>{sidebarOpen ? "Hide cargo panel" : "Show cargo panel"}</ViewerHoverLabel></button>
+            <button type="button" onClick={() => { cycleCameraView(); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Change camera angle" data-testid="button-floating-camera"><Camera className="h-4 w-4" /><ViewerHoverLabel>Change camera angle</ViewerHoverLabel></button>
+            <button type="button" onClick={() => { setArrangeMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setSequenceMode((current) => { if (!current) setSequenceStep(1); return !current; }); }} disabled={placed.length === 0} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md disabled:opacity-35 ${sequenceMode ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:text-primary"}`} aria-label="Loading sequence" data-testid="button-loading-sequence"><Play className="h-4 w-4" /><ViewerHoverLabel>Loading sequence</ViewerHoverLabel></button>
+            {onPlacedChange && <button type="button" onClick={() => { setSequenceMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setArrangeMode((current) => !current); setPlacementMessage("Select a cargo item and drag it to a new position."); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${arrangeMode ? "bg-sky-50 text-sky-600" : "text-slate-600 hover:text-primary"}`} aria-label="Adjust cargo layout" data-testid="button-arrange-cargo"><MousePointerClick className="h-4 w-4" /><ViewerHoverLabel>Adjust cargo layout</ViewerHoverLabel></button>}
+            <div className="my-0.5 h-px w-6 bg-slate-200" />
+            <button type="button" onClick={() => { setDisplayControlsOpen((current) => !current); setSharePanelOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${displayControlsOpen ? "bg-blue-50 text-primary" : "text-slate-600 hover:text-primary"}`} aria-label="Scene settings" data-testid="button-floating-settings"><Settings2 className="h-4 w-4" /><ViewerHoverLabel>Scene settings</ViewerHoverLabel></button>
+            <button type="button" onClick={() => { setWarningPanelOpen((current) => !current); setSharePanelOpen(false); setDisplayControlsOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${warningPanelOpen ? "bg-slate-900 text-white" : "text-slate-600 hover:text-primary"}`} aria-label="Placement checks" data-testid="button-floating-warnings"><AlertTriangle className="h-4 w-4" />{hasPlacementWarning && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />}<ViewerHoverLabel>Placement checks</ViewerHoverLabel></button>
+            <div className="my-0.5 h-px w-6 bg-slate-200" />
+            <button type="button" onClick={downloadCurrentSnapshot} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Download scene image" data-testid="button-floating-snapshot"><ImageDown className="h-4 w-4" /><ViewerHoverLabel>Save scene image</ViewerHoverLabel></button>
+            {onExportPdf && <button type="button" onClick={onExportPdf} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Download PDF report" data-testid="button-floating-pdf"><FileDown className="h-4 w-4" /><ViewerHoverLabel>Download PDF report</ViewerHoverLabel></button>}
+            <button type="button" onClick={() => { setSharePanelOpen((current) => !current); setHelpPanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${sharePanelOpen ? "bg-blue-50 text-primary" : "text-slate-600 hover:text-primary"}`} aria-label="Share loading plan" data-testid="button-share-scene"><Share2 className="h-4 w-4" /><ViewerHoverLabel>Share loading plan</ViewerHoverLabel></button>
+            {onSaveProject && <button type="button" onClick={() => runExternalAction(onSaveProject)} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:text-emerald-600 hover:shadow-md" aria-label="Save project" data-testid="button-save-scene"><Save className="h-4 w-4" /><ViewerHoverLabel>Save project</ViewerHoverLabel></button>}
+            <div className="my-0.5 h-px w-6 bg-slate-200" />
+            <button type="button" onClick={() => { setHelpPanelOpen((current) => !current); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${helpPanelOpen ? "bg-blue-50 text-primary" : "text-slate-600 hover:text-primary"}`} aria-label="Workspace help" data-testid="button-container-help"><CircleHelp className="h-4 w-4" /><ViewerHoverLabel>Workspace help</ViewerHoverLabel></button>
             <button type="button" onClick={toggleFullscreen} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} data-testid="button-container-fullscreen">{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}<ViewerHoverLabel>{isFullscreen ? "Exit full screen" : "Open full workspace"}</ViewerHoverLabel></button>
+            {displayControlsOpen && <div className="absolute right-12 top-28 w-64 rounded-2xl border border-white/95 bg-white/[0.98] p-3 text-left text-slate-700 shadow-[0_20px_55px_-22px_rgba(15,23,42,0.32)]" data-testid="floating-display-controls">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Scene settings</p>
+              <div className="mt-2 grid grid-cols-3 gap-2">{[
+                { label: "Grid", active: showGrid, set: setShowGrid, icon: Grid3X3 },
+                { label: "Shell", active: showShell, set: setShowShell, icon: Eye },
+                { label: "Refs", active: showLabels, set: setShowLabels, icon: Box },
+              ].map(({ label, active, set, icon: Icon }) => <button key={label} type="button" onClick={() => set(!active)} className={`flex flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-[9px] font-bold transition hover:-translate-y-0.5 hover:shadow-sm ${active ? "border-blue-200 bg-blue-50 text-primary" : "border-slate-200 bg-slate-100 text-slate-400"}`} aria-pressed={active} data-testid={`button-container-layer-${label === "Refs" ? "labels" : label.toLowerCase()}`}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm"><Icon className="h-3.5 w-3.5" /></span>{label}</button>)}</div>
+              <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">Camera angle</p>
+              <div className="mt-1.5 grid grid-cols-4 gap-1.5">{([ ["isometric", "3D"], ["doors", "Doors"], ["side", "Side"], ["top", "Top"] ] as const).map(([preset, label]) => <button key={preset} type="button" onClick={() => setActiveView(preset)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${activeView === preset ? "border-blue-300 bg-blue-50 text-primary" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`} aria-pressed={activeView === preset} data-testid={`button-container-view-${preset}`}>{label}</button>)}</div>
+              <div className="mt-2 flex justify-end"><button type="button" onClick={resetCameraView} className="rounded-lg px-2 py-1 text-[9px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-primary" data-testid="button-reset-camera"><Home className="mr-1 inline h-3 w-3" />Reset camera</button></div>
+              <p className="mt-2 text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">Rendering</p>
+              <div className="mt-1.5 grid grid-cols-3 gap-1.5">{([ ["auto", "Auto"], ["performance", "Fast"], ["quality", "High"] ] as const).map(([quality, label]) => <button key={quality} type="button" onClick={() => setRenderQuality(quality)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${renderQuality === quality ? "border-cyan-300 bg-cyan-50 text-cyan-700" : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"}`} aria-pressed={renderQuality === quality} data-testid={`button-container-quality-${quality}`}>{label}</button>)}</div>
+            </div>}
             {sharePanelOpen && <div className="absolute right-12 top-20 w-64 rounded-2xl border border-white/95 bg-white/[0.98] p-2.5 text-left shadow-[0_22px_55px_-24px_rgba(15,23,42,0.38)]" data-testid="container-share-panel">
               <div className="flex items-center justify-between gap-2 px-1 pb-2"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Share loading plan</p><p className="mt-0.5 text-[9px] text-slate-400">Anyone with the link can preview it.</p></div><Share2 className="h-4 w-4 text-primary" /></div>
               <button type="button" onClick={copyShareLink} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-[10px] font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-primary" data-testid="button-share-copy-link"><Link2 className="h-4 w-4" />{currentShareUrl() ? "Copy share link" : "Create share link"}</button>
