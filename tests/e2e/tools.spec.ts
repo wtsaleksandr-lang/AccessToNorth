@@ -145,7 +145,7 @@ test.describe("tool pages load without runtime errors", () => {
       await expect(page.getByTestId("button-save-scene")).toBeVisible();
       await expect(page.getByTestId("button-viewer-export-csv")).toBeVisible();
       await expect(page.getByTestId("button-viewer-export-pdf")).toBeVisible();
-      await expect(page.getByTestId("button-reset-camera")).toBeVisible();
+      await expect(page.getByTestId("container-floating-tool-rail").locator("button").first()).toHaveAttribute("data-testid", "button-container-sidebar-toggle");
       await page.getByTestId("button-container-cargo-0").hover();
       await expect(page.getByTestId("container-cargo-hover-card")).toContainText("Container");
       await expect(page.getByTestId("container-cargo-hover-card")).toContainText("Back");
@@ -167,6 +167,7 @@ test.describe("tool pages load without runtime errors", () => {
       await page.getByTestId("button-floating-settings").click();
       await expect(page.getByTestId("button-container-view-doors")).toBeVisible();
       await expect(page.getByTestId("button-container-quality-auto")).toBeVisible();
+      await expect(page.getByTestId("button-reset-camera")).toBeVisible();
       await page.getByTestId("button-container-view-doors").click();
       await page.getByTestId("button-container-layer-grid").click();
       await expect(page.getByTestId("button-arrange-cargo")).toBeVisible();
