@@ -145,6 +145,14 @@ test.describe("tool pages load without runtime errors", () => {
       await expect(page.getByTestId("container-floating-tool-rail")).toBeVisible();
       await expect(page.getByTestId("button-floating-settings")).toHaveCount(1);
       await expect(page.getByTestId("button-container-sidebar-toggle")).toBeVisible();
+      await page.getByTestId("button-container-sidebar-toggle").click();
+      await page.waitForTimeout(220);
+      expect(
+        await viewerCanvas!.evaluate((canvas) => canvas.isConnected),
+        "Folding the cargo panel must recompose the camera without replacing the Three.js canvas",
+      ).toBe(true);
+      await page.getByTestId("button-container-sidebar-toggle").click();
+      await page.waitForTimeout(220);
       await expect(page.getByTestId("container-interaction-legend")).toBeVisible();
       await expect(page.getByTestId("container-workflow-bar")).toBeVisible();
       await expect(page.getByTestId("button-share-scene")).toBeVisible();
