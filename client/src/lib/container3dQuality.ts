@@ -19,6 +19,33 @@ export interface ContainerRenderProfile {
   detailedLabels: boolean;
 }
 
+export const CARGO_STENCIL_ASPECT_RATIO = 8 / 3;
+
+export interface CargoStencilLayout {
+  widthM: number;
+  heightM: number;
+  rotateQuarterTurn: boolean;
+}
+
+/**
+ * Size a cargo reference as an independent top-face stencil. Keeping a fixed
+ * physical aspect ratio prevents the text from inheriting a rectangular
+ * cargo face's UV stretch.
+ */
+export function getCargoStencilLayout(lengthM: number, widthM: number): CargoStencilLayout {
+  const longSide = Math.max(lengthM, widthM);
+  const shortSide = Math.min(lengthM, widthM);
+  const maxStencilWidth = longSide * 0.52;
+  const maxStencilHeight = shortSide * 0.24;
+  const stencilWidth = Math.min(maxStencilWidth, maxStencilHeight * CARGO_STENCIL_ASPECT_RATIO);
+
+  return {
+    widthM: stencilWidth,
+    heightM: stencilWidth / CARGO_STENCIL_ASPECT_RATIO,
+    rotateQuarterTurn: widthM > lengthM,
+  };
+}
+
 export function getContainerRenderProfile(input: ContainerRenderProfileInput): ContainerRenderProfile {
   const compact = input.viewportWidth < 768;
   const constrainedDevice = (input.deviceMemoryGb !== undefined && input.deviceMemoryGb <= 4)
@@ -38,8 +65,9 @@ export function getContainerRenderProfile(input: ContainerRenderProfileInput): C
     shadows: false,
     shadowMapSize: performanceMode ? 0 : compact ? 512 : 1024,
     gridDivisions: performanceMode ? 44 : input.quality === "quality" ? 72 : 60,
-    // Face labels reuse the cargo mesh material, so they do not add scene
-    // draw calls. Keep references crisp for ordinary plans in every mode.
+    // Aspect-locked top stencils add one lightweight plane per cargo unit.
+    // Keep them for ordinary plans and remove them before large scenes become
+    // visually crowded or draw-call heavy.
     detailedLabels: input.itemCount <= (performanceMode ? 60 : 120),
   };
 }
