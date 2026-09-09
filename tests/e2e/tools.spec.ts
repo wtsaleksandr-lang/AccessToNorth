@@ -215,22 +215,34 @@ test.describe("tool pages load without runtime errors", () => {
       await expect(page.getByTestId("button-mobile-scene-settings")).toContainText("View");
       await page.getByTestId("button-mobile-scene-settings").click();
       await expect(page.getByTestId("mobile-scene-settings-panel")).toBeVisible();
+      await expect(page.getByTestId("mobile-scene-settings-panel")).toContainText("View controls");
       await expect(page.getByTestId("button-mobile-view-top")).toBeVisible();
       await expect(page.getByTestId("button-mobile-quality-auto")).toBeVisible();
-      await page.getByTestId("button-close-mobile-scene-settings").click();
+      const viewHandleBox = await page.getByTestId("button-close-mobile-scene-settings").boundingBox();
+      expect(viewHandleBox).not.toBeNull();
+      await page.mouse.move(viewHandleBox!.x + viewHandleBox!.width / 2, viewHandleBox!.y + viewHandleBox!.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(viewHandleBox!.x + viewHandleBox!.width / 2, viewHandleBox!.y - 70, { steps: 4 });
+      await page.mouse.up();
       await expect(page.getByTestId("mobile-scene-settings-panel")).toBeHidden();
       await expect(page.getByTestId("button-mobile-cargo-panel")).toBeVisible();
-      await expect(page.getByTestId("button-mobile-cargo-panel")).toContainText("Cargo");
+      await expect(page.getByTestId("button-mobile-cargo-panel")).toContainText("Details");
       const mobileCargoToggleBox = await page.getByTestId("button-mobile-cargo-panel").boundingBox();
       expect(mobileCargoToggleBox).not.toBeNull();
       expect(Math.abs(mobileCargoToggleBox!.x + mobileCargoToggleBox!.width - (mobileViewerBox!.x + mobileViewerBox!.width))).toBeLessThanOrEqual(2);
       expect(Math.abs(mobileCargoToggleBox!.y + mobileCargoToggleBox!.height - (mobileViewerBox!.y + mobileViewerBox!.height))).toBeLessThanOrEqual(2);
       await page.getByTestId("button-mobile-cargo-panel").click();
       await expect(page.getByTestId("mobile-cargo-panel")).toBeVisible();
+      await expect(page.getByTestId("mobile-cargo-panel")).toContainText("Cargo staging");
       await expect(page.getByTestId("button-mobile-cargo-zone-dock1")).toBeVisible();
       await page.getByTestId("button-mobile-select-all-cargo").click();
       await expect(page.getByTestId("mobile-cargo-panel")).toContainText("7 selected");
-      await page.getByTestId("button-close-mobile-cargo-panel").click();
+      const cargoHandleBox = await page.getByTestId("button-close-mobile-cargo-panel").boundingBox();
+      expect(cargoHandleBox).not.toBeNull();
+      await page.mouse.move(cargoHandleBox!.x + cargoHandleBox!.width / 2, cargoHandleBox!.y + cargoHandleBox!.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(cargoHandleBox!.x + cargoHandleBox!.width / 2, cargoHandleBox!.y + 90, { steps: 4 });
+      await page.mouse.up();
       await expect(page.getByTestId("mobile-cargo-panel")).toBeHidden();
       expect(
         await viewerCanvas!.evaluate((canvas) => canvas.isConnected),

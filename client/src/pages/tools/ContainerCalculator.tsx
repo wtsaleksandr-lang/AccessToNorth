@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from "react";
 import { Link } from "wouter";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useDragControls } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ToolWorkedExample } from "@/components/ToolWorkedExample";
@@ -590,6 +590,7 @@ export function ContainerViewer3D({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
   const [activeCargoZone, setActiveCargoZone] = useState<CargoWorkspaceZone>("loaded");
+  const [selectedSceneDock, setSelectedSceneDock] = useState<StagingDock | null>(null);
   const [displayControlsOpen, setDisplayControlsOpen] = useState(false);
   const [warningPanelOpen, setWarningPanelOpen] = useState(false);
   const [helpPanelOpen, setHelpPanelOpen] = useState(false);
@@ -598,6 +599,9 @@ export function ContainerViewer3D({
   const [balanceSummaryOpen, setBalanceSummaryOpen] = useState(false);
   const [expandedCargoGroups, setExpandedCargoGroups] = useState<Set<string>>(new Set());
   const [stagedCargo, setStagedCargo] = useState<StagedCargo[]>([]);
+  const viewPanelDragControls = useDragControls();
+  const cargoPanelDragControls = useDragControls();
+  const selectedSceneDockRef = useRef<StagingDock | null>(null);
   const stagingMutationRef = useRef(false);
   const arrangementHistoryRef = useRef<PlacedBox[][]>([]);
   const arrangementRedoRef = useRef<PlacedBox[][]>([]);
@@ -617,6 +621,7 @@ export function ContainerViewer3D({
     gridObjects: THREE.Object3D[];
     containerGroup: THREE.Group;
     setCargoHover: (index: number | null) => void;
+    setDockFocus: (zone: StagingDock | null, mode?: "selected" | "hover" | "drop") => void;
     setView: (preset: ContainerViewPreset) => void;
     setSidebarComposition: (open: boolean) => void;
     render: () => void;
@@ -633,6 +638,7 @@ export function ContainerViewer3D({
   onReadyExportRef.current = onReadyExport;
   onPlacedChangeRef.current = onPlacedChange;
   sidebarOpenRef.current = sidebarOpen;
+  selectedSceneDockRef.current = selectedSceneDock;
 
   const sequenceOrder = useMemo(
     () => placed
@@ -904,6 +910,7 @@ export function ContainerViewer3D({
     onPlacedChangeRef.current?.(nextPlaced);
     setPlacementMessage(`${selected.cargoName || "Cargo item"} moved to ${zone === "dock1" ? "Dock 1" : "Dock 2"}.`);
     setActiveCargoZone(zone);
+    setSelectedSceneDock(zone);
   }, [container, placed]);
 
   const loadStagedCargo = useCallback((stagedId: string) => {
@@ -921,6 +928,7 @@ export function ContainerViewer3D({
     setRedoCount(0);
     setSelectedCargoIndices(new Set());
     setStagedCargo((current) => current.filter((entry) => entry.id !== stagedId));
+    setSelectedSceneDock(null);
     stagingMutationRef.current = true;
     onPlacedChangeRef.current?.([...placed.map((box) => ({ ...box })), safePlacement]);
     setPlacementMessage(`${safePlacement.cargoName || "Cargo item"} loaded from the staging dock.`);
@@ -1115,9 +1123,13 @@ export function ContainerViewer3D({
     ground.visible = showGrid;
     grid.visible = showGrid;
 
-    // Two quiet staging areas make the loading direction immediately clear
-    // and leave room for the upcoming dock-based manual workflow.
-    const createDockOutline = (zMin: number, zMax: number) => {
+    // Two quiet staging areas double as large, forgiving interaction targets.
+    // Their invisible floor surfaces are raycastable without adding visible
+    // geometry until a user hovers, taps, or drags cargo over a dock.
+    const dockOutlines = {} as Record<StagingDock, THREE.Line>;
+    const dockSurfaces = {} as Record<StagingDock, THREE.Mesh>;
+    const dockHitMeshes: THREE.Mesh[] = [];
+    const createDockOutline = (zone: StagingDock, zMin: number, zMax: number) => {
       const xMin = -cL * 0.1;
       const xMax = cL * 1.1;
       const radius = Math.min(cL * 0.055, (zMax - zMin) * 0.12);
@@ -1138,8 +1150,28 @@ export function ContainerViewer3D({
       const outline = new THREE.Line(geometry, material);
       outline.computeLineDistances();
       outline.visible = showGrid;
+      outline.userData.zone = zone;
       scene.add(outline);
       gridObjects.push(outline);
+
+      const surface = new THREE.Mesh(
+        new THREE.PlaneGeometry(xMax - xMin, zMax - zMin),
+        new THREE.MeshBasicMaterial({
+          color: 0x38bdf8,
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        }),
+      );
+      surface.rotation.x = -Math.PI / 2;
+      surface.position.set((xMin + xMax) / 2, -0.012, (zMin + zMax) / 2);
+      surface.userData.zone = zone;
+      surface.renderOrder = 2;
+      scene.add(surface);
+      dockOutlines[zone] = outline;
+      dockSurfaces[zone] = surface;
+      dockHitMeshes.push(surface);
     };
     // Matching mirrored staging zones: equal footprint, corner radius and
     // offset on both sides of the container.
@@ -1147,8 +1179,8 @@ export function ContainerViewer3D({
     // Keep a clear working aisle between the loaded container and each staging
     // dock so cargo in the three zones remains visually distinct at a glance.
     const dockGap = cW * 0.42;
-    createDockOutline(-dockGap - dockDepth, -dockGap);
-    createDockOutline(cW + dockGap, cW + dockGap + dockDepth);
+    createDockOutline("dock1", -dockGap - dockDepth, -dockGap);
+    createDockOutline("dock2", cW + dockGap, cW + dockGap + dockDepth);
 
     const containerGroup = new THREE.Group();
     containerGroup.name = "container-shell";
@@ -1650,21 +1682,28 @@ export function ContainerViewer3D({
 
     function addAxisLabel(text: string, pos: THREE.Vector3) {
       const canvas = document.createElement("canvas");
-      canvas.width = 256;
-      canvas.height = 64;
+      canvas.width = 320;
+      canvas.height = 80;
       const ctx = canvas.getContext("2d")!;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "rgba(100,116,139,0.72)";
-      ctx.font = "600 24px Inter, sans-serif";
-      ctx.textAlign = "center";
+      ctx.strokeStyle = "rgba(71,85,105,0.72)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(40, 25); ctx.lineTo(58, 15); ctx.lineTo(76, 25); ctx.lineTo(58, 36); ctx.closePath();
+      ctx.moveTo(40, 25); ctx.lineTo(40, 47); ctx.lineTo(58, 58); ctx.lineTo(58, 36);
+      ctx.moveTo(76, 25); ctx.lineTo(76, 47); ctx.lineTo(58, 58);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(71,85,105,0.76)";
+      ctx.font = "700 27px Inter, sans-serif";
+      ctx.textAlign = "left";
       ctx.textBaseline = "middle";
-      ctx.fillText(text, 128, 32);
+      ctx.fillText(text, 92, 39);
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.generateMipmaps = false;
       texture.minFilter = THREE.LinearFilter;
       const label = new THREE.Mesh(
-        new THREE.PlaneGeometry(cL * 0.18, cL * 0.045),
+        new THREE.PlaneGeometry(cL * 0.22, cL * 0.055),
         new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide }),
       );
       label.rotation.x = -Math.PI / 2;
@@ -1767,6 +1806,9 @@ export function ContainerViewer3D({
     const dragIntersection = new THREE.Vector3();
     type DragState = {
       pointerId: number;
+      startClientX: number;
+      startClientY: number;
+      activated: boolean;
       mesh: THREE.Mesh;
       index: number;
       indices: number[];
@@ -1793,6 +1835,23 @@ export function ContainerViewer3D({
         material.emissive.setHex(color ?? 0x000000);
         material.emissiveIntensity = color === null ? 0 : 0.24;
       });
+    };
+
+    const setDockFocus = (zone: StagingDock | null, mode: "selected" | "hover" | "drop" = "selected") => {
+      (["dock1", "dock2"] as const).forEach((dock) => {
+        const active = dock === zone;
+        const outline = dockOutlines[dock];
+        const outlineMaterial = outline.material as THREE.LineDashedMaterial;
+        const surfaceMaterial = dockSurfaces[dock].material as THREE.MeshBasicMaterial;
+        outline.visible = showGrid || active;
+        outlineMaterial.color.setHex(active ? mode === "drop" ? 0x059669 : 0x0284c7 : 0x8f99a5);
+        outlineMaterial.opacity = active ? mode === "drop" ? 0.96 : 0.88 : 0.56;
+        surfaceMaterial.color.setHex(mode === "drop" ? 0x34d399 : 0x38bdf8);
+        surfaceMaterial.opacity = active ? mode === "drop" ? 0.12 : mode === "hover" ? 0.055 : 0.08 : 0;
+        outlineMaterial.needsUpdate = true;
+        surfaceMaterial.needsUpdate = true;
+      });
+      renderScene();
     };
 
     const setCargoHover = (index: number | null) => {
@@ -1829,22 +1888,35 @@ export function ContainerViewer3D({
     };
 
     let inspectionPointer: { pointerId: number; clientX: number; clientY: number; index: number } | null = null;
+    let dockInspectionPointer: { pointerId: number; clientX: number; clientY: number; zone: StagingDock } | null = null;
     const handlePointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return;
       updatePointer(event);
       const stagedIntersection = raycaster.intersectObjects(stagedMeshes, false)[0];
-      if (arrangeMode && stagedIntersection?.object instanceof THREE.Mesh) {
-        const stagedId = stagedIntersection.object.userData.stagedId as string | undefined;
-        if (stagedId) {
-          event.preventDefault();
-          event.stopImmediatePropagation();
-          loadStagedCargo(stagedId);
+      const intersection = raycaster.intersectObjects(cargoMeshes, false)[0];
+      const dockIntersection = intersection || stagedIntersection
+        ? null
+        : raycaster.intersectObjects(dockHitMeshes, false)[0];
+
+      if (stagedIntersection?.object instanceof THREE.Mesh) {
+        const zone = stagedIntersection.object.userData.zone as StagingDock | undefined;
+        if (zone) {
+          dockInspectionPointer = { pointerId: event.pointerId, clientX: event.clientX, clientY: event.clientY, zone };
           return;
         }
       }
-      const intersection = raycaster.intersectObjects(cargoMeshes, false)[0];
 
-      if (!arrangeMode) {
+      if (!intersection && dockIntersection?.object instanceof THREE.Mesh) {
+        const zone = dockIntersection.object.userData.zone as StagingDock | undefined;
+        if (zone) dockInspectionPointer = { pointerId: event.pointerId, clientX: event.clientX, clientY: event.clientY, zone };
+        return;
+      }
+
+      const directManipulation = arrangeMode
+        || event.pointerType === "touch"
+        || (intersection?.object instanceof THREE.Mesh
+          && selectedCargoIndicesRef.current.has(intersection.object.userData.placedIndex as number));
+      if (!directManipulation) {
         if (intersection?.object instanceof THREE.Mesh) {
           inspectionPointer = {
             pointerId: event.pointerId,
@@ -1864,6 +1936,11 @@ export function ContainerViewer3D({
       event.stopPropagation();
       const mesh = intersection.object;
       const index = mesh.userData.placedIndex as number;
+      currentHoverIndex = index;
+      setHoveredCargoIndex(index);
+      setSelectedSceneDock(null);
+      selectedSceneDockRef.current = null;
+      setDockFocus(null);
       if (event.shiftKey) {
         const next = new Set(selectedCargoIndicesRef.current);
         if (next.has(index)) next.delete(index);
@@ -1887,6 +1964,9 @@ export function ContainerViewer3D({
 
       dragState = {
         pointerId: event.pointerId,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        activated: false,
         mesh,
         index,
         indices,
@@ -1898,11 +1978,11 @@ export function ContainerViewer3D({
         valid: false,
       };
       renderer.domElement.setPointerCapture(event.pointerId);
-      renderer.domElement.style.cursor = "grabbing";
+      renderer.domElement.style.cursor = "grab";
       orbiting = false;
       controls.enabled = false;
       setInteractionResolution(true);
-      indices.forEach((selectedIndex) => highlightMesh(cargoMeshes[selectedIndex], 0x0ea5e9));
+      setCargoHover(index);
       setPlacementMessage(indices.length > 1
         ? `Moving ${indices.length} selected units together — relative spacing and stack heights stay locked.`
         : "Drag horizontally — floor and supported stack levels snap automatically.");
@@ -1910,6 +1990,7 @@ export function ContainerViewer3D({
     };
 
     let currentHoverIndex: number | null = null;
+    let currentHoverDock: StagingDock | null = null;
     let orbiting = false;
     const handleOrbitStart = () => {
       if (dragState) return;
@@ -1920,6 +2001,8 @@ export function ContainerViewer3D({
         setHoveredCargoIndex(null);
         setCargoHover(null);
       }
+      currentHoverDock = null;
+      setDockFocus(selectedSceneDockRef.current);
       renderer.domElement.style.cursor = "grabbing";
     };
     const handleOrbitEnd = () => {
@@ -1934,6 +2017,9 @@ export function ContainerViewer3D({
         updatePointer(event);
         const intersection = raycaster.intersectObjects(cargoMeshes, false)[0];
         const stagedIntersection = intersection ? null : raycaster.intersectObjects(stagedMeshes, false)[0];
+        const dockIntersection = intersection || stagedIntersection
+          ? null
+          : raycaster.intersectObjects(dockHitMeshes, false)[0];
         const nextIndex = intersection?.object instanceof THREE.Mesh
           ? intersection.object.userData.placedIndex as number
           : null;
@@ -1942,13 +2028,29 @@ export function ContainerViewer3D({
           setHoveredCargoIndex(nextIndex);
           setCargoHover(nextIndex);
         }
+        const nextDock = dockIntersection?.object instanceof THREE.Mesh
+          ? dockIntersection.object.userData.zone as StagingDock
+          : stagedIntersection?.object instanceof THREE.Mesh
+            ? stagedIntersection.object.userData.zone as StagingDock
+            : null;
+        if (nextDock !== currentHoverDock) {
+          currentHoverDock = nextDock;
+          setDockFocus(nextDock ?? selectedSceneDockRef.current, nextDock ? "hover" : "selected");
+        }
         renderer.domElement.style.cursor = nextIndex !== null
           ? arrangeMode ? "grab" : "pointer"
-          : arrangeMode && stagedIntersection ? "pointer" : "default";
+          : stagedIntersection || nextDock ? "pointer" : "default";
         return;
       }
       if (dragState.pointerId !== event.pointerId) return;
       event.preventDefault();
+      if (!dragState.activated) {
+        const movement = Math.hypot(event.clientX - dragState.startClientX, event.clientY - dragState.startClientY);
+        if (movement < 6) return;
+        dragState.activated = true;
+        renderer.domElement.style.cursor = "grabbing";
+        dragState.indices.forEach((selectedIndex) => highlightMesh(cargoMeshes[selectedIndex], 0x0ea5e9));
+      }
       updatePointer(event);
       if (!raycaster.ray.intersectPlane(dragState.plane, dragIntersection)) return;
 
@@ -1971,6 +2073,7 @@ export function ContainerViewer3D({
         const dockMax = candidateDock === "dock1" ? -dockGap : cW + dockGap + dockDepth;
         const dockX = Math.min(cL - halfLength, Math.max(halfLength, unclampedX));
         const dockZ = Math.min(dockMax - halfWidth, Math.max(dockMin + halfWidth, unclampedZ));
+        if (dragState.dropZone !== candidateDock) setDockFocus(candidateDock, "drop");
         dragState.dropZone = candidateDock;
         dragState.nextLayout = null;
         dragState.valid = true;
@@ -1980,6 +2083,7 @@ export function ContainerViewer3D({
         renderScene();
         return;
       }
+      if (dragState.dropZone !== null) setDockFocus(selectedSceneDockRef.current);
       dragState.dropZone = null;
       const nextX = Math.min(cL - halfLength, Math.max(halfLength, Math.round(unclampedX / snap) * snap));
       const nextZ = Math.min(cW - halfWidth, Math.max(halfWidth, Math.round(unclampedZ / snap) * snap));
@@ -2059,7 +2163,7 @@ export function ContainerViewer3D({
       controls.enabled = true;
       orbiting = false;
       setInteractionResolution(false);
-      renderer.domElement.style.cursor = arrangeMode ? "grab" : "default";
+      renderer.domElement.style.cursor = selectedCargoIndicesRef.current.size > 0 ? "grab" : "default";
       completedDrag.indices.forEach((index) => highlightMesh(cargoMeshes[index], null));
 
       const moved = completedDrag.indices.some((index) => {
@@ -2070,6 +2174,8 @@ export function ContainerViewer3D({
         const start = completedDrag.startPositions.get(completedDrag.index);
         if (start) moveMesh(completedDrag.mesh, start);
         stageCargo(completedDrag.index, completedDrag.dropZone);
+        selectedSceneDockRef.current = completedDrag.dropZone;
+        setDockFocus(completedDrag.dropZone, "selected");
         setCargoHover(null);
       } else if (commit && moved && completedDrag.valid && completedDrag.nextLayout) {
         arrangementHistoryRef.current = [
@@ -2093,6 +2199,7 @@ export function ContainerViewer3D({
         }
       }
       setCargoHover(currentHoverIndex);
+      if (!completedDrag.dropZone) setDockFocus(selectedSceneDockRef.current);
       renderScene();
     };
 
@@ -2100,26 +2207,53 @@ export function ContainerViewer3D({
       if (inspectionPointer?.pointerId === event.pointerId) {
         const movement = Math.hypot(event.clientX - inspectionPointer.clientX, event.clientY - inspectionPointer.clientY);
         if (movement < 7) {
+          const next = new Set([inspectionPointer.index]);
+          selectedCargoIndicesRef.current = next;
+          setSelectedCargoIndices(next);
           setHoveredCargoIndex(inspectionPointer.index);
           setCargoHover(inspectionPointer.index);
           setActiveCargoZone("loaded");
-          if (event.pointerType === "touch") setMobilePanelOpen(true);
+          setSelectedSceneDock(null);
+          selectedSceneDockRef.current = null;
+          setDockFocus(null);
+          setPlacementMessage("Cargo selected — drag it to reposition, or open Details for precise controls.");
         }
         inspectionPointer = null;
+        return;
+      }
+      if (dockInspectionPointer?.pointerId === event.pointerId) {
+        const movement = Math.hypot(event.clientX - dockInspectionPointer.clientX, event.clientY - dockInspectionPointer.clientY);
+        if (movement < 8) {
+          const zone = dockInspectionPointer.zone;
+          selectedSceneDockRef.current = zone;
+          setSelectedSceneDock(zone);
+          selectedCargoIndicesRef.current = new Set();
+          setSelectedCargoIndices(new Set());
+          setHoveredCargoIndex(null);
+          setCargoHover(null);
+          setActiveCargoZone(zone);
+          setDockFocus(zone, "selected");
+          setPlacementMessage(`${zone === "dock1" ? "Dock 1" : "Dock 2"} selected — drag cargo here, or open it to manage staged units.`);
+        }
+        dockInspectionPointer = null;
         return;
       }
       finishDrag(event, true);
     };
     const handlePointerCancel = (event: PointerEvent) => {
       inspectionPointer = null;
+      dockInspectionPointer = null;
       finishDrag(event, false);
     };
     const handlePointerLeave = () => {
       if (dragState || orbiting) return;
       inspectionPointer = null;
+      dockInspectionPointer = null;
       currentHoverIndex = null;
+      currentHoverDock = null;
       setHoveredCargoIndex(null);
       setCargoHover(null);
+      setDockFocus(selectedSceneDockRef.current);
     };
     let wheelRestoreTimer: number | null = null;
     const handleWheelActivity = () => {
@@ -2141,6 +2275,7 @@ export function ContainerViewer3D({
     controls.addEventListener("start", handleOrbitStart);
     controls.addEventListener("end", handleOrbitEnd);
     controls.addEventListener("change", renderScene);
+    setDockFocus(selectedSceneDockRef.current);
     renderScene();
 
     sceneRef.current = {
@@ -2152,6 +2287,7 @@ export function ContainerViewer3D({
       gridObjects,
       containerGroup,
       setCargoHover,
+      setDockFocus,
       setView,
       setSidebarComposition,
       render: renderScene,
@@ -2261,7 +2397,7 @@ export function ContainerViewer3D({
           } else {
             disposeMaterial(obj.material);
           }
-        } else if (obj instanceof THREE.LineSegments) {
+        } else if (obj instanceof THREE.Line) {
           obj.geometry.dispose();
           if (Array.isArray(obj.material)) {
             obj.material.forEach(disposeMaterial);
@@ -2301,6 +2437,10 @@ export function ContainerViewer3D({
   useEffect(() => {
     sceneRef.current?.setSidebarComposition(sidebarOpen);
   }, [sidebarOpen]);
+
+  useEffect(() => {
+    sceneRef.current?.setDockFocus(selectedSceneDock, "selected");
+  }, [selectedSceneDock]);
 
   useEffect(() => {
     const sceneState = sceneRef.current;
@@ -2497,20 +2637,28 @@ export function ContainerViewer3D({
             {displayControlsOpen && (
               <motion.section
                 id="mobile-scene-settings"
+                drag="y"
+                dragControls={viewPanelDragControls}
+                dragListener={false}
+                dragConstraints={{ top: -110, bottom: 0 }}
+                dragElastic={{ top: 0.18, bottom: 0 }}
+                dragSnapToOrigin
+                onDragEnd={(_, info) => {
+                  if (info.offset.y < -44 || info.velocity.y < -420) setDisplayControlsOpen(false);
+                }}
                 initial={{ opacity: 0, y: -12 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -12 }}
                 transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.72 }}
                 className="absolute left-0 right-0 top-11 z-40 overflow-hidden rounded-b-2xl border-b border-white/95 bg-white/[0.96] p-3 text-slate-700 shadow-[0_18px_42px_-24px_rgba(15,23,42,0.46)] backdrop-blur-xl lg:hidden"
-                aria-label="3D view settings"
+                aria-label="View controls"
                 data-testid="mobile-scene-settings-panel"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
                     <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-primary"><Settings2 className="h-4 w-4" /></span>
-                    <div><p className="text-[11px] font-bold text-slate-900">3D view settings</p><p className="mt-0.5 text-[9px] text-slate-500">Display, camera and quality</p></div>
+                    <div><p className="text-[11px] font-bold text-slate-900">View controls</p><p className="mt-0.5 text-[9px] text-slate-500">Display, camera and quality</p></div>
                   </div>
-                  <button type="button" onClick={() => setDisplayControlsOpen(false)} className="flex h-9 items-center gap-1 rounded-xl bg-slate-100 px-2.5 text-[10px] font-bold text-slate-600 transition hover:bg-slate-200" aria-label="Hide view settings" data-testid="button-close-mobile-scene-settings"><ChevronUp className="h-4 w-4" />Hide</button>
                 </div>
                 <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Display</p>
                 <div className="mt-1.5 grid grid-cols-3 gap-2">{[
@@ -2523,7 +2671,14 @@ export function ContainerViewer3D({
                   <div><p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Quality</p><div className="mt-1.5 grid grid-cols-3 gap-1">{([ ["auto", "Auto"], ["performance", "Fast"], ["quality", "High"] ] as const).map(([quality, label]) => <button key={quality} type="button" onClick={() => setRenderQuality(quality)} className={`min-h-10 rounded-lg border px-1 text-[9px] font-bold transition active:scale-95 ${renderQuality === quality ? "border-cyan-300 bg-cyan-50 text-cyan-700" : "border-slate-200 bg-white text-slate-500"}`} aria-pressed={renderQuality === quality} data-testid={`button-mobile-quality-${quality}`}>{label}</button>)}</div></div>
                 </div>
                 <div className="mt-2 flex justify-end"><button type="button" onClick={resetCameraView} className="flex h-9 items-center gap-1.5 rounded-xl px-3 text-[10px] font-bold text-slate-500 transition hover:bg-slate-100 hover:text-primary" data-testid="button-mobile-reset-camera"><Home className="h-3.5 w-3.5" />Reset camera</button></div>
-                <button type="button" onClick={() => setDisplayControlsOpen(false)} className="mx-auto mt-1 block h-5 w-20" aria-label="Collapse view settings"><span className="mx-auto block h-1 w-10 rounded-full bg-slate-300" /></button>
+                <button
+                  type="button"
+                  onPointerDown={(event) => viewPanelDragControls.start(event)}
+                  onClick={() => setDisplayControlsOpen(false)}
+                  className="mx-auto mt-1 flex h-6 w-24 touch-none items-center justify-center"
+                  aria-label="Close View controls; swipe up or tap"
+                  data-testid="button-close-mobile-scene-settings"
+                ><span className="block h-1 w-10 rounded-full bg-slate-300 transition-colors active:bg-slate-500" /></button>
               </motion.section>
             )}
           </AnimatePresence>
@@ -2533,7 +2688,7 @@ export function ContainerViewer3D({
             <button type="button" onClick={() => { setArrangeMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setSequenceMode((current) => { if (!current) setSequenceStep(1); return !current; }); }} disabled={placed.length === 0} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md disabled:opacity-35 ${sequenceMode ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:text-primary"}`} aria-label="Loading sequence" data-testid="button-loading-sequence"><Play className="h-4 w-4" /><ViewerHoverLabel>Loading sequence</ViewerHoverLabel></button>
             {onPlacedChange && <button type="button" onClick={() => { setSequenceMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setArrangeMode((current) => !current); setPlacementMessage("Select a cargo item and drag it to a new position."); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${arrangeMode ? "bg-sky-50 text-sky-600" : "text-slate-600 hover:text-primary"}`} aria-label="Adjust cargo layout" data-testid="button-arrange-cargo"><MousePointerClick className="h-4 w-4" /><ViewerHoverLabel>Adjust cargo layout</ViewerHoverLabel></button>}
             <div className="my-0.5 h-px w-6 bg-slate-200" />
-            <button type="button" onClick={() => { setDisplayControlsOpen((current) => !current); setSharePanelOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${displayControlsOpen ? "bg-blue-50 text-primary" : "text-slate-600 hover:text-primary"}`} aria-label="Scene settings" data-testid="button-floating-settings"><Settings2 className="h-4 w-4" /><ViewerHoverLabel>Scene settings</ViewerHoverLabel></button>
+            <button type="button" onClick={() => { setDisplayControlsOpen((current) => !current); setSharePanelOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${displayControlsOpen ? "bg-blue-50 text-primary" : "text-slate-600 hover:text-primary"}`} aria-label="View controls" data-testid="button-floating-settings"><Settings2 className="h-4 w-4" /><ViewerHoverLabel>View controls</ViewerHoverLabel></button>
             <button type="button" onClick={() => { setWarningPanelOpen((current) => !current); setSharePanelOpen(false); setDisplayControlsOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${warningPanelOpen ? "bg-slate-900 text-white" : "text-slate-600 hover:text-primary"}`} aria-label="Placement checks" data-testid="button-floating-warnings"><AlertTriangle className="h-4 w-4" />{hasPlacementWarning && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />}<ViewerHoverLabel>Placement checks</ViewerHoverLabel></button>
             <div className="my-0.5 h-px w-6 bg-slate-200" />
             <button type="button" onClick={downloadCurrentSnapshot} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Download scene image" data-testid="button-floating-snapshot"><ImageDown className="h-4 w-4" /><ViewerHoverLabel>Save scene image</ViewerHoverLabel></button>
@@ -2544,7 +2699,7 @@ export function ContainerViewer3D({
             <button type="button" onClick={() => { setHelpPanelOpen((current) => !current); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${helpPanelOpen ? "bg-blue-50 text-primary" : "text-slate-600 hover:text-primary"}`} aria-label="Workspace help" data-testid="button-container-help"><CircleHelp className="h-4 w-4" /><ViewerHoverLabel>Workspace help</ViewerHoverLabel></button>
             <button type="button" onClick={toggleFullscreen} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} data-testid="button-container-fullscreen">{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}<ViewerHoverLabel>{isFullscreen ? "Exit full screen" : "Open full workspace"}</ViewerHoverLabel></button>
             {displayControlsOpen && <div className="absolute right-12 top-28 w-64 rounded-2xl border border-white/95 bg-white/[0.98] p-3 text-left text-slate-700 shadow-[0_20px_55px_-22px_rgba(15,23,42,0.32)]" data-testid="floating-display-controls">
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Scene settings</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">View controls</p>
               <div className="mt-2 grid grid-cols-3 gap-2">{[
                 { label: "Grid", active: showGrid, set: setShowGrid, icon: Grid3X3 },
                 { label: "Shell", active: showShell, set: setShowShell, icon: Eye },
@@ -2565,7 +2720,7 @@ export function ContainerViewer3D({
             </div>}
             {helpPanelOpen && <div className="absolute right-12 bottom-16 w-72 rounded-2xl border border-white/95 bg-white/[0.98] p-3 text-left shadow-[0_22px_55px_-24px_rgba(15,23,42,0.38)]" data-testid="container-help-panel">
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Workspace controls</p>
-              <div className="mt-2 space-y-1.5 text-[10px] leading-4 text-slate-600"><p><strong className="text-slate-800">Drag</strong> to rotate the scene. In Adjust mode, drag cargo instead.</p><p><strong className="text-slate-800">Right-drag</strong> to pan in fullscreen. Use the wheel or pinch to zoom.</p><p><strong className="text-slate-800">Cargo moves</strong> stay inside the container and are checked for collisions and stack support.</p></div>
+              <div className="mt-2 space-y-1.5 text-[10px] leading-4 text-slate-600"><p><strong className="text-slate-800">Tap cargo</strong> to select it, then drag it directly. Drag empty grid space to rotate the scene.</p><p><strong className="text-slate-800">Right-drag</strong> to pan in fullscreen. Use the wheel or pinch to zoom.</p><p><strong className="text-slate-800">Cargo moves</strong> stay inside the container and are checked for collisions and stack support.</p></div>
             </div>}
             {warningPanelOpen && (
               <div className="absolute right-12 top-0 w-60 rounded-2xl border border-white/90 bg-white/[0.98] p-3 text-left shadow-[0_20px_55px_-22px_rgba(15,23,42,0.45)]" data-testid="floating-warning-panel">
@@ -2577,30 +2732,45 @@ export function ContainerViewer3D({
           <AnimatePresence initial={false}>
           {mobilePanelOpen && (
             <motion.section
+              drag="y"
+              dragControls={cargoPanelDragControls}
+              dragListener={false}
+              dragConstraints={{ top: 0, bottom: 140 }}
+              dragElastic={{ top: 0, bottom: 0.2 }}
+              dragSnapToOrigin
+              onDragEnd={(_, info) => {
+                if (info.offset.y > 48 || info.velocity.y > 420) setMobilePanelOpen(false);
+              }}
               initial={{ opacity: 0, y: "100%", scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: "100%", scale: 0.98 }}
               transition={{ type: "spring", stiffness: 390, damping: 36, mass: 0.78 }}
               className="absolute bottom-0 left-0 right-0 z-40 flex max-h-[72%] min-h-0 flex-col overflow-hidden rounded-t-2xl border-t border-white/95 bg-white/[0.97] shadow-[0_-18px_52px_-28px_rgba(15,23,42,0.5)] backdrop-blur-xl lg:hidden"
               id="mobile-cargo-panel"
-              aria-label="Cargo and staging docks"
+              aria-label="Cargo staging"
               data-testid="mobile-cargo-panel"
             >
               <div className="border-b border-slate-200 bg-white/90 px-3 pb-3 pt-2.5">
-                <button type="button" onClick={() => setMobilePanelOpen(false)} className="mx-auto mb-1.5 flex h-5 w-24 items-center justify-center" aria-label="Collapse cargo details"><span className="h-1 w-11 rounded-full bg-slate-300" /></button>
+                <button
+                  type="button"
+                  onPointerDown={(event) => cargoPanelDragControls.start(event)}
+                  onClick={() => setMobilePanelOpen(false)}
+                  className="mx-auto mb-1.5 flex h-5 w-24 touch-none items-center justify-center"
+                  aria-label="Close Cargo staging; swipe down or tap"
+                  data-testid="button-close-mobile-cargo-panel"
+                ><span className="h-1 w-11 rounded-full bg-slate-300 transition-colors active:bg-slate-500" /></button>
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-primary"><ListChecks className="h-4 w-4" /></div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[11px] font-bold text-slate-900">Cargo &amp; docks</p>
+                    <p className="truncate text-[11px] font-bold text-slate-900">Cargo staging</p>
                     <p className="mt-0.5 truncate text-[9px] text-slate-500">{container.name} · {placed.length} loaded · {unitSystem === "metric" ? `${(loadSummary.totalWeight * LB_TO_KG).toLocaleString(undefined, { maximumFractionDigits: 0 })} kg` : `${loadSummary.totalWeight.toLocaleString(undefined, { maximumFractionDigits: 0 })} lb`}</p>
                   </div>
-                  <button type="button" onClick={() => setMobilePanelOpen(false)} className="flex h-9 items-center gap-1 rounded-xl bg-slate-100 px-2.5 text-[10px] font-bold text-slate-600 transition hover:bg-slate-200 active:scale-95" aria-label="Hide cargo panel" data-testid="button-close-mobile-cargo-panel"><ChevronDown className="h-4 w-4" />Hide</button>
                 </div>
                 {onPlacedChange ? (
                   <div className="mt-2.5 grid grid-cols-3 rounded-xl bg-slate-100 p-1" role="tablist" aria-label="Cargo workspace zones">
                     {([ ["dock1", "Dock 1"], ["loaded", "Loaded"], ["dock2", "Dock 2"] ] as const).map(([zone, label]) => (
-                      <button key={zone} type="button" role="tab" aria-selected={activeCargoZone === zone} onClick={() => setActiveCargoZone(zone)} className={`flex items-center justify-center gap-1 rounded-lg px-1.5 py-1.5 text-[9px] font-bold transition ${activeCargoZone === zone ? "bg-white text-primary shadow-sm" : "text-slate-500"}`} data-testid={`button-mobile-cargo-zone-${zone}`}>
-                        <span>{label}</span><span className={`min-w-4 rounded-full px-1 text-center text-[8px] ${activeCargoZone === zone ? "bg-blue-50 text-primary" : "bg-slate-200/70 text-slate-500"}`}>{zone === "loaded" ? placed.length : stagedByZone[zone].length}</span>
+                      <button key={zone} type="button" role="tab" aria-selected={activeCargoZone === zone} onClick={() => { setActiveCargoZone(zone); setSelectedSceneDock(zone === "loaded" ? null : zone); }} className={`flex items-center justify-center gap-1 rounded-lg px-1.5 py-1.5 text-[9px] font-bold transition ${activeCargoZone === zone ? "bg-white text-primary shadow-sm" : "text-slate-500"}`} data-testid={`button-mobile-cargo-zone-${zone}`}>
+                        {zone === "loaded" ? <Box className="h-3 w-3" /> : <Package className="h-3 w-3" />}<span>{label}</span><span className={`min-w-4 rounded-full px-1 text-center text-[8px] ${activeCargoZone === zone ? "bg-blue-50 text-primary" : "bg-slate-200/70 text-slate-500"}`}>{zone === "loaded" ? placed.length : stagedByZone[zone].length}</span>
                       </button>
                     ))}
                   </div>
@@ -2650,6 +2820,7 @@ export function ContainerViewer3D({
                 exit={{ opacity: 0, y: 12, scale: 0.96 }}
                 transition={{ duration: 0.18, ease: "easeOut" }}
                 onClick={() => {
+                  setActiveCargoZone(selectedSceneDock ?? "loaded");
                   setMobilePanelOpen(true);
                   setDisplayControlsOpen(false);
                   setWarningPanelOpen(false);
@@ -2657,14 +2828,14 @@ export function ContainerViewer3D({
                   setHelpPanelOpen(false);
                 }}
                 className="absolute bottom-0 right-0 z-30 flex h-11 items-center gap-2 rounded-tl-xl border-l border-t border-white/95 bg-white/[0.92] px-3 text-[11px] font-bold text-slate-700 shadow-sm backdrop-blur-md transition hover:text-primary active:bg-blue-50 lg:hidden"
-                aria-label="Show cargo and staging docks"
+                aria-label={selectedSceneDock ? `Open ${selectedSceneDock === "dock1" ? "Dock 1" : "Dock 2"}` : selectedCargoIndices.size > 0 ? "Open selected cargo details" : "Open Cargo staging"}
                 aria-expanded={false}
                 aria-controls="mobile-cargo-panel"
                 data-testid="button-mobile-cargo-panel"
               >
-                <ListChecks className="h-4 w-4 text-primary" />
-                <span>Cargo</span>
-                <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[9px] text-primary">{placed.length}</span>
+                {selectedSceneDock ? <Package className="h-4 w-4 text-primary" /> : selectedCargoIndices.size > 0 ? <Box className="h-4 w-4 text-primary" /> : <ListChecks className="h-4 w-4 text-primary" />}
+                <span>{selectedSceneDock ? selectedSceneDock === "dock1" ? "Dock 1" : "Dock 2" : selectedCargoIndices.size > 0 ? "Details" : "Cargo"}</span>
+                <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[9px] text-primary">{selectedSceneDock ? stagedByZone[selectedSceneDock].length : selectedCargoIndices.size > 0 ? selectedCargoIndices.size : placed.length}</span>
                 <ChevronUp className="h-3.5 w-3.5 text-slate-400" />
               </motion.button>
             )}
@@ -2730,7 +2901,13 @@ export function ContainerViewer3D({
                   : "border-sky-200 bg-white/90 text-slate-700"
                 : "border-white/80 bg-white/75 text-slate-600"
             }`}>
-              {arrangeMode ? placementMessage : <><span className="sm:hidden">Drag to rotate · Pinch to zoom · Tap cargo to inspect</span><span className="hidden sm:inline">Drag to rotate · Scroll or pinch to zoom</span></>}
+              {selectedSceneDock
+                ? `${selectedSceneDock === "dock1" ? "Dock 1" : "Dock 2"} selected · Drag cargo here or open the dock`
+                : selectedCargoIndices.size > 0
+                  ? `${selectedCargoIndices.size === 1 ? "Cargo selected" : `${selectedCargoIndices.size} units selected`} · Drag to move or open Details`
+                  : arrangeMode
+                    ? placementMessage
+                    : <><span className="sm:hidden">Drag to rotate · Pinch to zoom · Tap cargo to select</span><span className="hidden sm:inline">Drag to rotate · Scroll or pinch to zoom</span></>}
             </div>
           )}
           <div className="pointer-events-none absolute bottom-14 left-3 z-20 hidden max-w-[440px] items-center gap-3 rounded-xl border border-white/85 bg-white/95 px-3 py-2 text-[9px] text-slate-500 shadow-[0_12px_32px_-20px_rgba(15,23,42,0.45)] lg:flex" data-testid="container-interaction-legend">
@@ -2769,11 +2946,11 @@ export function ContainerViewer3D({
                     type="button"
                     role="tab"
                     aria-selected={activeCargoZone === zone}
-                    onClick={() => setActiveCargoZone(zone)}
+                    onClick={() => { setActiveCargoZone(zone); setSelectedSceneDock(zone === "loaded" ? null : zone); }}
                     className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] font-bold transition ${activeCargoZone === zone ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
                     data-testid={`button-cargo-zone-${zone}`}
                   >
-                    <span>{label}</span><span className={`min-w-4 rounded-full px-1 text-center text-[8px] ${activeCargoZone === zone ? "bg-blue-50 text-primary" : "bg-slate-200/70 text-slate-500"}`}>{zone === "loaded" ? placed.length : stagedByZone[zone].length}</span>
+                    {zone === "loaded" ? <Box className="h-3 w-3" /> : <Package className="h-3 w-3" />}<span>{label}</span><span className={`min-w-4 rounded-full px-1 text-center text-[8px] ${activeCargoZone === zone ? "bg-blue-50 text-primary" : "bg-slate-200/70 text-slate-500"}`}>{zone === "loaded" ? placed.length : stagedByZone[zone].length}</span>
                   </button>
                 ))}
               </div>
