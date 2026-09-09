@@ -1537,10 +1537,8 @@ export function ContainerViewer3D({
       addRulerSegments(guidePoints, dimensionGuideMaterial);
     };
 
-    addFloorRuler("length", "start");
-    addFloorRuler("length", "end");
-    addFloorRuler("width", "start");
-    addFloorRuler("width", "end");
+    // The reference view uses envelope dimensions rather than a generic
+    // coordinate ruler. These are added after the range helper below.
 
     const addHeightRuler = (x: number, z: number, outwardX: number) => {
       const baselineX = x + outwardX * rulerOffset;
@@ -1631,6 +1629,74 @@ export function ContainerViewer3D({
       }
       group.add(labelSprite);
     };
+
+    const addReferenceRange = (
+      group: THREE.Group,
+      axis: "length" | "width",
+      start: number,
+      end: number,
+      y: number,
+      fixed: number,
+      edge: number,
+      label: string,
+    ) => {
+      if (end - start >= 0.025) {
+        addMeasurementRange(group, axis, start, end, y, fixed, edge, label);
+        return;
+      }
+      // Keep zero-clearance labels visible, as in the reference application.
+      const zeroLabel = createMeasurementLabel(label, hoverMeasurementLabelScale * 0.78);
+      if (axis === "length") {
+        const outward = fixed < edge ? -1 : 1;
+        zeroLabel.position.set(start, y + 0.02, fixed + outward * Math.max(0.08, cW * 0.07));
+        if (outward < 0) zeroLabel.rotation.z = Math.PI;
+      } else {
+        const outward = fixed < edge ? -1 : 1;
+        zeroLabel.position.set(fixed + outward * Math.max(0.08, cW * 0.07), y + 0.02, start);
+        zeroLabel.rotation.z = outward < 0 ? Math.PI / 2 : -Math.PI / 2;
+      }
+      group.add(zeroLabel);
+    };
+
+    if (placed.length > 0) {
+      const loadMinX = inToM(Math.min(...placed.map((box) => box.x)));
+      const loadMaxX = inToM(Math.max(...placed.map((box) => box.x + box.l)));
+      const loadMinZ = inToM(Math.min(...placed.map((box) => box.z)));
+      const loadMaxZ = inToM(Math.max(...placed.map((box) => box.z + box.w)));
+      const referenceY = rulerY + 0.01;
+      const nearLength = -rulerOffset;
+      const farLength = cW + rulerOffset;
+      const outerNearLength = -rulerOffset * 2.15;
+      const outerFarLength = cW + rulerOffset * 2.15;
+      const nearWidth = -rulerOffset;
+      const farWidth = cL + rulerOffset;
+      const outerNearWidth = -rulerOffset * 2.15;
+      const outerFarWidth = cL + rulerOffset * 2.15;
+
+      // Overall container baselines sit outside the segmented cargo/clearance
+      // baselines. This creates the same two-tier drafting hierarchy as the
+      // supplied reference: full envelope first, exact load position second.
+      addReferenceRange(containerGroup, "length", 0, cL, referenceY, outerNearLength, 0, formatSceneLength(container.lengthIn));
+      addReferenceRange(containerGroup, "length", 0, cL, referenceY, outerFarLength, cW, formatSceneLength(container.lengthIn));
+      addReferenceRange(containerGroup, "width", 0, cW, referenceY, outerNearWidth, 0, formatSceneLength(container.widthIn));
+      addReferenceRange(containerGroup, "width", 0, cW, referenceY, outerFarWidth, cL, formatSceneLength(container.widthIn));
+
+      const addLengthSegments = (fixed: number, edge: number) => {
+        addReferenceRange(containerGroup, "length", 0, loadMinX, referenceY, fixed, edge, formatSceneLength(loadMinX / 0.0254));
+        addReferenceRange(containerGroup, "length", loadMinX, loadMaxX, referenceY, fixed, edge, formatSceneLength((loadMaxX - loadMinX) / 0.0254));
+        addReferenceRange(containerGroup, "length", loadMaxX, cL, referenceY, fixed, edge, formatSceneLength((cL - loadMaxX) / 0.0254));
+      };
+      const addWidthSegments = (fixed: number, edge: number) => {
+        addReferenceRange(containerGroup, "width", 0, loadMinZ, referenceY, fixed, edge, formatSceneLength(loadMinZ / 0.0254));
+        addReferenceRange(containerGroup, "width", loadMinZ, loadMaxZ, referenceY, fixed, edge, formatSceneLength((loadMaxZ - loadMinZ) / 0.0254));
+        addReferenceRange(containerGroup, "width", loadMaxZ, cW, referenceY, fixed, edge, formatSceneLength((cW - loadMaxZ) / 0.0254));
+      };
+      addLengthSegments(nearLength, 0);
+      addLengthSegments(farLength, cW);
+      addWidthSegments(nearWidth, 0);
+      addWidthSegments(farWidth, cL);
+    }
+
     const clearHoverMeasurements = () => {
       while (hoverMeasurementGroup.children.length > 0) {
         const child = hoverMeasurementGroup.children.pop()!;
