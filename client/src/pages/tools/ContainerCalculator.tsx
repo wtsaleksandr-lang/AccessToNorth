@@ -3437,7 +3437,7 @@ export function ContainerViewer3D({
               <div className="mt-1.5 grid grid-cols-3 gap-1.5">{([ ["auto", "Auto"], ["performance", "Fast"], ["quality", "High"] ] as const).map(([quality, label]) => <button key={quality} type="button" onClick={() => setRenderQuality(quality)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${renderQuality === quality ? "border-border-hairline bg-surface-recessed text-text-secondary" : "border-border-hairline bg-white text-text-muted hover:border-border-control"}`} aria-pressed={renderQuality === quality} data-testid={`button-container-quality-${quality}`}>{label}</button>)}</div>
             </div>}
             {sharePanelOpen && <div className="absolute right-12 top-20 w-64 rounded-lg border border-border-hairline bg-white] p-2.5 text-left shadow-md" data-testid="container-share-panel">
-              <div className="flex items-center justify-between gap-2 px-1 pb-2"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">Share loading plan</p><p className="mt-0.5 text-[9px] text-text-deemphasis">Anyone with the link can preview it.</p></div><Share2 className="h-4 w-4 text-brand" /></div>
+              <div className="flex items-center justify-between gap-2 px-1 pb-2"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">Share loading plan</p><p className="mt-0.5 text-[9px] text-text-deemphasis">Anyone with the link can preview it.</p></div><Share2 className="h-4 w-4 text-text-muted" /></div>
               <button type="button" onClick={copyShareLink} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[10px] font-semibold text-text-secondary transition hover:bg-surface-recessed hover:text-brand" data-testid="button-share-copy-link"><Link2 className="h-4 w-4" />{currentShareUrl() ? "Copy share link" : "Create share link"}</button>
               <div className="mt-1 grid grid-cols-4 gap-1 border-t border-border-hairline pt-2">{([ ["email", "Email", Mail], ["facebook", "Facebook", Facebook], ["linkedin", "LinkedIn", Linkedin], ["whatsapp", "WhatsApp", MessageCircle] ] as const).map(([target, label, Icon]) => <button key={target} type="button" onClick={() => openShareTarget(target)} className="group/share flex min-w-0 flex-col items-center gap-1 rounded-lg px-1 py-2 text-[8px] font-semibold text-text-muted transition hover:bg-surface-recessed hover:text-brand" aria-label={`Share via ${label}`} data-testid={`button-share-${target}`}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-recessed transition group-hover/share:bg-white group-hover/share:shadow-sm"><Icon className="h-3.5 w-3.5" /></span>{label}</button>)}</div>
               {!currentShareUrl() && <p className="mt-1 px-1 text-[8px] leading-3 text-text-deemphasis">Create the secure public link first; then reopen Share to send it.</p>}
@@ -4158,7 +4158,7 @@ function ContainerComparisonPanel({
     <Card className="border-border-hairline overflow-hidden" data-testid="container-comparison-panel">
       <button type="button" onClick={() => setOpen(value => !value)} className="flex w-full items-center justify-between gap-4 bg-white px-5 py-4 text-left hover:bg-surface-recessed" aria-expanded={open} data-testid="button-toggle-container-comparison">
         <div>
-          <h2 className="text-base font-bold text-text-primary flex items-center gap-2"><Table className="w-4 h-4 text-brand" />Why this container?</h2>
+          <h2 className="text-base font-bold text-text-primary flex items-center gap-2"><Table className="w-4 h-4 text-text-muted" />Why this container?</h2>
           <p className="text-xs text-text-muted mt-1">Calculated comparison of all standard sizes · closed by default</p>
         </div>
         <ChevronDown className={`h-4 w-4 shrink-0 text-text-deemphasis transition-transform ${open ? "rotate-180" : ""}`} />
@@ -5217,7 +5217,7 @@ export default function ContainerCalculator() {
             <div className="relative w-16 h-16">
               <div className="absolute inset-0 rounded-full border-4 border-border-hairline" />
               <div className="absolute inset-0 rounded-full border-4 border-t-primary animate-spin" />
-              <Package className="absolute inset-0 m-auto w-7 h-7 text-brand" />
+              <Package className="absolute inset-0 m-auto w-7 h-7 text-text-muted" />
             </div>
             <div className="text-center">
               <p className="font-semibold text-text-primary text-sm">Calculating optimal layout...</p>
@@ -5301,7 +5301,7 @@ export default function ContainerCalculator() {
               </p>
             </div>
             <div className="mt-3 flex shrink-0 items-center gap-1.5 sm:mt-0" aria-label="Project controls">
-              <Button type="button" size="sm" variant="outline" className="h-9 gap-1.5 bg-white px-2.5 text-xs" onClick={openProjectLibrary} data-testid="button-open-project-library"><FolderOpen className="h-3.5 w-3.5 text-brand" />Plans{savedProjects.length ? ` (${savedProjects.length})` : ""}</Button>
+              <Button type="button" size="sm" variant="outline" className="h-9 gap-1.5 bg-white px-2.5 text-xs" onClick={openProjectLibrary} data-testid="button-open-project-library"><FolderOpen className="h-3.5 w-3.5 text-text-muted" />Plans{savedProjects.length ? ` (${savedProjects.length})` : ""}</Button>
               <Button type="button" size="sm" variant="outline" className="h-9 gap-1.5 bg-white px-2.5 text-xs" onClick={saveCurrentProject} data-testid="button-quick-save-project"><Save className="h-3.5 w-3.5 text-[#15803D]" />{currentProjectId ? "Save changes" : "Save"}</Button>
               <span className="hidden items-center gap-1.5 px-1 text-[10px] text-text-deemphasis lg:inline-flex"><Clock3 className="h-3.5 w-3.5" />{lastSavedAt ? `Autosaved ${new Date(lastSavedAt).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}` : "Autosave ready"}</span>
             </div>
@@ -5313,16 +5313,14 @@ export default function ContainerCalculator() {
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
-                      <Package className="w-4 h-4 text-brand" />
+                      <Package className="w-4 h-4 text-text-muted" />
                       Container Type
                     </h2>
-                    <div className="flex rounded-lg border border-border-hairline overflow-hidden">
+                    <div className="flex gap-0.5 rounded-md bg-surface-canvas p-0.5">
                       <button
                         onClick={() => handleUnitSwitch("imperial")}
-                        className={`px-2.5 py-1 text-xs font-medium transition-colors ${
-                          unitSystem === "imperial"
-                            ? "bg-brand text-white"
-                            : "bg-white text-text-muted hover:bg-surface-recessed"
+                        className={`rounded-sm px-2.5 py-1 text-xs font-semibold transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] ${
+                          unitSystem === "imperial" ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"
                         }`}
                         data-testid="button-unit-imperial"
                       >
@@ -5330,10 +5328,8 @@ export default function ContainerCalculator() {
                       </button>
                       <button
                         onClick={() => handleUnitSwitch("metric")}
-                        className={`px-2.5 py-1 text-xs font-medium transition-colors ${
-                          unitSystem === "metric"
-                            ? "bg-brand text-white"
-                            : "bg-white text-text-muted hover:bg-surface-recessed"
+                        className={`rounded-sm px-2.5 py-1 text-xs font-semibold transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] ${
+                          unitSystem === "metric" ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"
                         }`}
                         data-testid="button-unit-metric"
                       >
@@ -5355,7 +5351,7 @@ export default function ContainerCalculator() {
                       data-testid="button-container-recommend"
                     >
                       <span className="font-semibold text-text-primary flex items-center gap-1.5 text-xs">
-                        <Sparkles className="w-3.5 h-3.5 text-brand" />
+                        <Sparkles className="w-3.5 h-3.5 text-text-muted" />
                         Recommend the best container
                       </span>
                       <span className="text-[10px] text-text-muted block mt-1">
@@ -5421,7 +5417,7 @@ export default function ContainerCalculator() {
                       data-testid="button-container-custom"
                     >
                       <span className="font-semibold text-text-primary flex items-center gap-1.5 text-xs">
-                        <Settings2 className="w-3.5 h-3.5 text-brand" />
+                        <Settings2 className="w-3.5 h-3.5 text-text-muted" />
                         Custom Dimensions
                       </span>
                     </button>
@@ -5444,7 +5440,7 @@ export default function ContainerCalculator() {
                               }));
                               invalidateCalculatedPlan();
                             }}
-                            className="h-7 text-xs px-1.5"
+                            className="h-7 text-xs px-1.5 text-right tabular-nums"
                             data-testid="input-custom-length"
                           />
                         </div>
@@ -5462,7 +5458,7 @@ export default function ContainerCalculator() {
                               }));
                               invalidateCalculatedPlan();
                             }}
-                            className="h-7 text-xs px-1.5"
+                            className="h-7 text-xs px-1.5 text-right tabular-nums"
                             data-testid="input-custom-width"
                           />
                         </div>
@@ -5480,7 +5476,7 @@ export default function ContainerCalculator() {
                               }));
                               invalidateCalculatedPlan();
                             }}
-                            className="h-7 text-xs px-1.5"
+                            className="h-7 text-xs px-1.5 text-right tabular-nums"
                             data-testid="input-custom-height"
                           />
                         </div>
@@ -5498,7 +5494,7 @@ export default function ContainerCalculator() {
                               }));
                               invalidateCalculatedPlan();
                             }}
-                            className="h-7 text-xs px-1.5"
+                            className="h-7 text-xs px-1.5 text-right tabular-nums"
                             data-testid="input-custom-payload"
                           />
                         </div>
@@ -5559,17 +5555,15 @@ export default function ContainerCalculator() {
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
-                      <Box className="w-4 h-4 text-brand" />
+                      <Box className="w-4 h-4 text-text-muted" />
                       Packing List
                     </h2>
                     <div className="flex items-center gap-2 ml-auto">
-                      <div className="flex rounded-lg border border-border-hairline overflow-hidden">
+                      <div className="flex gap-0.5 rounded-md bg-surface-canvas p-0.5">
                         <button
                           onClick={() => handleUnitSwitch("imperial")}
-                          className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                            unitSystem === "imperial"
-                              ? "bg-brand text-white"
-                              : "bg-white text-text-muted hover:bg-surface-recessed"
+                          className={`rounded-sm px-2.5 py-1 text-[11px] font-semibold transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] ${
+                            unitSystem === "imperial" ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"
                           }`}
                           data-testid="button-unit-imperial-table"
                         >
@@ -5577,10 +5571,8 @@ export default function ContainerCalculator() {
                         </button>
                         <button
                           onClick={() => handleUnitSwitch("metric")}
-                          className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                            unitSystem === "metric"
-                              ? "bg-brand text-white"
-                              : "bg-white text-text-muted hover:bg-surface-recessed"
+                          className={`rounded-sm px-2.5 py-1 text-[11px] font-semibold transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] ${
+                            unitSystem === "metric" ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"
                           }`}
                           data-testid="button-unit-metric-table"
                         >
@@ -5625,7 +5617,7 @@ export default function ContainerCalculator() {
                       data-testid="bulk-actions-bar"
                     >
                       <div className="flex items-center gap-2 mb-2">
-                        <Settings2 className="w-3.5 h-3.5 text-brand" />
+                        <Settings2 className="w-3.5 h-3.5 text-text-muted" />
                         <span className="text-xs font-semibold text-brand uppercase tracking-wide">
                           Bulk Actions ({selectedIds.size} items)
                         </span>
@@ -5980,7 +5972,7 @@ export default function ContainerCalculator() {
                                                 const value = parseFloat(e.target.value) || 0;
                                                 updateItem(visualPopup.itemId, "customPalletL", isMetric ? value * CM_TO_IN : value);
                                               }}
-                                              className="w-full h-7 px-2 text-xs rounded border border-[#FDE68A] focus:outline focus:outline-2 focus:outline-brand focus:!outline-offset-[-2px] outline-none"
+                                              className="w-full h-7 px-2 text-xs rounded border border-[#FDE68A] focus:outline focus:outline-2 focus:outline-brand focus:!outline-offset-[-2px] outline-none text-right tabular-nums"
                                               data-testid="popup-pallet-custom-l"
                                               onKeyDown={(e) => e.stopPropagation()}
                                             />
@@ -5995,7 +5987,7 @@ export default function ContainerCalculator() {
                                                 const value = parseFloat(e.target.value) || 0;
                                                 updateItem(visualPopup.itemId, "customPalletW", isMetric ? value * CM_TO_IN : value);
                                               }}
-                                              className="w-full h-7 px-2 text-xs rounded border border-[#FDE68A] focus:outline focus:outline-2 focus:outline-brand focus:!outline-offset-[-2px] outline-none"
+                                              className="w-full h-7 px-2 text-xs rounded border border-[#FDE68A] focus:outline focus:outline-2 focus:outline-brand focus:!outline-offset-[-2px] outline-none text-right tabular-nums"
                                               data-testid="popup-pallet-custom-w"
                                             />
                                           </div>
@@ -6009,7 +6001,7 @@ export default function ContainerCalculator() {
                                                 const value = parseFloat(e.target.value) || 0;
                                                 updateItem(visualPopup.itemId, "customPalletH", isMetric ? value * CM_TO_IN : value);
                                               }}
-                                              className="w-full h-7 px-2 text-xs rounded border border-[#FDE68A] focus:outline focus:outline-2 focus:outline-brand focus:!outline-offset-[-2px] outline-none"
+                                              className="w-full h-7 px-2 text-xs rounded border border-[#FDE68A] focus:outline focus:outline-2 focus:outline-brand focus:!outline-offset-[-2px] outline-none text-right tabular-nums"
                                               data-testid="popup-pallet-custom-h"
                                             />
                                           </div>
@@ -6120,7 +6112,7 @@ export default function ContainerCalculator() {
                       <div className="bg-white rounded-lg shadow-md border border-border-hairline p-5 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()} data-testid="bulk-modal">
                         <div className="flex items-center justify-between mb-5">
                           <h3 className="font-bold text-sm text-text-primary flex items-center gap-2">
-                            <Settings2 className="w-4 h-4 text-brand" />
+                            <Settings2 className="w-4 h-4 text-text-muted" />
                             Bulk Cargo Settings
                           </h3>
                           <button onClick={() => setShowBulkModal(false)} className="text-text-deemphasis hover:text-text-muted transition-colors p-1" data-testid="bulk-modal-close" aria-label="Close">
@@ -6400,7 +6392,7 @@ export default function ContainerCalculator() {
                                             const v = parseFloat(e.target.value) || 0;
                                             setTempBulk(p => ({ ...p, customPalletL: isMetric ? v / IN_TO_CM : v }));
                                           }}
-                                          className="w-full h-7 px-2 text-xs rounded border border-[#FDE68A] focus:outline focus:outline-2 focus:outline-brand focus:!outline-offset-[-2px] outline-none"
+                                          className="w-full h-7 px-2 text-xs rounded border border-[#FDE68A] focus:outline focus:outline-2 focus:outline-brand focus:!outline-offset-[-2px] outline-none text-right tabular-nums"
                                           data-testid="bulk-modal-custom-pallet-l"
                                           onKeyDown={(e) => e.stopPropagation()}
                                         />
@@ -6414,7 +6406,7 @@ export default function ContainerCalculator() {
                                             const v = parseFloat(e.target.value) || 0;
                                             setTempBulk(p => ({ ...p, customPalletW: isMetric ? v / IN_TO_CM : v }));
                                           }}
-                                          className="w-full h-7 px-2 text-xs rounded border border-[#FDE68A] focus:outline focus:outline-2 focus:outline-brand focus:!outline-offset-[-2px] outline-none"
+                                          className="w-full h-7 px-2 text-xs rounded border border-[#FDE68A] focus:outline focus:outline-2 focus:outline-brand focus:!outline-offset-[-2px] outline-none text-right tabular-nums"
                                           data-testid="bulk-modal-custom-pallet-w"
                                           onKeyDown={(e) => e.stopPropagation()}
                                         />
@@ -6428,7 +6420,7 @@ export default function ContainerCalculator() {
                                             const v = parseFloat(e.target.value) || 0;
                                             setTempBulk(p => ({ ...p, customPalletH: isMetric ? v / IN_TO_CM : v }));
                                           }}
-                                          className="w-full h-7 px-2 text-xs rounded border border-[#FDE68A] focus:outline focus:outline-2 focus:outline-brand focus:!outline-offset-[-2px] outline-none"
+                                          className="w-full h-7 px-2 text-xs rounded border border-[#FDE68A] focus:outline focus:outline-2 focus:outline-brand focus:!outline-offset-[-2px] outline-none text-right tabular-nums"
                                           data-testid="bulk-modal-custom-pallet-h"
                                           onKeyDown={(e) => e.stopPropagation()}
                                         />
@@ -6538,7 +6530,7 @@ export default function ContainerCalculator() {
                         <div className="p-6">
                           <div className="flex items-center justify-between mb-5">
                             <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
-                              <FileUp className="w-5 h-5 text-brand" />
+                              <FileUp className="w-5 h-5 text-text-muted" />
                               Import Cargo Data
                             </h3>
                             <button
@@ -6702,7 +6694,7 @@ export default function ContainerCalculator() {
                           {importStep === "mapping" && (
                             <div className="space-y-4">
                               <div className="flex items-center gap-2 mb-1">
-                                <Layers className="w-4 h-4 text-brand" />
+                                <Layers className="w-4 h-4 text-text-muted" />
                                 <h4 className="text-sm font-semibold text-text-secondary">Map Your Columns</h4>
                               </div>
                               <p className="text-xs text-text-muted">
@@ -6790,13 +6782,11 @@ export default function ContainerCalculator() {
                                 </p>
                                 <div className="flex items-center gap-2">
                                   <span className="text-[10px] text-text-muted uppercase tracking-wide font-medium">Units:</span>
-                                  <div className="flex rounded-lg border border-border-hairline overflow-hidden">
+                                  <div className="flex gap-0.5 rounded-md bg-surface-canvas p-0.5">
                                     <button
                                       onClick={() => setImportUnits("imperial")}
-                                      className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                                        importUnits === "imperial"
-                                          ? "bg-brand text-white"
-                                          : "bg-white text-text-muted hover:bg-surface-recessed"
+                                      className={`rounded-sm px-2.5 py-1 text-[11px] font-semibold transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] ${
+                                        importUnits === "imperial" ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"
                                       }`}
                                       data-testid="import-unit-imperial"
                                     >
@@ -6804,10 +6794,8 @@ export default function ContainerCalculator() {
                                     </button>
                                     <button
                                       onClick={() => setImportUnits("metric")}
-                                      className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                                        importUnits === "metric"
-                                          ? "bg-brand text-white"
-                                          : "bg-white text-text-muted hover:bg-surface-recessed"
+                                      className={`rounded-sm px-2.5 py-1 text-[11px] font-semibold transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] ${
+                                        importUnits === "metric" ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"
                                       }`}
                                       data-testid="import-unit-metric"
                                     >
@@ -6840,7 +6828,7 @@ export default function ContainerCalculator() {
                                           data-testid="import-toggle-all"
                                         >
                                           {importItems.every((i) => i.include) ? (
-                                            <CheckSquare className="w-3.5 h-3.5 text-brand" />
+                                            <CheckSquare className="w-3.5 h-3.5 text-text-muted" />
                                           ) : (
                                             <Square className="w-3.5 h-3.5 text-text-deemphasis" />
                                           )}
@@ -6873,7 +6861,7 @@ export default function ContainerCalculator() {
                                             data-testid={`import-check-${idx}`}
                                           >
                                             {item.include ? (
-                                              <CheckSquare className="w-3.5 h-3.5 text-brand" />
+                                              <CheckSquare className="w-3.5 h-3.5 text-text-muted" />
                                             ) : (
                                               <Square className="w-3.5 h-3.5 text-text-deemphasis" />
                                             )}
@@ -6903,7 +6891,7 @@ export default function ContainerCalculator() {
                                                 )
                                               )
                                             }
-                                            className="w-14 text-right bg-transparent border-0 outline-none text-xs text-text-secondary focus:bg-white rounded px-1 py-0.5"
+                                            className="w-14 bg-transparent border-0 outline-none text-xs text-text-secondary focus:bg-white rounded px-1 py-0.5 text-right tabular-nums"
                                             data-testid={`import-length-${idx}`}
                                           />
                                         </td>
@@ -6918,7 +6906,7 @@ export default function ContainerCalculator() {
                                                 )
                                               )
                                             }
-                                            className="w-14 text-right bg-transparent border-0 outline-none text-xs text-text-secondary focus:bg-white rounded px-1 py-0.5"
+                                            className="w-14 bg-transparent border-0 outline-none text-xs text-text-secondary focus:bg-white rounded px-1 py-0.5 text-right tabular-nums"
                                             data-testid={`import-width-${idx}`}
                                           />
                                         </td>
@@ -6933,7 +6921,7 @@ export default function ContainerCalculator() {
                                                 )
                                               )
                                             }
-                                            className="w-14 text-right bg-transparent border-0 outline-none text-xs text-text-secondary focus:bg-white rounded px-1 py-0.5"
+                                            className="w-14 bg-transparent border-0 outline-none text-xs text-text-secondary focus:bg-white rounded px-1 py-0.5 text-right tabular-nums"
                                             data-testid={`import-height-${idx}`}
                                           />
                                         </td>
@@ -6948,7 +6936,7 @@ export default function ContainerCalculator() {
                                                 )
                                               )
                                             }
-                                            className="w-14 text-right bg-transparent border-0 outline-none text-xs text-text-secondary focus:bg-white rounded px-1 py-0.5"
+                                            className="w-14 bg-transparent border-0 outline-none text-xs text-text-secondary focus:bg-white rounded px-1 py-0.5 text-right tabular-nums"
                                             data-testid={`import-weight-${idx}`}
                                           />
                                         </td>
@@ -6963,7 +6951,7 @@ export default function ContainerCalculator() {
                                                 )
                                               )
                                             }
-                                            className="w-12 text-right bg-transparent border-0 outline-none text-xs text-text-secondary focus:bg-white rounded px-1 py-0.5"
+                                            className="w-12 bg-transparent border-0 outline-none text-xs text-text-secondary focus:bg-white rounded px-1 py-0.5 text-right tabular-nums"
                                             data-testid={`import-qty-${idx}`}
                                           />
                                         </td>
@@ -7026,7 +7014,7 @@ export default function ContainerCalculator() {
                         >
                           <div className="flex items-center gap-1.5 mb-2">
                             <button onClick={() => toggleSelect(item.id)} className="shrink-0 text-text-deemphasis hover:text-brand" data-testid={`checkbox-cargo-${idx}`}>
-                              {selectedIds.has(item.id) ? <CheckSquare className="w-3.5 h-3.5 text-brand" /> : <Square className="w-3.5 h-3.5" />}
+                              {selectedIds.has(item.id) ? <CheckSquare className="w-3.5 h-3.5 text-text-muted" /> : <Square className="w-3.5 h-3.5" />}
                             </button>
                             <CargoColorPicker
                               value={item.color}
@@ -7052,23 +7040,23 @@ export default function ContainerCalculator() {
                           <div className="grid grid-cols-6 gap-1 mb-1.5">
                             <div className="text-center">
                               <span className="text-[8px] text-text-deemphasis uppercase block">L</span>
-                              <Input type="number" min={0} step="0.1" value={toDisplay(item.length)} onChange={(e) => updateItem(item.id, "length", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-cargo-length-${idx}`} />
+                              <Input type="number" min={0} step="0.1" value={toDisplay(item.length)} onChange={(e) => updateItem(item.id, "length", fromDisplay(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-cargo-length-${idx}`} />
                             </div>
                             <div className="text-center">
                               <span className="text-[8px] text-text-deemphasis uppercase block">W</span>
-                              <Input type="number" min={0} step="0.1" value={toDisplay(item.width)} onChange={(e) => updateItem(item.id, "width", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-cargo-width-${idx}`} />
+                              <Input type="number" min={0} step="0.1" value={toDisplay(item.width)} onChange={(e) => updateItem(item.id, "width", fromDisplay(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-cargo-width-${idx}`} />
                             </div>
                             <div className="text-center">
                               <span className="text-[8px] text-text-deemphasis uppercase block">H</span>
-                              <Input type="number" min={0} step="0.1" value={toDisplay(item.height)} onChange={(e) => updateItem(item.id, "height", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-cargo-height-${idx}`} />
+                              <Input type="number" min={0} step="0.1" value={toDisplay(item.height)} onChange={(e) => updateItem(item.id, "height", fromDisplay(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-cargo-height-${idx}`} />
                             </div>
                             <div className="text-center">
                               <span className="text-[8px] text-text-deemphasis uppercase block">Qty</span>
-                              <Input type="number" min={1} value={item.quantity || ""} onChange={(e) => updateItem(item.id, "quantity", parseInt(e.target.value) || 0)} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-cargo-qty-${idx}`} />
+                              <Input type="number" min={1} value={item.quantity || ""} onChange={(e) => updateItem(item.id, "quantity", parseInt(e.target.value) || 0)} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-cargo-qty-${idx}`} />
                             </div>
                             <div className="text-center">
                               <span className="text-[8px] text-text-deemphasis uppercase block">Total wt</span>
-                              <Input type="number" min={0} step="0.1" value={toDisplayWeight(item.weight)} onChange={(e) => updateItem(item.id, "weight", fromDisplayWeight(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-cargo-weight-${idx}`} />
+                              <Input type="number" min={0} step="0.1" value={toDisplayWeight(item.weight)} onChange={(e) => updateItem(item.id, "weight", fromDisplayWeight(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-cargo-weight-${idx}`} />
                             </div>
                             <div className="text-center">
                               <span className="text-[8px] text-text-deemphasis uppercase block">Per pc</span>
@@ -7151,9 +7139,9 @@ export default function ContainerCalculator() {
                               title={selectedIds.size === cargoItems.length ? "Deselect All" : "Select All"}
                             >
                               {selectedIds.size === cargoItems.length && cargoItems.length > 0 ? (
-                                <CheckSquare className="w-3.5 h-3.5 text-brand" />
+                                <CheckSquare className="w-3.5 h-3.5 text-text-muted" />
                               ) : selectedIds.size > 0 ? (
-                                <Minus className="w-3.5 h-3.5 text-brand" />
+                                <Minus className="w-3.5 h-3.5 text-text-muted" />
                               ) : (
                                 <Square className="w-3.5 h-3.5" />
                               )}
@@ -7212,7 +7200,7 @@ export default function ContainerCalculator() {
                                     data-testid={`checkbox-cargo-${idx}`}
                                   >
                                     {selectedIds.has(item.id) ? (
-                                      <CheckSquare className="w-3.5 h-3.5 text-brand" />
+                                      <CheckSquare className="w-3.5 h-3.5 text-text-muted" />
                                     ) : (
                                       <Square className="w-3.5 h-3.5" />
                                     )}
@@ -7239,7 +7227,7 @@ export default function ContainerCalculator() {
                                   type="number" min={0} step="0.1"
                                   value={toDisplay(item.length)}
                                   onChange={(e) => updateItem(item.id, "length", fromDisplay(e.target.value))}
-                                  className="h-7 text-xs text-center px-0.5"
+                                  className="h-7 text-xs px-0.5 text-right tabular-nums"
                                   data-testid={`input-cargo-length-${idx}`}
                                 />
                               </td>
@@ -7248,7 +7236,7 @@ export default function ContainerCalculator() {
                                   type="number" min={0} step="0.1"
                                   value={toDisplay(item.width)}
                                   onChange={(e) => updateItem(item.id, "width", fromDisplay(e.target.value))}
-                                  className="h-7 text-xs text-center px-0.5"
+                                  className="h-7 text-xs px-0.5 text-right tabular-nums"
                                   data-testid={`input-cargo-width-${idx}`}
                                 />
                               </td>
@@ -7257,7 +7245,7 @@ export default function ContainerCalculator() {
                                   type="number" min={0} step="0.1"
                                   value={toDisplay(item.height)}
                                   onChange={(e) => updateItem(item.id, "height", fromDisplay(e.target.value))}
-                                  className="h-7 text-xs text-center px-0.5"
+                                  className="h-7 text-xs px-0.5 text-right tabular-nums"
                                   data-testid={`input-cargo-height-${idx}`}
                                 />
                               </td>
@@ -7266,7 +7254,7 @@ export default function ContainerCalculator() {
                                   type="number" min={1}
                                   value={item.quantity || ""}
                                   onChange={(e) => updateItem(item.id, "quantity", parseInt(e.target.value) || 0)}
-                                  className="h-7 text-xs text-center px-0.5"
+                                  className="h-7 text-xs px-0.5 text-right tabular-nums"
                                   data-testid={`input-cargo-qty-${idx}`}
                                 />
                               </td>
@@ -7275,7 +7263,7 @@ export default function ContainerCalculator() {
                                   type="number" min={0} step="0.1"
                                   value={toDisplayWeight(item.weight)}
                                   onChange={(e) => updateItem(item.id, "weight", fromDisplayWeight(e.target.value))}
-                                  className="h-7 text-xs text-center px-0.5"
+                                  className="h-7 text-xs px-0.5 text-right tabular-nums"
                                   data-testid={`input-cargo-weight-${idx}`}
                                 />
                               </td>
@@ -7534,7 +7522,7 @@ export default function ContainerCalculator() {
                           disabled={creatingShareLink}
                           data-testid="button-share-loading-plan"
                         >
-                          {creatingShareLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4 text-brand" />}
+                          {creatingShareLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4 text-text-muted" />}
                           Share
                         </Button>
                         <Button
@@ -7723,7 +7711,7 @@ export default function ContainerCalculator() {
                         <Card className="border-border-hairline">
                           <CardContent className="p-5">
                             <h2 className="text-base font-bold text-text-primary mb-4 flex items-center gap-2">
-                              <BarChart3 className="w-4 h-4 text-brand" />
+                              <BarChart3 className="w-4 h-4 text-text-muted" />
                               Loading Summary
                               {multiResult.totalContainers > 1 && (
                                 <span className="text-xs font-normal text-text-muted ml-1">
@@ -7832,7 +7820,7 @@ export default function ContainerCalculator() {
                         <Card className="border-border-hairline">
                           <CardContent className="p-5">
                             <h2 className="text-base font-bold text-text-primary mb-4 flex items-center gap-2">
-                              <Info className="w-4 h-4 text-brand" />
+                              <Info className="w-4 h-4 text-text-muted" />
                               Loading Details
                               {multiResult.totalContainers > 1 && (
                                 <span className="text-xs font-normal text-text-muted ml-1">
@@ -8100,7 +8088,7 @@ export default function ContainerCalculator() {
                     "Volume, floor-area, and weight utilization for the proposed plan",
                   ].map((item) => (
                     <li key={item} className="flex gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-brand mt-0.5 shrink-0" aria-hidden="true" />
+                      <CheckCircle2 className="w-4 h-4 text-text-muted mt-0.5 shrink-0" aria-hidden="true" />
                       <span>{item}</span>
                     </li>
                   ))}

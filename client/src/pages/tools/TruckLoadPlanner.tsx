@@ -1072,7 +1072,7 @@ export default function TruckLoadPlanner() {
           <Breadcrumbs items={[{ label: "Tools", href: "/tools" }, { label: "Truck Load Planner" }]} />
 
           <div className="text-center max-w-3xl mx-auto mb-10">
-            <Badge className="mb-3 bg-surface-recessed text-brand border-0 px-3 py-1">Free Tool</Badge>
+            <Badge className="mb-3 bg-surface-recessed text-text-muted border-0 px-3 py-1">Free Tool</Badge>
             <h1 className="text-3xl md:text-4xl font-extrabold font-display mb-4 text-text-primary" data-testid="text-tool-title">
               Truck Load Planner
             </h1>
@@ -1084,11 +1084,11 @@ export default function TruckLoadPlanner() {
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
               <div className="max-w-5xl mx-auto mb-5">
-                <div className="flex rounded-lg border border-border-hairline overflow-hidden bg-white" data-testid="mode-tabs">
+                <div className="flex gap-1 rounded-lg bg-surface-canvas p-1" data-testid="mode-tabs">
                   <button
                     onClick={() => { setMode("pro"); setShowResults(false); setResults(null); }}
-                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors ${
-                      mode === "pro" ? "bg-brand text-white" : "bg-white text-text-muted hover:bg-surface-recessed"
+                    className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-md px-4 text-[15px] font-semibold transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] ${
+                      mode === "pro" ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"
                     }`}
                     data-testid="tab-mode-pro"
                   >
@@ -1097,8 +1097,8 @@ export default function TruckLoadPlanner() {
                   </button>
                   <button
                     onClick={() => { setMode("beginner"); setShowResults(false); setResults(null); }}
-                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors ${
-                      mode === "beginner" ? "bg-brand text-white" : "bg-white text-text-muted hover:bg-surface-recessed"
+                    className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-md px-4 text-[15px] font-semibold transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] ${
+                      mode === "beginner" ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"
                     }`}
                     data-testid="tab-mode-beginner"
                   >
@@ -1114,7 +1114,7 @@ export default function TruckLoadPlanner() {
                     <Card className="border-border-hairline">
                       <CardContent className="p-5">
                         <h2 className="text-base font-bold text-text-primary mb-4 flex items-center gap-2">
-                          <Truck className="w-4 h-4 text-brand" />
+                          <Truck className="w-4 h-4 text-text-muted" />
                           Trailer Selection
                         </h2>
 
@@ -1166,20 +1166,20 @@ export default function TruckLoadPlanner() {
                             <div className="grid grid-cols-3 gap-2">
                               <div>
                                 <Label className="text-[10px] text-text-muted">L ({dimUnit})</Label>
-                                <Input type="number" min={1} value={toDisplay(customTrailer.lengthIn)} onChange={e => setCustomTrailer(p => ({ ...p, lengthIn: fromDisplay(e.target.value) }))} className="h-7 text-xs px-1.5" data-testid="input-custom-trailer-l" />
+                                <Input type="number" min={1} value={toDisplay(customTrailer.lengthIn)} onChange={e => setCustomTrailer(p => ({ ...p, lengthIn: fromDisplay(e.target.value) }))} className="h-7 text-xs px-1.5 text-right tabular-nums" data-testid="input-custom-trailer-l" />
                               </div>
                               <div>
                                 <Label className="text-[10px] text-text-muted">W ({dimUnit})</Label>
-                                <Input type="number" min={1} value={toDisplay(customTrailer.widthIn)} onChange={e => setCustomTrailer(p => ({ ...p, widthIn: fromDisplay(e.target.value) }))} className="h-7 text-xs px-1.5" data-testid="input-custom-trailer-w" />
+                                <Input type="number" min={1} value={toDisplay(customTrailer.widthIn)} onChange={e => setCustomTrailer(p => ({ ...p, widthIn: fromDisplay(e.target.value) }))} className="h-7 text-xs px-1.5 text-right tabular-nums" data-testid="input-custom-trailer-w" />
                               </div>
                               <div>
                                 <Label className="text-[10px] text-text-muted">H ({dimUnit})</Label>
-                                <Input type="number" min={1} value={toDisplay(customTrailer.heightIn)} onChange={e => setCustomTrailer(p => ({ ...p, heightIn: fromDisplay(e.target.value) }))} className="h-7 text-xs px-1.5" data-testid="input-custom-trailer-h" />
+                                <Input type="number" min={1} value={toDisplay(customTrailer.heightIn)} onChange={e => setCustomTrailer(p => ({ ...p, heightIn: fromDisplay(e.target.value) }))} className="h-7 text-xs px-1.5 text-right tabular-nums" data-testid="input-custom-trailer-h" />
                               </div>
                             </div>
                             <div>
                               <Label className="text-[10px] text-text-muted">Max Payload ({weightUnit})</Label>
-                              <Input type="number" min={1} value={toDisplayWeight(customTrailer.maxPayloadLbs)} onChange={e => setCustomTrailer(p => ({ ...p, maxPayloadLbs: fromDisplayWeight(e.target.value) }))} className="h-7 text-xs px-1.5" data-testid="input-custom-trailer-payload" />
+                              <Input type="number" min={1} value={toDisplayWeight(customTrailer.maxPayloadLbs)} onChange={e => setCustomTrailer(p => ({ ...p, maxPayloadLbs: fromDisplayWeight(e.target.value) }))} className="h-7 text-xs px-1.5 text-right tabular-nums" data-testid="input-custom-trailer-payload" />
                             </div>
                           </div>
                         )}
@@ -1216,13 +1216,13 @@ export default function TruckLoadPlanner() {
                     <CardContent className="p-5">
                       <div className="flex items-center justify-between mb-4">
                         <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
-                          <Package className="w-4 h-4 text-brand" />
+                          <Package className="w-4 h-4 text-text-muted" />
                           Cargo Input
                         </h2>
                         <div className="flex items-center gap-2">
-                          <div className="flex rounded-lg border border-border-hairline overflow-hidden">
-                            <button onClick={() => setUnitSystem("imperial")} className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${unitSystem === "imperial" ? "bg-brand text-white" : "bg-white text-text-muted hover:bg-surface-recessed"}`} data-testid="button-unit-imperial">in/lbs</button>
-                            <button onClick={() => setUnitSystem("metric")} className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${unitSystem === "metric" ? "bg-brand text-white" : "bg-white text-text-muted hover:bg-surface-recessed"}`} data-testid="button-unit-metric">cm/kg</button>
+                          <div className="flex gap-0.5 rounded-md bg-surface-canvas p-0.5">
+                            <button onClick={() => setUnitSystem("imperial")} className={`rounded-sm px-2.5 py-1 text-[11px] font-semibold transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] ${unitSystem === "imperial" ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"}`} data-testid="button-unit-imperial">in/lbs</button>
+                            <button onClick={() => setUnitSystem("metric")} className={`rounded-sm px-2.5 py-1 text-[11px] font-semibold transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] ${unitSystem === "metric" ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"}`} data-testid="button-unit-metric">cm/kg</button>
                           </div>
                           {cargoMode !== "bulk" && (
                             <>
@@ -1274,23 +1274,23 @@ export default function TruckLoadPlanner() {
                               <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-2">
                                 <div>
                                   <Label className="text-[9px] text-text-deemphasis uppercase">L ({dimUnit})</Label>
-                                  <Input type="number" min={0} step="0.1" value={toDisplay(item.lengthIn)} onChange={e => updateCarton(item.id, "lengthIn", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-carton-l-${idx}`} />
+                                  <Input type="number" min={0} step="0.1" value={toDisplay(item.lengthIn)} onChange={e => updateCarton(item.id, "lengthIn", fromDisplay(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-carton-l-${idx}`} />
                                 </div>
                                 <div>
                                   <Label className="text-[9px] text-text-deemphasis uppercase">W ({dimUnit})</Label>
-                                  <Input type="number" min={0} step="0.1" value={toDisplay(item.widthIn)} onChange={e => updateCarton(item.id, "widthIn", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-carton-w-${idx}`} />
+                                  <Input type="number" min={0} step="0.1" value={toDisplay(item.widthIn)} onChange={e => updateCarton(item.id, "widthIn", fromDisplay(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-carton-w-${idx}`} />
                                 </div>
                                 <div>
                                   <Label className="text-[9px] text-text-deemphasis uppercase">H ({dimUnit})</Label>
-                                  <Input type="number" min={0} step="0.1" value={toDisplay(item.heightIn)} onChange={e => updateCarton(item.id, "heightIn", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-carton-h-${idx}`} />
+                                  <Input type="number" min={0} step="0.1" value={toDisplay(item.heightIn)} onChange={e => updateCarton(item.id, "heightIn", fromDisplay(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-carton-h-${idx}`} />
                                 </div>
                                 <div>
                                   <Label className="text-[9px] text-text-deemphasis uppercase">Wt ({weightUnit})</Label>
-                                  <Input type="number" min={0} step="0.1" value={toDisplayWeight(item.weightLbs)} onChange={e => updateCarton(item.id, "weightLbs", fromDisplayWeight(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-carton-wt-${idx}`} />
+                                  <Input type="number" min={0} step="0.1" value={toDisplayWeight(item.weightLbs)} onChange={e => updateCarton(item.id, "weightLbs", fromDisplayWeight(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-carton-wt-${idx}`} />
                                 </div>
                                 <div>
                                   <Label className="text-[9px] text-text-deemphasis uppercase">Qty</Label>
-                                  <Input type="number" min={1} value={item.quantity || ""} onChange={e => updateCarton(item.id, "quantity", parseInt(e.target.value) || 0)} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-carton-qty-${idx}`} />
+                                  <Input type="number" min={1} value={item.quantity || ""} onChange={e => updateCarton(item.id, "quantity", parseInt(e.target.value) || 0)} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-carton-qty-${idx}`} />
                                 </div>
                               </div>
                               <div className="grid grid-cols-4 gap-2 pt-2 border-t border-border-hairline">
@@ -1397,25 +1397,25 @@ export default function TruckLoadPlanner() {
                                   <>
                                     <div>
                                       <Label className="text-[9px] text-text-deemphasis uppercase">P.L ({dimUnit})</Label>
-                                      <Input type="number" min={0} value={toDisplay(item.customL)} onChange={e => updatePallet(item.id, "customL", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-pallet-cl-${idx}`} />
+                                      <Input type="number" min={0} value={toDisplay(item.customL)} onChange={e => updatePallet(item.id, "customL", fromDisplay(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-pallet-cl-${idx}`} />
                                     </div>
                                     <div>
                                       <Label className="text-[9px] text-text-deemphasis uppercase">P.W ({dimUnit})</Label>
-                                      <Input type="number" min={0} value={toDisplay(item.customW)} onChange={e => updatePallet(item.id, "customW", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-pallet-cw-${idx}`} />
+                                      <Input type="number" min={0} value={toDisplay(item.customW)} onChange={e => updatePallet(item.id, "customW", fromDisplay(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-pallet-cw-${idx}`} />
                                     </div>
                                   </>
                                 )}
                                 <div>
                                   <Label className="text-[9px] text-text-deemphasis uppercase">Height ({dimUnit})</Label>
-                                  <Input type="number" min={0} step="0.1" value={toDisplay(item.heightIn)} onChange={e => updatePallet(item.id, "heightIn", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-pallet-h-${idx}`} />
+                                  <Input type="number" min={0} step="0.1" value={toDisplay(item.heightIn)} onChange={e => updatePallet(item.id, "heightIn", fromDisplay(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-pallet-h-${idx}`} />
                                 </div>
                                 <div>
                                   <Label className="text-[9px] text-text-deemphasis uppercase">Wt ({weightUnit})</Label>
-                                  <Input type="number" min={0} step="0.1" value={toDisplayWeight(item.weightLbs)} onChange={e => updatePallet(item.id, "weightLbs", fromDisplayWeight(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-pallet-wt-${idx}`} />
+                                  <Input type="number" min={0} step="0.1" value={toDisplayWeight(item.weightLbs)} onChange={e => updatePallet(item.id, "weightLbs", fromDisplayWeight(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-pallet-wt-${idx}`} />
                                 </div>
                                 <div>
                                   <Label className="text-[9px] text-text-deemphasis uppercase">Qty</Label>
-                                  <Input type="number" min={1} value={item.quantity || ""} onChange={e => updatePallet(item.id, "quantity", parseInt(e.target.value) || 0)} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-pallet-qty-${idx}`} />
+                                  <Input type="number" min={1} value={item.quantity || ""} onChange={e => updatePallet(item.id, "quantity", parseInt(e.target.value) || 0)} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-pallet-qty-${idx}`} />
                                 </div>
                               </div>
                               <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border-hairline">
@@ -1475,11 +1475,11 @@ export default function TruckLoadPlanner() {
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <Label className="text-xs text-text-muted">Total Weight ({weightUnit})</Label>
-                              <Input type="number" min={0} value={toDisplayWeight(bulk.totalWeightLbs)} onChange={e => setBulk(prev => ({ ...prev, totalWeightLbs: fromDisplayWeight(e.target.value) }))} className="h-8 text-xs" data-testid="input-bulk-weight" />
+                              <Input type="number" min={0} value={toDisplayWeight(bulk.totalWeightLbs)} onChange={e => setBulk(prev => ({ ...prev, totalWeightLbs: fromDisplayWeight(e.target.value) }))} className="h-8 text-xs text-right tabular-nums" data-testid="input-bulk-weight" />
                             </div>
                             <div>
                               <Label className="text-xs text-text-muted">Total Volume ({volUnit})</Label>
-                              <Input type="number" min={0} step="0.1" value={toDisplayVolume(bulk.totalVolumeCuFt) || ""} onChange={e => { const v = parseFloat(e.target.value) || 0; setBulk(prev => ({ ...prev, totalVolumeCuFt: isMetric ? v / CUFT_TO_CUM : v })); }} className="h-8 text-xs" data-testid="input-bulk-volume" />
+                              <Input type="number" min={0} step="0.1" value={toDisplayVolume(bulk.totalVolumeCuFt) || ""} onChange={e => { const v = parseFloat(e.target.value) || 0; setBulk(prev => ({ ...prev, totalVolumeCuFt: isMetric ? v / CUFT_TO_CUM : v })); }} className="h-8 text-xs text-right tabular-nums" data-testid="input-bulk-volume" />
                             </div>
                           </div>
                           <div>
@@ -1564,7 +1564,7 @@ export default function TruckLoadPlanner() {
                               )}
 
                               <h3 className="text-sm font-bold text-text-primary mb-3 flex items-center gap-2">
-                                <BarChart3 className="w-3.5 h-3.5 text-brand" />
+                                <BarChart3 className="w-3.5 h-3.5 text-text-muted" />
                                 {mode === "pro" ? "Loading Summary" : `${r.trailer.name} — Summary`}
                               </h3>
 
@@ -1726,7 +1726,7 @@ export default function TruckLoadPlanner() {
             <Card className="border-border-hairline">
               <CardContent className="p-5">
                 <h2 className="text-base font-bold text-text-primary mb-4 flex items-center gap-2" data-testid="text-route-planner-title">
-                  <Route className="w-4 h-4 text-brand" />
+                  <Route className="w-4 h-4 text-text-muted" />
                   Route Planner
                 </h2>
                 <p className="text-xs text-text-muted mb-4">
@@ -1829,7 +1829,7 @@ export default function TruckLoadPlanner() {
                     {routeInfo && jurisdictions.length > 0 && (
                       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} data-testid="jurisdictions-section">
                         <h3 className="text-sm font-bold text-text-primary mb-3 flex items-center gap-2">
-                          <Flag className="w-3.5 h-3.5 text-brand" />
+                          <Flag className="w-3.5 h-3.5 text-text-muted" />
                           Jurisdictions Crossed (in travel order)
                         </h3>
 
@@ -1940,7 +1940,7 @@ export default function TruckLoadPlanner() {
                     "Route distance and jurisdictions when Google Maps is configured",
                   ].map((item) => (
                     <li key={item} className="flex gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-brand mt-0.5 shrink-0" aria-hidden="true" />
+                      <CheckCircle2 className="w-4 h-4 text-text-muted mt-0.5 shrink-0" aria-hidden="true" />
                       <span>{item}</span>
                     </li>
                   ))}
@@ -1987,7 +1987,7 @@ export default function TruckLoadPlanner() {
             <div className="p-5">
               <div className="flex items-center justify-between mb-1">
                 <h3 className="font-bold text-sm text-text-primary flex items-center gap-2">
-                  <Settings2 className="w-4 h-4 text-brand" />
+                  <Settings2 className="w-4 h-4 text-text-muted" />
                   Bulk Cargo Settings
                 </h3>
                 <button onClick={() => setBulkSettingsOpen(false)} className="text-text-deemphasis hover:text-text-muted transition-colors p-1" data-testid="button-close-bulk-settings">
@@ -2107,7 +2107,7 @@ export default function TruckLoadPlanner() {
             <div className="p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-sm text-text-primary flex items-center gap-2">
-                  <FileUp className="w-4 h-4 text-brand" />
+                  <FileUp className="w-4 h-4 text-text-muted" />
                   Import Cargo Data
                 </h3>
                 <button onClick={() => setShowImportModal(false)} className="text-text-deemphasis hover:text-text-muted transition-colors p-1" data-testid="button-close-import">
