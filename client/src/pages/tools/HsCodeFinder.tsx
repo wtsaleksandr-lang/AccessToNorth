@@ -1,12 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { motion, AnimatePresence } from "framer-motion";
 import { ToolWorkedExample } from "@/components/ToolWorkedExample";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Callout, Input } from "@/components/tools";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import {
@@ -18,7 +15,6 @@ import {
   ChevronDown,
   ChevronUp,
   Info,
-  FileSearch,
   ShieldAlert,
   AlertTriangle,
   Calculator,
@@ -36,7 +32,34 @@ interface HsCodeResult {
   classificationLevel?: "complete" | "tariff-item";
 }
 
-const DEEP_BLUE = "#0A2540";
+/**
+ * Card-on-canvas shell, matching Home and the duty calculator.
+ */
+const SHELL = "w-[98%] max-w-container-outer mx-auto rounded-lg border overflow-hidden";
+/**
+ * One rail for the whole page. The hero, the search card, the results, the
+ * pricing grid, the next-step cards and the FAQ all start at the same left
+ * edge — mixing a 1280px rail with an 896px one made content jump ~190px
+ * sideways every time the reader crossed a card boundary.
+ */
+const TOOL_RAIL = "mx-auto max-w-4xl px-5 md:px-10";
+
+const PAD = {
+  even: "pt-10 pb-10 md:pt-[76px] md:pb-[76px]",
+  topHeavy: "pt-16 pb-10 md:pt-20 md:pb-[60px]",
+  tight: "pt-12 pb-10 md:pt-[72px] md:pb-14",
+  closing: "pt-14 pb-10 md:pt-20 md:pb-16",
+} as const;
+
+/**
+ * An HS code is a positional number: chapter, heading, subheading, tariff item,
+ * statistical suffix. Reading it means comparing digit columns down a list, so
+ * it is set in the platform mono stack (`--font-mono`, no webfont) with
+ * `tabular-nums`, on a #F2F4F7 chip that makes the code the first thing the eye
+ * lands on in each row.
+ */
+const HS_CODE_CHIP =
+  "inline-block rounded-md bg-surface-canvas px-2.5 py-1 font-mono text-[16px] font-semibold tabular-nums tracking-[0.01em] text-text-primary";
 
 const RISK_CHAPTERS = new Set([
   "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12",
@@ -245,106 +268,99 @@ export default function HsCodeFinder() {
   const showClassificationAdvisory = hasSearched && results.length > 0;
 
   return (
-    <div className="min-h-screen flex flex-col font-sans bg-slate-50">
-      <main className="flex-1 pt-28 pb-16">
-        <div className="container mx-auto px-4 md:px-6 max-w-4xl">
-          <Breadcrumbs
-            items={[
-              { label: "Tools", href: "/tools" },
-              { label: "HS Code Finder" },
-            ]}
-          />
+    <div className="min-h-screen bg-surface-canvas font-sans">
+      {/* 83px fixed Navbar + the 16px inter-card gap. */}
+      <main className="flex flex-col gap-4 pb-4 pt-[99px]">
 
-          {/* Hero */}
-          <div className="text-center mb-10">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div
-                className="w-14 h-14 rounded-xl flex items-center justify-center"
-                style={{ backgroundColor: `${DEEP_BLUE}10` }}
-              >
-                <FileSearch className="w-7 h-7" style={{ color: DEEP_BLUE }} />
-              </div>
-            </div>
+        {/* ── Hero + search card ──────────────────────────────────────── */}
+        <section className={`${SHELL} surface-hero-wash ${PAD.even}`}>
+          <div className={TOOL_RAIL}>
+            <Breadcrumbs
+              items={[
+                { label: "Tools", href: "/tools" },
+                { label: "HS Code Finder" },
+              ]}
+            />
+
+            <p className="mt-6 text-eyebrow uppercase text-text-muted">Canadian tariff lookup</p>
             <h1
-              className="text-3xl md:text-4xl font-extrabold font-display mb-3 text-slate-900"
+              className="mt-4 text-h1-sm text-text-primary md:text-h1"
               data-testid="text-hs-finder-title"
             >
               HS Code Finder (Canada)
             </h1>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-2">
-              Search by product name to see suggested HS codes and descriptions. Then calculate duty & tax in one click.
+            <p className="mt-5 max-w-2xl text-lead text-text-muted">
+              Search by product name to see suggested HS codes and descriptions. Then calculate duty &amp; tax in one click.
             </p>
-            <p className="text-sm text-amber-700 flex items-center justify-center gap-1.5">
-              <ShieldAlert className="w-4 h-4 shrink-0" />
+            <p className="mt-4 flex max-w-2xl items-start gap-2 text-[14px] leading-[20px] text-[#78350F]">
+              <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               Estimates only — final classification is confirmed by CBSA or your customs broker.
             </p>
-          </div>
 
-          {/* ===== SECTION 1: HS FINDER TOOL ===== */}
-          <Card className="p-6 md:p-8 shadow-lg mb-8" data-testid="card-hs-search">
-            <div className="flex items-center gap-3 mb-5">
-              <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: `${DEEP_BLUE}10` }}
-              >
-                <Search className="w-5 h-5" style={{ color: DEEP_BLUE }} />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">Search HS Codes</h2>
-                <p className="text-sm text-slate-500">Enter an HS code number or describe your product</p>
-              </div>
-            </div>
+            <div className="mt-8 rounded-lg border border-border-hairline bg-white p-5 md:p-6" data-testid="card-hs-search">
+              <h2 className="text-h3 text-text-primary">Search HS Codes</h2>
+              <p className="mt-1.5 text-body text-text-muted">Enter an HS code number or describe your product</p>
 
-            <div className="flex gap-2 mb-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input
-                  ref={inputRef}
-                  data-testid="input-hs-search"
-                  placeholder="e.g. 6110, men's cotton pants, stainless steel bolts, chocolate"
-                  value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value);
-                    searchHsCodes(e.target.value);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      searchHsCodes(query);
-                    }
-                  }}
-                  className="pl-9"
-                />
-                {searching && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 animate-spin" />
+              <p className="mt-4 flex items-start gap-1.5 text-[13px] leading-[18px] text-[#78350F]">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                Suggested matches only. HS classification depends on product details. Verify before relying on results.
+              </p>
+
+              <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                <div className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-deemphasis" aria-hidden="true" />
+                  <Input
+                    ref={inputRef}
+                    data-testid="input-hs-search"
+                    placeholder="e.g. 6110, men's cotton pants, stainless steel bolts, chocolate"
+                    value={query}
+                    onChange={(e) => {
+                      setQuery(e.target.value);
+                      searchHsCodes(e.target.value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        searchHsCodes(query);
+                      }
+                    }}
+                    hasLeadingIcon
+                    hasTrailingIcon={searching}
+                  />
+                  {searching && (
+                    <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-text-deemphasis" aria-hidden="true" />
+                  )}
+                </div>
+                {query && (
+                  <Button
+                    variant="outline"
+                    className="h-12 shrink-0 border-border-control bg-white px-5 text-[15px] font-semibold text-text-primary transition-colors duration-state hover:border-brand hover:text-brand"
+                    onClick={handleClear}
+                    data-testid="button-clear-search"
+                  >
+                    Clear
+                  </Button>
                 )}
               </div>
-              {query && (
-                <Button variant="outline" onClick={handleClear} data-testid="button-clear-search">
-                  Clear
-                </Button>
-              )}
             </div>
+          </div>
+        </section>
 
-            <p className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1">
-              <Info className="w-3 h-3 shrink-0" />
-              Suggested matches only. HS classification depends on product details. Verify before relying on results.
-            </p>
-          </Card>
-
-          {/* ===== RESULTS WITH CONFIDENCE + RISK ===== */}
-          {hasSearched && (
-            <div ref={resultsRef} className="mb-8">
+        {/* ── Results ─────────────────────────────────────────────────── */}
+        {hasSearched && (
+          <section className={`${SHELL} bg-white ${PAD.tight}`}>
+            <div className={TOOL_RAIL} ref={resultsRef}>
               {results.length > 0 ? (
                 <>
-                  <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
-                    <h3 className="text-base font-semibold text-slate-800">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <h2 className="text-h3 text-text-primary">
                       {results.length} suggested code{results.length !== 1 ? "s" : ""} found
-                    </h3>
-                    <p className="text-xs text-slate-500">Search relevance is not classification certainty</p>
+                    </h2>
+                    <p className="text-body text-text-muted">Search relevance is not classification certainty</p>
                   </div>
-                  <div className="space-y-3" data-testid="list-hs-results">
-                    {results.map((item, index) => {
+
+                  <div className="mt-6 space-y-3" data-testid="list-hs-results">
+                    {results.map((item) => {
                       const isExpanded = expandedCode === item.code;
                       const fullDesc = item.descriptionFull || item.description;
                       const shortDesc =
@@ -352,323 +368,305 @@ export default function HsCodeFinder() {
                       const riskFlags = getRiskFlags(item);
 
                       return (
-                        <motion.div
+                        <div
                           key={item.code}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.03 }}
+                          className="rounded-lg border border-border-hairline bg-white p-5 transition-colors duration-state hover:border-brand"
+                          data-testid={`card-hs-result-${item.code}`}
                         >
-                          <Card
-                            className="border border-slate-200 hover:border-blue-200 transition-colors"
-                            data-testid={`card-hs-result-${item.code}`}
-                          >
-                            <CardContent className="p-4">
-                              <div className="flex items-start justify-between gap-3 flex-wrap">
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                    <span
-                                      className="text-base font-mono font-bold text-blue-700"
-                                      data-testid={`text-hs-code-${item.code}`}
-                                    >
-                                      {item.code}
-                                    </span>
-                                    <Badge variant="outline" data-testid={`badge-level-${item.code}`}>
-                                      {item.classificationLevel === "complete" ? "Complete 10-digit" : "8-digit duty level"}
-                                    </Badge>
-                                    {typeof item.score === "number" && (
-                                      <span className="text-[11px] text-slate-400">{Math.round(item.score * 100)}% search match</span>
-                                    )}
-                                    {item.unitOfMeasure && (
-                                      <span className="text-xs text-slate-400">({item.unitOfMeasure})</span>
-                                    )}
-                                  </div>
-                                  <p className="text-sm text-slate-600">
-                                    {isExpanded ? fullDesc : shortDesc}
-                                  </p>
-                                  {fullDesc.length > 120 && (
-                                    <button
-                                      type="button"
-                                      className="text-xs text-blue-600 hover:text-blue-800 mt-1 flex items-center gap-0.5 cursor-pointer"
-                                      onClick={() => setExpandedCode(isExpanded ? null : item.code)}
-                                      data-testid={`button-expand-${item.code}`}
-                                    >
-                                      {isExpanded ? (
-                                        <>
-                                          Show less <ChevronUp className="w-3 h-3" />
-                                        </>
-                                      ) : (
-                                        <>
-                                          Show full description <ChevronDown className="w-3 h-3" />
-                                        </>
-                                      )}
-                                    </button>
-                                  )}
-                                  {riskFlags.length > 0 && (
-                                    <div className="mt-2 space-y-1">
-                                      {riskFlags.map((flag) => (
-                                        <p key={flag} className="text-xs text-amber-700 flex items-center gap-1.5">
-                                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                                          {flag}
-                                        </p>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleCopy(item.code)}
-                                    data-testid={`button-copy-${item.code}`}
-                                  >
-                                    {copiedCode === item.code ? (
-                                      <>
-                                        <Check className="w-3.5 h-3.5 mr-1" />
-                                        Copied
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Copy className="w-3.5 h-3.5 mr-1" />
-                                        Copy
-                                      </>
-                                    )}
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleUseDutyCalc(item.code, query)}
-                                    data-testid={`button-use-calc-${item.code}`}
-                                  >
-                                    Calculate Duty
-                                    <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                                  </Button>
-                                </div>
+                          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                                <span className={HS_CODE_CHIP} data-testid={`text-hs-code-${item.code}`}>
+                                  {item.code}
+                                </span>
+                                <span
+                                  className="rounded-md border border-border-control px-2 py-0.5 text-[13px] font-medium text-text-secondary"
+                                  data-testid={`badge-level-${item.code}`}
+                                >
+                                  {item.classificationLevel === "complete" ? "Complete 10-digit" : "8-digit duty level"}
+                                </span>
+                                {typeof item.score === "number" && (
+                                  <span className="text-[13px] tabular-nums text-text-muted">{Math.round(item.score * 100)}% search match</span>
+                                )}
+                                {item.unitOfMeasure && (
+                                  <span className="text-[13px] text-text-muted">({item.unitOfMeasure})</span>
+                                )}
                               </div>
-                            </CardContent>
-                          </Card>
-                        </motion.div>
+
+                              <p className="mt-3 text-body text-text-secondary">
+                                {isExpanded ? fullDesc : shortDesc}
+                              </p>
+
+                              {fullDesc.length > 120 && (
+                                <button
+                                  type="button"
+                                  className="mt-2 flex cursor-pointer items-center gap-1 text-body font-semibold text-text-secondary transition-colors duration-state hover:text-brand"
+                                  onClick={() => setExpandedCode(isExpanded ? null : item.code)}
+                                  data-testid={`button-expand-${item.code}`}
+                                >
+                                  {isExpanded ? (
+                                    <>
+                                      Show less <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
+                                    </>
+                                  ) : (
+                                    <>
+                                      Show full description <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+                                    </>
+                                  )}
+                                </button>
+                              )}
+
+                              {riskFlags.length > 0 && (
+                                <div className="mt-3 space-y-1.5">
+                                  {riskFlags.map((flag) => (
+                                    <p key={flag} className="flex items-start gap-1.5 text-[13px] leading-[18px] text-[#78350F]">
+                                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                      {flag}
+                                    </p>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex shrink-0 flex-wrap gap-2">
+                              <Button
+                                variant="outline"
+                                className="border-border-control bg-white text-text-primary transition-colors duration-state hover:border-brand hover:text-brand"
+                                onClick={() => handleCopy(item.code)}
+                                data-testid={`button-copy-${item.code}`}
+                              >
+                                {copiedCode === item.code ? (
+                                  <>
+                                    <Check className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                                    Copied
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                                    Copy
+                                  </>
+                                )}
+                              </Button>
+                              <Button
+                                className="bg-brand text-white transition-colors duration-state hover:bg-brand-hover"
+                                onClick={() => handleUseDutyCalc(item.code, query)}
+                                data-testid={`button-use-calc-${item.code}`}
+                              >
+                                Calculate Duty
+                                <ArrowRight className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
 
                   {/* Search relevance is not legal classification confidence. */}
                   {showClassificationAdvisory && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="mt-6"
-                    >
-                      <Card className="border-amber-200 bg-amber-50/60" data-testid="card-confidence-advisory">
-                        <CardContent className="p-5">
-                          <div className="flex items-start gap-3">
-                            <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
-                              <ShieldAlert className="w-5 h-5 text-amber-700" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold text-slate-800 mb-1">
-                                Not 100% sure about your classification?
-                              </p>
-                              <p className="text-sm text-slate-600 mb-3">
-                                Misclassification can lead to reassessments or shipment delays. Consider a professional review before importing.
-                              </p>
-                              <a href="#classification-pricing">
-                                <Button size="sm" data-testid="button-get-review-advisory">
-                                  Get Professional Classification Review
-                                  <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                                </Button>
-                              </a>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
+                    <Callout className="mt-6" title="Not 100% sure about your classification?" data-testid="card-confidence-advisory">
+                      <p>
+                        Misclassification can lead to reassessments or shipment delays. Consider a professional review before importing.
+                      </p>
+                      <a href="#classification-pricing" className="inline-block pt-1.5">
+                        <Button
+                          className="bg-brand text-white transition-colors duration-state hover:bg-brand-hover"
+                          data-testid="button-get-review-advisory"
+                        >
+                          Get Professional Classification Review
+                          <ArrowRight className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                        </Button>
+                      </a>
+                    </Callout>
                   )}
                 </>
+              ) : searchError ? (
+                <Callout tone="error" role="alert" title="Tariff search is temporarily unavailable">
+                  <p>{searchError}</p>
+                </Callout>
               ) : (
-                <Card className={`p-6 text-center ${searchError ? "border-red-200 bg-red-50" : ""}`}>
-                  {searchError ? (
-                    <>
-                      <AlertTriangle className="mx-auto mb-3 h-7 w-7 text-red-600" />
-                      <p className="mb-2 font-semibold text-red-900">Tariff search is temporarily unavailable</p>
-                      <p className="text-sm text-red-700">{searchError}</p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-slate-500 mb-2">No matching HS codes found for "{query}".</p>
-                      <p className="text-sm text-slate-400">Try tariff terms, material, product use, or a broader product name.</p>
-                    </>
-                  )}
-                </Card>
+                <div className="rounded-lg border border-border-hairline bg-surface-recessed p-6">
+                  <p className="text-lead text-text-primary">No matching HS codes found for "{query}".</p>
+                  <p className="mt-2 text-body text-text-muted">Try tariff terms, material, product use, or a broader product name.</p>
+                </div>
               )}
             </div>
-          )}
+          </section>
+        )}
 
-          {/* ===== SECTION 2: PROFESSIONAL HS CLASSIFICATION PRICING ===== */}
-          <div id="classification-pricing" className="mb-12 scroll-mt-24">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl md:text-3xl font-bold font-display text-slate-900 mb-3">
+        {/* ── Professional classification pricing ─────────────────────── */}
+        <section
+          id="classification-pricing"
+          className={`${SHELL} bg-white scroll-mt-24 ${PAD.topHeavy}`}
+        >
+          <div className={TOOL_RAIL}>
+            <div className="max-w-2xl">
+              <p className="text-eyebrow uppercase text-text-muted">Paid review</p>
+              <h2 className="mt-3 text-h2 text-text-primary">
                 Professional HS Code Classification Review
               </h2>
-              <p className="text-sm text-slate-600 max-w-2xl mx-auto leading-relaxed">
+              <p className="mt-4 text-lead text-text-muted">
                 Incorrect tariff classification can result in reassessments, penalties, or unexpected duty exposure. Our team provides structured tariff classification guidance reviewed for compliance accuracy.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5" data-testid="grid-classification-pricing">
+            <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3" data-testid="grid-classification-pricing">
               {classificationTiers.map((tier) => (
-                <Card
+                <div
                   key={tier.name}
-                  className={`relative border ${
-                    tier.popular
-                      ? "border-blue-300 ring-2 ring-blue-100"
-                      : "border-slate-200"
+                  className={`flex flex-col rounded-lg border-2 bg-white p-6 ${
+                    tier.popular ? "border-brand" : "border-border-app"
                   }`}
                   data-testid={`card-tier-${tier.param}`}
                 >
-                  {tier.popular && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <Badge className="bg-blue-600 text-white border-0">Most Popular</Badge>
-                    </div>
-                  )}
-                  <CardContent className="p-6 pt-7">
-                    <div className="text-center mb-5">
-                      <h3 className="text-lg font-bold text-slate-900 mb-1">{tier.name}</h3>
-                      <p className="text-3xl font-extrabold text-slate-900">{formatPrice(tier.priceCAD)}</p>
-                    </div>
-                    <ul className="space-y-2.5 mb-6">
-                      {tier.features.map((f) => (
-                        <li key={f} className="flex items-start gap-2 text-sm text-slate-600">
-                          <Check className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-                    <Link href={`/order/hs-classification?package=${tier.param}`}>
-                      <Button
-                        className="w-full"
-                        variant={tier.popular ? "default" : "outline"}
-                        data-testid={`button-order-${tier.param}`}
-                      >
-                        {tier.cta}
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h3 className="text-h3 text-text-primary">{tier.name}</h3>
+                    {tier.popular && (
+                      <span className="rounded-md bg-surface-canvas px-2 py-0.5 text-[13px] font-semibold text-text-secondary">
+                        Most Popular
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-3 text-[32px] font-bold leading-[38px] tracking-[-0.02em] tabular-nums text-text-primary">
+                    {formatPrice(tier.priceCAD)}
+                  </p>
+                  <ul className="mt-6 flex-1 space-y-2.5">
+                    {tier.features.map((f) => (
+                      <li key={f} className="flex items-start gap-2 text-body text-text-muted">
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-text-deemphasis" aria-hidden="true" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link href={`/order/hs-classification?package=${tier.param}`} className="mt-6">
+                    <Button
+                      className={
+                        tier.popular
+                          ? "w-full bg-brand text-white transition-colors duration-state hover:bg-brand-hover"
+                          : "w-full border border-border-control bg-white text-text-primary transition-colors duration-state hover:border-brand hover:text-brand"
+                      }
+                      variant={tier.popular ? "default" : "outline"}
+                      data-testid={`button-order-${tier.param}`}
+                    >
+                      {tier.cta}
+                    </Button>
+                  </Link>
+                </div>
               ))}
             </div>
           </div>
+        </section>
 
-          {/* ===== SECTION 3: NEXT STEPS ===== */}
-          <div className="mb-12">
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold font-display text-slate-900 mb-2">
-                Planning Your Import?
-              </h2>
+        {/* ── Next steps ──────────────────────────────────────────────── */}
+        <section className={`${SHELL} bg-surface-recessed ${PAD.tight}`}>
+          <div className={TOOL_RAIL}>
+            <div className="max-w-2xl">
+              <p className="text-eyebrow uppercase text-text-muted">Next</p>
+              <h2 className="mt-3 text-h2 text-text-primary">Planning Your Import?</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4" data-testid="grid-next-steps">
-              <Card className="border border-slate-200" data-testid="card-next-duty-calc">
-                <CardContent className="p-6 flex flex-col items-center text-center">
-                  <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-4">
-                    <Calculator className="w-6 h-6 text-blue-700" />
-                  </div>
-                  <h3 className="text-base font-semibold text-slate-900 mb-2">Calculate Duty & Import Tax</h3>
-                  <p className="text-sm text-slate-500 mb-4">
-                    Estimate duties, GST, and provincial taxes for your goods before importing.
-                  </p>
-                  <Link href={results.length > 0 ? `/customs-calculator?hs=${encodeURIComponent(results[0].code)}&src=hsfinder&q=${encodeURIComponent(query)}` : "/customs-calculator"}>
-                    <Button variant="outline" data-testid="button-next-duty-calc">
-                      Open Duty Calculator
-                      <ArrowRight className="w-3.5 h-3.5 ml-1" />
+
+            <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3" data-testid="grid-next-steps">
+              {[
+                {
+                  icon: Calculator,
+                  testId: "card-next-duty-calc",
+                  buttonTestId: "button-next-duty-calc",
+                  title: "Calculate Duty & Import Tax",
+                  desc: "Estimate duties, GST, and provincial taxes for your goods before importing.",
+                  cta: "Open Duty Calculator",
+                  href:
+                    results.length > 0
+                      ? `/customs-calculator?hs=${encodeURIComponent(results[0].code)}&src=hsfinder&q=${encodeURIComponent(query)}`
+                      : "/customs-calculator",
+                },
+                {
+                  icon: Ship,
+                  testId: "card-next-customs",
+                  buttonTestId: "button-next-customs",
+                  title: "Need Full Customs Clearance?",
+                  desc: "Let us handle customs brokerage, documentation, and border clearance for your shipment.",
+                  cta: "View Customs Clearance",
+                  href: "/canadian-customs-clearance",
+                },
+                {
+                  icon: BookOpen,
+                  testId: "card-next-import-guide",
+                  buttonTestId: "button-next-import-guide",
+                  title: "Importing Into Canada?",
+                  desc: "Follow the complete 2026 workflow for BN/RM setup, CARM, documents, duty, release, and delivery.",
+                  cta: "Read Import Guide",
+                  href: "/resources/how-to-import-into-canada",
+                },
+              ].map((card) => (
+                <div
+                  key={card.testId}
+                  className="flex flex-col rounded-lg border border-border-hairline bg-white p-6"
+                  data-testid={card.testId}
+                >
+                  <card.icon className="h-5 w-5 text-text-muted" aria-hidden="true" />
+                  <h3 className="mt-4 text-h3 text-text-primary">{card.title}</h3>
+                  <p className="mt-2 flex-1 text-body text-text-muted">{card.desc}</p>
+                  <Link href={card.href} className="mt-5">
+                    <Button
+                      variant="outline"
+                      className="w-full border-border-control bg-white text-text-primary transition-colors duration-state hover:border-brand hover:text-brand"
+                      data-testid={card.buttonTestId}
+                    >
+                      {card.cta}
+                      <ArrowRight className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
                     </Button>
                   </Link>
-                </CardContent>
-              </Card>
-              <Card className="border border-slate-200" data-testid="card-next-customs">
-                <CardContent className="p-6 flex flex-col items-center text-center">
-                  <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-4">
-                    <Ship className="w-6 h-6 text-blue-700" />
-                  </div>
-                  <h3 className="text-base font-semibold text-slate-900 mb-2">Need Full Customs Clearance?</h3>
-                  <p className="text-sm text-slate-500 mb-4">
-                    Let us handle customs brokerage, documentation, and border clearance for your shipment.
-                  </p>
-                  <Link href="/canadian-customs-clearance">
-                    <Button variant="outline" data-testid="button-next-customs">
-                      View Customs Clearance
-                      <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-              <Card className="border border-slate-200" data-testid="card-next-import-guide">
-                <CardContent className="p-6 flex flex-col items-center text-center">
-                  <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-4">
-                    <BookOpen className="w-6 h-6 text-blue-700" />
-                  </div>
-                  <h3 className="text-base font-semibold text-slate-900 mb-2">Importing Into Canada?</h3>
-                  <p className="text-sm text-slate-500 mb-4">
-                    Follow the complete 2026 workflow for BN/RM setup, CARM, documents, duty, release, and delivery.
-                  </p>
-                  <Link href="/resources/how-to-import-into-canada">
-                    <Button variant="outline" data-testid="button-next-import-guide">
-                      Read Import Guide
-                      <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
+                </div>
+              ))}
             </div>
           </div>
+        </section>
 
-          {/* ===== FAQ ===== */}
-          <div className="mb-12">
-            <h2 className="text-2xl font-bold font-display text-slate-900 mb-6 text-center">
-              Frequently Asked Questions
-            </h2>
-            <div className="space-y-2 max-w-3xl mx-auto" data-testid="list-faq">
+        {/* ── FAQ ─────────────────────────────────────────────────────── */}
+        <section className={`${SHELL} bg-white ${PAD.closing}`}>
+          <div className={TOOL_RAIL}>
+            <p className="text-eyebrow uppercase text-text-muted">Answers</p>
+            <h2 className="mt-3 text-h2 text-text-primary">Frequently Asked Questions</h2>
+
+            <div className="mt-8 space-y-2" data-testid="list-faq">
               {faqItems.map((item, i) => (
-                <Card key={i} className="border border-slate-200">
+                <div key={i} className="rounded-lg border border-border-hairline bg-white">
                   <button
                     type="button"
-                    className="w-full text-left p-4 flex items-start justify-between gap-3 cursor-pointer"
+                    className="flex w-full cursor-pointer items-start justify-between gap-3 rounded-lg p-4 text-left transition-colors duration-state hover:bg-surface-recessed"
                     onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                    aria-expanded={openFaq === i}
                     data-testid={`button-faq-${i}`}
                   >
-                    <span className="text-sm font-medium text-slate-800">{item.q}</span>
+                    <span className="text-h3 text-text-primary">{item.q}</span>
                     {openFaq === i ? (
-                      <ChevronUp className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                      <ChevronUp className="mt-0.5 h-4 w-4 shrink-0 text-text-muted" aria-hidden="true" />
                     ) : (
-                      <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                      <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-text-muted" aria-hidden="true" />
                     )}
                   </button>
-                  <AnimatePresence>
-                    {openFaq === i && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="px-4 pb-4">
-                          <p className="text-sm text-slate-600 leading-relaxed">{item.a}</p>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </Card>
+                  {openFaq === i && (
+                    <div className="px-4 pb-4">
+                      <p className="text-body text-text-muted">{item.a}</p>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
-          </div>
 
-          {/* ===== SECTION 4: COMPLIANCE DISCLAIMER ===== */}
-          <div className="text-center mb-4">
-            <p className="text-xs text-slate-400 max-w-2xl mx-auto leading-relaxed" data-testid="text-disclaimer">
+            {/*
+              Compliance line. It used to be 12px #94A3B8 on #F8FAFC — a 2.4:1
+              contrast ratio, i.e. a disclaimer that was effectively unreadable.
+              14px #475467 on white is 7.6:1.
+            */}
+            <p className="mt-10 max-w-2xl text-body text-text-muted" data-testid="text-disclaimer">
               AccessToNorth provides independent tariff classification guidance. Final determination of tariff treatment is made by the Canada Border Services Agency (CBSA).
             </p>
           </div>
-        </div>
+        </section>
+
       </main>
+
       <ToolWorkedExample kind="hs" />
     </div>
   );
