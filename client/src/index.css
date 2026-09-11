@@ -1,43 +1,121 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@600;700;800&family=Playfair+Display:wght@600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --font-sans: 'Inter', sans-serif;
-  --font-display: 'Poppins', 'Inter', sans-serif;
+/* ============================================================================
+   DESIGN TOKENS — AccessToNorth visual identity
+   Two layers that MUST stay in agreement:
+     (a) shadcn contract: space-separated HSL triplets, read as hsl(var(--x)).
+     (b) raw hex/value custom properties, for inline styles + plain CSS.
+   ==========================================================================*/
 
-  /* Professional Blue Palette */
-  --background: 210 40% 98%;
-  --foreground: 222 47% 11%;
-  
-  --primary: 211 100% 50%; /* #007BFF */
-  --primary-foreground: 210 40% 98%;
-  
-  --secondary: 210 40% 96%;
+:root {
+  /* ---- Typefaces -------------------------------------------------------- */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-serif: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* ---- shadcn HSL contract (do not change format) ----------------------- */
+  --background: 0 0% 100%;            /* #FFFFFF  bg-primary   */
+  --foreground: 222 47% 11%;          /* #0F172A  text-primary */
+
+  --primary: 221 83% 53%;             /* #2563EB  blue-600     */
+  --primary-foreground: 0 0% 100%;    /* #FFFFFF               */
+
+  --secondary: 210 40% 96%;           /* #F1F5F9  slate-100    */
   --secondary-foreground: 222 47% 11%;
-  
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 47%;
-  
-  --accent: 350 89% 60%; /* Canadian Red Accent */
-  --accent-foreground: 210 40% 98%;
-  
+
+  /* kept at slate-100: the page bg is now pure white, so muted surfaces need
+     the tertiary step to stay visibly distinct. */
+  --muted: 210 40% 96%;               /* #F1F5F9  slate-100    */
+  --muted-foreground: 215 19% 35%;    /* #475569  slate-600    */
+
+  --accent: 350 89% 60%;              /* Canadian Red — intentionally UNCHANGED */
+  --accent-foreground: 0 0% 100%;
+
   --destructive: 0 84% 60%;
-  --destructive-foreground: 210 40% 98%;
-  
-  --card: 0 0% 100%;
+  --destructive-foreground: 0 0% 100%;
+
+  --card: 0 0% 100%;                  /* #FFFFFF */
   --card-foreground: 222 47% 11%;
 
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
 
-  --border: 214 32% 91%;
+  --border: 214 32% 91%;              /* #E2E8F0  slate-200 */
   --input: 214 32% 91%;
-  --ring: 211 100% 50%;
-  
-  --radius: 0.75rem;
+  --ring: 221 83% 53%;                /* #2563EB  focus     */
+
+  /* ---- Brand scale as HSL triplets (new, additive) ---------------------- */
+  --brand: 221 83% 53%;               /* #2563EB */
+  --brand-hover: 224 76% 48%;         /* #1D4ED8 */
+  --brand-active: 226 71% 40%;        /* #1E40AF */
+  --brand-subtle: 214 100% 97%;       /* #EFF6FF */
+  --brand-border: 214 95% 93%;        /* #DBEAFE */
+  --brand-electric: 229 85% 57%;      /* #3356EE */
+  --status-success: 160 84% 39%;      /* #10B981 */
+
+  --surface-secondary: 210 40% 98%;   /* #F8FAFC */
+  --surface-tertiary: 210 40% 96%;    /* #F1F5F9 */
+  --surface-dark: 222 33% 6%;         /* #0A0D14 */
+  --surface-dark-card: 221 39% 11%;   /* #111827 */
+
+  --text-muted-hsl: 215 20% 65%;      /* #94A3B8 */
+  --border-strong-hsl: 213 27% 84%;   /* #CBD5E1 */
+  --border-card-hover-hsl: 213 97% 87%; /* #BFDBFE */
+  --badge-bg-hsl: 226 100% 94%;       /* #E0E7FF */
+  --badge-text-hsl: 226 71% 40%;      /* #1E40AF */
+
+  /* ---- Raw hex layer (inline styles / non-Tailwind CSS) ----------------- */
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F8FAFC;
+  --bg-tertiary: #F1F5F9;
+  --bg-dark: #0A0D14;
+  --bg-dark-card: #111827;
+
+  --brand-primary: #2563EB;
+  --brand-primary-hover: #1D4ED8;
+  --brand-primary-active: #1E40AF;
+  --brand-primary-subtle: #EFF6FF;
+  --brand-primary-border: #DBEAFE;
+  --brand-primary-electric: #3356EE;
+  --brand-status-success: #10B981;
+
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
+  --text-inverse: #FFFFFF;
+
+  --border-subtle: #E2E8F0;
+  --border-strong: #CBD5E1;
+  --border-focus: #2563EB;
+  --border-card-hover: #BFDBFE;
+
+  --badge-pill-bg: #E0E7FF;
+  --badge-pill-text: #1E40AF;
+
+  /* ---- Radii ------------------------------------------------------------ */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+  --radius: 16px; /* legacy alias → lg */
+
+  /* ---- Elevation -------------------------------------------------------- */
+  --shadow-subtle: 0 1px 2px 0 rgba(15, 23, 42, .05);
+  --shadow-card: 0 4px 6px -1px rgba(15, 23, 42, .05), 0 2px 4px -2px rgba(15, 23, 42, .03);
+  --shadow-card-hover: 0 12px 24px -4px rgba(15, 23, 42, .08), 0 4px 8px -2px rgba(15, 23, 42, .04);
+  --shadow-flyout: 0 20px 30px -10px rgba(15, 23, 42, .12), 0 8px 12px -4px rgba(15, 23, 42, .06);
+
+  /* ---- Gradients -------------------------------------------------------- */
+  --gradient-hero-mesh: radial-gradient(55% 55% at 50% 0%, rgba(37, 99, 235, .08) 0%, rgba(255, 255, 255, 0) 100%);
+  --gradient-dark-banner: linear-gradient(135deg, #0A0D14 0%, #0F172A 60%, #1E293B 100%);
+  --hairline-inverse: 1px solid rgba(255, 255, 255, .1);
+
+  /* ---- Layout ----------------------------------------------------------- */
+  --container-max: 1240px;
 }
 
 @layer base {
@@ -57,6 +135,20 @@
   
   .glass-card {
     @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
+  }
+
+  /* Design-token surface helpers (additive — no component was restructured). */
+  .surface-hero-mesh {
+    background-image: var(--gradient-hero-mesh);
+  }
+
+  .surface-dark-banner {
+    background-image: var(--gradient-dark-banner);
+    color: var(--text-inverse);
+  }
+
+  .hairline-inverse {
+    border: var(--hairline-inverse);
   }
 
   .maple-bg {
