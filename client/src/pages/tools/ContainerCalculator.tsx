@@ -243,7 +243,7 @@ function CargoColorPicker({
                   title={preset.name}
                   data-testid={`button-${testSurface}cargo-color-${index}-${preset.name.toLowerCase()}`}
                 >
-                  <span className="h-2 w-2 rounded-full bg-white transition group-hover:bg-white" aria-hidden="true" />
+                  <span className="h-2 w-2 rounded-full bg-transparent transition-colors duration-state group-hover:bg-white" aria-hidden="true" />
                 </button>
               );
             })}
@@ -3407,16 +3407,16 @@ export function ContainerViewer3D({
             )}
           </AnimatePresence>
           <div className={`absolute right-3 top-3 z-30 hidden max-h-[calc(100%-4.5rem)] flex-col items-center gap-0.5 overflow-visible bg-transparent p-1 transition-[right] lg:flex ${sidebarOpen ? "lg:right-[344px]" : ""}`} data-testid="container-floating-tool-rail">
-            <button type="button" onClick={() => setSidebarOpen((current) => !current)} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition duration-state hover:-translate-x-0.5 hover:bg-white hover:text-brand hover:shadow-md" aria-label={sidebarOpen ? "Hide cargo panel" : "Show cargo panel"} data-testid="button-container-sidebar-toggle">{sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}<ViewerHoverLabel>{sidebarOpen ? "Hide cargo panel" : "Show cargo panel"}</ViewerHoverLabel></button>
-            <button type="button" onClick={() => { cycleCameraView(); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition duration-state hover:-translate-x-0.5 hover:bg-white hover:text-brand hover:shadow-md" aria-label="Change camera angle" data-testid="button-floating-camera"><Camera className="h-4 w-4" /><ViewerHoverLabel>Change camera angle</ViewerHoverLabel></button>
+            <button type="button" onClick={() => setSidebarOpen((current) => !current)} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition-colors duration-state hover:bg-surface-recessed hover:text-brand" aria-label={sidebarOpen ? "Hide cargo panel" : "Show cargo panel"} data-testid="button-container-sidebar-toggle">{sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}<ViewerHoverLabel>{sidebarOpen ? "Hide cargo panel" : "Show cargo panel"}</ViewerHoverLabel></button>
+            <button type="button" onClick={() => { cycleCameraView(); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition-colors duration-state hover:bg-surface-recessed hover:text-brand" aria-label="Change camera angle" data-testid="button-floating-camera"><Camera className="h-4 w-4" /><ViewerHoverLabel>Change camera angle</ViewerHoverLabel></button>
             <button type="button" onClick={() => { setArrangeMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setSequenceMode((current) => { if (!current) setSequenceStep(1); return !current; }); }} disabled={placed.length === 0} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-state hover:-translate-x-0.5  hover:bg-white hover:shadow-md disabled:opacity-35 ${sequenceMode ? "bg-surface-recessed text-text-secondary" : "text-text-muted hover:text-brand"}`} aria-label="Loading sequence" data-testid="button-loading-sequence"><Play className="h-4 w-4" /><ViewerHoverLabel>Loading sequence</ViewerHoverLabel></button>
             {onPlacedChange && <button type="button" onClick={() => { setSequenceMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setArrangeMode((current) => !current); setPlacementMessage("Precision tools enabled — select one or more units to align, rotate or nudge."); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-state hover:-translate-x-0.5  hover:bg-white hover:shadow-md ${arrangeMode ? "bg-surface-recessed text-text-secondary" : "text-text-muted hover:text-brand"}`} aria-label="Precision cargo tools" data-testid="button-arrange-cargo"><Crosshair className="h-4 w-4" /><ViewerHoverLabel>Precision cargo tools</ViewerHoverLabel></button>}
             <div className="my-0.5 h-px w-6 bg-surface-canvas" />
             <button type="button" onClick={() => { setDisplayControlsOpen((current) => !current); setSharePanelOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-state hover:-translate-x-0.5  hover:bg-white hover:shadow-md ${displayControlsOpen ? "bg-surface-recessed text-brand" : "text-text-muted hover:text-brand"}`} aria-label="View controls" data-testid="button-floating-settings"><Settings2 className="h-4 w-4" /><ViewerHoverLabel>View controls</ViewerHoverLabel></button>
             <button type="button" onClick={() => { setWarningPanelOpen((current) => !current); setSharePanelOpen(false); setDisplayControlsOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-state hover:-translate-x-0.5  hover:bg-white hover:shadow-md ${warningPanelOpen ? "bg-surface-dark text-white" : "text-text-muted hover:text-brand"}`} aria-label="Placement checks" data-testid="button-floating-warnings"><AlertTriangle className="h-4 w-4" />{hasPlacementWarning && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#B42318]" />}<ViewerHoverLabel>Placement checks</ViewerHoverLabel></button>
             <div className="my-0.5 h-px w-6 bg-surface-canvas" />
-            <button type="button" onClick={downloadCurrentSnapshot} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition duration-state hover:-translate-x-0.5 hover:bg-white hover:text-brand hover:shadow-md" aria-label="Download scene image" data-testid="button-floating-snapshot"><ImageDown className="h-4 w-4" /><ViewerHoverLabel>Save scene image</ViewerHoverLabel></button>
-            {onExportPdf && <button type="button" onClick={onExportPdf} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition duration-state hover:-translate-x-0.5 hover:bg-white hover:text-brand hover:shadow-md" aria-label="Download PDF report" data-testid="button-floating-pdf"><FileDown className="h-4 w-4" /><ViewerHoverLabel>Download PDF report</ViewerHoverLabel></button>}
+            <button type="button" onClick={downloadCurrentSnapshot} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition-colors duration-state hover:bg-surface-recessed hover:text-brand" aria-label="Download scene image" data-testid="button-floating-snapshot"><ImageDown className="h-4 w-4" /><ViewerHoverLabel>Save scene image</ViewerHoverLabel></button>
+            {onExportPdf && <button type="button" onClick={onExportPdf} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition-colors duration-state hover:bg-surface-recessed hover:text-brand" aria-label="Download PDF report" data-testid="button-floating-pdf"><FileDown className="h-4 w-4" /><ViewerHoverLabel>Download PDF report</ViewerHoverLabel></button>}
             <button type="button" onClick={() => { setSharePanelOpen((current) => !current); setHelpPanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-state hover:-translate-x-0.5  hover:bg-white hover:shadow-md ${sharePanelOpen ? "bg-surface-recessed text-brand" : "text-text-muted hover:text-brand"}`} aria-label="Share loading plan" data-testid="button-share-scene"><Share2 className="h-4 w-4" /><ViewerHoverLabel>Share loading plan</ViewerHoverLabel></button>
             {onSaveProject && <button type="button" onClick={() => runExternalAction(onSaveProject)} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition duration-state hover:-translate-x-0.5  hover:bg-white hover:text-[#15803D] hover:shadow-md" aria-label="Save project" data-testid="button-save-scene"><Save className="h-4 w-4" /><ViewerHoverLabel>Save project</ViewerHoverLabel></button>}
             <div className="my-0.5 h-px w-6 bg-surface-canvas" />
@@ -3506,7 +3506,7 @@ export function ContainerViewer3D({
                     {arrangeMode ? <div className="flex gap-1">
                       <button type="button" onClick={() => setSelectedCargoIndices(new Set(placed.map((_, index) => index)))} className="rounded-lg border border-border-hairline bg-white px-2 py-1 text-[9px] font-bold text-text-muted" data-testid="button-mobile-select-all-cargo">Select all</button>
                       <button type="button" onClick={() => setSelectedCargoIndices(new Set())} disabled={selectedCargoIndices.size === 0} className="rounded-lg border border-border-hairline bg-white px-2 py-1 text-[9px] font-bold text-text-muted disabled:opacity-40" data-testid="button-mobile-clear-cargo-selection">Clear</button>
-                    </div> : <button type="button" onClick={() => { setSequenceMode(false); setArrangeMode(true); setPlacementMessage("Select cargo below, then drag or use the precision controls."); }} className="rounded-lg bg-surface-dark px-2.5 py-1.5 text-[9px] font-bold text-white" data-testid="button-mobile-open-adjust-layout"><MousePointerClick className="mr-1 inline h-3 w-3" />Adjust layout</button>}
+                    </div> : <button type="button" onClick={() => { setSequenceMode(false); setArrangeMode(true); setPlacementMessage("Select cargo below, then drag or use the precision controls."); }} className="rounded-sm border border-border-control bg-white px-2.5 py-1.5 text-[11px] font-semibold text-text-secondary transition-colors duration-state hover:border-brand hover:text-brand" data-testid="button-mobile-open-adjust-layout"><MousePointerClick className="mr-1 inline h-3 w-3" />Adjust layout</button>}
                   </div>
                 )}
               </div>
@@ -3531,7 +3531,7 @@ export function ContainerViewer3D({
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-primary" style={{ backgroundColor: `${entry.box.color}45` }}><Package className="h-4 w-4" /></span>
                       <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-text-secondary">{entry.box.cargoName || "Cargo item"}</span><span className="mt-0.5 block truncate text-[9px] text-text-muted">{fmt(entry.box.l)} × {fmt(entry.box.w)} × {fmt(entry.box.h)}</span></span>
                     </button>
-                    <button type="button" onClick={() => loadStagedCargo(entry.id)} className="rounded-lg bg-surface-dark px-2.5 py-1.5 text-[9px] font-bold text-white" data-testid={`button-mobile-load-staged-${entry.id}`}>Load</button>
+                    <button type="button" onClick={() => loadStagedCargo(entry.id)} className="rounded-sm border border-border-control bg-white px-2.5 py-1.5 text-[11px] font-semibold text-text-secondary transition-colors duration-state hover:border-brand hover:text-brand" data-testid={`button-mobile-load-staged-${entry.id}`}>Load</button>
                   </div>)}
                 </div> : <div className="px-4 py-7 text-center"><Package className="mx-auto h-6 w-6 text-text-deemphasis" /><p className="mt-2 text-[11px] font-bold text-text-muted">No cargo staged here</p><p className="mt-1 text-[9px] leading-4 text-text-deemphasis">Use the D1 or D2 control beside a loaded unit.</p></div>}
               </div>
@@ -3723,7 +3723,7 @@ export function ContainerViewer3D({
             <button type="button" onClick={() => runExternalAction(onOpenProjects)} disabled={!onOpenProjects} className="flex items-center justify-center gap-2 border-r border-border-hairline text-[10px] font-semibold text-text-muted transition hover:bg-white hover:text-brand disabled:cursor-default disabled:opacity-60"><FolderOpen className="h-3.5 w-3.5" />Projects</button>
             <button type="button" onClick={() => runExternalAction(onEditCargo)} disabled={!onEditCargo} className="flex items-center justify-center gap-2 border-r border-border-hairline text-[10px] font-semibold text-text-muted transition hover:bg-white hover:text-brand disabled:cursor-default disabled:opacity-60"><Package className="h-3.5 w-3.5" />Cargo</button>
             <button type="button" onClick={() => runExternalAction(onEditContainer)} disabled={!onEditContainer} className="flex items-center justify-center gap-2 border-r border-border-hairline text-[10px] font-semibold text-text-muted transition hover:bg-white hover:text-brand disabled:cursor-default disabled:opacity-60"><Ship className="h-3.5 w-3.5" />Container</button>
-            <span className="flex items-center justify-center gap-2 bg-surface-recessed text-[10px] font-bold text-brand"><LayoutDashboard className="h-3.5 w-3.5" />Loading plan</span>
+            <span className="flex items-center justify-center gap-2 bg-white text-[11px] font-semibold text-brand"><LayoutDashboard className="h-3.5 w-3.5" />Loading plan</span>
           </nav>}
         </div>
         {sidebarOpen && (
@@ -3761,7 +3761,7 @@ export function ContainerViewer3D({
 
             <div className="border-b border-border-hairline bg-white">
               <button type="button" onClick={() => setPlacementSummaryOpen((current) => !current)} className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-surface-recessed" aria-expanded={placementSummaryOpen} data-testid="button-toggle-placement-summary">
-                <span><span className="block text-[10px] font-bold uppercase tracking-[0.1em] text-text-muted">Placement calculations</span><span className="mt-0.5 block text-[9px] text-text-deemphasis">{volumeUtilization.toFixed(0)}% volume · {payloadUtilization.toFixed(0)}% payload · {placed.length} units</span></span>
+                <span><span className="block text-[10px] font-bold uppercase tracking-[0.1em] text-text-muted">Placement calculations</span><span className="mt-0.5 block text-[9px] text-text-deemphasis tabular-nums">{volumeUtilization.toFixed(0)}% volume · {payloadUtilization.toFixed(0)}% payload · {placed.length} units</span></span>
                 <ChevronDown className={`h-4 w-4 shrink-0 text-text-deemphasis transition-transform ${placementSummaryOpen ? "rotate-180" : ""}`} />
               </button>
               {placementSummaryOpen && <div className="border-t border-border-hairline px-3 pb-3 pt-2" data-testid="viewer-placement-summary">
@@ -3842,7 +3842,7 @@ export function ContainerViewer3D({
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-primary" style={{ backgroundColor: `${entry.box.color}45` }}><Package className="h-4 w-4" /></span>
                       <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-text-secondary">{entry.box.cargoName || "Cargo item"}</span><span className="mt-0.5 block truncate text-[9px] text-text-muted">{fmt(entry.box.l)} × {fmt(entry.box.w)} × {fmt(entry.box.h)}</span></span>
                     </button>
-                    <button type="button" onClick={() => loadStagedCargo(entry.id)} className="rounded-lg bg-surface-dark px-2 py-1.5 text-[9px] font-bold text-white hover:bg-[#314158]" data-testid={`button-load-staged-${entry.id}`}>Load</button>
+                    <button type="button" onClick={() => loadStagedCargo(entry.id)} className="rounded-sm border border-border-control bg-white px-2 py-1.5 text-[11px] font-semibold text-text-secondary transition-colors duration-state hover:border-brand hover:text-brand" data-testid={`button-load-staged-${entry.id}`}>Load</button>
                   </div>)}
                 </div> : <div className="mx-2 mt-8 rounded-lg border border-dashed border-border-control bg-white px-4 py-7 text-center">
                   <Package className="mx-auto h-6 w-6 text-text-deemphasis" />
@@ -3853,7 +3853,7 @@ export function ContainerViewer3D({
             </div>
             <div className="grid shrink-0 grid-cols-2 gap-1.5 border-t border-border-hairline bg-white px-3 py-2" data-testid="viewer-export-actions">
               {onExportCsv ? <button type="button" onClick={() => runExternalAction(onExportCsv)} className="flex h-8 items-center justify-center gap-1.5 rounded-lg border border-border-hairline bg-white text-[9px] font-bold text-text-muted hover:border-[#A6F4C5] hover:text-[#15803D]" data-testid="button-viewer-export-csv"><FileSpreadsheet className="h-3.5 w-3.5" />Placement CSV</button> : <span />}
-              {onExportPdf && <button type="button" onClick={() => runExternalAction(onExportPdf)} className="flex h-8 items-center justify-center gap-1.5 rounded-lg bg-surface-dark text-[9px] font-bold text-white hover:bg-[#314158]" data-testid="button-viewer-export-pdf"><FileDown className="h-3.5 w-3.5" />Save to PDF</button>}
+              {onExportPdf && <button type="button" onClick={() => runExternalAction(onExportPdf)} className="flex h-8 items-center justify-center gap-1.5 rounded-md bg-brand text-[11px] font-semibold text-white transition-colors duration-state hover:bg-brand-hover" data-testid="button-viewer-export-pdf"><FileDown className="h-3.5 w-3.5" />Save to PDF</button>}
             </div>
           </aside>
         )}
@@ -3886,8 +3886,8 @@ function StatCard({
       </div>
       <div className="min-w-0">
         <p className="text-xs text-text-muted font-medium">{label}</p>
-        <p className="text-lg font-bold text-text-primary leading-tight">{value}</p>
-        {sub && <p className="text-xs text-text-deemphasis">{sub}</p>}
+        <p className="text-lg font-bold text-text-primary leading-tight tabular-nums">{value}</p>
+        {sub && <p className="text-xs text-text-deemphasis tabular-nums">{sub}</p>}
       </div>
     </div>
   );
@@ -4050,17 +4050,17 @@ function ContainerBalancePanel({
             <div>
               <p className="text-[10px] uppercase tracking-wide text-text-deemphasis font-semibold">From closed end</p>
               <p className="text-sm font-bold text-text-primary mt-0.5">{fmtDim(balance.centerXIn)}</p>
-              <p className="text-[10px] text-text-muted">{balance.longitudinalPct.toFixed(0)}% of length</p>
+              <p className="text-[10px] text-text-muted tabular-nums">{balance.longitudinalPct.toFixed(0)}% of length</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wide text-text-deemphasis font-semibold">From Side A</p>
               <p className="text-sm font-bold text-text-primary mt-0.5">{fmtDim(balance.centerZIn)}</p>
-              <p className="text-[10px] text-text-muted">{balance.lateralPct.toFixed(0)}% of width</p>
+              <p className="text-[10px] text-text-muted tabular-nums">{balance.lateralPct.toFixed(0)}% of width</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wide text-text-deemphasis font-semibold">CG height</p>
               <p className="text-sm font-bold text-text-primary mt-0.5">{fmtDim(balance.centerYIn)}</p>
-              <p className="text-[10px] text-text-muted">{balance.heightPct.toFixed(0)}% of height</p>
+              <p className="text-[10px] text-text-muted tabular-nums">{balance.heightPct.toFixed(0)}% of height</p>
             </div>
           </div>
 
@@ -4213,11 +4213,11 @@ function ContainerComparisonPanel({
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <div className="rounded-lg bg-surface-recessed px-2 py-2">
                     <p className="text-[9px] font-semibold uppercase tracking-wide text-text-deemphasis">Space used</p>
-                    <p className="mt-0.5 text-sm font-bold text-text-secondary">{comparison.volumeUtilPct.toFixed(1)}%</p>
+                    <p className="mt-0.5 text-sm font-bold text-text-secondary tabular-nums">{comparison.volumeUtilPct.toFixed(1)}%</p>
                   </div>
                   <div className="rounded-lg bg-surface-recessed px-2 py-2">
                     <p className="text-[9px] font-semibold uppercase tracking-wide text-text-deemphasis">Weight used</p>
-                    <p className="mt-0.5 text-sm font-bold text-text-secondary">{comparison.weightUtilPct.toFixed(1)}%</p>
+                    <p className="mt-0.5 text-sm font-bold text-text-secondary tabular-nums">{comparison.weightUtilPct.toFixed(1)}%</p>
                   </div>
                 </div>
 
@@ -5212,7 +5212,7 @@ export default function ContainerCalculator() {
   return (
     <div className="min-h-screen flex flex-col font-sans bg-surface-recessed">
       {calculating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-dark" data-testid="calculating-overlay">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-dark/40" data-testid="calculating-overlay">
           <div className="bg-white rounded-lg shadow-md px-10 py-8 flex flex-col items-center gap-4 max-w-xs">
             <div className="relative w-16 h-16">
               <div className="absolute inset-0 rounded-full border-4 border-border-hairline" />
@@ -5227,7 +5227,7 @@ export default function ContainerCalculator() {
         </div>
       )}
       {projectDialogOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-surface-dark p-4" onClick={() => setProjectDialogOpen(false)} data-testid="project-library-overlay">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-surface-dark/35 p-4" onClick={() => setProjectDialogOpen(false)} data-testid="project-library-overlay">
           <div className="flex max-h-[86vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border-hairline bg-white shadow-md" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="project-library-title" data-testid="project-library-dialog">
             <div className="flex items-start justify-between gap-4 border-b border-border-hairline p-5">
               <div><p id="project-library-title" className="text-lg font-bold text-text-primary">Loading plan projects</p><p className="mt-1 text-sm leading-5 text-text-muted">Save complete inputs and calculated placements. Projects remain private on this device.</p></div>
@@ -5254,7 +5254,7 @@ export default function ContainerCalculator() {
         </div>
       )}
       {shareDialogOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-surface-dark p-4" onClick={() => setShareDialogOpen(false)} data-testid="share-plan-dialog-overlay">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-surface-dark/35 p-4" onClick={() => setShareDialogOpen(false)} data-testid="share-plan-dialog-overlay">
           <div className="w-full max-w-lg rounded-lg border border-border-hairline bg-white p-5 shadow-md" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="share-plan-title" data-testid="share-plan-dialog">
             <div className="flex items-start justify-between gap-4">
               <div><p id="share-plan-title" className="text-lg font-bold text-text-primary">Share loading plan</p><p className="mt-1 text-sm leading-5 text-text-muted">Anyone with the link can inspect the read-only 3D plan without an account.</p></div>
@@ -5505,7 +5505,7 @@ export default function ContainerCalculator() {
                   <div className="mt-3 p-2.5 rounded-lg bg-surface-recessed border border-border-hairline">
                     <div className="grid grid-cols-5 gap-1 text-center text-[11px]">
                       <div>
-                        <p className="font-bold text-text-primary" data-testid="text-container-length">
+                        <p className="font-bold text-text-primary tabular-nums" data-testid="text-container-length">
                           {isMetric
                             ? `${(container.lengthIn * IN_TO_CM).toFixed(0)}`
                             : `${parseFloat(container.lengthIn.toFixed(1))}`}
@@ -5513,7 +5513,7 @@ export default function ContainerCalculator() {
                         <p className="text-[9px] text-text-deemphasis">L ({dimUnit})</p>
                       </div>
                       <div>
-                        <p className="font-bold text-text-primary" data-testid="text-container-width">
+                        <p className="font-bold text-text-primary tabular-nums" data-testid="text-container-width">
                           {isMetric
                             ? `${(container.widthIn * IN_TO_CM).toFixed(0)}`
                             : `${parseFloat(container.widthIn.toFixed(1))}`}
@@ -5521,7 +5521,7 @@ export default function ContainerCalculator() {
                         <p className="text-[9px] text-text-deemphasis">W ({dimUnit})</p>
                       </div>
                       <div>
-                        <p className="font-bold text-text-primary" data-testid="text-container-height">
+                        <p className="font-bold text-text-primary tabular-nums" data-testid="text-container-height">
                           {isMetric
                             ? `${(container.heightIn * IN_TO_CM).toFixed(0)}`
                             : `${parseFloat(container.heightIn.toFixed(1))}`}
@@ -5529,7 +5529,7 @@ export default function ContainerCalculator() {
                         <p className="text-[9px] text-text-deemphasis">H ({dimUnit})</p>
                       </div>
                       <div>
-                        <p className="font-bold text-text-primary" data-testid="text-container-payload">
+                        <p className="font-bold text-text-primary tabular-nums" data-testid="text-container-payload">
                           {isMetric
                             ? `${Math.round(container.maxPayloadLbs * LB_TO_KG).toLocaleString()}`
                             : `${container.maxPayloadLbs.toLocaleString()}`}
@@ -5537,7 +5537,7 @@ export default function ContainerCalculator() {
                         <p className="text-[9px] text-text-deemphasis">{weightUnit}</p>
                       </div>
                       <div>
-                        <p className="font-bold text-text-primary" data-testid="text-container-volume">
+                        <p className="font-bold text-text-primary tabular-nums" data-testid="text-container-volume">
                           {isMetric
                             ? `${(container.volumeCuFt * 0.0283168).toFixed(1)}`
                             : `${container.volumeCuFt.toLocaleString()}`}
@@ -7027,7 +7027,7 @@ export default function ContainerCalculator() {
                               placeholder={`Cargo ${idx + 1}`}
                               value={item.name}
                               onChange={(e) => updateItem(item.id, "name", e.target.value)}
-                              className="h-7 text-xs flex-1 min-w-0"
+                              className="h-9 text-xs flex-1 min-w-0"
                               data-testid={`input-cargo-name-${idx}`}
                             />
                             {cargoItems.length > 1 && (
@@ -7040,27 +7040,27 @@ export default function ContainerCalculator() {
                           <div className="grid grid-cols-6 gap-1 mb-1.5">
                             <div className="text-center">
                               <span className="text-[8px] text-text-deemphasis uppercase block">L</span>
-                              <Input type="number" min={0} step="0.1" value={toDisplay(item.length)} onChange={(e) => updateItem(item.id, "length", fromDisplay(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-cargo-length-${idx}`} />
+                              <Input type="number" min={0} step="0.1" value={toDisplay(item.length)} onChange={(e) => updateItem(item.id, "length", fromDisplay(e.target.value))} className="h-8 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-cargo-length-${idx}`} />
                             </div>
                             <div className="text-center">
                               <span className="text-[8px] text-text-deemphasis uppercase block">W</span>
-                              <Input type="number" min={0} step="0.1" value={toDisplay(item.width)} onChange={(e) => updateItem(item.id, "width", fromDisplay(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-cargo-width-${idx}`} />
+                              <Input type="number" min={0} step="0.1" value={toDisplay(item.width)} onChange={(e) => updateItem(item.id, "width", fromDisplay(e.target.value))} className="h-8 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-cargo-width-${idx}`} />
                             </div>
                             <div className="text-center">
                               <span className="text-[8px] text-text-deemphasis uppercase block">H</span>
-                              <Input type="number" min={0} step="0.1" value={toDisplay(item.height)} onChange={(e) => updateItem(item.id, "height", fromDisplay(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-cargo-height-${idx}`} />
+                              <Input type="number" min={0} step="0.1" value={toDisplay(item.height)} onChange={(e) => updateItem(item.id, "height", fromDisplay(e.target.value))} className="h-8 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-cargo-height-${idx}`} />
                             </div>
                             <div className="text-center">
                               <span className="text-[8px] text-text-deemphasis uppercase block">Qty</span>
-                              <Input type="number" min={1} value={item.quantity || ""} onChange={(e) => updateItem(item.id, "quantity", parseInt(e.target.value) || 0)} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-cargo-qty-${idx}`} />
+                              <Input type="number" min={1} value={item.quantity || ""} onChange={(e) => updateItem(item.id, "quantity", parseInt(e.target.value) || 0)} className="h-8 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-cargo-qty-${idx}`} />
                             </div>
                             <div className="text-center">
                               <span className="text-[8px] text-text-deemphasis uppercase block">Total wt</span>
-                              <Input type="number" min={0} step="0.1" value={toDisplayWeight(item.weight)} onChange={(e) => updateItem(item.id, "weight", fromDisplayWeight(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-cargo-weight-${idx}`} />
+                              <Input type="number" min={0} step="0.1" value={toDisplayWeight(item.weight)} onChange={(e) => updateItem(item.id, "weight", fromDisplayWeight(e.target.value))} className="h-8 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-cargo-weight-${idx}`} />
                             </div>
                             <div className="text-center">
                               <span className="text-[8px] text-text-deemphasis uppercase block">Per pc</span>
-                              <div className="h-6 flex items-center justify-center text-[10px] text-text-muted font-medium" data-testid={`text-wtotal-${idx}`}>
+                              <div className="h-8 flex items-center justify-center text-[10px] text-text-muted font-medium" data-testid={`text-wtotal-${idx}`}>
                                 {item.weight > 0 && item.quantity > 0 ? displayPerPieceWt : "—"}
                               </div>
                             </div>
@@ -7071,8 +7071,8 @@ export default function ContainerCalculator() {
                               <span className="text-[8px] text-text-deemphasis uppercase block mb-0.5">Stack</span>
                               <button
                                 onClick={() => setVisualPopup({ type: "stackable", itemId: item.id })}
-                                className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                  item.stackable ? "bg-[#ECFDF3] border-[#A6F4C5] text-[#15803D]" : "bg-[#FFFBEB] border-[#FDE68A] text-[#78350F]"
+                                className={`w-full h-8 rounded-sm text-[10px] font-semibold border-2 transition-colors duration-state ${
+                                  item.stackable ? "bg-white border-border-app text-text-secondary hover:border-border-control" : "bg-white border-brand text-text-primary"
                                 }`}
                                 data-testid={`toggle-stackable-yes-${idx}`}
                               >
@@ -7083,12 +7083,8 @@ export default function ContainerCalculator() {
                               <span className="text-[8px] text-text-deemphasis uppercase block mb-0.5">Rotate</span>
                               <button
                                 onClick={() => setVisualPopup({ type: "rotation", itemId: item.id })}
-                                className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                  item.rotationMode === "all"
-                                    ? "bg-surface-recessed border-border-hairline text-text-secondary"
-                                    : item.rotationMode === "horizontal"
-                                    ? "bg-surface-recessed border-border-hairline text-text-secondary"
-                                    : "bg-surface-recessed border-border-control text-text-secondary"
+                                className={`w-full h-8 rounded-sm text-[10px] font-semibold border-2 transition-colors duration-state ${
+                                  item.rotationMode === "all" ? "bg-white border-border-app text-text-secondary hover:border-border-control" : "bg-white border-brand text-text-primary"
                                 }`}
                                 data-testid={`select-rotation-${idx}`}
                               >
@@ -7099,10 +7095,8 @@ export default function ContainerCalculator() {
                               <span className="text-[8px] text-text-deemphasis uppercase block mb-0.5">Priority</span>
                               <button
                                 onClick={() => setVisualPopup({ type: "priority", itemId: item.id })}
-                                className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                  item.loadPriority === "first" ? "bg-[#FEF3F2] border-[#FECDCA] text-[#7A271A]"
-                                    : item.loadPriority === "last" ? "bg-[#ECFDF3] border-[#A6F4C5] text-[#15803D]"
-                                    : "bg-surface-recessed border-border-hairline text-text-secondary"
+                                className={`w-full h-8 rounded-sm text-[10px] font-semibold border-2 transition-colors duration-state ${
+                                  item.loadPriority === "normal" ? "bg-white border-border-app text-text-secondary hover:border-border-control" : "bg-white border-brand text-text-primary"
                                 }`}
                                 data-testid={`select-priority-${idx}`}
                               >
@@ -7113,7 +7107,7 @@ export default function ContainerCalculator() {
                               <span className="text-[8px] text-text-deemphasis uppercase block mb-0.5">Pallet</span>
                               <button
                                 onClick={() => setVisualPopup({ type: "palletized", itemId: item.id })}
-                                className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
+                                className={`w-full h-8 rounded text-[10px] font-medium border transition-colors ${
                                   item.palletized ? "bg-surface-recessed border-border-hairline text-text-secondary" : "border-border-hairline bg-white text-text-muted"
                                 }`}
                                 data-testid={`toggle-palletized-yes-${idx}`}
@@ -7218,7 +7212,7 @@ export default function ContainerCalculator() {
                                   placeholder={`Cargo ${idx + 1}`}
                                   value={item.name}
                                   onChange={(e) => updateItem(item.id, "name", e.target.value)}
-                                  className="h-7 text-xs min-w-0"
+                                  className="h-9 text-xs min-w-0"
                                   data-testid={`input-cargo-name-${idx}`}
                                 />
                               </td>
@@ -7227,7 +7221,7 @@ export default function ContainerCalculator() {
                                   type="number" min={0} step="0.1"
                                   value={toDisplay(item.length)}
                                   onChange={(e) => updateItem(item.id, "length", fromDisplay(e.target.value))}
-                                  className="h-7 text-xs px-0.5 text-right tabular-nums"
+                                  className="h-9 text-[13px] px-1 text-right tabular-nums"
                                   data-testid={`input-cargo-length-${idx}`}
                                 />
                               </td>
@@ -7236,7 +7230,7 @@ export default function ContainerCalculator() {
                                   type="number" min={0} step="0.1"
                                   value={toDisplay(item.width)}
                                   onChange={(e) => updateItem(item.id, "width", fromDisplay(e.target.value))}
-                                  className="h-7 text-xs px-0.5 text-right tabular-nums"
+                                  className="h-9 text-[13px] px-1 text-right tabular-nums"
                                   data-testid={`input-cargo-width-${idx}`}
                                 />
                               </td>
@@ -7245,7 +7239,7 @@ export default function ContainerCalculator() {
                                   type="number" min={0} step="0.1"
                                   value={toDisplay(item.height)}
                                   onChange={(e) => updateItem(item.id, "height", fromDisplay(e.target.value))}
-                                  className="h-7 text-xs px-0.5 text-right tabular-nums"
+                                  className="h-9 text-[13px] px-1 text-right tabular-nums"
                                   data-testid={`input-cargo-height-${idx}`}
                                 />
                               </td>
@@ -7254,7 +7248,7 @@ export default function ContainerCalculator() {
                                   type="number" min={1}
                                   value={item.quantity || ""}
                                   onChange={(e) => updateItem(item.id, "quantity", parseInt(e.target.value) || 0)}
-                                  className="h-7 text-xs px-0.5 text-right tabular-nums"
+                                  className="h-9 text-[13px] px-1 text-right tabular-nums"
                                   data-testid={`input-cargo-qty-${idx}`}
                                 />
                               </td>
@@ -7263,17 +7257,17 @@ export default function ContainerCalculator() {
                                   type="number" min={0} step="0.1"
                                   value={toDisplayWeight(item.weight)}
                                   onChange={(e) => updateItem(item.id, "weight", fromDisplayWeight(e.target.value))}
-                                  className="h-7 text-xs px-0.5 text-right tabular-nums"
+                                  className="h-9 text-[13px] px-1 text-right tabular-nums"
                                   data-testid={`input-cargo-weight-${idx}`}
                                 />
                               </td>
                               <td className="px-0.5 py-1">
                                 <button
                                   onClick={() => setVisualPopup({ type: "stackable", itemId: item.id })}
-                                  className={`w-full flex items-center justify-center h-7 rounded-md border text-[10px] font-medium transition-colors cursor-pointer ${
+                                  className={`w-full flex items-center justify-center h-9 rounded-sm border-2 text-[10px] font-semibold tabular-nums transition-colors duration-state cursor-pointer ${
                                     item.stackable
-                                      ? "bg-[#ECFDF3] border-[#A6F4C5] text-[#15803D] hover:bg-[#D1FADF]"
-                                      : "bg-[#FFFBEB] border-[#FDE68A] text-[#78350F] hover:bg-[#FEF0C7]"
+                                      ? "bg-white border-border-app text-text-secondary hover:border-border-control"
+                                      : "bg-white border-brand text-text-primary"
                                   }`}
                                   data-testid={`toggle-stackable-yes-${idx}`}
                                   title="Click to change"
@@ -7284,12 +7278,8 @@ export default function ContainerCalculator() {
                               <td className="px-0.5 py-1">
                                 <button
                                   onClick={() => setVisualPopup({ type: "rotation", itemId: item.id })}
-                                  className={`w-full flex items-center justify-center h-7 rounded-md border text-[10px] font-medium transition-colors cursor-pointer ${
-                                    item.rotationMode === "all"
-                                      ? "bg-surface-recessed border-border-hairline text-text-secondary hover:bg-surface-canvas"
-                                      : item.rotationMode === "horizontal"
-                                      ? "bg-surface-recessed border-border-hairline text-text-secondary hover:bg-surface-canvas"
-                                      : "bg-surface-recessed border-border-control text-text-secondary hover:bg-surface-canvas"
+                                  className={`w-full flex items-center justify-center h-9 rounded-sm border-2 text-[10px] font-semibold transition-colors duration-state cursor-pointer ${
+                                    item.rotationMode === "all" ? "bg-white border-border-app text-text-secondary hover:border-border-control" : "bg-white border-brand text-text-primary"
                                   }`}
                                   data-testid={`select-rotation-${idx}`}
                                   title="Click to change"
@@ -7300,12 +7290,8 @@ export default function ContainerCalculator() {
                               <td className="px-0.5 py-1">
                                 <button
                                   onClick={() => setVisualPopup({ type: "priority", itemId: item.id })}
-                                  className={`w-full flex items-center justify-center h-7 rounded-md border text-[10px] font-medium transition-colors cursor-pointer ${
-                                    item.loadPriority === "first"
-                                      ? "bg-[#FEF3F2] border-[#FECDCA] text-[#7A271A] hover:bg-[#FEE4E2]"
-                                      : item.loadPriority === "last"
-                                      ? "bg-[#ECFDF3] border-[#A6F4C5] text-[#15803D] hover:bg-[#D1FADF]"
-                                      : "bg-surface-recessed border-border-hairline text-text-secondary hover:bg-surface-canvas"
+                                  className={`w-full flex items-center justify-center h-9 rounded-sm border-2 text-[10px] font-semibold transition-colors duration-state cursor-pointer ${
+                                    item.loadPriority === "normal" ? "bg-white border-border-app text-text-secondary hover:border-border-control" : "bg-white border-brand text-text-primary"
                                   }`}
                                   data-testid={`select-priority-${idx}`}
                                   title="Click to change"
