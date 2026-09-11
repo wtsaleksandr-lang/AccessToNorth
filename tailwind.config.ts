@@ -4,78 +4,80 @@ export default {
   darkMode: ["class"],
   content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
   theme: {
-    // NOTE: the 1240px content width ships as the opt-in `max-w-container`
-    // utility (and `--container-max`) rather than as a `theme.container`
-    // override. `.container` is used in 62 places including Navbar.tsx, and
-    // capping it globally makes the desktop nav overflow and wrap
-    // ("Client Login" breaks onto two lines, header grows taller). Adopting
-    // 1240px site-wide needs matching nav changes, which belong to the
-    // component wave — not to this tokens-only PR.
-    // `colors.card` (shadcn) and `boxShadow.card` (new token) both claim the
-    // class `shadow-card`. The boxShadowColor plugin is registered later, so it
-    // would win and paint the shadow white (hsl(var(--card))), silently erasing
-    // the elevation token. Drop only `card` from the shadow-color palette.
+    // NOTE: the 1328px outer width ships as the opt-in `max-w-container-outer`
+    // / `max-w-container` utilities (and `--container-*`) rather than as a
+    // `theme.container` override. `.container` is used in 62 places including
+    // Navbar.tsx, and capping it globally makes the desktop nav overflow and
+    // wrap ("Client Login" breaks onto two lines, header grows taller).
+    // Adopting the measured width site-wide needs matching nav changes, which
+    // belong to the component wave — not to this tokens-only PR.
+    //
+    // boxShadowColor guard: any key present in BOTH `colors` and `boxShadow`
+    // is claimed by two plugins for the same class, and boxShadowColor is
+    // registered later — it wins and repaints the elevation as a shadow
+    // COLOUR, silently erasing the shadow. `card` is the live collision here.
+    // Keep this guard when adding shadow tokens.
     boxShadowColor: ({ theme }: { theme: (k: string) => Record<string, unknown> }) => {
       const { card: _card, ...rest } = theme("colors");
       return rest;
     },
     extend: {
       maxWidth: {
-        container: "1240px",
+        container: "1280px",         /* content */
+        "container-outer": "1328px", /* outer shell incl. 2 x 24px gutters */
       },
       borderRadius: {
+        // Concentric and arithmetic: outer 12px - 4px padding = 8px child;
+        // 8px - 2px padding = 6px child. Subtract padding, don't eyeball.
         sm: "6px",
-        md: "10px",
-        lg: "16px",
-        xl: "24px",
-        full: "9999px",
+        md: "8px",
+        lg: "12px",
       },
       fontSize: {
-        h1: ["clamp(2.5rem, 5vw, 3.75rem)", { lineHeight: "1.12", letterSpacing: "-0.025em", fontWeight: "700" }],
-        h2: ["clamp(2rem, 3.5vw, 2.75rem)", { lineHeight: "1.2", letterSpacing: "-0.02em", fontWeight: "700" }],
-        h3: ["1.25rem", { lineHeight: "1.35", fontWeight: "600" }],
-        "body-lg": ["1.125rem", { lineHeight: "1.6", fontWeight: "400" }],
-        body: ["0.9375rem", { lineHeight: "1.55", fontWeight: "400" }],
-        caption: ["0.8125rem", { lineHeight: "1.4", fontWeight: "500" }],
+        // Measured from the reference. Letter-spacing is given in px, as
+        // measured; it works out to -0.04em on h1/h2, 0 in the middle of the
+        // scale, and +0.175em on the 12px uppercase eyebrow.
+        h1: ["54px", { lineHeight: "65px", letterSpacing: "-2.16px", fontWeight: "700" }],
+        // 375px variant — pair as `text-h1-sm md:text-h1` in the component wave.
+        "h1-sm": ["48px", { lineHeight: "52px", letterSpacing: "-1.92px", fontWeight: "700" }],
+        h2: ["32px", { lineHeight: "40px", letterSpacing: "-1.28px", fontWeight: "700" }],
+        h3: ["16px", { lineHeight: "19.2px", fontWeight: "600" }],
+        lead: ["18px", { lineHeight: "25.2px", fontWeight: "400" }],
+        body: ["14px", { lineHeight: "19.6px", fontWeight: "400" }],
+        // `uppercase` is applied as a separate class; fontSize cannot set it.
+        eyebrow: ["12px", { lineHeight: "18px", letterSpacing: "2.1px", fontWeight: "600" }],
       },
       boxShadow: {
-        subtle: "0 1px 2px 0 rgba(15, 23, 42, .05)",
-        card: "0 4px 6px -1px rgba(15, 23, 42, .05), 0 2px 4px -2px rgba(15, 23, 42, .03)",
-        "card-hover": "0 12px 24px -4px rgba(15, 23, 42, .08), 0 4px 8px -2px rgba(15, 23, 42, .04)",
-        flyout: "0 20px 30px -10px rgba(15, 23, 42, .12), 0 8px 12px -4px rgba(15, 23, 42, .06)",
+        // Exactly three. `lifted` is deliberately blue-grey tinted, not black.
+        sm: "0 2px 6px rgba(0, 0, 0, .04)",
+        md: "0 8px 24px rgba(0, 0, 0, .04)",
+        lifted: "0 4px 24px rgba(165, 176, 204, .20)",
       },
-      backgroundImage: {
-        "hero-mesh": "var(--gradient-hero-mesh)",
-        "dark-banner": "var(--gradient-dark-banner)",
+      transitionDuration: {
+        DEFAULT: "300ms",
+        state: "200ms",
       },
       colors: {
-        // --- Design-token brand scale (additive; --accent stays Canadian red) ---
+        // --- Design tokens (additive; --accent stays Canadian red) ---
+        // #3356EE is the ONE accent: selection, focus, link hover. Sparing use.
         brand: {
           DEFAULT: "hsl(var(--brand) / <alpha-value>)",
-          primary: "hsl(var(--brand) / <alpha-value>)",
+          accent: "hsl(var(--brand) / <alpha-value>)",
           hover: "hsl(var(--brand-hover) / <alpha-value>)",
-          active: "hsl(var(--brand-active) / <alpha-value>)",
-          subtle: "hsl(var(--brand-subtle) / <alpha-value>)",
-          border: "hsl(var(--brand-border) / <alpha-value>)",
-          electric: "hsl(var(--brand-electric) / <alpha-value>)",
-          success: "hsl(var(--status-success) / <alpha-value>)",
         },
         surface: {
           primary: "hsl(var(--background) / <alpha-value>)",
-          secondary: "hsl(var(--surface-secondary) / <alpha-value>)",
-          tertiary: "hsl(var(--surface-tertiary) / <alpha-value>)",
+          recessed: "hsl(var(--surface-recessed) / <alpha-value>)",
+          canvas: "hsl(var(--surface-canvas) / <alpha-value>)",
+          "hero-wash": "hsl(var(--surface-hero-wash) / <alpha-value>)",
           dark: "hsl(var(--surface-dark) / <alpha-value>)",
-          "dark-card": "hsl(var(--surface-dark-card) / <alpha-value>)",
         },
         text: {
           primary: "hsl(var(--foreground) / <alpha-value>)",
           secondary: "hsl(var(--muted-foreground) / <alpha-value>)",
           muted: "hsl(var(--text-muted-hsl) / <alpha-value>)",
+          deemphasis: "hsl(var(--text-deemphasis-hsl) / <alpha-value>)",
           inverse: "hsl(0 0% 100% / <alpha-value>)",
-        },
-        badge: {
-          bg: "hsl(var(--badge-bg-hsl) / <alpha-value>)",
-          text: "hsl(var(--badge-text-hsl) / <alpha-value>)",
         },
         // --- shadcn contract (unchanged keys) ---
         // Flat / base colors (regular buttons)
@@ -83,10 +85,10 @@ export default {
         foreground: "hsl(var(--foreground) / <alpha-value>)",
         border: {
           DEFAULT: "hsl(var(--border) / <alpha-value>)",
-          subtle: "hsl(var(--border) / <alpha-value>)",
-          strong: "hsl(var(--border-strong-hsl) / <alpha-value>)",
+          hairline: "hsl(var(--border) / <alpha-value>)",
+          control: "hsl(var(--border-control-hsl) / <alpha-value>)",
+          app: "hsl(var(--border-app-hsl) / <alpha-value>)",
           focus: "hsl(var(--ring) / <alpha-value>)",
-          "card-hover": "hsl(var(--border-card-hover-hsl) / <alpha-value>)",
         },
         input: "hsl(var(--input) / <alpha-value>)",
         card: {

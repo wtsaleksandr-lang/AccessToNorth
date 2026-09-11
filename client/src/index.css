@@ -10,26 +10,28 @@
    ==========================================================================*/
 
 :root {
-  /* ---- Typefaces -------------------------------------------------------- */
+  /* ---- Typefaces --------------------------------------------------------
+     Inter only. No webfont monospace is loaded. --font-mono points at the
+     platform mono stack purely so the 27 existing `font-mono` usages render
+     at all — on main this variable was undefined and they silently fell back
+     to the inherited sans. */
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-display: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-serif: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* ---- shadcn HSL contract (do not change format) ----------------------- */
-  --background: 0 0% 100%;            /* #FFFFFF  bg-primary   */
-  --foreground: 222 47% 11%;          /* #0F172A  text-primary */
+  --background: 0 0% 100%;            /* #FFFFFF  page white   */
+  --foreground: 229 85% 5%;           /* #020618  ink          */
 
-  --primary: 221 83% 53%;             /* #2563EB  blue-600     */
+  --primary: 229 85% 57%;             /* #3356EE  brand accent */
   --primary-foreground: 0 0% 100%;    /* #FFFFFF               */
 
-  --secondary: 210 40% 96%;           /* #F1F5F9  slate-100    */
-  --secondary-foreground: 222 47% 11%;
+  --secondary: 216 24% 96%;           /* #F2F4F7  app canvas   */
+  --secondary-foreground: 229 85% 5%;
 
-  /* kept at slate-100: the page bg is now pure white, so muted surfaces need
-     the tertiary step to stay visibly distinct. */
-  --muted: 210 40% 96%;               /* #F1F5F9  slate-100    */
-  --muted-foreground: 215 19% 35%;    /* #475569  slate-600    */
+  --muted: 216 24% 96%;               /* #F2F4F7  app canvas   */
+  --muted-foreground: 215 28% 27%;    /* #314158  secondary    */
 
   --accent: 350 89% 60%;              /* Canadian Red — intentionally UNCHANGED */
   --accent-foreground: 0 0% 100%;
@@ -38,84 +40,88 @@
   --destructive-foreground: 0 0% 100%;
 
   --card: 0 0% 100%;                  /* #FFFFFF */
-  --card-foreground: 222 47% 11%;
+  --card-foreground: 229 85% 5%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
+  --popover-foreground: 229 85% 5%;
 
-  --border: 214 32% 91%;              /* #E2E8F0  slate-200 */
-  --input: 214 32% 91%;
-  --ring: 221 83% 53%;                /* #2563EB  focus     */
+  --border: 214 32% 91%;              /* #E2E8F0  hairline */
+  --input: 213 29% 84%;               /* #CAD5E2  control  */
+  --ring: 229 85% 57%;                /* #3356EE  focus    */
 
-  /* ---- Brand scale as HSL triplets (new, additive) ---------------------- */
-  --brand: 221 83% 53%;               /* #2563EB */
-  --brand-hover: 224 76% 48%;         /* #1D4ED8 */
-  --brand-active: 226 71% 40%;        /* #1E40AF */
-  --brand-subtle: 214 100% 97%;       /* #EFF6FF */
-  --brand-border: 214 95% 93%;        /* #DBEAFE */
-  --brand-electric: 229 85% 57%;      /* #3356EE */
-  --status-success: 160 84% 39%;      /* #10B981 */
+  /* ---- Brand accent as HSL triplets ------------------------------------
+     #3356EE is the ONE accent. Use it sparingly: selection, focus ring and
+     link hover — not as a general fill. --brand-hover is the only derived
+     value in the system (the measured reference gave no hover shade); it is
+     the accent darkened by 8 lightness points. */
+  --brand: 229 85% 57%;               /* #3356EE */
+  --brand-hover: 229 85% 49%;         /* #1339E7 (derived) */
 
-  --surface-secondary: 210 40% 98%;   /* #F8FAFC */
-  --surface-tertiary: 210 40% 96%;    /* #F1F5F9 */
-  --surface-dark: 222 33% 6%;         /* #0A0D14 */
-  --surface-dark-card: 221 39% 11%;   /* #111827 */
+  --surface-recessed: 210 40% 98%;    /* #F8FAFC */
+  --surface-canvas: 216 24% 96%;      /* #F2F4F7 */
+  --surface-hero-wash: 214 100% 97%;  /* #EFF6FF */
+  --surface-dark: 222 41% 8%;         /* #0C111D */
 
-  --text-muted-hsl: 215 20% 65%;      /* #94A3B8 */
-  --border-strong-hsl: 213 27% 84%;   /* #CBD5E1 */
-  --border-card-hover-hsl: 213 97% 87%; /* #BFDBFE */
-  --badge-bg-hsl: 226 100% 94%;       /* #E0E7FF */
-  --badge-text-hsl: 226 71% 40%;      /* #1E40AF */
+  --text-muted-hsl: 216 18% 34%;      /* #475467 */
+  --text-deemphasis-hsl: 215 23% 65%; /* #90A1B9 */
+  --border-control-hsl: 213 29% 84%;  /* #CAD5E2 */
+  --border-app-hsl: 220 17% 93%;      /* #EAECF0 */
 
   /* ---- Raw hex layer (inline styles / non-Tailwind CSS) ----------------- */
   --bg-primary: #FFFFFF;
-  --bg-secondary: #F8FAFC;
-  --bg-tertiary: #F1F5F9;
-  --bg-dark: #0A0D14;
-  --bg-dark-card: #111827;
+  --bg-recessed: #F8FAFC;
+  --bg-canvas: #F2F4F7;
+  --bg-hero-wash: #EFF6FF;
+  --bg-dark: #0C111D;
 
-  --brand-primary: #2563EB;
-  --brand-primary-hover: #1D4ED8;
-  --brand-primary-active: #1E40AF;
-  --brand-primary-subtle: #EFF6FF;
-  --brand-primary-border: #DBEAFE;
-  --brand-primary-electric: #3356EE;
-  --brand-status-success: #10B981;
+  --brand-accent: #3356EE;
+  --brand-accent-hover: #1339E7; /* derived: -8% lightness */
 
-  --text-primary: #0F172A;
-  --text-secondary: #475569;
-  --text-muted: #94A3B8;
+  --text-primary: #020618;
+  --text-secondary: #314158;
+  --text-muted: #475467;
+  --text-deemphasis: #90A1B9;
   --text-inverse: #FFFFFF;
 
-  --border-subtle: #E2E8F0;
-  --border-strong: #CBD5E1;
-  --border-focus: #2563EB;
-  --border-card-hover: #BFDBFE;
+  --border-hairline: #E2E8F0;
+  --border-control: #CAD5E2;
+  --border-app: #EAECF0;
+  --border-focus: #3356EE;
 
-  --badge-pill-bg: #E0E7FF;
-  --badge-pill-text: #1E40AF;
-
-  /* ---- Radii ------------------------------------------------------------ */
+  /* ---- Radii ------------------------------------------------------------
+     Three steps only. They are CONCENTRIC and arithmetic: an outer shell at
+     12px with 4px of padding yields 8px children (12 - 4 = 8); an 8px shell
+     with 2px padding yields 6px children (8 - 2 = 6). Always subtract the
+     padding from the parent radius rather than picking a step by eye. */
   --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
-  --radius-full: 9999px;
-  --radius: 16px; /* legacy alias → lg */
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius: 12px; /* legacy alias → lg */
 
-  /* ---- Elevation -------------------------------------------------------- */
-  --shadow-subtle: 0 1px 2px 0 rgba(15, 23, 42, .05);
-  --shadow-card: 0 4px 6px -1px rgba(15, 23, 42, .05), 0 2px 4px -2px rgba(15, 23, 42, .03);
-  --shadow-card-hover: 0 12px 24px -4px rgba(15, 23, 42, .08), 0 4px 8px -2px rgba(15, 23, 42, .04);
-  --shadow-flyout: 0 20px 30px -10px rgba(15, 23, 42, .12), 0 8px 12px -4px rgba(15, 23, 42, .06);
+  /* ---- Elevation --------------------------------------------------------
+     Exactly three. The third is deliberately blue-grey tinted, not black. */
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, .04);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, .04);
+  --shadow-lifted: 0 4px 24px rgba(165, 176, 204, .20);
 
-  /* ---- Gradients -------------------------------------------------------- */
-  --gradient-hero-mesh: radial-gradient(55% 55% at 50% 0%, rgba(37, 99, 235, .08) 0%, rgba(255, 255, 255, 0) 100%);
-  --gradient-dark-banner: linear-gradient(135deg, #0A0D14 0%, #0F172A 60%, #1E293B 100%);
-  --hairline-inverse: 1px solid rgba(255, 255, 255, .1);
+  /* ---- Borders ----------------------------------------------------------
+     1px everywhere. 2px is reserved exclusively for selection / focus. */
+  --border-width: 1px;
+  --border-width-focus: 2px;
 
-  /* ---- Layout ----------------------------------------------------------- */
-  --container-max: 1240px;
+  /* ---- Motion -----------------------------------------------------------
+     Two durations, one easing, zero keyframes. */
+  --motion-default: all .3s ease;
+  --motion-state: .2s ease;
+  --duration-default: .3s;
+  --duration-state: .2s;
+  --ease-default: ease;
+
+  /* ---- Layout -----------------------------------------------------------
+     1328px outer - (2 x 24px gutter) = 1280px of content. */
+  --container-outer: 1328px;
+  --container-gutter: 24px;
+  --container-content: 1280px;
 }
 
 @layer base {
@@ -137,18 +143,16 @@
     @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
   }
 
-  /* Design-token surface helpers (additive — no component was restructured). */
-  .surface-hero-mesh {
-    background-image: var(--gradient-hero-mesh);
+  /* Design-token surface helpers. Flat colour only — the system has no
+     gradients, no backdrop-filter and no keyframes, and that restraint is
+     the intended look. */
+  .surface-hero-wash {
+    background-color: var(--bg-hero-wash);
   }
 
-  .surface-dark-banner {
-    background-image: var(--gradient-dark-banner);
+  .surface-dark {
+    background-color: var(--bg-dark);
     color: var(--text-inverse);
-  }
-
-  .hairline-inverse {
-    border: var(--hairline-inverse);
   }
 
   .maple-bg {
