@@ -79,7 +79,7 @@ export function HowItWorksSection({
                 className="flex flex-col rounded-md bg-white p-5"
                 data-testid={`how-it-works-step-${step.title.slice(0, 1)}`}
               >
-                <step.icon className="h-5 w-5 text-brand" aria-hidden="true" />
+                <step.icon className="h-5 w-5 text-text-muted" aria-hidden="true" />
                 <h3 className="mt-4 text-h3 text-text-primary">{step.title}</h3>
                 <p className="mt-2 flex-1 text-body text-text-muted">{step.body}</p>
                 <p className="mt-4 text-eyebrow uppercase text-text-deemphasis">{step.timing}</p>

@@ -223,7 +223,7 @@ export default function Home() {
                     className="group flex flex-col rounded-md border border-transparent bg-white p-5 transition-colors duration-state hover:border-brand"
                     data-testid={action.testId}
                   >
-                    <action.icon className="h-5 w-5 text-brand" aria-hidden="true" />
+                    <action.icon className="h-5 w-5 text-text-muted" aria-hidden="true" />
                     <h3 className="mt-3 text-h3 text-text-primary">{action.title}</h3>
                     <p className="mt-1.5 text-body text-text-muted">{action.desc}</p>
                     <span className="mt-4 inline-flex items-center gap-1 text-body font-semibold text-text-secondary transition-colors duration-state group-hover:text-brand">
@@ -258,7 +258,7 @@ export default function Home() {
                   className="group flex flex-col rounded-lg border border-border-hairline bg-white p-6 transition-colors duration-state hover:border-brand"
                   data-testid={`card-home-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
                 >
-                  <item.icon className="h-5 w-5 text-brand" aria-hidden="true" />
+                  <item.icon className="h-5 w-5 text-text-muted" aria-hidden="true" />
                   <h3 className="mt-4 text-h3 text-text-primary">{item.title}</h3>
                   <p className="mt-2 flex-1 text-body text-text-muted">{item.desc}</p>
                   <span className="mt-5 inline-flex items-center gap-1 text-body font-semibold text-text-secondary transition-colors duration-state group-hover:text-brand">
@@ -327,7 +327,7 @@ export default function Home() {
                     "Election for Agents",
                   ].map((item) => (
                     <li key={item} className="flex items-center gap-3">
-                      <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-brand" aria-hidden="true" />
+                      <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-text-muted" aria-hidden="true" />
                       <span className="text-body font-medium text-text-secondary">{item}</span>
                     </li>
                   ))}
@@ -351,7 +351,7 @@ export default function Home() {
         <section className={`${SHELL} bg-white ${PAD.tight}`}>
           <div className={RAIL}>
             <div className="max-w-2xl">
-              <Award className="h-6 w-6 text-brand" aria-hidden="true" />
+              <Award className="h-6 w-6 text-text-muted" aria-hidden="true" />
               <h2 className="mt-4 text-h2 text-text-primary">Flat fee. Refund on unfiled work.</h2>
               <p className="mt-4 text-lead text-text-muted">
                 Full refund if you cancel before we submit your filing to the CRA or CBSA.
