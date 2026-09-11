@@ -386,9 +386,17 @@ export default function FreightQuote() {
         {/* ── Request builder ─────────────────────────────────────────── */}
         <section className={`${SHELL} bg-white ${PAD.topHeavy}`}>
           <div className={FORM_RAIL}>
+            {/*
+              Back-navigation only, and only to steps already completed. With
+              `completed` unset a step is done exactly when `index < step`, so
+              this is the same guard the old step chips carried
+              (`index < step && setStep(index)`) — forward movement still goes
+              through nextStep() and its validateStep() gate.
+            */}
             <StepRibbon
               steps={STEP_LABELS.map((label) => ({ label }))}
               current={step}
+              onStepSelect={(index) => setStep(index)}
               className="mb-6"
               data-testid="step-ribbon-freight"
             />
