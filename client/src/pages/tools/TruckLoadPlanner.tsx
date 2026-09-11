@@ -1123,10 +1123,10 @@ export default function TruckLoadPlanner() {
                             <button
                               key={t.id}
                               onClick={() => { setSelectedTrailerId(t.id); setUseCustomTrailer(false); }}
-                              className={`w-full text-left p-2.5 rounded-lg border transition-colors text-xs ${
+                              className={`w-full text-left p-2.5 rounded-lg border-2 transition-colors text-xs ${
                                 !useCustomTrailer && selectedTrailerId === t.id
                                   ? "border-brand"
-                                  : "border-border-hairline hover:border-border-control bg-white"
+                                  : "border-border-app hover:border-border-control bg-white"
                               }`}
                               data-testid={`trailer-${t.id}`}
                             >
@@ -1150,7 +1150,7 @@ export default function TruckLoadPlanner() {
 
                         <button
                           onClick={() => setUseCustomTrailer(!useCustomTrailer)}
-                          className={`w-full text-left p-2.5 rounded-lg border transition-colors text-xs ${
+                          className={`w-full text-left p-2.5 rounded-lg border-2 transition-colors text-xs ${
                             useCustomTrailer
                               ? "border-brand"
                               : "border-dashed border-border-control hover:border-border-control bg-white"
@@ -2038,7 +2038,7 @@ export default function TruckLoadPlanner() {
                   <button
                     onClick={() => setDefaultRotation("all")}
                     className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors text-left ${
-                      defaultRotation === "all" ? "border-brand" : "border-border-hairline bg-white hover:border-border-control"
+                      defaultRotation === "all" ? "border-brand" : "border-border-app bg-white hover:border-border-control"
                     }`}
                     data-testid="bulk-rotate-all"
                   >
@@ -2053,7 +2053,7 @@ export default function TruckLoadPlanner() {
                   <button
                     onClick={() => setDefaultRotation("horizontal")}
                     className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors text-left ${
-                      defaultRotation === "horizontal" ? "border-brand" : "border-border-hairline bg-white hover:border-border-control"
+                      defaultRotation === "horizontal" ? "border-brand" : "border-border-app bg-white hover:border-border-control"
                     }`}
                     data-testid="bulk-rotate-horizontal"
                   >
@@ -2118,7 +2118,7 @@ export default function TruckLoadPlanner() {
               {importStep === "upload" && (
                 <>
                   <div
-                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${dragOver ? "border-brand" : "border-border-hairline hover:border-border-control"}`}
+                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${dragOver ? "border-brand" : "border-border-app hover:border-border-control"}`}
                     onDragOver={e => { e.preventDefault(); setDragOver(true); }}
                     onDragLeave={() => setDragOver(false)}
                     onDrop={e => { e.preventDefault(); setDragOver(false); const file = e.dataTransfer.files?.[0]; if (file) handleImportFile(file); }}
@@ -2140,7 +2140,7 @@ export default function TruckLoadPlanner() {
                           <Badge variant="outline" className="text-[10px] gap-1"><Sparkles className="w-3 h-3" /> AI Extract</Badge>
                         </div>
                         <label className="inline-block">
-                          <span className="px-4 py-2 text-xs font-medium text-brand border border-brand rounded-lg cursor-pointer hover:bg-surface-recessed transition-colors">Browse Files</span>
+                          <span className="px-4 py-2 text-xs font-medium text-brand border-2 border-brand rounded-lg cursor-pointer hover:bg-surface-recessed transition-colors">Browse Files</span>
                           <input type="file" accept=".csv,.xlsx,.xls,.pdf,.doc,.docx,.rtf,.odt,.ppt,.pptx,.txt,.text,.md,.json,.xml,.html,.htm,.eml,.jpg,.jpeg,.png,.webp,.gif" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleImportFile(f); }} data-testid="import-file-input" />
                         </label>
                       </>

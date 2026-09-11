@@ -3335,7 +3335,7 @@ export function ContainerViewer3D({
             <button type="button" onClick={undoArrangement} disabled={historyCount === 0} className="h-8 rounded-lg border border-border-hairline bg-white px-2.5 text-[11px] font-medium text-text-secondary shadow-sm hover:bg-white disabled:opacity-40" data-testid="button-undo-cargo-move"><Undo2 className="mr-1 inline h-3.5 w-3.5" />Undo</button><button type="button" onClick={redoArrangement} disabled={redoCount === 0} className="h-8 rounded-lg border border-border-hairline bg-white px-2.5 text-[11px] font-medium text-text-secondary shadow-sm hover:bg-white disabled:opacity-40" data-testid="button-redo-cargo-move"><Redo2 className="mr-1 inline h-3.5 w-3.5" />Redo</button><button type="button" onClick={resetArrangement} className="h-8 rounded-lg border border-border-hairline bg-white px-2.5 text-[11px] font-medium text-text-secondary shadow-sm hover:bg-white" data-testid="button-reset-cargo-layout"><RotateCcw className="mr-1 inline h-3.5 w-3.5" />Reset</button>
           </div>}
           {arrangeMode && selectedCargoIndices.size > 0 && (
-            <div className="absolute left-3 top-14 z-20 w-[min(430px,calc(100%-5rem))] rounded-lg border border-border-hairline bg-white] p-3 shadow-md" data-testid="cargo-group-controls">
+            <div className="absolute left-3 top-14 z-20 w-[min(430px,calc(100%-5rem))] rounded-lg border border-border-hairline bg-white p-3 shadow-md" data-testid="cargo-group-controls">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">{selectedCargoIndices.size} selected</p>
                 <div className="flex items-center gap-1 rounded-lg bg-surface-canvas p-0.5 text-[9px] font-bold">
@@ -3389,9 +3389,9 @@ export function ContainerViewer3D({
                   { label: "Shell", active: showShell, set: setShowShell, icon: Eye },
                   { label: "References", active: showLabels, set: setShowLabels, icon: Box },
                   { label: "Measures", active: showMeasurements, set: setShowMeasurements, icon: Ruler },
-                ].map(({ label, active, set, icon: Icon }) => <button key={label} type="button" onClick={() => set(!active)} className={`flex min-h-12 items-center justify-center gap-1.5 rounded-lg border px-2 text-[10px] font-bold transition active:scale-[0.97] ${active ? "border-brand text-brand" : "border-border-hairline bg-surface-recessed text-text-deemphasis"}`} aria-pressed={active} data-testid={`button-mobile-layer-${label.toLowerCase()}`}><Icon className="h-4 w-4" />{label}</button>)}</div>
+                ].map(({ label, active, set, icon: Icon }) => <button key={label} type="button" onClick={() => set(!active)} className={`flex min-h-12 items-center justify-center gap-1.5 rounded-lg border-2 px-2 text-[10px] font-bold transition active:scale-[0.97] ${active ? "border-brand text-brand" : "border-border-app bg-surface-recessed text-text-deemphasis"}`} aria-pressed={active} data-testid={`button-mobile-layer-${label.toLowerCase()}`}><Icon className="h-4 w-4" />{label}</button>)}</div>
                 <div className="mt-3 grid grid-cols-2 gap-3">
-                  <div><p className="text-[9px] font-bold uppercase tracking-[0.12em] text-text-deemphasis">Camera</p><div className="mt-1.5 grid grid-cols-4 gap-1">{([ ["isometric", "3D"], ["doors", "Doors"], ["side", "Side"], ["top", "Top"] ] as const).map(([preset, label]) => <button key={preset} type="button" onClick={() => setActiveView(preset)} className={`min-h-10 rounded-lg border px-1 text-[9px] font-bold transition  ${activeView === preset ? "border-brand text-brand" : "border-border-hairline bg-white text-text-muted"}`} aria-pressed={activeView === preset} data-testid={`button-mobile-view-${preset}`}>{label}</button>)}</div></div>
+                  <div><p className="text-[9px] font-bold uppercase tracking-[0.12em] text-text-deemphasis">Camera</p><div className="mt-1.5 grid grid-cols-4 gap-1">{([ ["isometric", "3D"], ["doors", "Doors"], ["side", "Side"], ["top", "Top"] ] as const).map(([preset, label]) => <button key={preset} type="button" onClick={() => setActiveView(preset)} className={`min-h-10 rounded-lg border-2 px-1 text-[9px] font-bold transition  ${activeView === preset ? "border-brand text-brand" : "border-border-app bg-white text-text-muted"}`} aria-pressed={activeView === preset} data-testid={`button-mobile-view-${preset}`}>{label}</button>)}</div></div>
                   <div><p className="text-[9px] font-bold uppercase tracking-[0.12em] text-text-deemphasis">Quality</p><div className="mt-1.5 grid grid-cols-3 gap-1">{([ ["auto", "Auto"], ["performance", "Fast"], ["quality", "High"] ] as const).map(([quality, label]) => <button key={quality} type="button" onClick={() => setRenderQuality(quality)} className={`min-h-10 rounded-lg border px-1 text-[9px] font-bold transition  ${renderQuality === quality ? "border-border-hairline bg-surface-recessed text-text-secondary" : "border-border-hairline bg-white text-text-muted"}`} aria-pressed={renderQuality === quality} data-testid={`button-mobile-quality-${quality}`}>{label}</button>)}</div></div>
                 </div>
                 <div className="mt-2 flex justify-end"><button type="button" onClick={resetCameraView} className="flex h-9 items-center gap-1.5 rounded-lg px-3 text-[10px] font-bold text-text-muted transition hover:bg-surface-canvas hover:text-brand" data-testid="button-mobile-reset-camera"><Home className="h-3.5 w-3.5" />Reset camera</button></div>
@@ -3422,33 +3422,33 @@ export function ContainerViewer3D({
             <div className="my-0.5 h-px w-6 bg-surface-canvas" />
             <button type="button" onClick={() => { setHelpPanelOpen((current) => !current); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-state hover:-translate-x-0.5  hover:bg-white hover:shadow-md ${helpPanelOpen ? "bg-surface-recessed text-brand" : "text-text-muted hover:text-brand"}`} aria-label="Workspace help" data-testid="button-container-help"><CircleHelp className="h-4 w-4" /><ViewerHoverLabel>Workspace help</ViewerHoverLabel></button>
             <button type="button" onClick={toggleFullscreen} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition duration-state hover:bg-white hover:text-brand hover:shadow-md" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} data-testid="button-container-fullscreen">{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}<ViewerHoverLabel>{isFullscreen ? "Exit full screen" : "Open full workspace"}</ViewerHoverLabel></button>
-            {displayControlsOpen && <div className="absolute right-12 top-28 w-64 rounded-lg border border-border-hairline bg-white] p-3 text-left text-text-secondary shadow-md" data-testid="floating-display-controls">
+            {displayControlsOpen && <div className="absolute right-12 top-28 w-64 rounded-lg border border-border-hairline bg-white p-3 text-left text-text-secondary shadow-md" data-testid="floating-display-controls">
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">View controls</p>
               <div className="mt-2 grid grid-cols-4 gap-2">{[
                 { label: "Grid", active: showGrid, set: setShowGrid, icon: Grid3X3 },
                 { label: "Shell", active: showShell, set: setShowShell, icon: Eye },
                 { label: "Refs", active: showLabels, set: setShowLabels, icon: Box },
                 { label: "Measure", active: showMeasurements, set: setShowMeasurements, icon: Ruler },
-              ].map(({ label, active, set, icon: Icon }) => <button key={label} type="button" onClick={() => set(!active)} className={`flex flex-col items-center justify-center gap-1 rounded-lg border px-1 py-2 text-[9px] font-bold transition  hover:shadow-sm ${active ? "border-brand text-brand" : "border-border-hairline bg-surface-canvas text-text-deemphasis"}`} aria-pressed={active} data-testid={`button-container-layer-${label === "Refs" ? "labels" : label === "Measure" ? "measurements" : label.toLowerCase()}`}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm"><Icon className="h-3.5 w-3.5" /></span>{label}</button>)}</div>
+              ].map(({ label, active, set, icon: Icon }) => <button key={label} type="button" onClick={() => set(!active)} className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 px-1 py-2 text-[9px] font-bold transition  hover:shadow-sm ${active ? "border-brand text-brand" : "border-border-app bg-surface-canvas text-text-deemphasis"}`} aria-pressed={active} data-testid={`button-container-layer-${label === "Refs" ? "labels" : label === "Measure" ? "measurements" : label.toLowerCase()}`}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm"><Icon className="h-3.5 w-3.5" /></span>{label}</button>)}</div>
               <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.1em] text-text-deemphasis">Camera angle</p>
-              <div className="mt-1.5 grid grid-cols-4 gap-1.5">{([ ["isometric", "3D"], ["doors", "Doors"], ["side", "Side"], ["top", "Top"] ] as const).map(([preset, label]) => <button key={preset} type="button" onClick={() => setActiveView(preset)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${activeView === preset ? "border-brand text-brand" : "border-border-hairline bg-white text-text-muted hover:border-border-control"}`} aria-pressed={activeView === preset} data-testid={`button-container-view-${preset}`}>{label}</button>)}</div>
+              <div className="mt-1.5 grid grid-cols-4 gap-1.5">{([ ["isometric", "3D"], ["doors", "Doors"], ["side", "Side"], ["top", "Top"] ] as const).map(([preset, label]) => <button key={preset} type="button" onClick={() => setActiveView(preset)} className={`rounded-lg border-2 px-1 py-2 text-[9px] font-bold transition ${activeView === preset ? "border-brand text-brand" : "border-border-app bg-white text-text-muted hover:border-border-control"}`} aria-pressed={activeView === preset} data-testid={`button-container-view-${preset}`}>{label}</button>)}</div>
               <div className="mt-2 flex justify-end"><button type="button" onClick={resetCameraView} className="rounded-lg px-2 py-1 text-[9px] font-semibold text-text-muted hover:bg-surface-canvas hover:text-brand" data-testid="button-reset-camera"><Home className="mr-1 inline h-3 w-3" />Reset camera</button></div>
               <p className="mt-2 text-[9px] font-bold uppercase tracking-[0.1em] text-text-deemphasis">Rendering</p>
               <div className="mt-1.5 grid grid-cols-3 gap-1.5">{([ ["auto", "Auto"], ["performance", "Fast"], ["quality", "High"] ] as const).map(([quality, label]) => <button key={quality} type="button" onClick={() => setRenderQuality(quality)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${renderQuality === quality ? "border-border-hairline bg-surface-recessed text-text-secondary" : "border-border-hairline bg-white text-text-muted hover:border-border-control"}`} aria-pressed={renderQuality === quality} data-testid={`button-container-quality-${quality}`}>{label}</button>)}</div>
             </div>}
-            {sharePanelOpen && <div className="absolute right-12 top-20 w-64 rounded-lg border border-border-hairline bg-white] p-2.5 text-left shadow-md" data-testid="container-share-panel">
+            {sharePanelOpen && <div className="absolute right-12 top-20 w-64 rounded-lg border border-border-hairline bg-white p-2.5 text-left shadow-md" data-testid="container-share-panel">
               <div className="flex items-center justify-between gap-2 px-1 pb-2"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">Share loading plan</p><p className="mt-0.5 text-[9px] text-text-deemphasis">Anyone with the link can preview it.</p></div><Share2 className="h-4 w-4 text-text-muted" /></div>
               <button type="button" onClick={copyShareLink} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[10px] font-semibold text-text-secondary transition hover:bg-surface-recessed hover:text-brand" data-testid="button-share-copy-link"><Link2 className="h-4 w-4" />{currentShareUrl() ? "Copy share link" : "Create share link"}</button>
               <div className="mt-1 grid grid-cols-4 gap-1 border-t border-border-hairline pt-2">{([ ["email", "Email", Mail], ["facebook", "Facebook", Facebook], ["linkedin", "LinkedIn", Linkedin], ["whatsapp", "WhatsApp", MessageCircle] ] as const).map(([target, label, Icon]) => <button key={target} type="button" onClick={() => openShareTarget(target)} className="group/share flex min-w-0 flex-col items-center gap-1 rounded-lg px-1 py-2 text-[8px] font-semibold text-text-muted transition hover:bg-surface-recessed hover:text-brand" aria-label={`Share via ${label}`} data-testid={`button-share-${target}`}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-recessed transition group-hover/share:bg-white group-hover/share:shadow-sm"><Icon className="h-3.5 w-3.5" /></span>{label}</button>)}</div>
               {!currentShareUrl() && <p className="mt-1 px-1 text-[8px] leading-3 text-text-deemphasis">Create the secure public link first; then reopen Share to send it.</p>}
               {currentShareUrl() && typeof navigator !== "undefined" && "share" in navigator && <button type="button" onClick={shareCurrentView} className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg bg-surface-dark px-3 py-2 text-[9px] font-bold text-white hover:bg-[#314158]"><Share2 className="h-3.5 w-3.5" />More sharing options</button>}
             </div>}
-            {helpPanelOpen && <div className="absolute right-12 bottom-16 w-72 rounded-lg border border-border-hairline bg-white] p-3 text-left shadow-md" data-testid="container-help-panel">
+            {helpPanelOpen && <div className="absolute right-12 bottom-16 w-72 rounded-lg border border-border-hairline bg-white p-3 text-left shadow-md" data-testid="container-help-panel">
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">Workspace controls</p>
               <div className="mt-2 space-y-1.5 text-[10px] leading-4 text-text-muted"><p><strong className="text-text-secondary">Tap cargo</strong> once to select it; drag the selected unit to move it. Tap it again without dragging to deselect.</p><p><strong className="text-text-secondary">Right-click or long-press</strong> a unit for clearances and actions. Drag empty grid space to rotate.</p><p><strong className="text-text-secondary">Blue alignment</strong> means the unit fits. Docks allow free placement and gently align near open edges or the previous slot.</p></div>
             </div>}
             {warningPanelOpen && (
-              <div className="absolute right-12 top-0 w-60 rounded-lg border border-border-hairline bg-white] p-3 text-left shadow-md" data-testid="floating-warning-panel">
+              <div className="absolute right-12 top-0 w-60 rounded-lg border border-border-hairline bg-white p-3 text-left shadow-md" data-testid="floating-warning-panel">
                 <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">Plan status</p>
                 <div className="mt-2 flex gap-2 rounded-lg bg-surface-recessed p-2.5"><AlertTriangle className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${hasPlacementWarning ? "text-[#B42318]" : "text-[#15803D]"}`} /><p className="text-[10px] leading-4 text-text-muted">{arrangeMode || hasPlacementWarning ? placementMessage : "No active placement warnings. Open Precision cargo tools for multi-select alignment and validation."}</p></div>
               </div>
@@ -3513,7 +3513,7 @@ export function ContainerViewer3D({
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 [scrollbar-color:#cbd5e1_transparent] [scrollbar-width:thin]">
                 {activeCargoZone === "loaded" || !onPlacedChange ? <div className="space-y-1">
                   {placed.map((box, index) => (
-                    <div key={`${box.cargoId}-mobile-${index}`} className={`flex items-center gap-1.5 rounded-lg border p-1.5 transition ${selectedCargoIndices.has(index) ? "border-brand" : hoveredCargoIndex === index ? "border-brand bg-white" : "border-transparent bg-white"}`} data-cargo-list-index={index} data-testid={`mobile-container-cargo-row-${index}`}>
+                    <div key={`${box.cargoId}-mobile-${index}`} className={`flex items-center gap-1.5 rounded-lg border-2 p-1.5 transition ${selectedCargoIndices.has(index) ? "border-brand" : hoveredCargoIndex === index ? "border-brand bg-white" : "border-transparent bg-white"}`} data-cargo-list-index={index} data-testid={`mobile-container-cargo-row-${index}`}>
                       {onPlacedChange && arrangeMode && <button type="button" onClick={() => toggleCargoSelection(index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-brand" aria-label={`${selectedCargoIndices.has(index) ? "Deselect" : "Select"} ${box.cargoName || "cargo item"}`} aria-pressed={selectedCargoIndices.has(index)} data-testid={`button-mobile-select-container-cargo-${index}`}>{selectedCargoIndices.has(index) ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 text-text-deemphasis" />}</button>}
                       <button type="button" onClick={() => { const next = new Set([index]); selectedCargoIndicesRef.current = next; setSelectedCargoIndices(next); setSelectedStagedCargoId(null); setSelectedSceneDock(null); setHoveredCargoIndex(index); sceneRef.current?.setCargoHover(index); sceneRef.current?.setStagedCargoFocus(null); sceneRef.current?.setDockFocus(null); }} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg p-0.5 text-left" data-testid={`button-mobile-container-cargo-${index}`}>
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-primary" style={{ backgroundColor: `${box.color}45` }}><Box className="h-3.5 w-3.5" /></span>
@@ -3526,7 +3526,7 @@ export function ContainerViewer3D({
                     </div>
                   ))}
                 </div> : stagedByZone[activeCargoZone].length > 0 ? <div className="space-y-1">
-                  {stagedByZone[activeCargoZone].map((entry) => <div key={`${entry.id}-mobile`} className={`flex items-center gap-2 rounded-lg border p-2 shadow-sm ${selectedStagedCargoId === entry.id ? "border-brand" : "border-border-hairline bg-white"}`} data-testid={`mobile-staged-cargo-${entry.id}`}>
+                  {stagedByZone[activeCargoZone].map((entry) => <div key={`${entry.id}-mobile`} className={`flex items-center gap-2 rounded-lg border-2 p-2 shadow-sm ${selectedStagedCargoId === entry.id ? "border-brand" : "border-border-app bg-white"}`} data-testid={`mobile-staged-cargo-${entry.id}`}>
                     <button type="button" onClick={() => { setSelectedStagedCargoId(entry.id); setSelectedSceneDock(entry.zone); setSelectedCargoIndices(new Set()); sceneRef.current?.setStagedCargoFocus(entry.id); sceneRef.current?.setDockFocus(entry.zone); }} className="flex min-w-0 flex-1 items-center gap-2 text-left" aria-pressed={selectedStagedCargoId === entry.id}>
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-primary" style={{ backgroundColor: `${entry.box.color}45` }}><Package className="h-4 w-4" /></span>
                       <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-text-secondary">{entry.box.cargoName || "Cargo item"}</span><span className="mt-0.5 block truncate text-[9px] text-text-muted">{fmt(entry.box.l)} × {fmt(entry.box.w)} × {fmt(entry.box.h)}</span></span>
@@ -3660,7 +3660,7 @@ export function ContainerViewer3D({
             )}
           </AnimatePresence>
           {sequenceMode ? (
-            <div className="absolute bottom-16 left-3 right-3 z-30 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:min-w-[390px] lg:bottom-14 rounded-lg border border-border-hairline bg-white] p-2 shadow-md" data-testid="loading-sequence-controls">
+            <div className="absolute bottom-16 left-3 right-3 z-30 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:min-w-[390px] lg:bottom-14 rounded-lg border border-border-hairline bg-white p-2 shadow-md" data-testid="loading-sequence-controls">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -3727,7 +3727,7 @@ export function ContainerViewer3D({
           </nav>}
         </div>
         {sidebarOpen && (
-          <aside className="absolute bottom-14 right-3 top-3 z-20 hidden w-[320px] min-h-0 flex-col overflow-hidden rounded-lg border border-border-hairline bg-white] shadow-md lg:flex" data-testid="container-viewer-sidebar">
+          <aside className="absolute bottom-14 right-3 top-3 z-20 hidden w-[320px] min-h-0 flex-col overflow-hidden rounded-lg border border-border-hairline bg-white shadow-md lg:flex" data-testid="container-viewer-sidebar">
             <div className="border-b border-border-hairline bg-white p-3">
               <div className="grid grid-cols-[32px_1fr_32px] items-center gap-2">
                 <button type="button" onClick={onPreviousPlan} disabled={!onPreviousPlan || planIndex <= 0} className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-recessed text-text-muted transition hover:bg-white hover:text-brand disabled:opacity-30" aria-label="Previous container plan" data-testid="button-viewer-previous-plan"><ChevronLeft className="h-4 w-4" /></button>
@@ -3806,7 +3806,7 @@ export function ContainerViewer3D({
                     key={`${box.cargoId}-${index}`}
                     onMouseEnter={() => setHoveredCargoIndex(index)}
                     onMouseLeave={() => setHoveredCargoIndex(null)}
-                    className={`group flex w-full items-center gap-1 rounded-lg border p-1.5 text-left transition ${selectedCargoIndices.has(index) ? "border-brand" : hoveredCargoIndex === index ? "border-brand bg-white" : "border-transparent hover:border-border-hairline hover:bg-white"}`}
+                    className={`group flex w-full items-center gap-1 rounded-lg border-2 p-1.5 text-left transition ${selectedCargoIndices.has(index) ? "border-brand" : hoveredCargoIndex === index ? "border-brand bg-white" : "border-transparent hover:border-border-control hover:bg-white"}`}
                     data-cargo-list-index={index}
                     data-testid={`container-cargo-row-${index}`}
                   >
@@ -3837,7 +3837,7 @@ export function ContainerViewer3D({
                 </div>)}
               </div> : (
                 stagedByZone[activeCargoZone].length > 0 ? <div className="space-y-1">
-                  {stagedByZone[activeCargoZone].map((entry) => <div key={entry.id} className={`flex items-center gap-2 rounded-lg border p-2 shadow-sm ${selectedStagedCargoId === entry.id ? "border-brand" : "border-border-hairline bg-white"}`} data-testid={`staged-cargo-${entry.id}`}>
+                  {stagedByZone[activeCargoZone].map((entry) => <div key={entry.id} className={`flex items-center gap-2 rounded-lg border-2 p-2 shadow-sm ${selectedStagedCargoId === entry.id ? "border-brand" : "border-border-app bg-white"}`} data-testid={`staged-cargo-${entry.id}`}>
                     <button type="button" onClick={() => { setSelectedStagedCargoId(entry.id); setSelectedSceneDock(entry.zone); setSelectedCargoIndices(new Set()); sceneRef.current?.setStagedCargoFocus(entry.id); sceneRef.current?.setDockFocus(entry.zone); }} className="flex min-w-0 flex-1 items-center gap-2 text-left" aria-pressed={selectedStagedCargoId === entry.id}>
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-primary" style={{ backgroundColor: `${entry.box.color}45` }}><Package className="h-4 w-4" /></span>
                       <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-text-secondary">{entry.box.cargoName || "Cargo item"}</span><span className="mt-0.5 block truncate text-[9px] text-text-muted">{fmt(entry.box.l)} × {fmt(entry.box.w)} × {fmt(entry.box.h)}</span></span>
@@ -4187,12 +4187,12 @@ function ContainerComparisonPanel({
             return (
               <div
                 key={comparison.container.id}
-                className={`relative rounded-lg border p-3.5 transition-colors ${
+                className={`relative rounded-lg border-2 p-3.5 transition-colors ${
                   isRecommended
                     ? "border-brand"
                     : isActive
                       ? "border-border-control bg-surface-recessed"
-                      : "border-border-hairline bg-white"
+                      : "border-border-app bg-white"
                 }`}
                 data-testid={`container-comparison-${comparison.container.id}`}
               >
@@ -5240,7 +5240,7 @@ export default function ContainerCalculator() {
             <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
               <div className="mb-3 flex items-center justify-between"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">Saved projects ({savedProjects.length}/20)</p><Button type="button" size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { handleReset(); setProjectDialogOpen(false); }}>New blank plan</Button></div>
               {savedProjects.length ? <div className="space-y-2">{savedProjects.map((project) => (
-                <div key={project.id} className={`flex items-center gap-3 rounded-lg border p-3 transition ${currentProjectId === project.id ? "border-brand" : "border-border-hairline hover:border-border-control"}`} data-testid={`saved-project-${project.id}`}>
+                <div key={project.id} className={`flex items-center gap-3 rounded-lg border-2 p-3 transition ${currentProjectId === project.id ? "border-brand" : "border-border-app hover:border-border-control"}`} data-testid={`saved-project-${project.id}`}>
                   <button type="button" className="min-w-0 flex-1 text-left" onClick={() => restoreSavedProject(project)}>
                     <span className="block truncate text-sm font-bold text-text-primary">{project.name}</span>
                     <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-text-muted"><span>{project.snapshot.cargoItems.length} cargo row{project.snapshot.cargoItems.length === 1 ? "" : "s"}</span><span>{project.snapshot.multiResult?.totalContainers ? `${project.snapshot.multiResult.totalContainers} container${project.snapshot.multiResult.totalContainers === 1 ? "" : "s"}` : "Not calculated"}</span><span className="inline-flex items-center gap-1"><Clock3 className="h-3 w-3" />{new Date(project.updatedAt).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" })}</span></span>
@@ -5264,7 +5264,7 @@ export default function ContainerCalculator() {
             {!managedShareLink ? <>
               <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">Link expires after</p>
               <div className="mt-2 grid grid-cols-4 gap-2">
-                {([7, 30, 90, 180] as ShareLifetimeDays[]).map((days) => <button key={days} type="button" onClick={() => setShareLifetimeDays(days)} className={`rounded-lg border px-2 py-2.5 text-xs font-bold transition ${shareLifetimeDays === days ? "border-brand text-brand" : "border-border-hairline text-text-muted hover:border-border-control"}`} aria-pressed={shareLifetimeDays === days}>{days === 180 ? "6 months" : `${days} days`}</button>)}
+                {([7, 30, 90, 180] as ShareLifetimeDays[]).map((days) => <button key={days} type="button" onClick={() => setShareLifetimeDays(days)} className={`rounded-lg border-2 px-2 py-2.5 text-xs font-bold transition ${shareLifetimeDays === days ? "border-brand text-brand" : "border-border-app text-text-muted hover:border-border-control"}`} aria-pressed={shareLifetimeDays === days}>{days === 180 ? "6 months" : `${days} days`}</button>)}
               </div>
               <Button className="mt-5 w-full gap-2" onClick={handleSharePlan} disabled={creatingShareLink} data-testid="button-create-share-link">{creatingShareLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}Create and copy link</Button>
             </> : <>
@@ -5343,10 +5343,10 @@ export default function ContainerCalculator() {
                           setContainerSelectionMode("recommend");
                           invalidateCalculatedPlan();
                       }}
-                      className={`col-span-2 text-left p-3 rounded-lg border text-sm transition-colors ${
+                      className={`col-span-2 text-left p-3 rounded-lg border-2 text-sm transition-colors ${
                         containerSelectionMode === "recommend"
                           ? "border-brand"
-                          : "border-border-hairline hover:border-border-hairline"
+                          : "border-border-app hover:border-border-control"
                       }`}
                       data-testid="button-container-recommend"
                     >
@@ -5373,10 +5373,10 @@ export default function ContainerCalculator() {
                             setContainerId(ct.id);
                             invalidateCalculatedPlan();
                           }}
-                          className={`text-left p-2.5 rounded-lg border text-sm transition-colors ${
+                          className={`text-left p-2.5 rounded-lg border-2 text-sm transition-colors ${
                             containerSelectionMode === "manual" && containerId === ct.id
                               ? "border-brand"
-                              : "border-border-hairline hover:border-border-control"
+                              : "border-border-app hover:border-border-control"
                           }`}
                           data-testid={`button-container-${ct.id}`}
                         >
@@ -5409,10 +5409,10 @@ export default function ContainerCalculator() {
                         setContainerId("custom");
                         invalidateCalculatedPlan();
                       }}
-                      className={`text-left p-2.5 rounded-lg border text-sm transition-colors col-span-2 ${
+                      className={`text-left p-2.5 rounded-lg border-2 text-sm transition-colors col-span-2 ${
                         containerSelectionMode === "manual" && containerId === "custom"
                           ? "border-brand"
-                          : "border-border-hairline hover:border-border-control"
+                          : "border-border-app hover:border-border-control"
                       }`}
                       data-testid="button-container-custom"
                     >
@@ -5793,7 +5793,7 @@ export default function ContainerCalculator() {
                                   <button
                                     onClick={() => { updateItem(visualPopup.itemId, "rotationMode", "all"); setVisualPopup(null); }}
                                     className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
-                                      currentMode === "all" ? "border-brand" : "border-border-hairline hover:border-border-hairline hover:bg-surface-recessed"
+                                      currentMode === "all" ? "border-brand" : "border-border-app hover:border-border-control hover:bg-surface-recessed"
                                     }`}
                                     data-testid="popup-rotation-all"
                                   >
@@ -6053,7 +6053,7 @@ export default function ContainerCalculator() {
                                   <button
                                     onClick={() => { updateItem(visualPopup.itemId, "loadPriority", "normal"); setVisualPopup(null); }}
                                     className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
-                                      currentPriority === "normal" ? "border-brand" : "border-border-hairline hover:border-border-hairline hover:bg-surface-recessed"
+                                      currentPriority === "normal" ? "border-brand" : "border-border-app hover:border-border-control hover:bg-surface-recessed"
                                     }`}
                                     data-testid="popup-priority-normal"
                                   >
@@ -6170,7 +6170,7 @@ export default function ContainerCalculator() {
                               <button
                                 onClick={() => setTempBulk(p => ({ ...p, rotationMode: "all" }))}
                                 className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
-                                  tempBulk.rotationMode === "all" ? "border-brand" : "border-border-hairline hover:border-border-hairline hover:bg-surface-recessed"
+                                  tempBulk.rotationMode === "all" ? "border-brand" : "border-border-app hover:border-border-control hover:bg-surface-recessed"
                                 }`}
                                 data-testid="bulk-modal-rotation-all"
                               >
@@ -6256,7 +6256,7 @@ export default function ContainerCalculator() {
                               <button
                                 onClick={() => setTempBulk(p => ({ ...p, loadPriority: "normal" }))}
                                 className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
-                                  tempBulk.loadPriority === "normal" ? "border-brand" : "border-border-hairline hover:border-border-hairline hover:bg-surface-recessed"
+                                  tempBulk.loadPriority === "normal" ? "border-brand" : "border-border-app hover:border-border-control hover:bg-surface-recessed"
                                 }`}
                                 data-testid="bulk-modal-priority-normal"
                               >
@@ -6438,7 +6438,7 @@ export default function ContainerCalculator() {
                               <button
                                 onClick={() => setBulkApplyScope("all")}
                                 className={`p-2.5 rounded-lg border-2 text-[11px] font-medium transition-colors text-center ${
-                                  bulkApplyScope === "all" ? "border-brand text-brand" : "border-border-hairline text-text-muted hover:border-border-hairline"
+                                  bulkApplyScope === "all" ? "border-brand text-brand" : "border-border-app text-text-muted hover:border-border-control"
                                 }`}
                                 data-testid="bulk-modal-scope-all"
                               >
@@ -6450,8 +6450,8 @@ export default function ContainerCalculator() {
                                 disabled={selectedIds.size === 0}
                                 className={`p-2.5 rounded-lg border-2 text-[11px] font-medium transition-colors text-center ${
                                   bulkApplyScope === "selected" ? "border-brand text-brand"
-                                    : selectedIds.size === 0 ? "border-border-hairline text-text-deemphasis cursor-not-allowed"
-                                    : "border-border-hairline text-text-muted hover:border-border-hairline"
+                                    : selectedIds.size === 0 ? "border-border-app text-text-deemphasis cursor-not-allowed"
+                                    : "border-border-app text-text-muted hover:border-border-control"
                                 }`}
                                 data-testid="bulk-modal-scope-selected"
                               >
@@ -6461,7 +6461,7 @@ export default function ContainerCalculator() {
                               <button
                                 onClick={() => setBulkApplyScope("defaults")}
                                 className={`p-2.5 rounded-lg border-2 text-[11px] font-medium transition-colors text-center ${
-                                  bulkApplyScope === "defaults" ? "border-brand text-brand" : "border-border-hairline text-text-muted hover:border-border-hairline"
+                                  bulkApplyScope === "defaults" ? "border-brand text-brand" : "border-border-app text-text-muted hover:border-border-control"
                                 }`}
                                 data-testid="bulk-modal-scope-defaults"
                               >
@@ -6549,7 +6549,7 @@ export default function ContainerCalculator() {
                                 className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
                                   dragOver
                                     ? "border-brand"
-                                    : "border-border-control hover:border-border-hairline hover:bg-surface-recessed"
+                                    : "border-border-control hover:border-border-control hover:bg-surface-recessed"
                                 }`}
                                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                                 onDragLeave={() => setDragOver(false)}
@@ -7005,10 +7005,10 @@ export default function ContainerCalculator() {
                       return (
                         <div
                           key={item.id}
-                          className={`border rounded-lg p-2.5 transition-colors ${
-                            !item.included ? "opacity-40 border-border-hairline bg-surface-recessed"
+                          className={`border-2 rounded-lg p-2.5 transition-colors ${
+                            !item.included ? "opacity-40 border-border-app bg-surface-recessed"
                               : selectedIds.has(item.id) ? "border-brand"
-                              : "border-border-hairline"
+                              : "border-border-app"
                           }`}
                           data-testid={`cargo-item-${idx}`}
                         >
@@ -7598,10 +7598,10 @@ export default function ContainerCalculator() {
                               }}
                               data-testid={`result-container-card-${index}`}
                               aria-pressed={selected}
-                              className={`w-[86%] shrink-0 snap-start rounded-lg border bg-white p-3 text-left transition-colors sm:w-[calc((100%_-_0.75rem)/2)] ${
+                              className={`w-[86%] shrink-0 snap-start rounded-lg border-2 bg-white p-3 text-left transition-colors sm:w-[calc((100%_-_0.75rem)/2)] ${
                                 selected
                                   ? "border-brand"
-                                  : "border-border-hairline hover:border-border-control hover:shadow-sm"
+                                  : "border-border-app hover:border-border-control hover:shadow-sm"
                               }`}
                             >
                               <div className="flex items-center gap-3">
