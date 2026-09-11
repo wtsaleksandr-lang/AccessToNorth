@@ -1,7 +1,5 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "wouter";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -178,7 +176,6 @@ export default function CustomsClearance() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Navbar darkHero />
 
       {/* HERO SECTION */}
       <section
@@ -595,7 +592,6 @@ export default function CustomsClearance() {
         </div>
       </section>
 
-      <Footer />
     </div>
   );
 }

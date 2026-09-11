@@ -1,6 +1,4 @@
 import { Link } from "wouter";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -135,7 +133,6 @@ export function ResourceArticlePage({
       <JsonLd id={`article-jsonld-${normalizedCanonical}`} data={articleJsonLd} />
       <JsonLd id={`article-breadcrumb-${normalizedCanonical}`} data={breadcrumbJsonLd} />
       {faqJsonLd && <JsonLd id={`article-faq-${normalizedCanonical}`} data={faqJsonLd} />}
-      <Navbar />
       <main className="flex-1 pt-28 pb-16">
         <article className="container mx-auto px-4 md:px-6 max-w-3xl">
           <Breadcrumbs items={[
@@ -292,7 +289,6 @@ export function ResourceArticlePage({
           </div>
         </article>
       </main>
-      <Footer />
     </div>
   );
 }

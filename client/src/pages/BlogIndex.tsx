@@ -1,7 +1,5 @@
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { usePageMeta } from "@/hooks/use-page-meta";
@@ -53,7 +51,6 @@ export default function BlogIndex() {
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
       <JsonLd id="blog-index-jsonld" data={blogJsonLd} />
-      <Navbar />
       <main className="flex-1 pt-28 pb-16">
         <div className="container mx-auto px-4 md:px-6 max-w-5xl">
           <div className="text-center mb-10">
@@ -178,7 +175,6 @@ export default function BlogIndex() {
           </div>
         </div>
       </main>
-      <Footer />
     </div>
   );
 }

@@ -4,8 +4,6 @@ import {
   AlertCircle, ArrowLeft, Check, CheckCircle2, Circle, Clock3, ExternalLink,
   FileText, Loader2, LockKeyhole, PackageSearch, Search, ShieldCheck,
 } from "lucide-react";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -87,7 +85,6 @@ export default function ShipmentTracking() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
-      <Navbar />
       <main className="flex-1 pt-28 pb-16">
         <div className="container mx-auto max-w-4xl px-4 md:px-6">
           <Link href="/tools" className="mb-6 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"><ArrowLeft className="h-3.5 w-3.5" /> All tools</Link>
@@ -145,7 +142,6 @@ export default function ShipmentTracking() {
           )}
         </div>
       </main>
-      <Footer />
     </div>
   );
 }

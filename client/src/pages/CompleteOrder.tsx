@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -291,7 +289,6 @@ export default function CompleteOrder() {
   if (!token) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Navbar />
         <div className="flex-1 flex items-center justify-center p-8">
           <Card className="max-w-md w-full text-center">
             <CardContent className="pt-8 pb-8 space-y-4">
@@ -304,7 +301,6 @@ export default function CompleteOrder() {
             </CardContent>
           </Card>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -312,11 +308,9 @@ export default function CompleteOrder() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Navbar />
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
-        <Footer />
       </div>
     );
   }
@@ -324,7 +318,6 @@ export default function CompleteOrder() {
   if (error || !order) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Navbar />
         <div className="flex-1 flex items-center justify-center p-8">
           <Card className="max-w-md w-full text-center">
             <CardContent className="pt-8 pb-8 space-y-4">
@@ -337,7 +330,6 @@ export default function CompleteOrder() {
             </CardContent>
           </Card>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -348,7 +340,6 @@ export default function CompleteOrder() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      <Navbar />
       <main className="flex-1 py-12 px-4">
         <div className="max-w-2xl mx-auto space-y-6">
           <div className="text-center space-y-2">
@@ -397,7 +388,6 @@ export default function CompleteOrder() {
           </div>
         </div>
       </main>
-      <Footer />
     </div>
   );
 }

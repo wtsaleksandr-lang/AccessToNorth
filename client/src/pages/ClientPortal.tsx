@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from "react";
-import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -100,7 +99,6 @@ export default function ClientPortal() {
 
   return (
     <div className="min-h-screen bg-background font-sans">
-      <Navbar />
       <main className="container mx-auto px-4 pt-28 pb-20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

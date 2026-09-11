@@ -1,8 +1,6 @@
 import { lazy, Suspense, useState } from "react";
 import { Link, useLocation } from "wouter";
 import businessTeamImg from "@/assets/images/business-team.jpg";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DiyVsUsComparison } from "@/components/DiyVsUsComparison";
@@ -35,7 +33,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen font-sans bg-slate-50 selection:bg-primary/20 selection:text-primary">
-      <Navbar />
       <main>
 
       {/* Hero Section */}
@@ -296,7 +293,6 @@ export default function Home() {
 
       </main>
 
-      <Footer />
 
       {modalOpen && (
         <Suspense fallback={null}>

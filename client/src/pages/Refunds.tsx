@@ -1,10 +1,7 @@
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 
 export default function Refunds() {
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
       <main className="flex-1 bg-white">
         <div className="container mx-auto px-4 md:px-6 py-16 max-w-3xl">
           <h1 className="text-4xl font-bold font-display mb-2" data-testid="text-refunds-title">Refund Policy</h1>
@@ -53,7 +50,6 @@ export default function Refunds() {
           </div>
         </div>
       </main>
-      <Footer />
     </div>
   );
 }

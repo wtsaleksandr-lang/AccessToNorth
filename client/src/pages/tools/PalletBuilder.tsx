@@ -25,8 +25,6 @@ import {
   Trash2,
   Truck,
 } from "lucide-react";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 import { ToolWorkedExample } from "@/components/ToolWorkedExample";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Button } from "@/components/ui/button";
@@ -322,7 +320,6 @@ export default function PalletBuilder() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      <Navbar />
       <main className="pb-20 pt-24">
         <div className="container mx-auto max-w-7xl px-4 md:px-6">
           <Breadcrumbs items={[{ label: "Tools", href: "/tools" }, { label: "Pallet Builder" }]} />
@@ -568,7 +565,6 @@ export default function PalletBuilder() {
         </div>
       </main>
       <ToolWorkedExample kind="pallet" />
-      <Footer />
     </div>
   );
 }

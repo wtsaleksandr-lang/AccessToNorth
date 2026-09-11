@@ -3,8 +3,6 @@ import { useLocation } from "wouter";
 import { useCart } from "@/contexts/CartContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { apiRequest } from "@/lib/queryClient";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +27,6 @@ export default function Checkout() {
   if (items.length === 0) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Navbar />
         <div className="flex-1 flex items-center justify-center p-8">
           <Card className="max-w-md w-full text-center">
             <CardContent className="pt-8 pb-8 space-y-4">
@@ -44,7 +41,6 @@ export default function Checkout() {
             </CardContent>
           </Card>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -86,7 +82,6 @@ export default function Checkout() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      <Navbar />
       <main className="flex-1 py-12 px-4">
         <div className="max-w-4xl mx-auto">
           <Button
@@ -215,7 +210,6 @@ export default function Checkout() {
           </div>
         </div>
       </main>
-      <Footer />
     </div>
   );
 }

@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from "react";
 import { Link } from "wouter";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 import { ToolWorkedExample } from "@/components/ToolWorkedExample";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -5280,7 +5278,6 @@ export default function ContainerCalculator() {
           </div>
         </div>
       )}
-      {!isEmbedMode && <Navbar />}
       <main className={`flex-1 pb-16 ${isEmbedMode ? "pt-6" : "pt-24 md:pt-28"}`}>
         <div className="mx-auto w-full max-w-[1920px] px-4 md:px-6 xl:px-8">
           {!isEmbedMode && <Breadcrumbs
@@ -8141,7 +8138,6 @@ export default function ContainerCalculator() {
         </section>
       </main>
       {!isEmbedMode && <ToolWorkedExample kind="container" />}
-      {!isEmbedMode && <Footer />}
     </div>
   );
 }
