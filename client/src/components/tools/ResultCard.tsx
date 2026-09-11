@@ -22,6 +22,9 @@ export interface ResultCardProps {
   figureLabel?: ReactNode;
   /** Qualifying line under the figure. Never put a warning here — warnings go above the card. */
   figureNote?: ReactNode;
+  /** `data-testid` on the figure's wrapper — for a test id a table row used to carry. */
+  figureRowTestId?: string;
+  /** `data-testid` on the figure itself. */
   figureTestId?: string;
   rows?: ResultRow[];
   children?: ReactNode;
@@ -53,6 +56,7 @@ export function ResultCard({
   figure,
   figureLabel,
   figureNote,
+  figureRowTestId,
   figureTestId,
   rows,
   children,
@@ -72,7 +76,10 @@ export function ResultCard({
       )}
 
       {figure !== undefined && (
-        <div className={cn("px-5", title || action ? "pt-4" : "pt-5")}>
+        <div
+          className={cn("px-5", title || action ? "pt-4" : "pt-5")}
+          data-testid={figureRowTestId}
+        >
           {figureLabel && (
             <p className="text-[13px] font-medium leading-[18px] text-text-muted">{figureLabel}</p>
           )}

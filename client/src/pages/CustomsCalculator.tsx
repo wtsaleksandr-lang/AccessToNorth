@@ -1,17 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Link } from "wouter";
 import { ToolWorkedExample } from "@/components/ToolWorkedExample";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Accordion,
   AccordionContent,
@@ -27,7 +17,17 @@ import {
 } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  Callout,
+  FieldLabel,
+  Input,
+  ResultCard,
+  SegmentedControl,
+  Select,
+  SelectItem,
+  StepRibbon,
+  type ResultRow,
+} from "@/components/tools";
 import {
   Calculator,
   Search,
@@ -39,12 +39,9 @@ import {
   Check,
   Info,
   Loader2,
-  LayoutGrid,
   FileText,
   Upload,
   Download,
-  HelpCircle,
-  TrendingUp,
   ArrowRight,
   X,
   AlertTriangle,
@@ -57,7 +54,32 @@ import { apiRequest } from "@/lib/queryClient";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import Papa from "papaparse";
 
-const DEEP_BLUE = "#0A2540";
+/**
+ * Card-on-canvas shell, matching Home. Each section is an object on the
+ * #F2F4F7 canvas rather than a full-bleed band: 98% width capped at the 1328px
+ * outer container, 12px radius, 1px hairline edge, 16px gap between cards.
+ */
+const SHELL = "w-[98%] max-w-container-outer mx-auto rounded-lg border overflow-hidden";
+
+/** Inner content rail: 1280px of content inside the 1328px shell. */
+const RAIL = "mx-auto max-w-container px-5 md:px-10";
+
+/**
+ * The tool itself reads better narrow — a 1280px-wide form makes the eye travel
+ * the full width between a label and its control.
+ */
+const FORM_RAIL = "mx-auto max-w-3xl px-5 md:px-10";
+
+/**
+ * Asymmetric section padding. Adjacent sections pull from different pairs so
+ * the vertical rhythm alternates instead of stacking two equal gaps.
+ */
+const PAD = {
+  even: "pt-10 pb-10 md:pt-[76px] md:pb-[76px]",
+  topHeavy: "pt-16 pb-10 md:pt-20 md:pb-[60px]",
+  tight: "pt-12 pb-10 md:pt-[72px] md:pb-14",
+  closing: "pt-14 pb-10 md:pt-20 md:pb-16",
+} as const;
 
 interface HsCodeResult {
   code: string;
@@ -203,34 +225,42 @@ function getTariffTooltipData(code: string): { title: string; description: strin
   };
 }
 
+/**
+ * A tariff abbreviation that explains itself on click.
+ *
+ * The dotted underline is the affordance; the accent is reserved for focus and
+ * hover, so the resting state is `#314158` secondary ink (7.8:1) rather than a
+ * link blue. An importer must be able to read the abbreviation either way —
+ * the popover adds detail, it never hides anything required.
+ */
 function TariffTooltip({ abbr, title, description }: { abbr: string; title: string; description: string }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="text-blue-700 dark:text-blue-400 font-semibold underline underline-offset-2 decoration-dotted cursor-pointer"
+          className="cursor-pointer font-semibold text-text-secondary underline decoration-dotted underline-offset-2 transition-colors duration-state hover:text-brand"
           data-testid={`tooltip-trigger-${abbr.toLowerCase()}`}
         >
           {abbr}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-3" side="top">
-        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1">{title}</p>
-        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{description}</p>
+      <PopoverContent className="w-72 rounded-lg border-border-hairline p-4" side="top">
+        <p className="text-[14px] font-semibold leading-5 text-text-primary">{title}</p>
+        <p className="mt-1 text-[13px] leading-[18px] text-text-muted">{description}</p>
       </PopoverContent>
     </Popover>
   );
 }
 
 export default function CustomsCalculator() {
-  
+
   const [hsQuery, setHsQuery] = useState("");
   const [hsResults, setHsResults] = useState<HsCodeResult[]>([]);
   const [selectedHsCode, setSelectedHsCode] = useState<HsCodeResult | null>(null);
   const [showHsDropdown, setShowHsDropdown] = useState(false);
   const [hsSearching, setHsSearching] = useState(false);
-  
+
 
   const [countries, setCountries] = useState<Country[]>([]);
   const [tariffUnavailable, setTariffUnavailable] = useState<string | null>(null);
@@ -576,208 +606,259 @@ export default function CustomsCalculator() {
     "Calculating duties & taxes...",
   ];
 
+  /**
+   * Read-out of progress through the flow. Derived from state the form already
+   * holds — it gates nothing and submits nothing, so it cannot change what is
+   * sent to /api/customs/calculate.
+   */
+  const doneSteps: number[] = [];
+  if (selectedHsCode) doneSteps.push(0);
+  if (selectedCountry && goodsValue.trim()) doneSteps.push(1);
+  if (result) doneSteps.push(2);
+  const currentStep = [0, 1, 2].find((i) => !doneSteps.includes(i)) ?? 2;
+
+  /**
+   * Breakdown rows. The figures come straight from the API response and are
+   * formatted by the same two helpers as before — this is layout only.
+   */
+  const breakdownRows: ResultRow[] = result
+    ? [
+        {
+          label: "Customs Duty",
+          meta: result.dutyRate,
+          value: formatCurrency(result.dutyAmount),
+          testId: "row-customs-duty",
+          valueTestId: "text-duty-amount",
+        },
+        {
+          label: result.gstLabel,
+          meta: formatPercent(result.gstRate),
+          value: formatCurrency(result.gstAmount),
+          testId: "row-gst",
+          valueTestId: "text-gst-amount",
+        },
+        ...(result.provincialTaxAmount > 0
+          ? [
+              {
+                label: result.provincialTaxName,
+                meta: formatPercent(result.provincialTaxRate),
+                value: formatCurrency(result.provincialTaxAmount),
+                testId: "row-provincial-tax",
+                valueTestId: "text-provincial-tax-amount",
+              },
+            ]
+          : []),
+        {
+          label: "Total Duties & Taxes",
+          value: formatCurrency(result.totalDutiesAndTaxes),
+          emphasis: true,
+          valueTestId: "text-total-duties",
+        },
+      ]
+    : [];
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-surface-canvas font-sans">
+      {/*
+        The Navbar is `position: fixed` (83px tall at every breakpoint) and
+        reserves no space in flow, so the page clears it here: 83px nav + the
+        16px inter-card gap.
+      */}
+      <main className="flex flex-col gap-4 pb-4 pt-[99px]">
 
-      <section
-        className="relative pt-28 pb-16 md:pt-36 md:pb-24 overflow-hidden"
-        style={{
-          background: `radial-gradient(circle at 20% 10%, rgba(255,255,255,0.08), transparent 40%), linear-gradient(180deg, ${DEEP_BLUE} 0%, #061B2E 60%, #0D2137 100%)`,
-        }}
-      >
-        <div className="container mx-auto px-4 md:px-6 max-w-6xl">
-          <div className="grid md:grid-cols-2 gap-10 md:gap-14 items-center">
-            <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white/90 text-sm mb-6 border border-white/10">
-                <Calculator className="w-4 h-4" />
-                Free Import Calculator
-              </div>
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 font-display leading-tight" data-testid="text-customs-heading">
-                Canadian Customs Duty & Tax Calculator
-              </h1>
-              <p className="text-base md:text-lg text-white/70 mb-8 max-w-lg" data-testid="text-customs-subheading">
-                Estimate customs duty and taxes normally payable at the Canadian border. Commercial and personal imports are calculated separately.
-              </p>
-              <div className="flex flex-col sm:flex-row items-start gap-3">
-                <Button
-                  size="lg"
-                  className="bg-white text-slate-900 font-semibold shadow-lg shadow-black/10 cursor-pointer"
-                  onClick={() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                  data-testid="button-hero-calculate"
+        {/* ── Hero card ───────────────────────────────────────────────── */}
+        <section className={`${SHELL} border-white/10 surface-dark ${PAD.even}`}>
+          <div className={RAIL}>
+            <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-12">
+              <div className="min-w-0 lg:w-1/2">
+                <p className="text-eyebrow uppercase text-text-deemphasis">
+                  Free Import Calculator
+                </p>
+                <h1
+                  className="mt-4 text-h1-sm text-white md:text-h1"
+                  data-testid="text-customs-heading"
                 >
-                  <Calculator className="w-4 h-4 mr-2" />
-                  Start calculating
-                  <ChevronDown className="w-4 h-4 ml-1" />
-                </Button>
-                <button
-                  type="button"
-                  className="text-sm text-white/60 hover:text-white/90 transition-colors cursor-pointer underline underline-offset-4"
-                  onClick={() => faqRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                  data-testid="link-faq"
+                  Canadian Customs Duty &amp; Tax Calculator
+                </h1>
+                <p className="mt-5 max-w-lg text-lead text-text-deemphasis" data-testid="text-customs-subheading">
+                  Estimate customs duty and taxes normally payable at the Canadian border. Commercial and personal imports are calculated separately.
+                </p>
+                <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                  <Button
+                    size="lg"
+                    className="bg-brand text-white transition-colors duration-state hover:bg-brand-hover"
+                    onClick={() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                    data-testid="button-hero-calculate"
+                  >
+                    <Calculator className="mr-2 h-4 w-4" aria-hidden="true" />
+                    Start calculating
+                    <ChevronDown className="ml-1 h-4 w-4" aria-hidden="true" />
+                  </Button>
+                  <button
+                    type="button"
+                    className="cursor-pointer text-body font-semibold text-text-deemphasis underline underline-offset-4 transition-colors duration-state hover:text-white sm:self-center"
+                    onClick={() => faqRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                    data-testid="link-faq"
+                  >
+                    How does this work?
+                  </button>
+                </div>
+              </div>
+
+              {/*
+                Illustrative panel. Labelled "Sample output" because the tile
+                figures are made up: a decorative dollar amount next to a live
+                duty calculator must not be mistakable for a real estimate.
+              */}
+              <div className="w-full min-w-0 lg:w-1/2">
+                <div
+                  className="rounded-lg border border-white/10 bg-white/[0.04] p-5"
+                  data-testid="card-hero-mockup"
                 >
-                  How does this work?
-                </button>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="relative flex justify-center md:justify-end"
-            >
-              <motion.div
-                className="absolute -top-3 -left-2 md:-left-4 z-10 flex items-center gap-2 px-3 py-2 bg-white/95 rounded-xl border border-blue-200 shadow-md"
-                animate={{ y: [0, -6, 0] }}
-                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                data-testid="badge-tariff-updated"
-              >
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-500">
-                  <Check className="w-3.5 h-3.5 text-white" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-slate-800 leading-tight">2026 Rates Updated</p>
-                  <p className="text-[10px] text-slate-500 leading-tight">Official CBSA tariff data</p>
-                </div>
-              </motion.div>
-
-              <div className="w-full max-w-[400px] rounded-2xl border border-white/15 bg-white/10 backdrop-blur-sm shadow-2xl shadow-black/20 p-5" data-testid="card-hero-mockup">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <LayoutGrid className="w-3.5 h-3.5 text-white/60" />
-                    <span className="text-xs font-semibold text-white/70 tracking-wider uppercase">Customs Calculator</span>
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <span className="text-eyebrow uppercase text-text-deemphasis">Sample output</span>
+                    <div
+                      className="flex items-center gap-2 rounded-md border border-white/10 px-3 py-1.5"
+                      data-testid="badge-tariff-updated"
+                    >
+                      <Check className="h-3.5 w-3.5 text-white" aria-hidden="true" />
+                      <div>
+                        <p className="text-[12px] font-semibold leading-tight text-white">2026 Rates Updated</p>
+                        <p className="text-[11px] leading-tight text-text-deemphasis">Official CBSA tariff data</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 rounded-full bg-white/20" />
-                    <div className="w-2 h-2 rounded-full bg-white/20" />
-                    <div className="w-2 h-2 rounded-full bg-white/20" />
+
+                  <div className="mb-5 space-y-3" aria-hidden="true">
+                    <div className="h-3 w-3/4 rounded-md bg-white/10" />
+                    <div className="h-9 rounded-md border border-white/10 bg-white/[0.06]" />
+                    <div className="h-3 w-1/2 rounded-md bg-white/10" />
+                    <div className="h-9 rounded-md border border-white/10 bg-white/[0.06]" />
+                    <div className="h-3 w-2/3 rounded-md bg-white/10" />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: "Duty", value: "$450.00" },
+                      { label: "GST", value: "$272.50" },
+                      { label: "Total", value: "$5,722" },
+                    ].map((tile) => (
+                      <div key={tile.label} className="rounded-md border border-white/10 p-3">
+                        <p className="text-[12px] leading-tight text-text-deemphasis">{tile.label}</p>
+                        <p className="mt-1 text-[14px] font-bold leading-tight text-white tabular-nums">{tile.value}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
-
-                <div className="space-y-3 mb-5">
-                  <div className="h-3 bg-white/10 rounded-full w-3/4" />
-                  <div className="h-9 bg-white/8 rounded-lg border border-white/10" />
-                  <div className="h-3 bg-white/10 rounded-full w-1/2" />
-                  <div className="h-9 bg-white/8 rounded-lg border border-white/10" />
-                  <div className="h-3 bg-white/10 rounded-full w-2/3" />
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="p-3 rounded-lg bg-white/8 border border-white/10">
-                    <p className="text-[10px] text-white/50 mb-1">Duty</p>
-                    <p className="text-sm font-bold text-white/90">$450.00</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-white/8 border border-white/10">
-                    <p className="text-[10px] text-white/50 mb-1">GST</p>
-                    <p className="text-sm font-bold text-white/90">$272.50</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-blue-500/20 border border-blue-400/30">
-                    <p className="text-[10px] text-blue-200/70 mb-1">Total</p>
-                    <p className="text-sm font-bold text-blue-200">$5,722</p>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-12 md:py-16 bg-slate-50 border-b" data-testid="section-features">
-        <div className="container mx-auto px-4 md:px-6 max-w-5xl">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
-            {[
-              { icon: Search, title: "8 & 10-digit tariff", desc: "Full 2026 Canadian Customs Tariff" },
-              { icon: Globe, title: "90+ Countries", desc: "CUSMA, CPTPP, CETA & more" },
-              { icon: MapPin, title: "Import Type Aware", desc: "Commercial vs personal tax treatment" },
-              { icon: Upload, title: "Bulk CSV Upload", desc: "Calculate multiple items at once" },
-            ].map((feat) => (
-              <div key={feat.title} className="text-center">
-                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-50 mx-auto mb-3">
-                  <feat.icon className="w-5 h-5 text-blue-600" />
-                </div>
-                <p className="text-sm font-semibold text-slate-800">{feat.title}</p>
-                <p className="text-xs text-slate-500 mt-1">{feat.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="py-12 md:py-16" ref={formRef}>
-        <div className="container mx-auto px-4 md:px-6 max-w-3xl">
-          <Card className="p-6 md:p-8 shadow-lg" data-testid="card-calculator-form">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="flex items-center justify-center w-10 h-10 rounded-lg" style={{ backgroundColor: `${DEEP_BLUE}10` }}>
-                <Calculator className="w-5 h-5" style={{ color: DEEP_BLUE }} />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">Import Duty Calculator</h2>
-                <p className="text-sm text-slate-500">Enter your product details below</p>
               </div>
             </div>
+          </div>
+        </section>
 
-            <div className="space-y-5">
-              {tariffUnavailable && (
-                <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4" role="alert" data-testid="alert-tariff-unavailable">
-                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
-                  <div>
-                    <p className="text-sm font-semibold text-red-900">Tariff service temporarily unavailable</p>
-                    <p className="mt-1 text-xs leading-5 text-red-700">{tariffUnavailable}</p>
-                  </div>
+        {/* ── What the tool covers ────────────────────────────────────── */}
+        <section className={`${SHELL} bg-white ${PAD.tight}`} data-testid="section-features">
+          <div className={RAIL}>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-4 md:gap-8">
+              {[
+                { icon: Search, title: "8 & 10-digit tariff", desc: "Full 2026 Canadian Customs Tariff" },
+                { icon: Globe, title: "90+ Countries", desc: "CUSMA, CPTPP, CETA & more" },
+                { icon: MapPin, title: "Import Type Aware", desc: "Commercial vs personal tax treatment" },
+                { icon: Upload, title: "Bulk CSV Upload", desc: "Calculate multiple items at once" },
+              ].map((feat) => (
+                <div key={feat.title}>
+                  <feat.icon className="h-5 w-5 text-text-muted" aria-hidden="true" />
+                  <p className="mt-3 text-h3 text-text-primary">{feat.title}</p>
+                  <p className="mt-1.5 text-body text-text-muted">{feat.desc}</p>
                 </div>
-              )}
-              <div className="relative">
-                <Label className="text-sm font-medium mb-1.5 block">
-                  HS Code Lookup
-                </Label>
-                <p className="text-xs text-amber-700 dark:text-amber-400 mb-1.5 flex items-center gap-1">
-                  <Info className="w-3 h-3 flex-shrink-0" />
-                  Suggested matches only. HS classification depends on product details. Verify before relying on results.
-                </p>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Calculator ──────────────────────────────────────────────── */}
+        <section className={`${SHELL} bg-white ${PAD.topHeavy}`} ref={formRef}>
+          <div className={FORM_RAIL}>
+            <div data-testid="card-calculator-form">
+              <StepRibbon
+                steps={[{ label: "Classify" }, { label: "Shipment" }, { label: "Duty & tax" }]}
+                current={currentStep}
+                completed={doneSteps}
+                className="mb-5"
+                data-testid="step-ribbon-customs"
+              />
+
+              <h2 className="text-h2 text-text-primary">Import Duty Calculator</h2>
+              <p className="mt-2 text-lead text-text-muted">Enter your product details below</p>
+
+              <div className="mt-8 space-y-6">
+                {tariffUnavailable && (
+                  <Callout
+                    tone="error"
+                    role="alert"
+                    title="Tariff service temporarily unavailable"
+                    data-testid="alert-tariff-unavailable"
+                  >
+                    <p>{tariffUnavailable}</p>
+                  </Callout>
+                )}
+
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <Input
-                    ref={hsInputRef}
-                    id="hs-code"
-                    data-testid="input-hs-code"
-                    placeholder="Enter HS code or product name (e.g. 6110, milk, chocolate)"
-                    value={hsQuery}
-                    onChange={(e) => {
-                      setHsQuery(e.target.value);
-                      setSelectedHsCode(null);
-                      searchHsCodes(e.target.value);
-                    }}
-                    onFocus={() => {
-                      if (hsResults.length > 0) setShowHsDropdown(true);
-                    }}
-                    className="pl-9"
-                  />
-                  {hsSearching && (
-                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 animate-spin" />
-                  )}
-                </div>
+                  <FieldLabel
+                    htmlFor="hs-code"
+                    helpTone="warning"
+                    help={
+                      <span className="flex items-start gap-1.5">
+                        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        Suggested matches only. HS classification depends on product details. Verify before relying on results.
+                      </span>
+                    }
+                  >
+                    HS Code Lookup
+                  </FieldLabel>
 
-                <AnimatePresence>
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-deemphasis" aria-hidden="true" />
+                    <Input
+                      ref={hsInputRef}
+                      id="hs-code"
+                      data-testid="input-hs-code"
+                      placeholder="Enter HS code or product name (e.g. 6110, milk, chocolate)"
+                      value={hsQuery}
+                      onChange={(e) => {
+                        setHsQuery(e.target.value);
+                        setSelectedHsCode(null);
+                        searchHsCodes(e.target.value);
+                      }}
+                      onFocus={() => {
+                        if (hsResults.length > 0) setShowHsDropdown(true);
+                      }}
+                      hasLeadingIcon
+                      hasTrailingIcon={hsSearching}
+                    />
+                    {hsSearching && (
+                      <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-text-deemphasis" aria-hidden="true" />
+                    )}
+                  </div>
+
                   {showHsDropdown && hsResults.length > 0 && (
-                    <motion.div
+                    <div
                       ref={hsDropdownRef}
-                      initial={{ opacity: 0, y: -4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -4 }}
-                      className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 rounded-lg border shadow-xl max-h-96 overflow-y-auto"
+                      className="absolute z-50 mt-1 max-h-96 w-full overflow-y-auto rounded-lg border border-border-hairline bg-white shadow-md"
                       data-testid="dropdown-hs-results"
                     >
                       {hsResults.map((item) => (
                         <button
                           key={item.code}
                           type="button"
-                          className="w-full text-left px-3 py-2.5 hover-elevate cursor-pointer transition-colors border-b last:border-b-0"
+                          className="w-full cursor-pointer border-b border-border-hairline px-4 py-3 text-left transition-colors duration-state last:border-b-0 hover:bg-surface-recessed"
                           onClick={() => handleHsSelect(item)}
                           data-testid={`option-hs-${item.code}`}
                         >
-                          <div className="flex items-start gap-2">
-                            <span className="text-sm font-mono font-semibold text-blue-700 dark:text-blue-400 shrink-0">{item.code}</span>
-                            <span className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2">
+                          <div className="flex items-start gap-3">
+                            <span className="shrink-0 rounded-md bg-surface-canvas px-2 py-0.5 font-mono text-[13px] font-semibold tabular-nums text-text-primary">
+                              {item.code}
+                            </span>
+                            <span className="line-clamp-2 text-body text-text-secondary">
                               {(item.descriptionFull || item.description).length > 140
                                 ? (item.descriptionFull || item.description).substring(0, 140) + "..."
                                 : (item.descriptionFull || item.description)}
@@ -785,22 +866,20 @@ export default function CustomsCalculator() {
                           </div>
                         </button>
                       ))}
-                    </motion.div>
+                    </div>
                   )}
-                </AnimatePresence>
 
-                {!selectedHsCode && hsQuery.length >= 2 && !hsSearching && hsResults.length === 0 && (
-                  <p className="text-xs text-slate-500 mt-1.5">No matches found. Try different keywords or a specific HS code.</p>
-                )}
+                  {!selectedHsCode && hsQuery.length >= 2 && !hsSearching && hsResults.length === 0 && (
+                    <p className="mt-2 text-body text-text-muted">No matches found. Try different keywords or a specific HS code.</p>
+                  )}
 
-                {!selectedHsCode && (
-                  <div className="mt-2 space-y-2">
-                    <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                      <p className="text-xs text-slate-600 dark:text-slate-400">
+                  {!selectedHsCode && (
+                    <div className="mt-3 rounded-md border border-border-hairline bg-surface-recessed p-3">
+                      <p className="text-body text-text-muted">
                         Need help finding an HS code?{" "}
                         <Link
                           href="/tools/hs-code-finder"
-                          className="text-blue-600 dark:text-blue-400 font-semibold underline underline-offset-2"
+                          className="font-semibold text-text-secondary underline underline-offset-2 transition-colors duration-state hover:text-brand"
                           data-testid="link-hs-finder"
                         >
                           Use HS Code Finder
@@ -808,535 +887,463 @@ export default function CustomsCalculator() {
                         {" "} | {" "}
                         <a
                           href="/services/hs-code-classification-canada"
-                          className="text-blue-600 dark:text-blue-400 font-semibold underline underline-offset-2"
+                          className="font-semibold text-text-secondary underline underline-offset-2 transition-colors duration-state hover:text-brand"
                           data-testid="link-hs-review-cta"
                         >
-                          Order an HS code & duty review
+                          Order an HS code &amp; duty review
                         </a>
                       </p>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {selectedHsCode && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="mt-2 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-800"
-                    data-testid="selected-hs-info"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-xs font-semibold text-blue-800 dark:text-blue-300">
-                          Selected: {selectedHsCode.code}
-                          {prefillSource === "hsfinder" && (
-                            <span className="ml-2 text-xs font-normal text-blue-500" data-testid="text-prefill-notice">
-                              (prefilled from HS Code Finder)
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
-                          {((selectedHsCode.descriptionFull || selectedHsCode.description).length > 120 
-                            ? (selectedHsCode.descriptionFull || selectedHsCode.description).substring(0, 120) + "..." 
-                            : (selectedHsCode.descriptionFull || selectedHsCode.description))}
-                        </p>
+                  {selectedHsCode && (
+                    <div
+                      className="mt-3 rounded-md border-2 border-brand bg-white p-4"
+                      data-testid="selected-hs-info"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-body font-semibold text-text-primary">
+                            Selected: <span className="font-mono tabular-nums">{selectedHsCode.code}</span>
+                            {prefillSource === "hsfinder" && (
+                              <span className="ml-2 font-normal text-text-muted" data-testid="text-prefill-notice">
+                                (prefilled from HS Code Finder)
+                              </span>
+                            )}
+                          </p>
+                          <p className="mt-1 text-body text-text-muted">
+                            {((selectedHsCode.descriptionFull || selectedHsCode.description).length > 120
+                              ? (selectedHsCode.descriptionFull || selectedHsCode.description).substring(0, 120) + "..."
+                              : (selectedHsCode.descriptionFull || selectedHsCode.description))}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="shrink-0 cursor-pointer rounded-md p-1 text-text-muted transition-colors duration-state hover:text-text-primary"
+                          onClick={() => {
+                            setSelectedHsCode(null);
+                            setHsQuery("");
+                            setPrefillSource(null);
+                            hsInputRef.current?.focus();
+                          }}
+                          data-testid="button-clear-hs"
+                          aria-label="Clear selected HS code"
+                        >
+                          <X className="h-4 w-4" aria-hidden="true" />
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        className="p-1 hover-elevate rounded cursor-pointer"
-                        onClick={() => {
-                          setSelectedHsCode(null);
-                          setHsQuery("");
-                          setPrefillSource(null);
-                          hsInputRef.current?.focus();
-                        }}
-                        data-testid="button-clear-hs"
-                      >
-                        <X className="w-3.5 h-3.5 text-blue-400" />
-                      </button>
                     </div>
-                  </motion.div>
-                )}
-              </div>
+                  )}
+                </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <Label htmlFor="country" className="text-sm font-medium mb-1.5 block">
-                    Country of Origin
-                  </Label>
-                  <Select value={selectedCountry} onValueChange={setSelectedCountry} disabled={Boolean(tariffUnavailable)}>
-                    <SelectTrigger id="country" data-testid="select-country">
-                      <SelectValue placeholder="Select country" />
-                    </SelectTrigger>
-                    <SelectContent>
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  <div>
+                    <FieldLabel htmlFor="country">Country of Origin</FieldLabel>
+                    <Select
+                      id="country"
+                      value={selectedCountry}
+                      onValueChange={setSelectedCountry}
+                      disabled={Boolean(tariffUnavailable)}
+                      placeholder="Select country"
+                      data-testid="select-country"
+                    >
                       {countries.map((c) => (
                         <SelectItem key={c.id} value={c.name} data-testid={`option-country-${c.name.replace(/\s/g, '-')}`}>
                           {c.name}
                         </SelectItem>
                       ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                    </Select>
+                  </div>
 
-                <div>
-                  <Label htmlFor="province" className="text-sm font-medium mb-1.5 block">
-                    Destination Province
-                  </Label>
-                  <Select value={selectedProvince} onValueChange={setSelectedProvince}>
-                    <SelectTrigger id="province" data-testid="select-province">
-                      <SelectValue placeholder="Select province" />
-                    </SelectTrigger>
-                    <SelectContent>
+                  <div>
+                    <FieldLabel htmlFor="province">Destination Province</FieldLabel>
+                    <Select
+                      id="province"
+                      value={selectedProvince}
+                      onValueChange={setSelectedProvince}
+                      placeholder="Select province"
+                      data-testid="select-province"
+                    >
                       {PROVINCES.map((p) => (
                         <SelectItem key={p.code} value={p.code}>
                           {p.name}
                         </SelectItem>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </Select>
+                  </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <Label htmlFor="value" className="text-sm font-medium mb-1.5 block">
-                    Value of Goods (CAD)
-                  </Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input
-                      id="value"
-                      data-testid="input-goods-value"
-                      placeholder="e.g. 5,000"
-                      value={goodsValue}
-                      onChange={(e) => setGoodsValue(e.target.value)}
-                      className="pl-9"
-                    />
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  <div>
+                    <FieldLabel htmlFor="value">Value of Goods (CAD)</FieldLabel>
+                    <div className="relative">
+                      <DollarSign className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-deemphasis" aria-hidden="true" />
+                      <Input
+                        id="value"
+                        data-testid="input-goods-value"
+                        placeholder="e.g. 5,000"
+                        value={goodsValue}
+                        onChange={(e) => setGoodsValue(e.target.value)}
+                        hasLeadingIcon
+                        className="tabular-nums"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <FieldLabel
+                      htmlFor="quantity"
+                      help={
+                        selectedHsCode?.unitOfMeasure
+                          ? `Unit: ${selectedHsCode.unitOfMeasure}`
+                          : "Required for per-unit duty rates"
+                      }
+                    >
+                      Quantity{selectedHsCode?.unitOfMeasure ? ` (${selectedHsCode.unitOfMeasure})` : " (optional)"}
+                    </FieldLabel>
+                    <div className="relative">
+                      <Package className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-deemphasis" aria-hidden="true" />
+                      <Input
+                        id="quantity"
+                        data-testid="input-quantity"
+                        placeholder="e.g. 100"
+                        value={quantity}
+                        onChange={(e) => setQuantity(e.target.value)}
+                        hasLeadingIcon
+                        className="tabular-nums"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="quantity" className="text-sm font-medium mb-1.5 block">
-                    Quantity{selectedHsCode?.unitOfMeasure ? ` (${selectedHsCode.unitOfMeasure})` : " (optional)"}
-                  </Label>
-                  <div className="relative">
-                    <Package className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input
-                      id="quantity"
-                      data-testid="input-quantity"
-                      placeholder="e.g. 100"
-                      value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)}
-                      className="pl-9"
+                  <FieldLabel>Shipment Type</FieldLabel>
+                  <SegmentedControl
+                    ariaLabel="Shipment Type"
+                    value={shipmentType}
+                    onChange={setShipmentType}
+                    options={[
+                      { value: "commercial", label: "Commercial", testId: "button-commercial" },
+                      { value: "personal", label: "Personal", testId: "button-personal" },
+                    ]}
+                  />
+                </div>
+
+                {/*
+                  LEGALLY LOAD-BEARING CONTROL — do not quieten this.
+                  Ticking it switches which tariff treatment the backend applies
+                  (preferential vs MFN), so it must read as an unticked decision
+                  the importer actively makes, never as a pre-accepted default.
+                  Hence: 20px box, never pre-checked, the block's own border is
+                  the 2px selection swap (#EAECF0 -> #3356EE) so the confirmed
+                  state is unmistakable at a glance, and the border is 2px in
+                  both states so nothing reflows when it is ticked.
+                */}
+                <div
+                  className={`rounded-lg border-2 p-4 transition-colors duration-state ${
+                    confirmedOrigin ? "border-brand bg-white" : "border-border-app bg-surface-recessed"
+                  }`}
+                >
+                  <p className="text-[14px] font-semibold leading-5 text-text-primary">Preferential Tariff Eligibility</p>
+                  <div className="mt-3 flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      id="confirmedOrigin"
+                      checked={confirmedOrigin}
+                      onChange={(e) => setConfirmedOrigin(e.target.checked)}
+                      className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer rounded-[4px] border-2 border-border-control accent-brand"
+                      data-testid="checkbox-origin-confirmation"
                     />
+                    <label htmlFor="confirmedOrigin" className="cursor-pointer text-[14px] leading-[20px] text-text-secondary">
+                      I confirm that I have proof that these goods qualify under the selected trade agreement rules of origin
+                      (e.g., <TariffTooltip abbr="CUSMA" {...TARIFF_TOOLTIPS.CUSMA} />,{" "}
+                      <TariffTooltip abbr="CPTPP" {...TARIFF_TOOLTIPS.CPTPP} />,{" "}
+                      <TariffTooltip abbr="CETA" {...TARIFF_TOOLTIPS.CETA} />).
+                    </label>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">
-                    {selectedHsCode?.unitOfMeasure
-                      ? `Unit: ${selectedHsCode.unitOfMeasure}`
-                      : "Required for per-unit duty rates"}
+                  <p className="mt-3 pl-8 text-[14px] leading-[20px] text-text-muted">
+                    If unsure, leave unchecked and <TariffTooltip abbr="MFN" {...TARIFF_TOOLTIPS.MFN} /> rate will apply.
                   </p>
                 </div>
-              </div>
 
-              <div>
-                <Label className="text-sm font-medium mb-1.5 block">Shipment Type</Label>
-                <div className="flex gap-3">
-                  <Button
-                    type="button"
-                    variant={shipmentType === "commercial" ? "default" : "outline"}
-                    className={`flex-1 toggle-elevate ${shipmentType === "commercial" ? "toggle-elevated" : ""}`}
-                    onClick={() => setShipmentType("commercial")}
-                    data-testid="button-commercial"
-                  >
-                    Commercial
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={shipmentType === "personal" ? "default" : "outline"}
-                    className={`flex-1 toggle-elevate ${shipmentType === "personal" ? "toggle-elevated" : ""}`}
-                    onClick={() => setShipmentType("personal")}
-                    data-testid="button-personal"
-                  >
-                    Personal
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                <p className="text-xs font-semibold text-blue-800 dark:text-blue-300">Preferential Tariff Eligibility</p>
-                <div className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    id="confirmedOrigin"
-                    checked={confirmedOrigin}
-                    onChange={(e) => setConfirmedOrigin(e.target.checked)}
-                    className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    data-testid="checkbox-origin-confirmation"
-                  />
-                  <label htmlFor="confirmedOrigin" className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed cursor-pointer">
-                    I confirm that I have proof that these goods qualify under the selected trade agreement rules of origin
-                    (e.g., <TariffTooltip abbr="CUSMA" {...TARIFF_TOOLTIPS.CUSMA} />,{" "}
-                    <TariffTooltip abbr="CPTPP" {...TARIFF_TOOLTIPS.CPTPP} />,{" "}
-                    <TariffTooltip abbr="CETA" {...TARIFF_TOOLTIPS.CETA} />).
-                  </label>
-                </div>
-                <p className="text-xs text-blue-600 dark:text-blue-400 pl-7">
-                  If unsure, leave unchecked and <TariffTooltip abbr="MFN" {...TARIFF_TOOLTIPS.MFN} /> rate will apply.
-                </p>
-              </div>
-
-              <AnimatePresence>
                 {inputError && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="p-3 rounded-lg bg-red-50 border border-red-200"
-                  >
-                    <p className="text-sm text-red-700" data-testid="text-input-error">{inputError}</p>
-                  </motion.div>
+                  <Callout tone="error" role="alert">
+                    <p data-testid="text-input-error">{inputError}</p>
+                  </Callout>
                 )}
-              </AnimatePresence>
 
-              <Button
-                size="lg"
-                className="w-full text-white font-semibold py-6 text-[23px] rounded-xl"
-                style={{ backgroundColor: DEEP_BLUE }}
-                onClick={handleCalculate}
-                disabled={isCalculating || Boolean(tariffUnavailable)}
-                data-testid="button-calculate"
-              >
-                {isCalculating ? (
-                  <span className="flex items-center gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Calculating...
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <Calculator className="w-5 h-5" />
-                    Calculate Duties & Taxes
-                  </span>
-                )}
-              </Button>
+                <Button
+                  size="lg"
+                  className="h-12 w-full bg-brand text-[15px] font-semibold text-white transition-colors duration-state hover:bg-brand-hover"
+                  onClick={handleCalculate}
+                  disabled={isCalculating || Boolean(tariffUnavailable)}
+                  data-testid="button-calculate"
+                >
+                  {isCalculating ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                      Calculating...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <Calculator className="h-4 w-4" aria-hidden="true" />
+                      Calculate Duties &amp; Taxes
+                    </span>
+                  )}
+                </Button>
 
-              <AnimatePresence>
                 {isCalculating && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="space-y-2 pt-2"
-                    data-testid="section-calc-steps"
-                  >
+                  <div className="space-y-2 pt-1" data-testid="section-calc-steps">
                     {calcStepLabels.map((label, i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{
-                          opacity: calcStep >= i ? 1 : 0.3,
-                          x: 0,
-                        }}
-                        className="flex items-center gap-2"
-                      >
+                      <div key={i} className="flex items-center gap-2">
                         {calcStep > i ? (
-                          <Check className="w-4 h-4 text-green-600" />
+                          <Check className="h-4 w-4 text-[#15803D]" aria-hidden="true" />
                         ) : calcStep === i ? (
-                          <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+                          <Loader2 className="h-4 w-4 animate-spin text-brand" aria-hidden="true" />
                         ) : (
-                          <div className="w-4 h-4 rounded-full border border-slate-200" />
+                          <div className="h-4 w-4 rounded-full border border-border-control" aria-hidden="true" />
                         )}
-                        <span className={`text-sm ${calcStep >= i ? "text-slate-700" : "text-slate-400"}`}>
+                        <span className={`text-body ${calcStep >= i ? "text-text-secondary" : "text-text-deemphasis"}`}>
                           {label}
                         </span>
-                      </motion.div>
+                      </div>
                     ))}
-                  </motion.div>
+                  </div>
                 )}
-              </AnimatePresence>
+              </div>
             </div>
-          </Card>
 
-          <div className="mt-6">
-            <Card className="p-6" data-testid="card-csv-upload">
-              <div className="flex items-center gap-3 mb-4">
-                <Upload className="w-5 h-5 text-slate-500" />
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-800">Bulk CSV Upload</h3>
-                  <p className="text-xs text-slate-500">Calculate multiple items at once</p>
+            {/* ── Bulk CSV ──────────────────────────────────────────── */}
+            <div className="mt-8 rounded-lg border border-border-hairline bg-surface-recessed p-5" data-testid="card-csv-upload">
+              <div className="flex items-start gap-3">
+                <Upload className="mt-0.5 h-5 w-5 shrink-0 text-text-muted" aria-hidden="true" />
+                <div className="min-w-0">
+                  <h3 className="text-h3 text-text-primary">Bulk CSV Upload</h3>
+                  <p className="mt-1 text-body text-text-muted">Calculate multiple items at once</p>
                 </div>
               </div>
 
-              <div className="p-3 rounded-lg bg-slate-50 border border-slate-100 mb-4">
-                <p className="text-xs text-slate-500 mb-2">
-                  CSV format: <code className="bg-slate-200 px-1 py-0.5 rounded text-[11px]">hs_code, country, value_cad, quantity, description</code>
+              <div className="mt-4 rounded-md border border-border-hairline bg-white p-3">
+                <p className="text-body text-text-muted">
+                  CSV format: <code className="rounded-[4px] bg-surface-canvas px-1.5 py-0.5 font-mono text-[13px] text-text-primary">hs_code, country, value_cad, quantity, description</code>
                 </p>
-                <p className="text-xs text-slate-400">
-                  Example: <code className="text-[11px]">6110.20.00, China, 5000, 100, Cotton sweaters</code>
+                <p className="mt-2 text-body text-text-muted">
+                  Example: <code className="font-mono text-[13px] text-text-secondary">6110.20.00, China, 5000, 100, Cotton sweaters</code>
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Input
                   type="file"
                   accept=".csv"
                   data-testid="input-csv-upload"
                   onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
-                  className="flex-1"
+                  className="flex-1 py-3"
                 />
                 <Button
+                  className="h-12 shrink-0 bg-brand px-5 text-[15px] font-semibold text-white transition-colors duration-state hover:bg-brand-hover"
                   onClick={handleCsvUpload}
-                      disabled={!csvFile || bulkCalculating || Boolean(tariffUnavailable)}
+                  disabled={!csvFile || bulkCalculating || Boolean(tariffUnavailable)}
                   data-testid="button-upload-csv"
                 >
                   {bulkCalculating ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                   ) : (
                     <>
-                      <TrendingUp className="w-4 h-4 mr-1" />
+                      <FileText className="mr-1.5 h-4 w-4" aria-hidden="true" />
                       Calculate
                     </>
                   )}
                 </Button>
               </div>
-            </Card>
-          </div>
+            </div>
 
-          <AnimatePresence>
+            {/* ── Single-item results ───────────────────────────────── */}
             {result && (
-              <motion.div
-                ref={resultsRef}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="mt-8 space-y-6"
-                data-testid="section-results"
-              >
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <h2 className="text-lg font-bold text-slate-900">Duty & Tax Breakdown</h2>
-                  <Button variant="outline" size="sm" onClick={exportPDF} disabled={pdfExporting} data-testid="button-export-pdf">
-                    {pdfExporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
+              <div ref={resultsRef} className="mt-10 space-y-4" data-testid="section-results">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="text-h2 text-text-primary">Duty &amp; Tax Breakdown</h2>
+                  <Button
+                    variant="outline"
+                    className="border-border-control bg-white text-text-primary transition-colors duration-state hover:border-brand hover:text-brand"
+                    onClick={exportPDF}
+                    disabled={pdfExporting}
+                    data-testid="button-export-pdf"
+                  >
+                    {pdfExporting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="mr-1.5 h-4 w-4" aria-hidden="true" />}
                     Complete PDF
                   </Button>
                 </div>
 
-                <Card className="p-5 border-2 border-blue-100" data-testid="card-product-details">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Package className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-semibold text-slate-700">Product Details</span>
+                {/*
+                  Warnings sit ABOVE every figure they qualify, at the same
+                  14px as the figures themselves. A caveat placed under a
+                  number is a caveat the reader has already acted past.
+                */}
+                {result.warnings && result.warnings.length > 0 && (
+                  <Callout role="alert" data-testid="card-warnings">
+                    {result.warnings.map((warning, i) => (
+                      <p key={i}>{warning}</p>
+                    ))}
+                  </Callout>
+                )}
+
+                <div className="rounded-lg border border-border-hairline bg-white p-5" data-testid="card-product-details">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-4 w-4 text-text-muted" aria-hidden="true" />
+                    <span className="text-h3 text-text-primary">Product Details</span>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                  <dl className="mt-4 grid grid-cols-2 gap-x-5 gap-y-4 md:grid-cols-3">
                     <div>
-                      <p className="text-xs text-slate-400">HS Code</p>
-                      <p className="font-mono font-semibold text-slate-800">{result.hsCode}</p>
+                      <dt className="text-[13px] leading-[18px] text-text-muted">HS Code</dt>
+                      <dd className="mt-0.5 font-mono text-body font-semibold tabular-nums text-text-primary">{result.hsCode}</dd>
                     </div>
                     <div className="col-span-2 md:col-span-1">
-                      <p className="text-xs text-slate-400">Description</p>
-                      <p className="text-slate-800">{result.description}</p>
+                      <dt className="text-[13px] leading-[18px] text-text-muted">Description</dt>
+                      <dd className="mt-0.5 text-body text-text-primary">{result.description}</dd>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400">Origin</p>
-                      <p className="text-slate-800">{result.countryOfOrigin}</p>
+                      <dt className="text-[13px] leading-[18px] text-text-muted">Origin</dt>
+                      <dd className="mt-0.5 text-body text-text-primary">{result.countryOfOrigin}</dd>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400">Value</p>
-                      <p className="font-semibold text-slate-800">{formatCurrency(result.valueCAD)}</p>
+                      <dt className="text-[13px] leading-[18px] text-text-muted">Value</dt>
+                      <dd className="mt-0.5 text-body font-semibold tabular-nums text-text-primary">{formatCurrency(result.valueCAD)}</dd>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400">Tariff Treatment</p>
-                      <p className="text-slate-800">
+                      <dt className="text-[13px] leading-[18px] text-text-muted">Tariff Treatment</dt>
+                      <dd className="mt-0.5 text-body text-text-primary">
                         <TariffTooltip abbr={result.appliedTreatment} {...getTariffTooltipData(result.appliedTreatment)} />
-                      </p>
+                      </dd>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400">Province</p>
-                      <p className="text-slate-800">{result.provinceName}</p>
+                      <dt className="text-[13px] leading-[18px] text-text-muted">Province</dt>
+                      <dd className="mt-0.5 text-body text-text-primary">{result.provinceName}</dd>
                     </div>
-                  </div>
-                </Card>
+                  </dl>
+                </div>
 
-                {result.warnings && result.warnings.length > 0 && (
-                  <Card className="p-4 border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800" data-testid="card-warnings">
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                {/*
+                  `figureNote` carries the currency designation the old table
+                  header ("Amount (CAD)") used to carry — dropping the header
+                  row must not drop the units.
+                */}
+                <ResultCard
+                  data-testid="card-duty-breakdown"
+                  figureLabel="Goods + Border Charges"
+                  figure={formatCurrency(result.totalLandedCost)}
+                  figureNote="All amounts in Canadian dollars (CAD)."
+                  figureRowTestId="row-total-landed"
+                  figureTestId="text-total-landed"
+                  rows={breakdownRows}
+                />
+
+                {Object.keys(result.availableTreatments).length > 1 && (
+                  <div className="rounded-lg border border-border-hairline bg-white p-5" data-testid="card-alternative-treatments">
+                    <div className="flex items-center gap-2">
+                      <Info className="h-4 w-4 text-text-muted" aria-hidden="true" />
+                      <span className="text-h3 text-text-primary">Available Tariff Treatments</span>
+                    </div>
+                    <div className="mt-4 rounded-lg bg-surface-canvas p-1">
                       <div className="space-y-1">
-                        {result.warnings.map((warning, i) => (
-                          <p key={i} className="text-sm text-amber-800 dark:text-amber-200">{warning}</p>
+                        {Object.entries(result.availableTreatments).map(([treatment, data]) => (
+                          <div
+                            key={treatment}
+                            className={`flex items-center justify-between gap-3 rounded-md border-2 px-3 py-2.5 ${
+                              treatment === result.appliedTreatment
+                                ? "border-brand bg-white"
+                                : "border-transparent bg-white"
+                            }`}
+                          >
+                            <div className="flex min-w-0 items-center gap-2">
+                              {treatment === result.appliedTreatment && (
+                                <Check className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
+                              )}
+                              <span className="text-body text-text-secondary">
+                                <TariffTooltip abbr={treatment} {...getTariffTooltipData(treatment)} />
+                              </span>
+                              {treatment === result.appliedTreatment && (
+                                <span className="text-[13px] text-text-muted">applied</span>
+                              )}
+                            </div>
+                            <div className="flex shrink-0 items-center gap-4">
+                              <span className="text-[13px] tabular-nums text-text-muted">{data.rate}</span>
+                              <span className="min-w-[92px] text-right text-body font-semibold tabular-nums text-text-primary">{formatCurrency(data.duty)}</span>
+                            </div>
+                          </div>
                         ))}
                       </div>
                     </div>
-                  </Card>
-                )}
-
-                <Card className="overflow-hidden" data-testid="card-duty-breakdown">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-slate-50 border-b">
-                        <th className="text-left px-5 py-3 font-semibold text-slate-600">Item</th>
-                        <th className="text-right px-5 py-3 font-semibold text-slate-600">Rate</th>
-                        <th className="text-right px-5 py-3 font-semibold text-slate-600">Amount (CAD)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-b" data-testid="row-customs-duty">
-                        <td className="px-5 py-3 text-slate-700">Customs Duty</td>
-                        <td className="px-5 py-3 text-right">
-                          <span className="font-mono text-sm">{result.dutyRate}</span>
-                        </td>
-                        <td className="px-5 py-3 text-right font-semibold" data-testid="text-duty-amount">
-                          {formatCurrency(result.dutyAmount)}
-                        </td>
-                      </tr>
-                      <tr className="border-b" data-testid="row-gst">
-                        <td className="px-5 py-3 text-slate-700">{result.gstLabel}</td>
-                        <td className="px-5 py-3 text-right font-mono">{formatPercent(result.gstRate)}</td>
-                        <td className="px-5 py-3 text-right font-semibold" data-testid="text-gst-amount">
-                          {formatCurrency(result.gstAmount)}
-                        </td>
-                      </tr>
-                      {result.provincialTaxAmount > 0 && (
-                        <tr className="border-b" data-testid="row-provincial-tax">
-                          <td className="px-5 py-3 text-slate-700">{result.provincialTaxName}</td>
-                          <td className="px-5 py-3 text-right font-mono">{formatPercent(result.provincialTaxRate)}</td>
-                          <td className="px-5 py-3 text-right font-semibold" data-testid="text-provincial-tax-amount">
-                            {formatCurrency(result.provincialTaxAmount)}
-                          </td>
-                        </tr>
-                      )}
-                      <tr className="border-b bg-slate-50">
-                        <td className="px-5 py-3 font-semibold text-slate-800">Total Duties & Taxes</td>
-                        <td className="px-5 py-3"></td>
-                        <td className="px-5 py-3 text-right font-bold text-slate-800" data-testid="text-total-duties">
-                          {formatCurrency(result.totalDutiesAndTaxes)}
-                        </td>
-                      </tr>
-                      <tr style={{ backgroundColor: `${DEEP_BLUE}08` }} data-testid="row-total-landed">
-                        <td className="px-5 py-4 font-bold text-lg" style={{ color: DEEP_BLUE }}>Goods + Border Charges</td>
-                        <td className="px-5 py-4"></td>
-                        <td className="px-5 py-4 text-right font-bold text-lg" style={{ color: DEEP_BLUE }} data-testid="text-total-landed">
-                          {formatCurrency(result.totalLandedCost)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </Card>
-
-                {Object.keys(result.availableTreatments).length > 1 && (
-                  <Card className="p-5" data-testid="card-alternative-treatments">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Info className="w-4 h-4 text-slate-400" />
-                      <span className="text-sm font-semibold text-slate-700">Available Tariff Treatments</span>
-                    </div>
-                    <div className="space-y-2">
-                      {Object.entries(result.availableTreatments).map(([treatment, data]) => (
-                        <div
-                          key={treatment}
-                          className={`flex items-center justify-between py-2 px-3 rounded-lg text-sm ${
-                            treatment === result.appliedTreatment ? "bg-blue-50 border border-blue-100" : "bg-slate-50"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            {treatment === result.appliedTreatment && (
-                              <Check className="w-3.5 h-3.5 text-blue-600" />
-                            )}
-                            <span className={treatment === result.appliedTreatment ? "font-semibold text-blue-800" : "text-slate-600"}>
-                              <TariffTooltip abbr={treatment} {...getTariffTooltipData(treatment)} />
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <span className="font-mono text-xs text-slate-500">{data.rate}</span>
-                            <span className="font-semibold text-slate-700">{formatCurrency(data.duty)}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </Card>
-                )}
-
-                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                    <div className="text-xs text-amber-700 dark:text-amber-300 space-y-1">
-                      <p className="font-semibold">Important Disclaimer:</p>
-                      <p>This is an estimate only. Actual duties and taxes are determined by CBSA at the time of importation.</p>
-                      <p>Not included in this estimate: SIMA duties (anti-dumping & countervailing), excise duties and taxes, surtaxes, temporary safeguard measures, or any other special levies. Some goods may also be subject to import permits, quotas, or prohibitions.</p>
-                      <p>Preferential tariff rates require valid proof of origin documentation. Consult a licensed customs broker or CBSA for binding rulings and accurate assessments.</p>
-                    </div>
                   </div>
-                </div>
+                )}
+
+                <Callout title="Important Disclaimer:">
+                  <p>This is an estimate only. Actual duties and taxes are determined by CBSA at the time of importation.</p>
+                  <p>Not included in this estimate: SIMA duties (anti-dumping &amp; countervailing), excise duties and taxes, surtaxes, temporary safeguard measures, or any other special levies. Some goods may also be subject to import permits, quotas, or prohibitions.</p>
+                  <p>Preferential tariff rates require valid proof of origin documentation. Consult a licensed customs broker or CBSA for binding rulings and accurate assessments.</p>
+                </Callout>
 
                 <Collapsible open={measuresOpen} onOpenChange={setMeasuresOpen}>
-                  <Card className="overflow-visible">
+                  <div className="rounded-lg border border-border-hairline bg-white">
                     <CollapsibleTrigger asChild>
                       <button
                         type="button"
-                        className="w-full flex items-center justify-between p-4 text-left hover-elevate rounded-md"
+                        className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg p-4 text-left transition-colors duration-state hover:bg-surface-recessed"
                         data-testid="button-additional-measures"
                       >
                         <div className="flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4 text-amber-600" />
-                          <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Additional Measures Check</span>
+                          <AlertTriangle className="h-4 w-4 text-[#B45309]" aria-hidden="true" />
+                          <span className="text-h3 text-text-primary">Additional Measures Check</span>
                         </div>
-                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${measuresOpen ? "rotate-180" : ""}`} />
+                        <ChevronDown className={`h-4 w-4 text-text-muted transition-transform duration-state ${measuresOpen ? "rotate-180" : ""}`} aria-hidden="true" />
                       </button>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
-                      <div className="px-4 pb-4 space-y-3">
-                        <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                          <a
-                            href="https://www.cbsa-asfc.gc.ca/sima-lmsi/menu-eng.html"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                            data-testid="link-sima"
-                          >
-                            SIMA (Anti-Dumping & Countervailing Duties)
-                            <ExternalLink className="w-3 h-3 flex-shrink-0" />
-                          </a>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">This tool does not automatically calculate SIMA duties. Certain goods from specific countries may be subject to additional anti-dumping or countervailing duties. Check the CBSA SIMA measures list for your product.</p>
-                        </div>
-                        <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                          <a
-                            href="https://www.canada.ca/en/revenue-agency/services/tax/excise-duties-levies.html"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                            data-testid="link-excise"
-                          >
-                            Excise Duties
-                            <ExternalLink className="w-3 h-3 flex-shrink-0" />
-                          </a>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Alcohol, tobacco, cannabis, fuel, and certain vehicles may be subject to excise duties not calculated here. These are assessed separately by CBSA.</p>
-                        </div>
-                        <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                          <a
-                            href="https://www.cbsa-asfc.gc.ca/trade-commerce/tariff-tarif/surtax-eng.html"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                            data-testid="link-surtax"
-                          >
-                            Surtaxes & Temporary Measures
-                            <ExternalLink className="w-3 h-3 flex-shrink-0" />
-                          </a>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Retaliatory or temporary surtaxes may apply to certain goods from specific countries. These measures change periodically and are not included in this estimate.</p>
-                        </div>
-                        <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                          <a
-                            href="https://www.international.gc.ca/controls-controles/about-a_propos/impor/permits-licences.aspx?lang=eng"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                            data-testid="link-import-controls"
-                          >
-                            Import Controls (Permits, Quotas, Prohibitions)
-                            <ExternalLink className="w-3 h-3 flex-shrink-0" />
-                          </a>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Certain goods require import permits, are subject to tariff rate quotas, or are prohibited. Check with CBSA or Global Affairs Canada for your product category.</p>
-                        </div>
-                        <div className="pt-2">
+                      <div className="space-y-3 px-4 pb-4">
+                        {[
+                          {
+                            href: "https://www.cbsa-asfc.gc.ca/sima-lmsi/menu-eng.html",
+                            testId: "link-sima",
+                            title: "SIMA (Anti-Dumping & Countervailing Duties)",
+                            body: "This tool does not automatically calculate SIMA duties. Certain goods from specific countries may be subject to additional anti-dumping or countervailing duties. Check the CBSA SIMA measures list for your product.",
+                          },
+                          {
+                            href: "https://www.canada.ca/en/revenue-agency/services/tax/excise-duties-levies.html",
+                            testId: "link-excise",
+                            title: "Excise Duties",
+                            body: "Alcohol, tobacco, cannabis, fuel, and certain vehicles may be subject to excise duties not calculated here. These are assessed separately by CBSA.",
+                          },
+                          {
+                            href: "https://www.cbsa-asfc.gc.ca/trade-commerce/tariff-tarif/surtax-eng.html",
+                            testId: "link-surtax",
+                            title: "Surtaxes & Temporary Measures",
+                            body: "Retaliatory or temporary surtaxes may apply to certain goods from specific countries. These measures change periodically and are not included in this estimate.",
+                          },
+                          {
+                            href: "https://www.international.gc.ca/controls-controles/about-a_propos/impor/permits-licences.aspx?lang=eng",
+                            testId: "link-import-controls",
+                            title: "Import Controls (Permits, Quotas, Prohibitions)",
+                            body: "Certain goods require import permits, are subject to tariff rate quotas, or are prohibited. Check with CBSA or Global Affairs Canada for your product category.",
+                          },
+                        ].map((measure) => (
+                          <div key={measure.testId} className="rounded-md border border-border-hairline bg-surface-recessed p-4">
+                            <a
+                              href={measure.href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 text-body font-semibold text-text-secondary transition-colors duration-state hover:text-brand"
+                              data-testid={measure.testId}
+                            >
+                              {measure.title}
+                              <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                            </a>
+                            <p className="mt-1.5 text-body text-text-muted">{measure.body}</p>
+                          </div>
+                        ))}
+                        <div className="pt-1">
                           <a
                             href="/services/import-compliance-review"
-                            className="text-xs text-blue-600 dark:text-blue-400 font-semibold underline underline-offset-2"
+                            className="text-body font-semibold text-text-secondary underline underline-offset-2 transition-colors duration-state hover:text-brand"
                             data-testid="link-measures-review"
                           >
                             Need help? Order a professional customs review
@@ -1344,237 +1351,250 @@ export default function CustomsCalculator() {
                         </div>
                       </div>
                     </CollapsibleContent>
-                  </Card>
+                  </div>
                 </Collapsible>
 
-                <Card className="p-5 text-center" style={{ backgroundColor: `${DEEP_BLUE}05` }} data-testid="card-lead-cta">
-                  <p className="text-sm font-semibold text-slate-700 mb-2">Want a detailed breakdown emailed to you?</p>
-                  <p className="text-xs text-slate-500 mb-3">Get your full customs estimate as a PDF report.</p>
+                <div className="rounded-lg border border-border-hairline bg-surface-recessed p-5" data-testid="card-lead-cta">
+                  <p className="text-h3 text-text-primary">Want a detailed breakdown emailed to you?</p>
+                  <p className="mt-1.5 text-body text-text-muted">Get your full customs estimate as a PDF report.</p>
                   <Button
-                    style={{ backgroundColor: DEEP_BLUE }}
-                    className="text-white font-semibold"
+                    className="mt-4 bg-brand text-white transition-colors duration-state hover:bg-brand-hover"
                     onClick={() => { setLeadSubmitted(false); setShowLeadModal(true); }}
                     data-testid="button-email-estimate"
                   >
-                    <Mail className="w-4 h-4 mr-2" />
+                    <Mail className="mr-2 h-4 w-4" aria-hidden="true" />
                     Email me this estimate
                   </Button>
-                </Card>
-              </motion.div>
+                </div>
+              </div>
             )}
-          </AnimatePresence>
 
-          <AnimatePresence>
+            {/* ── Bulk results ──────────────────────────────────────── */}
             {bulkResult && (
-              <motion.div
+              <div
                 ref={!result ? resultsRef : undefined}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="mt-8 space-y-6"
+                className="mt-10 space-y-4"
                 data-testid="section-bulk-results"
               >
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <h2 className="text-lg font-bold text-slate-900">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="text-h2 text-text-primary">
                     Bulk Results ({bulkResult.summary.totalItems} items)
                   </h2>
-                  <Button variant="outline" size="sm" onClick={exportPDF} disabled={pdfExporting} data-testid="button-export-bulk-pdf">
-                    {pdfExporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
+                  <Button
+                    variant="outline"
+                    className="border-border-control bg-white text-text-primary transition-colors duration-state hover:border-brand hover:text-brand"
+                    onClick={exportPDF}
+                    disabled={pdfExporting}
+                    data-testid="button-export-bulk-pdf"
+                  >
+                    {pdfExporting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="mr-1.5 h-4 w-4" aria-hidden="true" />}
                     Complete PDF
                   </Button>
                 </div>
 
-                <Card className="overflow-x-auto" data-testid="card-bulk-table">
-                  <table className="w-full text-sm">
+                <Callout role="alert">
+                  <p>
+                    These are estimates only. Consult a licensed customs broker for accurate assessments.
+                  </p>
+                </Callout>
+
+                <div className="overflow-x-auto rounded-lg border border-border-hairline bg-white" data-testid="card-bulk-table">
+                  <table className="w-full">
                     <thead>
-                      <tr className="bg-slate-50 border-b">
-                        <th className="text-left px-4 py-3 font-semibold text-slate-600">HS Code</th>
-                        <th className="text-left px-4 py-3 font-semibold text-slate-600">Description</th>
-                        <th className="text-left px-4 py-3 font-semibold text-slate-600">Origin</th>
-                        <th className="text-right px-4 py-3 font-semibold text-slate-600">Value</th>
-                        <th className="text-right px-4 py-3 font-semibold text-slate-600">Duty</th>
-                        <th className="text-right px-4 py-3 font-semibold text-slate-600">Tax</th>
-                        <th className="text-right px-4 py-3 font-semibold text-slate-600">Total</th>
+                      <tr className="border-b border-border-hairline bg-surface-recessed">
+                        <th className="px-4 py-3 text-left text-[13px] font-semibold text-text-muted">HS Code</th>
+                        <th className="px-4 py-3 text-left text-[13px] font-semibold text-text-muted">Description</th>
+                        <th className="px-4 py-3 text-left text-[13px] font-semibold text-text-muted">Origin</th>
+                        <th className="px-4 py-3 text-right text-[13px] font-semibold text-text-muted">Value</th>
+                        <th className="px-4 py-3 text-right text-[13px] font-semibold text-text-muted">Duty</th>
+                        <th className="px-4 py-3 text-right text-[13px] font-semibold text-text-muted">Tax</th>
+                        <th className="px-4 py-3 text-right text-[13px] font-semibold text-text-muted">Total</th>
                       </tr>
                     </thead>
                     <tbody>
                       {bulkResult.items.map((item, i) => (
-                        <tr key={i} className="border-b">
-                          <td className="px-4 py-2.5 font-mono text-xs">{item.hsCode}</td>
-                          <td className="px-4 py-2.5 text-xs max-w-[200px] truncate">{item.description}</td>
-                          <td className="px-4 py-2.5 text-xs">{item.countryOfOrigin}</td>
-                          <td className="px-4 py-2.5 text-right text-xs">{item.error ? "-" : formatCurrency(item.valueCAD)}</td>
-                          <td className="px-4 py-2.5 text-right text-xs">{item.error || formatCurrency(item.dutyAmount)}</td>
-                          <td className="px-4 py-2.5 text-right text-xs">{item.error || formatCurrency(item.gstAmount + item.provincialTaxAmount)}</td>
-                          <td className="px-4 py-2.5 text-right text-xs font-semibold">{item.error || formatCurrency(item.totalForItem)}</td>
+                        <tr key={i} className="border-b border-border-hairline last:border-b-0">
+                          <td className="px-4 py-3 font-mono text-[13px] tabular-nums text-text-primary">{item.hsCode}</td>
+                          <td className="max-w-[200px] truncate px-4 py-3 text-body text-text-secondary">{item.description}</td>
+                          <td className="px-4 py-3 text-body text-text-secondary">{item.countryOfOrigin}</td>
+                          <td className="px-4 py-3 text-right text-body tabular-nums text-text-primary">{item.error ? "-" : formatCurrency(item.valueCAD)}</td>
+                          <td className="px-4 py-3 text-right text-body tabular-nums text-text-primary">{item.error || formatCurrency(item.dutyAmount)}</td>
+                          <td className="px-4 py-3 text-right text-body tabular-nums text-text-primary">{item.error || formatCurrency(item.gstAmount + item.provincialTaxAmount)}</td>
+                          <td className="px-4 py-3 text-right text-body font-semibold tabular-nums text-text-primary">{item.error || formatCurrency(item.totalForItem)}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                </Card>
-
-                <Card className="p-5" style={{ backgroundColor: `${DEEP_BLUE}06` }} data-testid="card-bulk-summary">
-                  <h3 className="text-sm font-semibold text-slate-700 mb-3">Summary ({bulkResult.summary.provinceName})</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <p className="text-xs text-slate-400">Total Value</p>
-                      <p className="font-semibold text-slate-800">{formatCurrency(bulkResult.summary.totalValue)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400">Total Duty</p>
-                      <p className="font-semibold text-slate-800">{formatCurrency(bulkResult.summary.totalDuty)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400">Total Taxes</p>
-                      <p className="font-semibold text-slate-800">{formatCurrency(bulkResult.summary.totalGST + bulkResult.summary.totalProvincialTax)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400">Goods + Border Charges</p>
-                      <p className="font-bold text-lg" style={{ color: DEEP_BLUE }}>{formatCurrency(bulkResult.summary.totalLandedCost)}</p>
-                    </div>
-                  </div>
-                </Card>
-
-                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                    <p className="text-xs text-amber-700">
-                      These are estimates only. Consult a licensed customs broker for accurate assessments.
-                    </p>
-                  </div>
                 </div>
-              </motion.div>
+
+                <ResultCard
+                  data-testid="card-bulk-summary"
+                  title={`Summary (${bulkResult.summary.provinceName})`}
+                  figureLabel="Goods + Border Charges"
+                  figure={formatCurrency(bulkResult.summary.totalLandedCost)}
+                  figureNote="All amounts in Canadian dollars (CAD)."
+                  rows={[
+                    { label: "Total Value", value: formatCurrency(bulkResult.summary.totalValue) },
+                    { label: "Total Duty", value: formatCurrency(bulkResult.summary.totalDuty) },
+                    {
+                      label: "Total Taxes",
+                      value: formatCurrency(bulkResult.summary.totalGST + bulkResult.summary.totalProvincialTax),
+                    },
+                  ]}
+                />
+              </div>
             )}
-          </AnimatePresence>
-        </div>
-      </section>
+          </div>
+        </section>
 
-      <section className="py-12 md:py-16 bg-slate-50" ref={faqRef} data-testid="section-faq">
-        <div className="container mx-auto px-4 md:px-6 max-w-3xl">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 text-xs font-medium mb-3">
-              <HelpCircle className="w-3.5 h-3.5" />
-              Frequently Asked Questions
+        {/* ── FAQ ─────────────────────────────────────────────────────── */}
+        <section className={`${SHELL} bg-surface-recessed ${PAD.tight}`} ref={faqRef} data-testid="section-faq">
+          <div className={FORM_RAIL}>
+            <p className="text-eyebrow uppercase text-text-muted">Frequently Asked Questions</p>
+            <h2 className="mt-3 text-h2 text-text-primary">How Canadian Import Duties Work</h2>
+
+            <Accordion type="single" collapsible className="mt-8 space-y-3">
+              {[
+                {
+                  value: "what-is-hs",
+                  testId: "faq-what-is-hs",
+                  q: "What is an HS Code?",
+                  a: (
+                    <>
+                      An HS (Harmonized System) code is an internationally standardized classification number for traded products.
+                      Canada uses 10-digit codes from the Canadian Customs Tariff to determine the duty rate for each product.
+                      The first 6 digits are internationally standardized, while the remaining digits are Canada-specific.
+                    </>
+                  ),
+                },
+                {
+                  value: "tariff-treatments",
+                  testId: "faq-tariff-treatments",
+                  q: "What are tariff treatments (MFN, CUSMA, CPTPP)?",
+                  a: (
+                    <>
+                      Canada has free trade agreements with many countries that reduce or eliminate import duties.
+                      The calculator automatically applies the best available rate based on the country of origin.
+                      Key agreements include <TariffTooltip abbr="CUSMA" {...TARIFF_TOOLTIPS.CUSMA} /> (US/Mexico),{" "}
+                      <TariffTooltip abbr="CPTPP" {...TARIFF_TOOLTIPS.CPTPP} /> (Indo-Pacific),{" "}
+                      <TariffTooltip abbr="CETA" {...TARIFF_TOOLTIPS.CETA} /> (EU), and{" "}
+                      <TariffTooltip abbr="CUKTCA" {...TARIFF_TOOLTIPS.CUKTCA} /> (UK).{" "}
+                      <TariffTooltip abbr="MFN" {...TARIFF_TOOLTIPS.MFN} /> is the default rate for countries without a special trade agreement.
+                    </>
+                  ),
+                },
+                {
+                  value: "gst-hst",
+                  testId: "faq-gst-hst",
+                  q: "How is GST/HST calculated on imports?",
+                  a: (
+                    <>
+                      Commercial imports are generally charged GST or the federal part of HST at the border on the value for tax plus applicable duties.
+                      The provincial part is normally not collected at commercial importation, although later self-assessment can apply. Taxable personal imports
+                      can be subject to HST or participating provincial taxes based on the importer and destination province.
+                    </>
+                  ),
+                },
+                {
+                  value: "duty-types",
+                  testId: "faq-duty-types",
+                  q: "What types of duty rates exist?",
+                  a: (
+                    <>
+                      There are three main types: <strong>Ad valorem</strong> (percentage of value, e.g., "8%"),
+                      <strong>specific</strong> (fixed amount per unit, e.g., "$1.45/kg"), and
+                      <strong>compound</strong> (combination, e.g., "5% but not less than $0.50/kg").
+                      Many products under free trade agreements have a "Free" duty rate.
+                    </>
+                  ),
+                },
+                {
+                  value: "accuracy",
+                  testId: "faq-accuracy",
+                  q: "How accurate are these estimates?",
+                  a: (
+                    <>
+                      This calculator uses the official 2026 Canadian Customs Tariff (T2026) published by CBSA.
+                      However, estimates may differ from final assessments because: (1) HS code classification can vary,
+                      (2) special duties (anti-dumping, countervailing) are not included,
+                      (3) excise duties on alcohol/tobacco are not calculated,
+                      (4) origin rules and documentation requirements may affect eligibility for preferential rates.
+                      Always consult a licensed customs broker for commercial imports.
+                    </>
+                  ),
+                },
+              ].map((item) => (
+                <AccordionItem
+                  key={item.value}
+                  value={item.value}
+                  className="rounded-lg border border-border-hairline bg-white px-4"
+                >
+                  <AccordionTrigger className="py-4 text-left text-h3 text-text-primary" data-testid={item.testId}>
+                    {item.q}
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-4 text-left text-body text-text-muted">
+                    {item.a}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
+        </section>
+
+        {/* ── Closing CTA ─────────────────────────────────────────────── */}
+        <section className={`${SHELL} bg-white ${PAD.closing}`}>
+          <div className={RAIL}>
+            <div className="max-w-2xl">
+              <h2 className="text-h2 text-text-primary">Need help with your import?</h2>
+              <p className="mt-4 text-lead text-text-muted">
+                Our team can help you with CARM registration, business numbers, GST/HST accounts, and import/export accounts.
+              </p>
+              <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <Button
+                  size="lg"
+                  className="w-full bg-brand text-white transition-colors duration-state hover:bg-brand-hover sm:w-auto"
+                  onClick={() => window.location.href = "/services"}
+                  data-testid="button-view-services"
+                >
+                  View Our Services
+                  <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full border-border-control bg-white text-text-primary transition-colors duration-state hover:border-brand hover:text-brand sm:w-auto"
+                  onClick={() => window.location.href = "/carm-security-calculator"}
+                  data-testid="button-carm-calculator"
+                >
+                  CARM Security Calculator
+                  <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full border-border-control bg-white text-text-primary transition-colors duration-state hover:border-brand hover:text-brand sm:w-auto"
+                  onClick={() => window.location.href = "/resources/how-to-import-into-canada"}
+                  data-testid="button-import-guide"
+                >
+                  How to Import Into Canada
+                  <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
+                </Button>
+              </div>
             </div>
-            <h2 className="text-2xl font-bold text-slate-900">How Canadian Import Duties Work</h2>
           </div>
+        </section>
 
-          <Accordion type="single" collapsible className="space-y-3">
-            <AccordionItem value="what-is-hs" className="bg-white rounded-lg border px-4">
-              <AccordionTrigger className="text-sm font-medium text-slate-800 py-4 text-left" data-testid="faq-what-is-hs">
-                What is an HS Code?
-              </AccordionTrigger>
-              <AccordionContent className="text-sm text-slate-600 pb-4 text-left">
-                An HS (Harmonized System) code is an internationally standardized classification number for traded products.
-                Canada uses 10-digit codes from the Canadian Customs Tariff to determine the duty rate for each product.
-                The first 6 digits are internationally standardized, while the remaining digits are Canada-specific.
-              </AccordionContent>
-            </AccordionItem>
+      </main>
 
-            <AccordionItem value="tariff-treatments" className="bg-white rounded-lg border px-4">
-              <AccordionTrigger className="text-sm font-medium text-slate-800 py-4 text-left" data-testid="faq-tariff-treatments">
-                What are tariff treatments (MFN, CUSMA, CPTPP)?
-              </AccordionTrigger>
-              <AccordionContent className="text-sm text-slate-600 pb-4 text-left">
-                Canada has free trade agreements with many countries that reduce or eliminate import duties.
-                The calculator automatically applies the best available rate based on the country of origin.
-                Key agreements include <TariffTooltip abbr="CUSMA" {...TARIFF_TOOLTIPS.CUSMA} /> (US/Mexico),{" "}
-                <TariffTooltip abbr="CPTPP" {...TARIFF_TOOLTIPS.CPTPP} /> (Indo-Pacific),{" "}
-                <TariffTooltip abbr="CETA" {...TARIFF_TOOLTIPS.CETA} /> (EU), and{" "}
-                <TariffTooltip abbr="CUKTCA" {...TARIFF_TOOLTIPS.CUKTCA} /> (UK).{" "}
-                <TariffTooltip abbr="MFN" {...TARIFF_TOOLTIPS.MFN} /> is the default rate for countries without a special trade agreement.
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="gst-hst" className="bg-white rounded-lg border px-4">
-              <AccordionTrigger className="text-sm font-medium text-slate-800 py-4 text-left" data-testid="faq-gst-hst">
-                How is GST/HST calculated on imports?
-              </AccordionTrigger>
-              <AccordionContent className="text-sm text-slate-600 pb-4 text-left">
-                Commercial imports are generally charged GST or the federal part of HST at the border on the value for tax plus applicable duties.
-                The provincial part is normally not collected at commercial importation, although later self-assessment can apply. Taxable personal imports
-                can be subject to HST or participating provincial taxes based on the importer and destination province.
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="duty-types" className="bg-white rounded-lg border px-4">
-              <AccordionTrigger className="text-sm font-medium text-slate-800 py-4 text-left" data-testid="faq-duty-types">
-                What types of duty rates exist?
-              </AccordionTrigger>
-              <AccordionContent className="text-sm text-slate-600 pb-4 text-left">
-                There are three main types: <strong>Ad valorem</strong> (percentage of value, e.g., "8%"),
-                <strong>specific</strong> (fixed amount per unit, e.g., "$1.45/kg"), and
-                <strong>compound</strong> (combination, e.g., "5% but not less than $0.50/kg").
-                Many products under free trade agreements have a "Free" duty rate.
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="accuracy" className="bg-white rounded-lg border px-4">
-              <AccordionTrigger className="text-sm font-medium text-slate-800 py-4 text-left" data-testid="faq-accuracy">
-                How accurate are these estimates?
-              </AccordionTrigger>
-              <AccordionContent className="text-sm text-slate-600 pb-4 text-left">
-                This calculator uses the official 2026 Canadian Customs Tariff (T2026) published by CBSA.
-                However, estimates may differ from final assessments because: (1) HS code classification can vary,
-                (2) special duties (anti-dumping, countervailing) are not included,
-                (3) excise duties on alcohol/tobacco are not calculated,
-                (4) origin rules and documentation requirements may affect eligibility for preferential rates.
-                Always consult a licensed customs broker for commercial imports.
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </div>
-      </section>
-
-      <section className="py-12 md:py-16">
-        <div className="container mx-auto px-4 md:px-6 max-w-3xl text-center">
-          <h2 className="text-2xl font-bold text-slate-900 mb-4">Need help with your import?</h2>
-          <p className="text-slate-600 mb-6 max-w-lg mx-auto">
-            Our team can help you with CARM registration, business numbers, GST/HST accounts, and import/export accounts.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Button
-              size="lg"
-              style={{ backgroundColor: DEEP_BLUE }}
-              className="text-white font-semibold min-w-[220px] w-full sm:w-auto justify-center"
-              onClick={() => window.location.href = "/services"}
-              data-testid="button-view-services"
-            >
-              View Our Services
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="min-w-[220px] w-full sm:w-auto justify-center"
-              onClick={() => window.location.href = "/carm-security-calculator"}
-              data-testid="button-carm-calculator"
-            >
-              CARM Security Calculator
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </Button>
-            <Button
-              size="lg"
-              variant="ghost"
-              className="min-w-[220px] w-full sm:w-auto justify-center text-blue-700"
-              onClick={() => window.location.href = "/resources/how-to-import-into-canada"}
-              data-testid="button-import-guide"
-            >
-              How to Import Into Canada
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </Button>
-          </div>
-        </div>
-      </section>
       <ToolWorkedExample kind="customs" />
 
       <Dialog open={showLeadModal} onOpenChange={setShowLeadModal}>
-        <DialogContent className="sm:max-w-md" data-testid="dialog-lead-capture">
+        <DialogContent className="rounded-lg border-border-hairline sm:max-w-md" data-testid="dialog-lead-capture">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">
+            <DialogTitle className="text-h2 text-text-primary">
               {leadSubmitted ? "Thank you!" : "Get a detailed breakdown"}
             </DialogTitle>
-            <DialogDescription className="text-sm text-slate-500">
+            <DialogDescription className="text-body text-text-muted">
               {leadSubmitted
                 ? "We've saved your estimate. Our team will reach out if you need help with your import."
                 : "Save your calculation details and ask our team to follow up if you need import help."}
@@ -1583,55 +1603,55 @@ export default function CustomsCalculator() {
 
           {leadSubmitted ? (
             <div className="flex flex-col items-center py-4">
-              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-100 mb-3">
-                <Check className="w-6 h-6 text-green-600" />
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#15803D]">
+                <Check className="h-6 w-6 text-[#15803D]" aria-hidden="true" />
               </div>
-              <p className="text-sm text-slate-600 text-center">Your request is saved. You can download the complete PDF directly from the results.</p>
-              <Button className="mt-4" onClick={() => setShowLeadModal(false)} data-testid="button-close-lead">
+              <p className="text-center text-body text-text-muted">Your request is saved. You can download the complete PDF directly from the results.</p>
+              <Button
+                className="mt-4 bg-brand text-white transition-colors duration-state hover:bg-brand-hover"
+                onClick={() => setShowLeadModal(false)}
+                data-testid="button-close-lead"
+              >
                 Close
               </Button>
             </div>
           ) : (
-            <div className="space-y-4 pt-2">
+            <div className="space-y-5 pt-2">
               <div>
-                <Label htmlFor="lead-email" className="text-sm font-medium mb-1.5 block">
-                  Email address <span className="text-red-500">*</span>
-                </Label>
+                <FieldLabel htmlFor="lead-email" required>
+                  Email address
+                </FieldLabel>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-deemphasis" aria-hidden="true" />
                   <Input
                     id="lead-email"
                     data-testid="input-lead-email"
                     placeholder="you@company.com"
                     value={leadEmail}
                     onChange={(e) => { setLeadEmail(e.target.value); setLeadErrors({}); }}
-                    className="pl-9"
+                    hasLeadingIcon
                   />
                 </div>
-                {leadErrors.email && <p className="text-xs text-red-500 mt-1">{leadErrors.email}</p>}
+                {leadErrors.email && <p className="mt-1.5 text-body text-[#B42318]">{leadErrors.email}</p>}
               </div>
 
               <div>
-                <Label htmlFor="lead-company" className="text-sm font-medium mb-1.5 block">
-                  Company name (optional)
-                </Label>
+                <FieldLabel htmlFor="lead-company">Company name (optional)</FieldLabel>
                 <div className="relative">
-                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Building2 className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-deemphasis" aria-hidden="true" />
                   <Input
                     id="lead-company"
                     data-testid="input-lead-company"
                     placeholder="Your company"
                     value={leadCompany}
                     onChange={(e) => setLeadCompany(e.target.value)}
-                    className="pl-9"
+                    hasLeadingIcon
                   />
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="lead-phone" className="text-sm font-medium mb-1.5 block">
-                  Phone (optional)
-                </Label>
+                <FieldLabel htmlFor="lead-phone">Phone (optional)</FieldLabel>
                 <Input
                   id="lead-phone"
                   data-testid="input-lead-phone"
@@ -1642,21 +1662,20 @@ export default function CustomsCalculator() {
               </div>
 
               <Button
-                className="w-full font-semibold"
-                style={{ backgroundColor: DEEP_BLUE }}
+                className="h-12 w-full bg-brand text-[15px] font-semibold text-white transition-colors duration-state hover:bg-brand-hover"
                 onClick={handleLeadSubmit}
                 disabled={leadSubmitting}
                 data-testid="button-submit-lead"
               >
                 {leadSubmitting ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
                 ) : (
-                  <Mail className="w-4 h-4 mr-2" />
+                  <Mail className="mr-2 h-4 w-4" aria-hidden="true" />
                 )}
                 {leadSubmitting ? "Saving..." : "Save and request follow-up"}
               </Button>
 
-              <p className="text-xs text-slate-400 text-center">
+              <p className="text-center text-body text-text-muted">
                 We respect your privacy. No spam, ever.
               </p>
             </div>
