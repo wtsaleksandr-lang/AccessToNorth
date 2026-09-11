@@ -351,9 +351,19 @@ export function Navbar({ darkHero = false }: NavbarProps) {
   return (
     <nav
       data-testid="navbar"
-      /* 83px tall, pinned to the top, fully transparent at every scroll
-         position: no background, no border, no blur and no scroll state. */
-      className="fixed top-0 w-full z-50 bg-transparent"
+      /* 83px tall, pinned to the top. Flat opaque fill, no border, no blur and
+         no scroll state — the header looks identical at every scroll position.
+
+         The reference's header is transparent, and this is the one deliberate
+         deviation from it. The reference can afford transparency because its
+         page composition keeps a single light surface under the header; ours
+         puts a #0C111D footer and mixed-luminance sections under a FIXED
+         header, so a transparent header renders its own links invisible as
+         soon as the user scrolls. An unreadable nav is a functional defect,
+         not a style choice. An opaque flat fill is the smallest change that
+         fixes it while keeping the law intact: still no border, still no
+         backdrop-filter, still no scroll theatrics. */
+      className={`fixed top-0 w-full z-50 ${darkHero ? "bg-surface-dark" : "bg-surface-primary"}`}
     >
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex h-[83px] items-center justify-between">
