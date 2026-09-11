@@ -39,7 +39,12 @@ export default {
         // scale, and +0.175em on the 12px uppercase eyebrow.
         h1: ["54px", { lineHeight: "65px", letterSpacing: "-2.16px", fontWeight: "700" }],
         // 375px variant — pair as `text-h1-sm md:text-h1` in the component wave.
-        "h1-sm": ["48px", { lineHeight: "52px", letterSpacing: "-1.92px", fontWeight: "700" }],
+        // The reference measured 48px here, but its hero headline is far
+        // shorter than ours: at 48px the live copy runs SIX lines at 375px and
+        // eats the whole fold. 36px keeps the same -0.04em tracking and 1.08
+        // line-height ratio as the rest of the scale and lands the headline at
+        // four lines. The scale serves the copy, not the other way round.
+        "h1-sm": ["36px", { lineHeight: "40px", letterSpacing: "-1.44px", fontWeight: "700" }],
         h2: ["32px", { lineHeight: "40px", letterSpacing: "-1.28px", fontWeight: "700" }],
         h3: ["16px", { lineHeight: "19.2px", fontWeight: "600" }],
         lead: ["18px", { lineHeight: "25.2px", fontWeight: "400" }],
