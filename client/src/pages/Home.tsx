@@ -1,24 +1,98 @@
 import { lazy, Suspense, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import businessTeamImg from "@/assets/images/business-team.jpg";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { DiyVsUsComparison } from "@/components/DiyVsUsComparison";
 import { HowItWorksSection } from "@/components/HowItWorks";
 import { HeroFilingWorkflow } from "@/components/HeroFilingWorkflow";
 import { usePageMeta } from "@/hooks/use-page-meta";
-import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle2, Star, Award, Landmark, Shield, Calculator, Package, Globe, FileCheck, Search } from "lucide-react";
+import {
+  ArrowRight, CheckCircle2, Star, Award, Landmark, Shield, Calculator,
+  Package, Globe, FileCheck, Search, Boxes,
+} from "lucide-react";
 
 const RegistrationModal = lazy(() =>
   import("@/components/RegistrationModal").then((module) => ({ default: module.RegistrationModal })),
 );
 
+/**
+ * Card-on-canvas shell.
+ *
+ * Every section is an object sitting on the #F2F4F7 canvas rather than a
+ * full-bleed band, so the page reads as a stack of cards. 98% width, capped at
+ * the 1328px outer container; 12px radius (the only large radius in the system).
+ *
+ * The 1px border is what makes the card read as an object: the hero wash
+ * (#EFF6FF) and the canvas (#F2F4F7) sit within a point of each other in
+ * lightness, so without an edge the hero dissolves into the page and the
+ * composition looks like a background that failed to load. Border colour is
+ * left to Tailwind's default (`--border`, the #E2E8F0 hairline); the dark card
+ * overrides it with `border-white/10`.
+ */
+const SHELL = "w-[98%] max-w-container-outer mx-auto rounded-lg border overflow-hidden";
+
+/**
+ * Asymmetric section padding, measured from the reference. Adjacent sections
+ * pull from different pairs so the vertical rhythm alternates instead of
+ * stacking two equal gaps against each other.
+ *
+ * The reference's extremes (120/20, 80/0) were measured on full-bleed bands,
+ * where the zero side simply butts onto the next band. Inside a rounded card a
+ * 0–20px bottom edge reads as clipped content, so the tight side is floored at
+ * the smallest value that still reads as deliberate padding.
+ */
+const PAD = {
+  even: "pt-10 pb-10 md:pt-[76px] md:pb-[76px]",      // 40/40   → 76/76
+  topHeavy: "pt-16 pb-10 md:pt-20 md:pb-[60px]",      // 64/40   → 80/60
+  tight: "pt-12 pb-10 md:pt-[72px] md:pb-14",         // 48/40   → 72/56
+  closing: "pt-14 pb-10 md:pt-20 md:pb-16",           // 56/40   → 80/64
+} as const;
+
+/** Inner content rail: 1280px of content inside the 1328px shell. */
+const RAIL = "mx-auto max-w-container px-5 md:px-10";
+
+/**
+ * The three highest-intent entry points. Every destination already existed on
+ * this page (they were a text link row buried under the services grid); they
+ * are promoted into the hero card rather than invented.
+ */
+const HERO_ACTIONS = [
+  {
+    icon: Search,
+    title: "Canadian HS Code Finder",
+    desc: "Look up the tariff classification for what you ship.",
+    href: "/tools/hs-code-finder",
+    testId: "hero-action-hs-code-finder",
+  },
+  {
+    icon: Boxes,
+    title: "Container Loading Calculator",
+    desc: "Plan a 3D load and check what actually fits.",
+    href: "/tools/container-calculator",
+    testId: "hero-action-container-calculator",
+  },
+  {
+    icon: Calculator,
+    title: "Customs Duty Calculator",
+    desc: "Estimate duty, GST/HST, and landed cost.",
+    href: "/customs-calculator",
+    testId: "hero-action-customs-calculator",
+  },
+];
+
+const SERVICES = [
+  { icon: Package, title: "Customs Clearance Coordination", desc: "Flat-rate clearance coordination — declaration prepared for filing by your licensed broker.", href: "/services/customs-clearance-canada" },
+  { icon: Landmark, title: "CARM Registration", desc: "End-to-end CARM portal onboarding for importers.", href: "/services/carm-registration-canada" },
+  { icon: Globe, title: "Non-Resident Importer", desc: "Full NRI setup for foreign businesses selling in Canada.", href: "/services/non-resident-importer-canada" },
+  { icon: FileCheck, title: "HS Code Classification", desc: "Accurate tariff classification to avoid penalties.", href: "/services/hs-code-classification-canada" },
+  { icon: Shield, title: "Import Compliance", desc: "Comprehensive audit of your import operations.", href: "/services/import-compliance-review" },
+  { icon: Calculator, title: "Trade Tools", desc: "Free calculators for duties, CARM, and HS codes.", href: "/tools" },
+];
+
 export default function Home() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState("gst-hst");
   const [heroHelpRequested, setHeroHelpRequested] = useState(false);
-  const [, setLocation] = useLocation();
 
   usePageMeta({
     title: "AccessToNorth.com | Canadian Business & Import Registration",
@@ -31,65 +105,73 @@ export default function Home() {
     setModalOpen(true);
   };
 
+  const scrollToAssistant = () =>
+    document.getElementById("filing-assistant")?.scrollIntoView({ behavior: "smooth", block: "start" });
+
   return (
-    <div className="min-h-screen font-sans bg-slate-50 selection:bg-primary/20 selection:text-primary">
-      <main>
+    <div className="min-h-screen bg-surface-canvas font-sans">
+      {/*
+        The Navbar is `position: fixed` (83px tall at every breakpoint), so it
+        reserves no space in flow — each page has to clear it itself. The old
+        hero did that with `pt-24 md:pt-32` on the section; now that the hero is
+        a card, the clearance belongs on `main` instead, so the canvas (and the
+        card's top edge) stay visible under the header: 83px nav + the 16px
+        inter-card gap.
+      */}
+      <main className="flex flex-col gap-4 pb-4 pt-[99px]">
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden pt-24 pb-12 md:pt-32 md:pb-20 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 maple-bg">
-        <div className="container mx-auto px-4 md:px-6 relative z-10">
-          <div className="flex flex-col lg:flex-row items-center gap-8 md:gap-12">
-            <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              className="lg:w-1/2 space-y-4 md:space-y-6"
-            >
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-medium">
-                <span className="inline-flex h-2 w-2 rounded-full bg-blue-500" aria-hidden="true"></span>
-                AccessToNorth.com · Canadian business and import registrations
-              </div>
+        {/* ── Hero card ───────────────────────────────────────────────── */}
+        <section className={`${SHELL} surface-hero-wash ${PAD.even}`}>
+          <div className={RAIL}>
+            <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-12">
+              <div className="min-w-0 lg:w-1/2">
+                <p className="text-eyebrow uppercase text-text-muted" data-testid="text-hero-eyebrow">
+                  Canadian business &amp; import registrations
+                </p>
 
-              <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold font-display text-slate-900 leading-[1.05] tracking-tight" data-testid="text-hero-title" style={{ letterSpacing: '-0.02em' }}>
-                Get your Canadian{" "}
-                <span className="text-primary">tax and import accounts</span>
-                {" "}set up correctly.
-              </h1>
+                <h1
+                  className="mt-4 text-h1-sm text-text-primary md:text-h1"
+                  data-testid="text-hero-title"
+                >
+                  Get your Canadian{" "}
+                  <span className="text-brand">tax and import accounts</span>{" "}
+                  set up correctly.
+                </h1>
 
-              <p className="text-base md:text-lg text-slate-600 max-w-lg leading-relaxed">
-                Choose what you need, upload your documents securely, and track the filing online.
-                Fixed pricing for Canadian and non-resident businesses.
-              </p>
+                <p className="mt-5 max-w-lg text-lead text-text-muted">
+                  Choose what you need, upload your documents securely, and track the filing
+                  online. Fixed pricing for Canadian and non-resident businesses.
+                </p>
 
-              <div className="flex flex-col gap-4 pt-2">
-                <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="mt-7 flex flex-col gap-3 sm:flex-row">
                   <Button
                     size="lg"
-                    className="bg-primary text-base px-7 shadow-lg shadow-primary/25 cursor-pointer transition-all duration-300 ease-in-out hover:bg-[#0056b3] hover:shadow-xl hover:shadow-primary/30"
+                    className="bg-brand text-white transition-colors duration-state hover:bg-brand-hover"
                     data-testid="button-start-registration"
-                    onClick={() => document.getElementById("filing-assistant")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                    onClick={scrollToAssistant}
                   >
                     Choose your registration
-                    <ArrowRight className="ml-2 w-5 h-5" />
+                    <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
                   </Button>
                   <Button
                     type="button"
                     size="lg"
                     variant="outline"
-                    className="border-slate-300 bg-white/70 text-base"
+                    className="border-border-control bg-white text-text-primary transition-colors duration-state hover:border-brand hover:text-brand"
                     onClick={() => {
                       setHeroHelpRequested(true);
-                      document.getElementById("filing-assistant")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      scrollToAssistant();
                     }}
                     data-testid="button-help-choose"
                   >
                     Help me choose
                   </Button>
                 </div>
-                <div className="flex items-center gap-3 px-1" data-testid="hero-client-proof">
+
+                <div className="mt-6 flex items-center gap-3" data-testid="hero-client-proof">
                   <div className="flex -space-x-2.5" aria-hidden="true">
                     {[1, 2, 3, 4].map((index) => (
-                      <div key={index} className="h-9 w-9 overflow-hidden rounded-full border-2 border-white bg-slate-100 shadow-sm">
+                      <div key={index} className="h-9 w-9 overflow-hidden rounded-full border-2 border-white bg-surface-canvas">
                         <img src={`/images/avatar-${index}.webp`} alt="" width={36} height={36} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                       </div>
                     ))}
@@ -98,201 +180,236 @@ export default function Home() {
                     <div className="flex text-amber-400" aria-label="Five stars">
                       {[1, 2, 3, 4, 5].map((index) => <Star key={index} className="h-3.5 w-3.5 fill-current" aria-hidden="true" />)}
                     </div>
-                    <p className="mt-0.5 text-xs font-medium leading-tight text-slate-600">Canadian &amp; non-resident clients</p>
+                    <p className="mt-0.5 text-body font-medium leading-tight text-text-muted">Canadian &amp; non-resident clients</p>
                   </div>
                 </div>
+
                 <Link
                   href="/resources/how-to-import-into-canada"
-                  className="inline-flex items-center gap-1.5 px-1 text-sm font-semibold text-slate-700 hover:text-primary hover:underline"
+                  /*
+                    `inline`, not `inline-flex`: as a flex container the arrow
+                    stays on its own flex line and drifts to the far right when
+                    the label wraps to two lines (visible at 1024 and 375).
+                    Inline keeps it attached to the final word.
+                  */
+                  className="group mt-5 inline-block max-w-lg text-body font-semibold text-text-secondary transition-colors duration-state hover:text-brand"
                   data-testid="link-hero-import-guide"
                 >
                   New to importing? Read the 2026 step-by-step Canada import guide
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  <ArrowRight
+                    className="ml-1.5 inline h-4 w-4 align-[-3px] transition-transform duration-state group-hover:translate-x-0.5"
+                    aria-hidden="true"
+                  />
                 </Link>
               </div>
-            </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="relative w-full lg:w-1/2"
-            >
-              <div className="absolute -top-10 -right-10 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-2xl opacity-20" aria-hidden="true"></div>
-              <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-2xl opacity-20" aria-hidden="true"></div>
-
-              <HeroFilingWorkflow onStart={handleOpenModal} helpRequested={heroHelpRequested} />
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* What We Do — Service Highlights */}
-      <section className="py-12 md:py-20 bg-white">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="text-center max-w-2xl mx-auto mb-10 md:mb-14">
-            <h2 className="text-2xl md:text-3xl font-bold font-display mb-3">Our services</h2>
-            <p className="text-base md:text-lg text-slate-600">
-              End-to-end coordination of Canadian tax and customs work — from CRA registrations we
-              perform in-house to CARM onboarding and commercial clearance coordination prepared for
-              filing by your licensed broker.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-5xl mx-auto mb-10">
-            {[
-              { icon: Package, title: "Customs Clearance Coordination", desc: "Flat-rate clearance coordination — declaration prepared for filing by your licensed broker.", href: "/services/customs-clearance-canada" },
-              { icon: Landmark, title: "CARM Registration", desc: "End-to-end CARM portal onboarding for importers.", href: "/services/carm-registration-canada" },
-              { icon: Globe, title: "Non-Resident Importer", desc: "Full NRI setup for foreign businesses selling in Canada.", href: "/services/non-resident-importer-canada" },
-              { icon: FileCheck, title: "HS Code Classification", desc: "Accurate tariff classification to avoid penalties.", href: "/services/hs-code-classification-canada" },
-              { icon: Shield, title: "Import Compliance", desc: "Comprehensive audit of your import operations.", href: "/services/import-compliance-review" },
-              { icon: Calculator, title: "Trade Tools", desc: "Free calculators for duties, CARM, and HS codes.", href: "/tools" },
-            ].map((item) => (
-              <Link key={item.title} href={item.href}>
-                <Card className="h-full cursor-pointer border border-slate-200 hover:border-primary/20 hover:shadow-lg transition-all duration-300" data-testid={`card-home-${item.title.toLowerCase().replace(/\s+/g, "-")}`}>
-                  <CardContent className="p-5 flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <item.icon className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-slate-900 mb-1">{item.title}</h3>
-                      <p className="text-sm text-slate-600">{item.desc}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-
-          <div className="text-center flex flex-col sm:flex-row justify-center gap-3">
-            <Link href="/services">
-              <Button variant="outline" size="lg" className="cursor-pointer" data-testid="button-all-services">
-                All Services
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </Link>
-            <Link href="/pricing">
-              <Button size="lg" className="cursor-pointer" data-testid="button-view-pricing">
-                View Pricing
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </Link>
-          </div>
-
-          <nav className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm" aria-label="Featured free trade tools">
-            <span className="font-semibold text-slate-700">Free planning tools:</span>
-            <Link href="/tools/hs-code-finder" className="font-medium text-primary hover:underline">
-              Canadian HS Code Finder
-            </Link>
-            <Link href="/tools/container-calculator" className="font-medium text-primary hover:underline">
-              3D Container Loading Calculator
-            </Link>
-            <Link href="/customs-calculator" className="font-medium text-primary hover:underline">
-              Customs Duty Calculator
-            </Link>
-            <Link href="/resources/how-to-import-into-canada" className="font-medium text-primary hover:underline">
-              How to Import Into Canada
-            </Link>
-          </nav>
-        </div>
-      </section>
-
-      {/* How it works — authorization → file → CRA processing */}
-      <HowItWorksSection />
-
-      {/* Non-Resident Section */}
-      <section className="py-12 md:py-20 bg-slate-50">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="flex flex-col lg:flex-row items-center gap-8 md:gap-12">
-            <div className="lg:w-1/2">
-              <img
-                src={businessTeamImg}
-                alt="International Business Team"
-                width={720}
-                height={480}
-                loading="lazy"
-                className="rounded-2xl shadow-2xl w-full h-auto"
-              />
+              <div className="w-full min-w-0 lg:w-1/2">
+                <HeroFilingWorkflow onStart={handleOpenModal} helpRequested={heroHelpRequested} />
+              </div>
             </div>
-            <div className="lg:w-1/2 space-y-4 md:space-y-6">
-              <h2 className="text-2xl md:text-3xl font-bold font-display" data-testid="text-nonresident-title">Are You a Non-Resident Selling in Canada?</h2>
-              <p className="text-base md:text-lg text-slate-600">
-                New rules require many non-resident businesses to register for GST/HST under the simplified regime. If you sell digital products, services, or goods through fulfillment warehouses, you likely need to register.
-              </p>
-              <ul className="space-y-4">
-                {[
-                  "Digital Economy Compliance",
-                  "Simplified GST/HST Regime Registration",
-                  "Annual Information Return Filing",
-                  "Election for Agents"
-                ].map((item, i) => (
-                  <li key={i} className="flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
-                    <span className="font-medium text-slate-800">{item}</span>
-                  </li>
+
+            {/*
+              Highest-intent actions, inside the same hero card.
+              The divider here is GAP, not a border: a 4px grid gap over the
+              #F2F4F7 canvas shell, so the shell itself reads as the rule.
+              Concentric radii — 12px shell, 4px padding, 8px children.
+            */}
+            <div className="mt-10 rounded-lg bg-surface-canvas p-1 md:mt-12" data-testid="hero-actions">
+              <div className="grid grid-cols-1 gap-1 md:grid-cols-3">
+                {HERO_ACTIONS.map((action) => (
+                  <Link
+                    key={action.href}
+                    href={action.href}
+                    className="group flex flex-col rounded-md border border-transparent bg-white p-5 transition-colors duration-state hover:border-brand"
+                    data-testid={action.testId}
+                  >
+                    <action.icon className="h-5 w-5 text-brand" aria-hidden="true" />
+                    <h3 className="mt-3 text-h3 text-text-primary">{action.title}</h3>
+                    <p className="mt-1.5 text-body text-text-muted">{action.desc}</p>
+                    <span className="mt-4 inline-flex items-center gap-1 text-body font-semibold text-text-secondary transition-colors duration-state group-hover:text-brand">
+                      Open tool
+                      <ArrowRight className="h-3.5 w-3.5 transition-transform duration-state group-hover:translate-x-0.5" aria-hidden="true" />
+                    </span>
+                  </Link>
                 ))}
-              </ul>
-              <Link href="/services/non-resident-importer-canada">
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Services bento ──────────────────────────────────────────── */}
+        <section className={`${SHELL} bg-white ${PAD.topHeavy}`}>
+          <div className={RAIL}>
+            <div className="max-w-2xl">
+              <p className="text-eyebrow uppercase text-text-muted">What we do</p>
+              <h2 className="mt-3 text-h2 text-text-primary">Our services</h2>
+              <p className="mt-4 text-lead text-text-muted">
+                End-to-end coordination of Canadian tax and customs work — from CRA registrations we
+                perform in-house to CARM onboarding and commercial clearance coordination prepared for
+                filing by your licensed broker.
+              </p>
+            </div>
+
+            <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {SERVICES.map((item) => (
+                <Link
+                  key={item.title}
+                  href={item.href}
+                  className="group flex flex-col rounded-lg border border-border-hairline bg-white p-6 transition-colors duration-state hover:border-brand"
+                  data-testid={`card-home-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+                >
+                  <item.icon className="h-5 w-5 text-brand" aria-hidden="true" />
+                  <h3 className="mt-4 text-h3 text-text-primary">{item.title}</h3>
+                  <p className="mt-2 flex-1 text-body text-text-muted">{item.desc}</p>
+                  <span className="mt-5 inline-flex items-center gap-1 text-body font-semibold text-text-secondary transition-colors duration-state group-hover:text-brand">
+                    Learn more
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform duration-state group-hover:translate-x-0.5" aria-hidden="true" />
+                  </span>
+                </Link>
+              ))}
+            </div>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link href="/services">
                 <Button
                   variant="outline"
                   size="lg"
-                  className="mt-4 cursor-pointer"
-                  data-testid="button-nonresident-learn-more"
+                  className="w-full border-border-control bg-white text-text-primary transition-colors duration-state hover:border-brand hover:text-brand sm:w-auto"
+                  data-testid="button-all-services"
                 >
-                  Learn More About Non-Resident Rules
+                  All Services
+                  <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                </Button>
+              </Link>
+              <Link href="/pricing">
+                <Button
+                  size="lg"
+                  className="w-full bg-brand text-white transition-colors duration-state hover:bg-brand-hover sm:w-auto"
+                  data-testid="button-view-pricing"
+                >
+                  View Pricing
+                  <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Button>
               </Link>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Refund policy */}
-      <section className="py-8 md:py-12 bg-blue-50/50 border-y border-blue-100/50">
-        <div className="container mx-auto px-4 md:px-6 text-center max-w-2xl">
-          <Award className="w-8 h-8 md:w-10 md:h-10 text-primary mx-auto mb-3 md:mb-4" />
-          <h3 className="text-xl font-bold font-display mb-2">Flat fee. Refund on unfiled work.</h3>
-          <p className="text-slate-600 text-sm md:text-base">
-            Full refund if you cancel before we submit your filing to the CRA or CBSA.
-            If an application is rejected due to our error, we re-file or refund the service fee.
-            See our <Link href="/refunds" className="underline hover:text-primary">Refund Policy</Link> for full terms.
-          </p>
-        </div>
-      </section>
+        {/* ── How it works ────────────────────────────────────────────── */}
+        <HowItWorksSection shellClassName={SHELL} padClassName={PAD.tight} railClassName={RAIL} />
 
-      {/* DIY vs us vs accountant comparison */}
-      <DiyVsUsComparison />
-
-      {/* Who we serve */}
-      <WhoWeServeSection />
-
-      {/* Client access */}
-      <section className="py-10 md:py-14 bg-white">
-        <div className="container mx-auto px-4 md:px-6 max-w-2xl text-center">
-          <Search className="w-8 h-8 text-primary mx-auto mb-3" />
-          <h2 className="text-xl md:text-2xl font-bold font-display mb-2">Track your filing</h2>
-          <p className="text-slate-600 mb-5 text-sm">
-            Active clients can view submission status, documents, and messages in the client portal.
-          </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-3">
-            <Link href="/portal">
-              <Button variant="outline" className="cursor-pointer" data-testid="button-home-portal">
-                Client Portal
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </Link>
-            <Link href="/tools/shipment-tracking">
-              <Button variant="outline" className="cursor-pointer" data-testid="button-home-tracking">
-                Shipment Tracking
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </Link>
+        {/* ── Non-resident ────────────────────────────────────────────── */}
+        <section className={`${SHELL} bg-surface-recessed ${PAD.closing}`}>
+          <div className={RAIL}>
+            <div className="flex flex-col items-center gap-10 lg:flex-row lg:gap-12">
+              <div className="w-full min-w-0 lg:w-1/2">
+                <img
+                  src={businessTeamImg}
+                  alt="International Business Team"
+                  width={720}
+                  height={480}
+                  loading="lazy"
+                  className="h-auto w-full rounded-lg"
+                />
+              </div>
+              <div className="min-w-0 lg:w-1/2">
+                <h2 className="text-h2 text-text-primary" data-testid="text-nonresident-title">
+                  Are You a Non-Resident Selling in Canada?
+                </h2>
+                <p className="mt-4 text-lead text-text-muted">
+                  New rules require many non-resident businesses to register for GST/HST under the simplified regime. If you sell digital products, services, or goods through fulfillment warehouses, you likely need to register.
+                </p>
+                <ul className="mt-6 space-y-3">
+                  {[
+                    "Digital Economy Compliance",
+                    "Simplified GST/HST Regime Registration",
+                    "Annual Information Return Filing",
+                    "Election for Agents",
+                  ].map((item) => (
+                    <li key={item} className="flex items-center gap-3">
+                      <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-brand" aria-hidden="true" />
+                      <span className="text-body font-medium text-text-secondary">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/services/non-resident-importer-canada">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="mt-7 border-border-control bg-white text-text-primary transition-colors duration-state hover:border-brand hover:text-brand"
+                    data-testid="button-nonresident-learn-more"
+                  >
+                    Learn More About Non-Resident Rules
+                  </Button>
+                </Link>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+        {/* ── Refund policy ───────────────────────────────────────────── */}
+        <section className={`${SHELL} bg-white ${PAD.tight}`}>
+          <div className={RAIL}>
+            <div className="max-w-2xl">
+              <Award className="h-6 w-6 text-brand" aria-hidden="true" />
+              <h2 className="mt-4 text-h2 text-text-primary">Flat fee. Refund on unfiled work.</h2>
+              <p className="mt-4 text-lead text-text-muted">
+                Full refund if you cancel before we submit your filing to the CRA or CBSA.
+                If an application is rejected due to our error, we re-file or refund the service fee.
+                See our{" "}
+                <Link href="/refunds" className="font-semibold text-text-secondary underline underline-offset-4 transition-colors duration-state hover:text-brand">
+                  Refund Policy
+                </Link>{" "}
+                for full terms.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* ── DIY vs us vs accountant ─────────────────────────────────── */}
+        <DiyVsUsComparison shellClassName={SHELL} padClassName={PAD.topHeavy} railClassName={RAIL} />
+
+        {/* ── Who we serve (dark) ─────────────────────────────────────── */}
+        <WhoWeServeSection />
+
+        {/* ── Client access ───────────────────────────────────────────── */}
+        <section className={`${SHELL} bg-white ${PAD.closing}`}>
+          <div className={RAIL}>
+            <div className="max-w-2xl">
+              <p className="text-eyebrow uppercase text-text-muted">Already a client</p>
+              <h2 className="mt-3 text-h2 text-text-primary">Track your filing</h2>
+              <p className="mt-4 text-lead text-text-muted">
+                Active clients can view submission status, documents, and messages in the client portal.
+              </p>
+              <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                <Link href="/portal">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="w-full border-border-control bg-white text-text-primary transition-colors duration-state hover:border-brand hover:text-brand sm:w-auto"
+                    data-testid="button-home-portal"
+                  >
+                    Client Portal
+                    <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </Link>
+                <Link href="/tools/shipment-tracking">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="w-full border-border-control bg-white text-text-primary transition-colors duration-state hover:border-brand hover:text-brand sm:w-auto"
+                    data-testid="button-home-tracking"
+                  >
+                    Shipment Tracking
+                    <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
 
       </main>
-
 
       {modalOpen && (
         <Suspense fallback={null}>
@@ -333,36 +450,42 @@ const CLIENT_PROFILES = [
   },
 ];
 
+/**
+ * Dark feature card. FLAT #0C111D with a 1px rgba(255,255,255,.1) inner
+ * hairline — no gradient. Headings carry an explicit light colour because the
+ * global `h1..h6 { @apply text-foreground }` base rule overrides an inherited
+ * `text-white` from an ancestor (see PR notes).
+ */
 function WhoWeServeSection() {
   return (
-    <section className="py-12 md:py-20 bg-slate-900 text-white">
-      <div className="container mx-auto px-4 md:px-6 max-w-5xl">
-        <div className="text-center mb-8 md:mb-12">
-          <p className="text-xs font-semibold tracking-widest uppercase text-primary/80 mb-2">Who we work with</p>
-          <h2 className="text-2xl md:text-3xl font-bold font-display mb-3" data-testid="text-who-we-serve-title">
+    <section className={`${SHELL} border-white/10 surface-dark ${PAD.topHeavy}`}>
+      <div className={RAIL}>
+        <div className="max-w-2xl">
+          <p className="text-eyebrow uppercase text-text-deemphasis">Who we work with</p>
+          <h2 className="mt-3 text-h2 text-white" data-testid="text-who-we-serve-title">
             Built for businesses that need Canadian filings done right.
           </h2>
-          <p className="text-slate-400 max-w-2xl mx-auto text-sm md:text-base">
+          <p className="mt-4 text-lead text-text-deemphasis">
             Our clients are typically incorporated businesses or sole proprietors with concrete
             compliance needs — not consumers, not hobby projects. If you're in one of these
             categories, we can help.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2">
           {CLIENT_PROFILES.map((profile) => (
             <div
               key={profile.label}
-              className="bg-slate-800/80 border border-slate-700/60 rounded-xl p-6"
+              className="rounded-lg border border-white/10 p-6"
               data-testid={`client-profile-${profile.label.toLowerCase().replace(/\s+/g, "-")}`}
             >
-              <h3 className="text-base font-semibold text-white mb-2">{profile.label}</h3>
-              <p className="text-sm text-slate-300 leading-relaxed">{profile.body}</p>
+              <h3 className="text-h3 text-white">{profile.label}</h3>
+              <p className="mt-2 text-body text-text-deemphasis">{profile.body}</p>
             </div>
           ))}
         </div>
 
-        <p className="text-xs text-slate-500 text-center mt-8 max-w-2xl mx-auto">
+        <p className="mt-8 max-w-2xl text-body text-text-deemphasis">
           Client references are available on request for businesses considering multi-entity or
           recurring engagements. Individual case studies are not published without written consent.
         </p>
