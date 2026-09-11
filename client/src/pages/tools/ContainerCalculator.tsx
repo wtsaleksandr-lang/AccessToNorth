@@ -7221,7 +7221,7 @@ export default function ContainerCalculator() {
                                   type="number" min={0} step="0.1"
                                   value={toDisplay(item.length)}
                                   onChange={(e) => updateItem(item.id, "length", fromDisplay(e.target.value))}
-                                  className="h-9 text-[13px] px-1 text-right tabular-nums"
+                                  className="h-9 text-xs px-0.5 text-right tabular-nums"
                                   data-testid={`input-cargo-length-${idx}`}
                                 />
                               </td>
@@ -7230,7 +7230,7 @@ export default function ContainerCalculator() {
                                   type="number" min={0} step="0.1"
                                   value={toDisplay(item.width)}
                                   onChange={(e) => updateItem(item.id, "width", fromDisplay(e.target.value))}
-                                  className="h-9 text-[13px] px-1 text-right tabular-nums"
+                                  className="h-9 text-xs px-0.5 text-right tabular-nums"
                                   data-testid={`input-cargo-width-${idx}`}
                                 />
                               </td>
@@ -7239,7 +7239,7 @@ export default function ContainerCalculator() {
                                   type="number" min={0} step="0.1"
                                   value={toDisplay(item.height)}
                                   onChange={(e) => updateItem(item.id, "height", fromDisplay(e.target.value))}
-                                  className="h-9 text-[13px] px-1 text-right tabular-nums"
+                                  className="h-9 text-xs px-0.5 text-right tabular-nums"
                                   data-testid={`input-cargo-height-${idx}`}
                                 />
                               </td>
@@ -7248,7 +7248,7 @@ export default function ContainerCalculator() {
                                   type="number" min={1}
                                   value={item.quantity || ""}
                                   onChange={(e) => updateItem(item.id, "quantity", parseInt(e.target.value) || 0)}
-                                  className="h-9 text-[13px] px-1 text-right tabular-nums"
+                                  className="h-9 text-xs px-0.5 text-right tabular-nums"
                                   data-testid={`input-cargo-qty-${idx}`}
                                 />
                               </td>
@@ -7257,7 +7257,7 @@ export default function ContainerCalculator() {
                                   type="number" min={0} step="0.1"
                                   value={toDisplayWeight(item.weight)}
                                   onChange={(e) => updateItem(item.id, "weight", fromDisplayWeight(e.target.value))}
-                                  className="h-9 text-[13px] px-1 text-right tabular-nums"
+                                  className="h-9 text-xs px-0.5 text-right tabular-nums"
                                   data-testid={`input-cargo-weight-${idx}`}
                                 />
                               </td>
@@ -7487,7 +7487,7 @@ export default function ContainerCalculator() {
                               aria-selected={selected}
                               onClick={() => setActiveResultTab(tab.id)}
                               data-testid={`result-tab-${tab.id}`}
-                              className={`min-w-0 w-full h-10 inline-flex items-center justify-center gap-1 rounded-md px-1.5 text-[11px] font-semibold whitespace-nowrap transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] sm:gap-2 sm:px-3.5 sm:text-sm ${
+                              className={`min-w-0 w-full lg:w-auto h-10 inline-flex items-center justify-center gap-1 rounded-md px-1.5 text-[11px] font-semibold whitespace-nowrap transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] sm:gap-2 sm:px-3.5 sm:text-sm ${
                                 selected
                                   ? "bg-white text-text-primary shadow-sm"
                                   : "bg-transparent text-text-muted hover:text-text-primary"
