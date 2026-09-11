@@ -207,13 +207,13 @@ function genId() {
 
 function StatCard({ icon: Icon, label, value, sub, color }: { icon: any; label: string; value: string; sub?: string; color: string }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-3" data-testid={`stat-${label.toLowerCase().replace(/\s+/g, "-")}`}>
+    <div className="bg-white rounded-lg border border-border-hairline p-3" data-testid={`stat-${label.toLowerCase().replace(/\s+/g, "-")}`}>
       <div className="flex items-center gap-2 mb-1">
         <Icon className="w-3.5 h-3.5" style={{ color }} />
-        <span className="text-[10px] text-slate-500 uppercase tracking-wide font-medium">{label}</span>
+        <span className="text-[10px] text-text-muted uppercase tracking-wide font-medium">{label}</span>
       </div>
-      <p className="text-lg font-bold text-slate-900">{value}</p>
-      {sub && <p className="text-[11px] text-slate-400 mt-0.5">{sub}</p>}
+      <p className="text-lg font-bold text-text-primary tabular-nums">{value}</p>
+      {sub && <p className="text-[11px] text-text-deemphasis mt-0.5 tabular-nums">{sub}</p>}
     </div>
   );
 }
@@ -223,11 +223,11 @@ function UtilBar({ pct, label, color }: { pct: number; label: string; color: str
   return (
     <div data-testid={`utilbar-${label.toLowerCase().replace(/\s+/g, "-")}`}>
       <div className="flex justify-between mb-1">
-        <span className="text-xs text-slate-600 font-medium">{label}</span>
+        <span className="text-xs text-text-muted font-medium">{label}</span>
         <span className="text-xs font-bold" style={{ color }}>{clamped.toFixed(1)}%</span>
       </div>
-      <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${clamped}%`, backgroundColor: color }} />
+      <div className="w-full h-2.5 bg-surface-canvas rounded-full overflow-hidden">
+        <div className="h-full rounded-full transition-colors duration-300" style={{ width: `${clamped}%`, backgroundColor: color }} />
       </div>
     </div>
   );
@@ -1066,17 +1066,17 @@ export default function TruckLoadPlanner() {
   }, [previewPlan, toast, unitSystem]);
 
   return (
-    <div className="min-h-screen flex flex-col font-sans bg-slate-50">
+    <div className="min-h-screen flex flex-col font-sans bg-surface-recessed">
       <main className="flex-1 pt-28 pb-16">
         <div className="container mx-auto px-4 md:px-6">
           <Breadcrumbs items={[{ label: "Tools", href: "/tools" }, { label: "Truck Load Planner" }]} />
 
-          <div className="text-center max-w-3xl mx-auto mb-10">
-            <Badge className="mb-3 bg-primary/10 text-primary border-0 px-3 py-1">Free Tool</Badge>
-            <h1 className="text-3xl md:text-4xl font-extrabold font-display mb-4 text-slate-900" data-testid="text-tool-title">
+          <div className="max-w-3xl mb-10">
+            <p className="mb-3 text-eyebrow uppercase text-text-muted">Free Tool</p>
+            <h1 className="text-3xl md:text-4xl font-extrabold font-display mb-4 text-text-primary" data-testid="text-tool-title">
               Truck Load Planner
             </h1>
-            <p className="text-base text-slate-600 leading-relaxed">
+            <p className="text-base text-text-muted leading-relaxed">
               Build a collision-aware loading plan, compare trailer options, preview every placement in 3D,
               and export an operational loading sequence for dry vans, reefers, flatbeds, step decks, and more.
             </p>
@@ -1084,11 +1084,11 @@ export default function TruckLoadPlanner() {
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
               <div className="max-w-5xl mx-auto mb-5">
-                <div className="flex rounded-xl border border-slate-200 overflow-hidden bg-white" data-testid="mode-tabs">
+                <div className="flex gap-1 rounded-lg bg-surface-canvas p-1" data-testid="mode-tabs">
                   <button
                     onClick={() => { setMode("pro"); setShowResults(false); setResults(null); }}
-                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors ${
-                      mode === "pro" ? "bg-primary text-white" : "bg-white text-slate-600 hover:bg-slate-50"
+                    className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-md px-4 text-[15px] font-semibold transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] ${
+                      mode === "pro" ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"
                     }`}
                     data-testid="tab-mode-pro"
                   >
@@ -1097,8 +1097,8 @@ export default function TruckLoadPlanner() {
                   </button>
                   <button
                     onClick={() => { setMode("beginner"); setShowResults(false); setResults(null); }}
-                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors ${
-                      mode === "beginner" ? "bg-primary text-white" : "bg-white text-slate-600 hover:bg-slate-50"
+                    className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-md px-4 text-[15px] font-semibold transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] ${
+                      mode === "beginner" ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"
                     }`}
                     data-testid="tab-mode-beginner"
                   >
@@ -1111,10 +1111,10 @@ export default function TruckLoadPlanner() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 max-w-5xl mx-auto">
                 {mode === "pro" && (
                   <div className="lg:col-span-1">
-                    <Card className="border-slate-200">
+                    <Card className="border-border-hairline">
                       <CardContent className="p-5">
-                        <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
-                          <Truck className="w-4 h-4 text-primary" />
+                        <h2 className="text-base font-bold text-text-primary mb-4 flex items-center gap-2">
+                          <Truck className="w-4 h-4 text-text-muted" />
                           Trailer Selection
                         </h2>
 
@@ -1123,17 +1123,17 @@ export default function TruckLoadPlanner() {
                             <button
                               key={t.id}
                               onClick={() => { setSelectedTrailerId(t.id); setUseCustomTrailer(false); }}
-                              className={`w-full text-left p-2.5 rounded-lg border transition-all text-xs ${
+                              className={`w-full text-left p-2.5 rounded-lg border-2 transition-colors text-xs ${
                                 !useCustomTrailer && selectedTrailerId === t.id
-                                  ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                                  : "border-slate-200 hover:border-slate-300 bg-white"
+                                  ? "border-brand"
+                                  : "border-border-app hover:border-border-control bg-white"
                               }`}
                               data-testid={`trailer-${t.id}`}
                             >
                               <div className="flex items-center gap-2.5">
                                 <TrailerTypeIcon category={t.category} name={t.name} active={!useCustomTrailer && selectedTrailerId === t.id} className="h-9 w-16 shrink-0" />
-                                <div className="min-w-0"><div className="truncate font-semibold text-slate-900">{t.name}</div>
-                              <div className="mt-0.5 text-[10px] text-slate-500">
+                                <div className="min-w-0"><div className="truncate font-semibold text-text-primary">{t.name}</div>
+                              <div className="mt-0.5 text-[10px] text-text-muted">
                                 {isMetric
                                   ? `${(t.lengthIn * IN_TO_CM / 100).toFixed(1)}×${(t.widthIn * IN_TO_CM / 100).toFixed(1)}×${(t.heightIn * IN_TO_CM / 100).toFixed(1)} m`
                                   : `${(t.lengthIn / 12).toFixed(0)}'×${(t.widthIn / 12).toFixed(1)}'×${(t.heightIn / 12).toFixed(1)}'`
@@ -1150,58 +1150,58 @@ export default function TruckLoadPlanner() {
 
                         <button
                           onClick={() => setUseCustomTrailer(!useCustomTrailer)}
-                          className={`w-full text-left p-2.5 rounded-lg border transition-all text-xs ${
+                          className={`w-full text-left p-2.5 rounded-lg border-2 transition-colors text-xs ${
                             useCustomTrailer
-                              ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                              : "border-dashed border-slate-300 hover:border-slate-400 bg-white"
+                              ? "border-brand"
+                              : "border-dashed border-border-control hover:border-border-control bg-white"
                           }`}
                           data-testid="trailer-custom"
                         >
-                          <div className="flex items-center gap-2.5"><TrailerTypeIcon custom active={useCustomTrailer} className="h-9 w-16 shrink-0" /><div><div className="font-semibold text-slate-900">Custom Trailer</div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">Enter your own dimensions</div></div></div>
+                          <div className="flex items-center gap-2.5"><TrailerTypeIcon custom active={useCustomTrailer} className="h-9 w-16 shrink-0" /><div><div className="font-semibold text-text-primary">Custom Trailer</div>
+                          <div className="text-[10px] text-text-muted mt-0.5">Enter your own dimensions</div></div></div>
                         </button>
 
                         {useCustomTrailer && (
-                          <div className="mt-3 p-3 rounded-lg bg-slate-50 border border-slate-100 space-y-2">
+                          <div className="mt-3 p-3 rounded-lg bg-surface-recessed border border-border-hairline space-y-2">
                             <div className="grid grid-cols-3 gap-2">
                               <div>
-                                <Label className="text-[10px] text-slate-500">L ({dimUnit})</Label>
-                                <Input type="number" min={1} value={toDisplay(customTrailer.lengthIn)} onChange={e => setCustomTrailer(p => ({ ...p, lengthIn: fromDisplay(e.target.value) }))} className="h-7 text-xs px-1.5" data-testid="input-custom-trailer-l" />
+                                <Label className="text-[10px] text-text-muted">L ({dimUnit})</Label>
+                                <Input type="number" min={1} value={toDisplay(customTrailer.lengthIn)} onChange={e => setCustomTrailer(p => ({ ...p, lengthIn: fromDisplay(e.target.value) }))} className="h-7 text-xs px-1.5 text-right tabular-nums" data-testid="input-custom-trailer-l" />
                               </div>
                               <div>
-                                <Label className="text-[10px] text-slate-500">W ({dimUnit})</Label>
-                                <Input type="number" min={1} value={toDisplay(customTrailer.widthIn)} onChange={e => setCustomTrailer(p => ({ ...p, widthIn: fromDisplay(e.target.value) }))} className="h-7 text-xs px-1.5" data-testid="input-custom-trailer-w" />
+                                <Label className="text-[10px] text-text-muted">W ({dimUnit})</Label>
+                                <Input type="number" min={1} value={toDisplay(customTrailer.widthIn)} onChange={e => setCustomTrailer(p => ({ ...p, widthIn: fromDisplay(e.target.value) }))} className="h-7 text-xs px-1.5 text-right tabular-nums" data-testid="input-custom-trailer-w" />
                               </div>
                               <div>
-                                <Label className="text-[10px] text-slate-500">H ({dimUnit})</Label>
-                                <Input type="number" min={1} value={toDisplay(customTrailer.heightIn)} onChange={e => setCustomTrailer(p => ({ ...p, heightIn: fromDisplay(e.target.value) }))} className="h-7 text-xs px-1.5" data-testid="input-custom-trailer-h" />
+                                <Label className="text-[10px] text-text-muted">H ({dimUnit})</Label>
+                                <Input type="number" min={1} value={toDisplay(customTrailer.heightIn)} onChange={e => setCustomTrailer(p => ({ ...p, heightIn: fromDisplay(e.target.value) }))} className="h-7 text-xs px-1.5 text-right tabular-nums" data-testid="input-custom-trailer-h" />
                               </div>
                             </div>
                             <div>
-                              <Label className="text-[10px] text-slate-500">Max Payload ({weightUnit})</Label>
-                              <Input type="number" min={1} value={toDisplayWeight(customTrailer.maxPayloadLbs)} onChange={e => setCustomTrailer(p => ({ ...p, maxPayloadLbs: fromDisplayWeight(e.target.value) }))} className="h-7 text-xs px-1.5" data-testid="input-custom-trailer-payload" />
+                              <Label className="text-[10px] text-text-muted">Max Payload ({weightUnit})</Label>
+                              <Input type="number" min={1} value={toDisplayWeight(customTrailer.maxPayloadLbs)} onChange={e => setCustomTrailer(p => ({ ...p, maxPayloadLbs: fromDisplayWeight(e.target.value) }))} className="h-7 text-xs px-1.5 text-right tabular-nums" data-testid="input-custom-trailer-payload" />
                             </div>
                           </div>
                         )}
 
                         {activeTrailer && (
-                          <div className="mt-3 p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+                          <div className="mt-3 p-2.5 rounded-lg bg-surface-recessed border border-border-hairline">
                             <div className="grid grid-cols-4 gap-1 text-center text-[11px]">
                               <div>
-                                <p className="font-bold text-slate-900">{isMetric ? `${(activeTrailer.lengthIn * IN_TO_CM / 100).toFixed(1)}` : `${(activeTrailer.lengthIn / 12).toFixed(0)}'`}</p>
-                                <p className="text-[9px] text-slate-400">Length</p>
+                                <p className="font-bold text-text-primary">{isMetric ? `${(activeTrailer.lengthIn * IN_TO_CM / 100).toFixed(1)}` : `${(activeTrailer.lengthIn / 12).toFixed(0)}'`}</p>
+                                <p className="text-[9px] text-text-deemphasis">Length</p>
                               </div>
                               <div>
-                                <p className="font-bold text-slate-900">{isMetric ? `${(activeTrailer.widthIn * IN_TO_CM / 100).toFixed(1)}` : `${(activeTrailer.widthIn / 12).toFixed(1)}'`}</p>
-                                <p className="text-[9px] text-slate-400">Width</p>
+                                <p className="font-bold text-text-primary">{isMetric ? `${(activeTrailer.widthIn * IN_TO_CM / 100).toFixed(1)}` : `${(activeTrailer.widthIn / 12).toFixed(1)}'`}</p>
+                                <p className="text-[9px] text-text-deemphasis">Width</p>
                               </div>
                               <div>
-                                <p className="font-bold text-slate-900">{isMetric ? `${(activeTrailer.heightIn * IN_TO_CM / 100).toFixed(1)}` : `${(activeTrailer.heightIn / 12).toFixed(1)}'`}</p>
-                                <p className="text-[9px] text-slate-400">Height</p>
+                                <p className="font-bold text-text-primary">{isMetric ? `${(activeTrailer.heightIn * IN_TO_CM / 100).toFixed(1)}` : `${(activeTrailer.heightIn / 12).toFixed(1)}'`}</p>
+                                <p className="text-[9px] text-text-deemphasis">Height</p>
                               </div>
                               <div>
-                                <p className="font-bold text-slate-900">{isMetric ? `${Math.round(activeTrailer.maxPayloadLbs * LB_TO_KG).toLocaleString()}` : `${activeTrailer.maxPayloadLbs.toLocaleString()}`}</p>
-                                <p className="text-[9px] text-slate-400">{weightUnit}</p>
+                                <p className="font-bold text-text-primary">{isMetric ? `${Math.round(activeTrailer.maxPayloadLbs * LB_TO_KG).toLocaleString()}` : `${activeTrailer.maxPayloadLbs.toLocaleString()}`}</p>
+                                <p className="text-[9px] text-text-deemphasis">{weightUnit}</p>
                               </div>
                             </div>
                           </div>
@@ -1212,17 +1212,17 @@ export default function TruckLoadPlanner() {
                 )}
 
                 <div className={mode === "pro" ? "lg:col-span-2" : "lg:col-span-3"}>
-                  <Card className="border-slate-200">
+                  <Card className="border-border-hairline">
                     <CardContent className="p-5">
                       <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                          <Package className="w-4 h-4 text-primary" />
+                        <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
+                          <Package className="w-4 h-4 text-text-muted" />
                           Cargo Input
                         </h2>
                         <div className="flex items-center gap-2">
-                          <div className="flex rounded-lg border border-slate-200 overflow-hidden">
-                            <button onClick={() => setUnitSystem("imperial")} className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${unitSystem === "imperial" ? "bg-primary text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`} data-testid="button-unit-imperial">in/lbs</button>
-                            <button onClick={() => setUnitSystem("metric")} className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${unitSystem === "metric" ? "bg-primary text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`} data-testid="button-unit-metric">cm/kg</button>
+                          <div className="flex gap-0.5 rounded-md bg-surface-canvas p-0.5">
+                            <button onClick={() => setUnitSystem("imperial")} className={`rounded-sm px-2.5 py-1 text-[11px] font-semibold transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] ${unitSystem === "imperial" ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"}`} data-testid="button-unit-imperial">in/lbs</button>
+                            <button onClick={() => setUnitSystem("metric")} className={`rounded-sm px-2.5 py-1 text-[11px] font-semibold transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] ${unitSystem === "metric" ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"}`} data-testid="button-unit-metric">cm/kg</button>
                           </div>
                           {cargoMode !== "bulk" && (
                             <>
@@ -1238,13 +1238,13 @@ export default function TruckLoadPlanner() {
                         </div>
                       </div>
 
-                      <div className="flex rounded-lg border border-slate-200 overflow-hidden mb-4">
+                      <div className="flex rounded-lg border border-border-hairline overflow-hidden mb-4">
                         {(["cartons", "pallets", "bulk"] as CargoMode[]).map(cm => (
                           <button
                             key={cm}
                             onClick={() => setCargoMode(cm)}
                             className={`flex-1 px-3 py-2 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
-                              cargoMode === cm ? "bg-primary text-white" : "bg-white text-slate-600 hover:bg-slate-50"
+                              cargoMode === cm ? "bg-brand text-white" : "bg-white text-text-muted hover:bg-surface-recessed"
                             }`}
                             data-testid={`tab-cargo-${cm}`}
                           >
@@ -1259,47 +1259,47 @@ export default function TruckLoadPlanner() {
                       {cargoMode === "cartons" && (
                         <div className="space-y-3">
                           {cartons.map((item, idx) => (
-                            <div key={item.id} className="p-3 rounded-lg border border-slate-200 bg-white" data-testid={`carton-row-${idx}`}>
+                            <div key={item.id} className="p-3 rounded-lg border border-border-hairline bg-white" data-testid={`carton-row-${idx}`}>
                               <div className="flex items-center justify-between mb-2">
                                 <div className="flex min-w-0 flex-1 items-center gap-2">
-                                  <input type="color" value={item.color} onChange={e => updateCarton(item.id, "color", e.target.value)} className="h-7 w-8 shrink-0 cursor-pointer rounded-md border border-slate-200 bg-white p-0.5" aria-label={`Carton ${idx + 1} color`} data-testid={`input-carton-color-${idx}`} />
+                                  <input type="color" value={item.color} onChange={e => updateCarton(item.id, "color", e.target.value)} className="h-7 w-8 shrink-0 cursor-pointer rounded-md border border-border-hairline bg-white p-0.5" aria-label={`Carton ${idx + 1} color`} data-testid={`input-carton-color-${idx}`} />
                                   <Input placeholder={`Carton ${idx + 1}`} value={item.name} onChange={e => updateCarton(item.id, "name", e.target.value)} className="h-7 max-w-[220px] text-xs font-medium" data-testid={`input-carton-name-${idx}`} />
                                 </div>
                                 {cartons.length > 1 && (
-                                  <button onClick={() => setCartons(prev => prev.filter(c => c.id !== item.id))} className="text-slate-300 hover:text-red-500 transition-colors p-1" data-testid={`button-remove-carton-${idx}`}>
+                                  <button onClick={() => setCartons(prev => prev.filter(c => c.id !== item.id))} className="text-text-deemphasis hover:text-[#B42318] transition-colors p-1" data-testid={`button-remove-carton-${idx}`}>
                                     <X className="w-3.5 h-3.5" />
                                   </button>
                                 )}
                               </div>
                               <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-2">
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">L ({dimUnit})</Label>
-                                  <Input type="number" min={0} step="0.1" value={toDisplay(item.lengthIn)} onChange={e => updateCarton(item.id, "lengthIn", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-carton-l-${idx}`} />
+                                  <Label className="text-[9px] text-text-deemphasis uppercase">L ({dimUnit})</Label>
+                                  <Input type="number" min={0} step="0.1" value={toDisplay(item.lengthIn)} onChange={e => updateCarton(item.id, "lengthIn", fromDisplay(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-carton-l-${idx}`} />
                                 </div>
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">W ({dimUnit})</Label>
-                                  <Input type="number" min={0} step="0.1" value={toDisplay(item.widthIn)} onChange={e => updateCarton(item.id, "widthIn", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-carton-w-${idx}`} />
+                                  <Label className="text-[9px] text-text-deemphasis uppercase">W ({dimUnit})</Label>
+                                  <Input type="number" min={0} step="0.1" value={toDisplay(item.widthIn)} onChange={e => updateCarton(item.id, "widthIn", fromDisplay(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-carton-w-${idx}`} />
                                 </div>
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">H ({dimUnit})</Label>
-                                  <Input type="number" min={0} step="0.1" value={toDisplay(item.heightIn)} onChange={e => updateCarton(item.id, "heightIn", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-carton-h-${idx}`} />
+                                  <Label className="text-[9px] text-text-deemphasis uppercase">H ({dimUnit})</Label>
+                                  <Input type="number" min={0} step="0.1" value={toDisplay(item.heightIn)} onChange={e => updateCarton(item.id, "heightIn", fromDisplay(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-carton-h-${idx}`} />
                                 </div>
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Wt ({weightUnit})</Label>
-                                  <Input type="number" min={0} step="0.1" value={toDisplayWeight(item.weightLbs)} onChange={e => updateCarton(item.id, "weightLbs", fromDisplayWeight(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-carton-wt-${idx}`} />
+                                  <Label className="text-[9px] text-text-deemphasis uppercase">Wt ({weightUnit})</Label>
+                                  <Input type="number" min={0} step="0.1" value={toDisplayWeight(item.weightLbs)} onChange={e => updateCarton(item.id, "weightLbs", fromDisplayWeight(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-carton-wt-${idx}`} />
                                 </div>
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Qty</Label>
-                                  <Input type="number" min={1} value={item.quantity || ""} onChange={e => updateCarton(item.id, "quantity", parseInt(e.target.value) || 0)} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-carton-qty-${idx}`} />
+                                  <Label className="text-[9px] text-text-deemphasis uppercase">Qty</Label>
+                                  <Input type="number" min={1} value={item.quantity || ""} onChange={e => updateCarton(item.id, "quantity", parseInt(e.target.value) || 0)} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-carton-qty-${idx}`} />
                                 </div>
                               </div>
-                              <div className="grid grid-cols-4 gap-2 pt-2 border-t border-slate-100">
+                              <div className="grid grid-cols-4 gap-2 pt-2 border-t border-border-hairline">
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Stack</Label>
+                                  <Label className="text-[9px] text-text-deemphasis uppercase">Stack</Label>
                                   <button
                                     onClick={() => updateCarton(item.id, "stackable", !item.stackable)}
-                                    className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                      item.stackable ? "bg-green-50 border-green-300 text-green-700" : "bg-amber-50 border-amber-300 text-amber-700"
+                                    className={`w-full h-8 rounded-sm text-[11px] font-semibold border-2 transition-colors duration-state ${
+                                      item.stackable ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                     }`}
                                     data-testid={`toggle-carton-stack-${idx}`}
                                   >
@@ -1307,14 +1307,14 @@ export default function TruckLoadPlanner() {
                                   </button>
                                 </div>
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Rotate</Label>
+                                  <Label className="text-[9px] text-text-deemphasis uppercase">Rotate</Label>
                                   <button
                                     onClick={() => {
                                       const next: RotationMode = item.rotation === "all" ? "horizontal" : item.rotation === "horizontal" ? "fixed" : "all";
                                       updateCarton(item.id, "rotation", next);
                                     }}
-                                    className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                      item.rotation === "all" ? "bg-blue-50 border-blue-300 text-blue-700" : item.rotation === "horizontal" ? "bg-sky-50 border-sky-300 text-sky-700" : "bg-slate-50 border-slate-300 text-slate-500"
+                                    className={`w-full h-8 rounded-sm text-[11px] font-semibold border-2 transition-colors duration-state ${
+                                      item.rotation === "all" ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                     }`}
                                     data-testid={`toggle-carton-rotation-${idx}`}
                                   >
@@ -1322,14 +1322,14 @@ export default function TruckLoadPlanner() {
                                   </button>
                                 </div>
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Priority</Label>
+                                  <Label className="text-[9px] text-text-deemphasis uppercase">Priority</Label>
                                   <button
                                     onClick={() => {
                                       const next = item.priority === 0 ? 1 : item.priority === 1 ? 2 : 0;
                                       updateCarton(item.id, "priority", next);
                                     }}
-                                    className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                      item.priority === 0 ? "bg-slate-50 border-slate-300 text-slate-600" : item.priority === 1 ? "bg-blue-50 border-blue-300 text-blue-700" : "bg-amber-50 border-amber-300 text-amber-700"
+                                    className={`w-full h-8 rounded-sm text-[11px] font-semibold border-2 transition-colors duration-state ${
+                                      item.priority === 0 ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                     }`}
                                     data-testid={`toggle-carton-priority-${idx}`}
                                   >
@@ -1337,11 +1337,11 @@ export default function TruckLoadPlanner() {
                                   </button>
                                 </div>
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Pallet</Label>
+                                  <Label className="text-[9px] text-text-deemphasis uppercase">Pallet</Label>
                                   <select
                                     value={item.palletAssign}
                                     onChange={e => updateCarton(item.id, "palletAssign", e.target.value)}
-                                    className="w-full h-6 px-0.5 text-[10px] rounded border border-slate-200 bg-white"
+                                    className="w-full h-8 px-1.5 text-[11px] rounded-sm border border-border-control bg-white text-text-primary transition-colors duration-state focus:outline focus:outline-2 focus:outline-brand focus:!outline-offset-[-2px]"
                                     data-testid={`select-carton-pallet-${idx}`}
                                   >
                                     <option value="none">None</option>
@@ -1354,7 +1354,7 @@ export default function TruckLoadPlanner() {
                             </div>
                           ))}
                           {cartons.some(item => item.palletAssign !== "none") && (
-                            <p className="rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-[11px] leading-relaxed text-sky-800">
+                            <p className="rounded-lg border border-border-hairline bg-surface-recessed px-3 py-2 text-[11px] leading-relaxed text-text-secondary">
                               Auto-build uses a 72 in / 2,500 lb loaded-pallet limit. For custom limits, mixed cartons, or layer controls, use the <Link href="/tools/pallet-builder" className="font-semibold underline">Pallet Builder</Link> first.
                             </p>
                           )}
@@ -1367,25 +1367,25 @@ export default function TruckLoadPlanner() {
                       {cargoMode === "pallets" && (
                         <div className="space-y-3">
                           {pallets.map((item, idx) => (
-                            <div key={item.id} className="p-3 rounded-lg border border-slate-200 bg-white" data-testid={`pallet-row-${idx}`}>
+                            <div key={item.id} className="p-3 rounded-lg border border-border-hairline bg-white" data-testid={`pallet-row-${idx}`}>
                               <div className="flex items-center justify-between mb-2">
                                 <div className="flex min-w-0 flex-1 items-center gap-2">
-                                  <input type="color" value={item.color} onChange={e => updatePallet(item.id, "color", e.target.value)} className="h-7 w-8 shrink-0 cursor-pointer rounded-md border border-slate-200 bg-white p-0.5" aria-label={`Pallet ${idx + 1} color`} data-testid={`input-pallet-color-${idx}`} />
+                                  <input type="color" value={item.color} onChange={e => updatePallet(item.id, "color", e.target.value)} className="h-7 w-8 shrink-0 cursor-pointer rounded-md border border-border-hairline bg-white p-0.5" aria-label={`Pallet ${idx + 1} color`} data-testid={`input-pallet-color-${idx}`} />
                                   <Input placeholder={`Pallet ${idx + 1}`} value={item.name} onChange={e => updatePallet(item.id, "name", e.target.value)} className="h-7 max-w-[220px] text-xs font-medium" data-testid={`input-pallet-name-${idx}`} />
                                 </div>
                                 {pallets.length > 1 && (
-                                  <button onClick={() => setPallets(prev => prev.filter(p => p.id !== item.id))} className="text-slate-300 hover:text-red-500 transition-colors p-1" data-testid={`button-remove-pallet-${idx}`}>
+                                  <button onClick={() => setPallets(prev => prev.filter(p => p.id !== item.id))} className="text-text-deemphasis hover:text-[#B42318] transition-colors p-1" data-testid={`button-remove-pallet-${idx}`}>
                                     <X className="w-3.5 h-3.5" />
                                   </button>
                                 )}
                               </div>
                               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-2">
                                 <div className="col-span-2 sm:col-span-1">
-                                  <Label className="text-[9px] text-slate-400 uppercase">Pallet Type</Label>
+                                  <Label className="text-[9px] text-text-deemphasis uppercase">Pallet Type</Label>
                                   <select
                                     value={item.palletType}
                                     onChange={e => updatePallet(item.id, "palletType", e.target.value)}
-                                    className="w-full h-6 px-1 text-[10px] rounded border border-slate-200 bg-white"
+                                    className="w-full h-6 px-1 text-[10px] rounded border border-border-hairline bg-white"
                                     data-testid={`select-pallet-type-${idx}`}
                                   >
                                     {Object.entries(PALLET_TYPES).map(([k, v]) => (
@@ -1396,35 +1396,35 @@ export default function TruckLoadPlanner() {
                                 {item.palletType === "custom" && (
                                   <>
                                     <div>
-                                      <Label className="text-[9px] text-slate-400 uppercase">P.L ({dimUnit})</Label>
-                                      <Input type="number" min={0} value={toDisplay(item.customL)} onChange={e => updatePallet(item.id, "customL", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-pallet-cl-${idx}`} />
+                                      <Label className="text-[9px] text-text-deemphasis uppercase">P.L ({dimUnit})</Label>
+                                      <Input type="number" min={0} value={toDisplay(item.customL)} onChange={e => updatePallet(item.id, "customL", fromDisplay(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-pallet-cl-${idx}`} />
                                     </div>
                                     <div>
-                                      <Label className="text-[9px] text-slate-400 uppercase">P.W ({dimUnit})</Label>
-                                      <Input type="number" min={0} value={toDisplay(item.customW)} onChange={e => updatePallet(item.id, "customW", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-pallet-cw-${idx}`} />
+                                      <Label className="text-[9px] text-text-deemphasis uppercase">P.W ({dimUnit})</Label>
+                                      <Input type="number" min={0} value={toDisplay(item.customW)} onChange={e => updatePallet(item.id, "customW", fromDisplay(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-pallet-cw-${idx}`} />
                                     </div>
                                   </>
                                 )}
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Height ({dimUnit})</Label>
-                                  <Input type="number" min={0} step="0.1" value={toDisplay(item.heightIn)} onChange={e => updatePallet(item.id, "heightIn", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-pallet-h-${idx}`} />
+                                  <Label className="text-[9px] text-text-deemphasis uppercase">Height ({dimUnit})</Label>
+                                  <Input type="number" min={0} step="0.1" value={toDisplay(item.heightIn)} onChange={e => updatePallet(item.id, "heightIn", fromDisplay(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-pallet-h-${idx}`} />
                                 </div>
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Wt ({weightUnit})</Label>
-                                  <Input type="number" min={0} step="0.1" value={toDisplayWeight(item.weightLbs)} onChange={e => updatePallet(item.id, "weightLbs", fromDisplayWeight(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-pallet-wt-${idx}`} />
+                                  <Label className="text-[9px] text-text-deemphasis uppercase">Wt ({weightUnit})</Label>
+                                  <Input type="number" min={0} step="0.1" value={toDisplayWeight(item.weightLbs)} onChange={e => updatePallet(item.id, "weightLbs", fromDisplayWeight(e.target.value))} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-pallet-wt-${idx}`} />
                                 </div>
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Qty</Label>
-                                  <Input type="number" min={1} value={item.quantity || ""} onChange={e => updatePallet(item.id, "quantity", parseInt(e.target.value) || 0)} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-pallet-qty-${idx}`} />
+                                  <Label className="text-[9px] text-text-deemphasis uppercase">Qty</Label>
+                                  <Input type="number" min={1} value={item.quantity || ""} onChange={e => updatePallet(item.id, "quantity", parseInt(e.target.value) || 0)} className="h-6 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-pallet-qty-${idx}`} />
                                 </div>
                               </div>
-                              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100">
+                              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border-hairline">
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Stack</Label>
+                                  <Label className="text-[9px] text-text-deemphasis uppercase">Stack</Label>
                                   <button
                                     onClick={() => updatePallet(item.id, "stackable", !item.stackable)}
-                                    className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                      item.stackable ? "bg-green-50 border-green-300 text-green-700" : "bg-amber-50 border-amber-300 text-amber-700"
+                                    className={`w-full h-8 rounded-sm text-[11px] font-semibold border-2 transition-colors duration-state ${
+                                      item.stackable ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                     }`}
                                     data-testid={`toggle-pallet-stack-${idx}`}
                                   >
@@ -1432,14 +1432,14 @@ export default function TruckLoadPlanner() {
                                   </button>
                                 </div>
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Rotate</Label>
+                                  <Label className="text-[9px] text-text-deemphasis uppercase">Rotate</Label>
                                   <button
                                     onClick={() => {
                                       const next: RotationMode = item.rotation === "all" ? "horizontal" : item.rotation === "horizontal" ? "fixed" : "all";
                                       updatePallet(item.id, "rotation", next);
                                     }}
-                                    className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                      item.rotation === "all" ? "bg-blue-50 border-blue-300 text-blue-700" : item.rotation === "horizontal" ? "bg-sky-50 border-sky-300 text-sky-700" : "bg-slate-50 border-slate-300 text-slate-500"
+                                    className={`w-full h-8 rounded-sm text-[11px] font-semibold border-2 transition-colors duration-state ${
+                                      item.rotation === "all" ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                     }`}
                                     data-testid={`toggle-pallet-rotation-${idx}`}
                                   >
@@ -1447,14 +1447,14 @@ export default function TruckLoadPlanner() {
                                   </button>
                                 </div>
                                 <div>
-                                  <Label className="text-[9px] text-slate-400 uppercase">Priority</Label>
+                                  <Label className="text-[9px] text-text-deemphasis uppercase">Priority</Label>
                                   <button
                                     onClick={() => {
                                       const next = item.priority === 0 ? 1 : item.priority === 1 ? 2 : 0;
                                       updatePallet(item.id, "priority", next);
                                     }}
-                                    className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                      item.priority === 0 ? "bg-slate-50 border-slate-300 text-slate-600" : item.priority === 1 ? "bg-blue-50 border-blue-300 text-blue-700" : "bg-amber-50 border-amber-300 text-amber-700"
+                                    className={`w-full h-8 rounded-sm text-[11px] font-semibold border-2 transition-colors duration-state ${
+                                      item.priority === 0 ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                     }`}
                                     data-testid={`toggle-pallet-priority-${idx}`}
                                   >
@@ -1471,23 +1471,23 @@ export default function TruckLoadPlanner() {
                       )}
 
                       {cargoMode === "bulk" && (
-                        <div className="p-4 rounded-lg border border-slate-200 bg-white space-y-3" data-testid="bulk-form">
+                        <div className="p-4 rounded-lg border border-border-hairline bg-white space-y-3" data-testid="bulk-form">
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <Label className="text-xs text-slate-500">Total Weight ({weightUnit})</Label>
-                              <Input type="number" min={0} value={toDisplayWeight(bulk.totalWeightLbs)} onChange={e => setBulk(prev => ({ ...prev, totalWeightLbs: fromDisplayWeight(e.target.value) }))} className="h-8 text-xs" data-testid="input-bulk-weight" />
+                              <Label className="text-xs text-text-muted">Total Weight ({weightUnit})</Label>
+                              <Input type="number" min={0} value={toDisplayWeight(bulk.totalWeightLbs)} onChange={e => setBulk(prev => ({ ...prev, totalWeightLbs: fromDisplayWeight(e.target.value) }))} className="h-8 text-xs text-right tabular-nums" data-testid="input-bulk-weight" />
                             </div>
                             <div>
-                              <Label className="text-xs text-slate-500">Total Volume ({volUnit})</Label>
-                              <Input type="number" min={0} step="0.1" value={toDisplayVolume(bulk.totalVolumeCuFt) || ""} onChange={e => { const v = parseFloat(e.target.value) || 0; setBulk(prev => ({ ...prev, totalVolumeCuFt: isMetric ? v / CUFT_TO_CUM : v })); }} className="h-8 text-xs" data-testid="input-bulk-volume" />
+                              <Label className="text-xs text-text-muted">Total Volume ({volUnit})</Label>
+                              <Input type="number" min={0} step="0.1" value={toDisplayVolume(bulk.totalVolumeCuFt) || ""} onChange={e => { const v = parseFloat(e.target.value) || 0; setBulk(prev => ({ ...prev, totalVolumeCuFt: isMetric ? v / CUFT_TO_CUM : v })); }} className="h-8 text-xs text-right tabular-nums" data-testid="input-bulk-volume" />
                             </div>
                           </div>
                           <div>
-                            <Label className="text-xs text-slate-500">Packaging Type</Label>
+                            <Label className="text-xs text-text-muted">Packaging Type</Label>
                             <select
                               value={bulk.packagingType}
                               onChange={e => setBulk(prev => ({ ...prev, packagingType: e.target.value as PackagingType }))}
-                              className="w-full h-8 px-2 text-xs rounded-md border border-slate-200 bg-white"
+                              className="w-full h-8 px-2 text-xs rounded-md border border-border-hairline bg-white"
                               data-testid="select-bulk-packaging"
                             >
                               <option value="loose">Loose Items</option>
@@ -1497,7 +1497,7 @@ export default function TruckLoadPlanner() {
                             </select>
                           </div>
                           <div>
-                            <Label className="text-xs text-slate-500">Description (optional)</Label>
+                            <Label className="text-xs text-text-muted">Description (optional)</Label>
                             <Input placeholder="e.g., 50 bags of grain, 200kg each" value={bulk.description} onChange={e => setBulk(prev => ({ ...prev, description: e.target.value }))} className="h-8 text-xs" data-testid="input-bulk-desc" />
                           </div>
                         </div>
@@ -1522,34 +1522,34 @@ export default function TruckLoadPlanner() {
                           {mode === "beginner" && (
                             <div className="flex items-center gap-2 mb-2">
                               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold ${
-                                ri === 0 ? "bg-amber-500" : ri === 1 ? "bg-slate-400" : "bg-amber-700"
+                                ri === 0 ? "bg-[#B45309]" : ri === 1 ? "bg-text-deemphasis" : "bg-[#B45309]"
                               }`}>
                                 #{ri + 1}
                               </div>
-                              <span className="text-sm font-bold text-slate-900">{r.trailer.name}</span>
-                              {r.fits && <Badge className="bg-green-100 text-green-700 border-0 text-[10px]">{r.spatialPlan ? `${r.trailersRequired} trailer${r.trailersRequired === 1 ? "" : "s"}` : "Fits"}</Badge>}
-                              {!r.fits && <Badge className="bg-red-100 text-red-700 border-0 text-[10px]">Not suitable</Badge>}
+                              <span className="text-sm font-bold text-text-primary">{r.trailer.name}</span>
+                              {r.fits && <Badge className="bg-[#D1FADF] text-[#15803D] border-0 text-[10px]">{r.spatialPlan ? `${r.trailersRequired} trailer${r.trailersRequired === 1 ? "" : "s"}` : "Fits"}</Badge>}
+                              {!r.fits && <Badge className="bg-[#FEE4E2] text-[#7A271A] border-0 text-[10px]">Not suitable</Badge>}
                             </div>
                           )}
 
-                          <Card className={`border-2 ${r.fits ? "border-green-200" : "border-red-200"}`}>
+                          <Card className={`border-2 ${r.fits ? "border-[#A6F4C5]" : "border-[#FECDCA]"}`}>
                             <CardContent className="p-5">
                               {mode === "pro" && (
                                 <div className={`flex items-center gap-3 mb-4 p-3 rounded-lg ${
-                                  r.fits ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"
+                                  r.fits ? "bg-[#ECFDF3] border border-[#A6F4C5]" : "bg-[#FEF3F2] border border-[#FECDCA]"
                                 }`} data-testid="fitment-result">
                                   {r.fits ? (
-                                    <CheckCircle2 className="w-6 h-6 text-green-600 shrink-0" />
+                                    <CheckCircle2 className="w-6 h-6 text-[#15803D] shrink-0" />
                                   ) : (
-                                    <AlertTriangle className="w-6 h-6 text-red-600 shrink-0" />
+                                    <AlertTriangle className="w-6 h-6 text-[#B42318] shrink-0" />
                                   )}
                                   <div>
-                                    <p className={`font-bold ${r.fits ? "text-green-800" : "text-red-800"}`}>
+                                    <p className={`font-bold ${r.fits ? "text-[#15803D]" : "text-[#7A271A]"}`}>
                                       {r.fits
                                         ? r.trailersRequired === 1 ? "Fits in one trailer" : `Requires ${r.trailersRequired} trailers`
                                         : r.spatialPlan ? "Some cargo cannot be placed" : "Cargo does not fit"}
                                     </p>
-                                    <p className="text-xs text-slate-600 mt-0.5">
+                                    <p className="text-xs text-text-muted mt-0.5">
                                       {r.fits
                                         ? r.trailersRequired === 1
                                           ? `All ${r.piecesTotal || "entered"} pieces have collision-free positions in the ${r.trailer.name}.`
@@ -1563,8 +1563,8 @@ export default function TruckLoadPlanner() {
                                 </div>
                               )}
 
-                              <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-                                <BarChart3 className="w-3.5 h-3.5 text-primary" />
+                              <h3 className="text-sm font-bold text-text-primary mb-3 flex items-center gap-2">
+                                <BarChart3 className="w-3.5 h-3.5 text-text-muted" />
                                 {mode === "pro" ? "Loading Summary" : `${r.trailer.name} — Summary`}
                               </h3>
 
@@ -1606,33 +1606,33 @@ export default function TruckLoadPlanner() {
                               {(r.oversizeWarnings.length > 0 || r.overweightWarning) && (
                                 <div className="space-y-2 mb-4">
                                   {r.overweightWarning && (
-                                    <div className="flex items-start gap-2 p-2.5 rounded-lg bg-red-50 border border-red-200" data-testid="warning-overweight">
-                                      <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                                    <div className="flex items-start gap-2 p-2.5 rounded-lg bg-[#FEF3F2] border border-[#FECDCA]" data-testid="warning-overweight">
+                                      <AlertTriangle className="w-4 h-4 text-[#B42318] shrink-0 mt-0.5" />
                                       <div>
-                                        <p className="text-xs font-semibold text-red-800">Overweight</p>
-                                        <p className="text-[11px] text-red-700">
+                                        <p className="text-xs font-semibold text-[#7A271A]">Overweight</p>
+                                        <p className="text-[11px] text-[#7A271A]">
                                           Total weight ({(r.totalWeightLbs * weightFactor).toLocaleString(undefined, { maximumFractionDigits: 0 })} {weightUnit}) exceeds max payload ({(r.maxPayloadLbs * weightFactor).toLocaleString(undefined, { maximumFractionDigits: 0 })} {weightUnit})
                                         </p>
                                       </div>
                                     </div>
                                   )}
                                   {r.oversizeWarnings.map((w, wi) => (
-                                    <div key={wi} className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200" data-testid={`warning-oversize-${wi}`}>
-                                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                                      <p className="text-[11px] text-amber-800">{w}</p>
+                                    <div key={wi} className="flex items-start gap-2 p-2.5 rounded-lg bg-[#FFFBEB] border border-[#FDE68A]" data-testid={`warning-oversize-${wi}`}>
+                                      <AlertTriangle className="w-4 h-4 text-[#B45309] shrink-0 mt-0.5" />
+                                      <p className="text-[11px] text-[#78350F]">{w}</p>
                                     </div>
                                   ))}
                                 </div>
                               )}
 
                               {r.recommendations.length > 0 && (
-                                <div className="p-3 rounded-lg bg-blue-50 border border-blue-200" data-testid="recommendations">
-                                  <p className="text-xs font-semibold text-blue-800 mb-1.5 flex items-center gap-1">
+                                <div className="p-3 rounded-lg bg-surface-recessed border border-border-hairline" data-testid="recommendations">
+                                  <p className="text-xs font-semibold text-text-secondary mb-1.5 flex items-center gap-1">
                                     <Info className="w-3.5 h-3.5" /> Recommendations
                                   </p>
                                   <ul className="space-y-1">
                                     {r.recommendations.map((rec, ri2) => (
-                                      <li key={ri2} className="text-[11px] text-blue-700 flex items-start gap-1.5">
+                                      <li key={ri2} className="text-[11px] text-text-secondary flex items-start gap-1.5">
                                         <ChevronRight className="w-3 h-3 shrink-0 mt-0.5" />
                                         {rec}
                                       </li>
@@ -1642,7 +1642,7 @@ export default function TruckLoadPlanner() {
                               )}
 
                               {r.spatialPlan && r.spatialPlan.multi.containers.length > 0 && (
-                                <Button variant="outline" className="mt-4 w-full gap-2 border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100" onClick={() => handleSelectPreview(ri)} data-testid={`button-view-truck-plan-${ri}`}>
+                                <Button variant="outline" className="mt-4 w-full gap-2 border-border-hairline bg-surface-recessed text-text-secondary hover:bg-surface-canvas" onClick={() => handleSelectPreview(ri)} data-testid={`button-view-truck-plan-${ri}`}>
                                   <Play className="h-4 w-4" /> View spatial loading plan
                                 </Button>
                               )}
@@ -1652,10 +1652,10 @@ export default function TruckLoadPlanner() {
                       ))}
 
                       {previewResult && previewPlan && previewEntry && previewBalance && (
-                        <Card className="overflow-hidden border-slate-200 shadow-[0_20px_60px_-38px_rgba(15,23,42,0.45)]" data-testid="truck-spatial-plan">
+                        <Card className="overflow-hidden border-border-hairline shadow-md" data-testid="truck-spatial-plan">
                           <CardContent className="p-0">
-                            <div className="flex flex-col gap-3 border-b border-slate-200 bg-white p-3 sm:p-4">
-                              <div className="grid w-full grid-cols-3 gap-1" role="tablist" aria-label="Truck loading result views">
+                            <div className="flex flex-col gap-3 border-b border-border-hairline bg-white p-3 sm:p-4">
+                              <div className="grid w-full grid-cols-3 gap-1 rounded-lg bg-surface-canvas p-1" role="tablist" aria-label="Truck loading result views">
                                 {([
                                   { id: "plan" as const, label: "Loading Plan", icon: Truck },
                                   { id: "overview" as const, label: "Overview", icon: LayoutDashboard },
@@ -1663,49 +1663,49 @@ export default function TruckLoadPlanner() {
                                 ]).map((tab) => {
                                   const Icon = tab.icon;
                                   const selected = activeResultTab === tab.id;
-                                  return <button key={tab.id} type="button" role="tab" aria-selected={selected} onClick={() => setActiveResultTab(tab.id)} className={`inline-flex min-w-0 items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-[10px] font-semibold whitespace-nowrap transition sm:gap-2 sm:px-3 sm:text-sm ${selected ? "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200" : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"}`} data-testid={`truck-result-tab-${tab.id}`}><Icon className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" /><span className="truncate">{tab.label}</span></button>;
+                                  return <button key={tab.id} type="button" role="tab" aria-selected={selected} onClick={() => setActiveResultTab(tab.id)} className={`inline-flex h-10 min-w-0 items-center justify-center gap-1 rounded-md px-1.5 text-[11px] font-semibold whitespace-nowrap transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] sm:gap-2 sm:px-3 sm:text-sm ${selected ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"}`} data-testid={`truck-result-tab-${tab.id}`}><Icon className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" /><span className="truncate">{tab.label}</span></button>;
                                 })}
                               </div>
                               <div className="grid grid-cols-2 gap-2">
-                                <Button variant="outline" size="sm" onClick={handleExportLoadingCsv} className="gap-1.5 px-2 text-xs sm:text-sm" data-testid="button-truck-csv"><FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Placement CSV</Button>
+                                <Button variant="outline" size="sm" onClick={handleExportLoadingCsv} className="gap-1.5 px-2 text-xs sm:text-sm" data-testid="button-truck-csv"><FileSpreadsheet className="h-4 w-4 text-[#15803D]" /> Placement CSV</Button>
                                 <Button variant="outline" size="sm" onClick={handleExportLoadingPdf} disabled={pdfLoading} className="gap-1.5 px-2 text-xs sm:text-sm" data-testid="button-truck-pdf">{pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Complete PDF</Button>
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50/70 p-3 sm:p-4">
-                              <div className="rounded-xl bg-white p-1.5 shadow-sm ring-1 ring-slate-200"><TrailerTypeIcon category={previewResult.trailer.category} name={previewResult.trailer.name} custom={previewResult.trailer.id === "custom"} active className="h-11 w-24" /></div>
-                              <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-slate-900">{previewResult.trailer.name}</p><p className="mt-0.5 truncate text-[11px] text-slate-500">Trailer {previewTrailerIndex + 1} of {previewPlan.trailersRequired} · {previewEntry.result.piecesLoaded} pieces · {previewEntry.result.weightUtil.toFixed(0)}% payload</p></div>
-                              {previewPlan.trailersRequired > 1 && <select value={previewTrailerIndex} onChange={event => handleSelectPreviewTrailer(Number(event.target.value))} className="h-9 max-w-28 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold" aria-label="Preview trailer" data-testid="select-preview-trailer">{previewPlan.multi.containers.map((_, index) => <option key={index} value={index}>Trailer {index + 1}</option>)}</select>}
+                            <div className="flex items-center gap-3 border-b border-border-hairline bg-surface-recessed p-3 sm:p-4">
+                              <div className="rounded-lg bg-white p-1.5 shadow-sm"><TrailerTypeIcon category={previewResult.trailer.category} name={previewResult.trailer.name} custom={previewResult.trailer.id === "custom"} active className="h-11 w-24" /></div>
+                              <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-text-primary">{previewResult.trailer.name}</p><p className="mt-0.5 truncate text-[11px] text-text-muted">Trailer {previewTrailerIndex + 1} of {previewPlan.trailersRequired} · {previewEntry.result.piecesLoaded} pieces · {previewEntry.result.weightUtil.toFixed(0)}% payload</p></div>
+                              {previewPlan.trailersRequired > 1 && <select value={previewTrailerIndex} onChange={event => handleSelectPreviewTrailer(Number(event.target.value))} className="h-9 max-w-28 rounded-lg border border-border-hairline bg-white px-2 text-xs font-semibold" aria-label="Preview trailer" data-testid="select-preview-trailer">{previewPlan.multi.containers.map((_, index) => <option key={index} value={index}>Trailer {index + 1}</option>)}</select>}
                             </div>
 
                             {activeResultTab === "plan" && <div className="space-y-5 p-4 sm:p-5">
-                              <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sky-600">Calculated placement</p><h3 className="mt-1 text-lg font-bold">3D spatial loading plan</h3></div>
+                              <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-text-secondary">Calculated placement</p><h3 className="mt-1 text-lg font-bold">3D spatial loading plan</h3></div>
                               <TruckLoadPreview3D placed={previewEntry.result.placed} trailer={previewResult.trailer} loadingSequence={previewSequence} visibleSteps={visibleLoadingSteps} />
-                              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="truck-loading-sequence">
-                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold text-slate-800">Nose-to-door loading sequence</p><p className="mt-0.5 text-[11px] text-slate-500">{currentLoadingStep ? `Step ${currentLoadingStep.step} of ${previewSequence.length}: ${currentLoadingStep.cargoName} at about ${toDisplay(currentLoadingStep.positionFromNoseIn)} ${dimUnit} from the nose.` : `Full plan shown · ${previewSequence.length} placement step${previewSequence.length === 1 ? "" : "s"}.`}</p></div>
+                              <div className="rounded-lg border border-border-hairline bg-surface-recessed p-3" data-testid="truck-loading-sequence">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold text-text-secondary">Nose-to-door loading sequence</p><p className="mt-0.5 text-[11px] text-text-muted">{currentLoadingStep ? `Step ${currentLoadingStep.step} of ${previewSequence.length}: ${currentLoadingStep.cargoName} at about ${toDisplay(currentLoadingStep.positionFromNoseIn)} ${dimUnit} from the nose.` : `Full plan shown · ${previewSequence.length} placement step${previewSequence.length === 1 ? "" : "s"}.`}</p></div>
                                   <div className="flex flex-wrap items-center gap-2" data-testid="truck-loading-sequence-controls"><Button variant="outline" size="sm" onClick={() => setVisibleLoadingSteps("all")} className="h-8 text-xs">Full plan</Button><Button variant="outline" size="sm" onClick={() => setVisibleLoadingSteps(1)} disabled={!previewSequence.length} className="h-8 gap-1 text-xs"><Play className="h-3 w-3" /> Start</Button><Button variant="outline" size="sm" onClick={() => setVisibleLoadingSteps(value => value === "all" ? Math.max(1, previewSequence.length - 1) : Math.max(1, value - 1))} disabled={!previewSequence.length || visibleLoadingSteps === 1} className="h-8 px-2" aria-label="Previous loading step"><ArrowLeft className="h-3.5 w-3.5" /></Button><Button variant="outline" size="sm" onClick={() => setVisibleLoadingSteps(value => value === "all" ? 1 : Math.min(previewSequence.length, value + 1))} disabled={!previewSequence.length || visibleLoadingSteps === previewSequence.length} className="h-8 px-2" aria-label="Next loading step"><ArrowRight className="h-3.5 w-3.5" /></Button></div>
                                 </div>
                               </div>
                             </div>}
 
                             {activeResultTab === "overview" && <div className="space-y-5 p-4 sm:p-5">
-                              <div className={`flex items-start gap-3 rounded-2xl border p-4 ${previewBalance.status === "balanced" ? "border-emerald-200 bg-emerald-50" : previewBalance.status === "caution" ? "border-amber-200 bg-amber-50" : "border-red-200 bg-red-50"}`}><CheckCircle2 className={`mt-0.5 h-5 w-5 shrink-0 ${previewBalance.status === "balanced" ? "text-emerald-600" : previewBalance.status === "caution" ? "text-amber-600" : "text-red-600"}`} /><div><p className="text-sm font-bold text-slate-900">{previewBalance.status === "balanced" ? "Plan ready for dispatch review" : "Balance review recommended"}</p><p className="mt-1 text-xs leading-5 text-slate-600">All displayed positions are collision-free and follow the entered stacking and rotation rules. Securement, axle loads, and concentrated floor loads still require carrier confirmation.</p></div></div>
+                              <div className={`flex items-start gap-3 rounded-lg border p-4 ${previewBalance.status === "balanced" ? "border-[#A6F4C5] bg-[#ECFDF3]" : previewBalance.status === "caution" ? "border-[#FDE68A] bg-[#FFFBEB]" : "border-[#FECDCA] bg-[#FEF3F2]"}`}><CheckCircle2 className={`mt-0.5 h-5 w-5 shrink-0 ${previewBalance.status === "balanced" ? "text-[#15803D]" : previewBalance.status === "caution" ? "text-[#B45309]" : "text-[#B42318]"}`} /><div><p className="text-sm font-bold text-text-primary">{previewBalance.status === "balanced" ? "Plan ready for dispatch review" : "Balance review recommended"}</p><p className="mt-1 text-xs leading-5 text-text-muted">All displayed positions are collision-free and follow the entered stacking and rotation rules. Securement, axle loads, and concentrated floor loads still require carrier confirmation.</p></div></div>
                               <div className="grid grid-cols-2 gap-3 md:grid-cols-4"><StatCard icon={Package} label="Pieces loaded" value={`${previewEntry.result.piecesLoaded}/${previewEntry.result.piecesTotal}`} color="#3b82f6" /><StatCard icon={Weight} label="Placed weight" value={`${(previewEntry.result.totalWeight * weightFactor).toLocaleString(undefined, { maximumFractionDigits: 0 })} ${weightUnit}`} sub={`of ${(previewResult.trailer.maxPayloadLbs * weightFactor).toLocaleString(undefined, { maximumFractionDigits: 0 })} ${weightUnit}`} color="#22c55e" /><StatCard icon={Package} label="Volume use" value={`${previewEntry.result.volumeUtil.toFixed(1)}%`} color="#8b5cf6" /><StatCard icon={Truck} label="Equipment" value={`Trailer ${previewTrailerIndex + 1}`} sub={previewResult.trailer.category} color="#0284c7" /></div>
-                              <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]" data-testid="truck-balance-panel"><div className="rounded-xl border border-slate-200 bg-white p-4"><div className="mb-3 flex items-center justify-between"><p className="text-xs font-bold text-slate-800">Cargo balance estimate</p><Badge className={previewBalance.status === "balanced" ? "border-0 bg-emerald-100 text-emerald-700" : previewBalance.status === "caution" ? "border-0 bg-amber-100 text-amber-700" : "border-0 bg-red-100 text-red-700"}>{previewBalance.status}</Badge></div><dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs"><div><dt className="text-slate-400">Cargo centre</dt><dd className="font-semibold text-slate-800">{toDisplay(previewBalance.distanceFromNoseIn)} {dimUnit} from nose</dd></div><div><dt className="text-slate-400">Centre position</dt><dd className="font-semibold text-slate-800">{previewBalance.longitudinalPct.toFixed(1)}% length · {previewBalance.lateralPct.toFixed(1)}% width</dd></div><div><dt className="text-slate-400">Nose / rear half</dt><dd className="font-semibold text-slate-800">{previewBalance.noseWeightPct.toFixed(1)}% / {previewBalance.doorWeightPct.toFixed(1)}%</dd></div><div><dt className="text-slate-400">Left / right half</dt><dd className="font-semibold text-slate-800">{previewBalance.sideAWeightPct.toFixed(1)}% / {previewBalance.sideBWeightPct.toFixed(1)}%</dd></div></dl></div>
-                                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4"><p className="mb-2 text-xs font-bold text-amber-900">Dispatch review</p>{previewBalance.guidance.length > 0 ? <ul className="mb-3 space-y-1.5 text-xs text-amber-900">{previewBalance.guidance.map(item => <li key={item} className="flex gap-2"><ChevronRight className="mt-0.5 h-3 w-3 shrink-0" />{item}</li>)}</ul> : <p className="mb-3 text-xs text-amber-900">The geometric cargo centre is reasonably balanced within this trailer.</p>}<p className="text-[11px] leading-relaxed text-amber-800"><strong>Not an axle-weight calculation.</strong> Confirm tractor weight, kingpin and axle positions, sliding tandems, fuel, and concentrated-load limits with the carrier.</p></div></div>
+                              <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]" data-testid="truck-balance-panel"><div className="rounded-lg border border-border-hairline bg-white p-4"><div className="mb-3 flex items-center justify-between"><p className="text-xs font-bold text-text-secondary">Cargo balance estimate</p><Badge className={previewBalance.status === "balanced" ? "border-0 bg-[#D1FADF] text-[#15803D]" : previewBalance.status === "caution" ? "border-0 bg-[#FEF0C7] text-[#78350F]" : "border-0 bg-[#FEE4E2] text-[#7A271A]"}>{previewBalance.status}</Badge></div><dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs"><div><dt className="text-text-deemphasis">Cargo centre</dt><dd className="font-semibold text-text-secondary">{toDisplay(previewBalance.distanceFromNoseIn)} {dimUnit} from nose</dd></div><div><dt className="text-text-deemphasis">Centre position</dt><dd className="font-semibold text-text-secondary tabular-nums">{previewBalance.longitudinalPct.toFixed(1)}% length · {previewBalance.lateralPct.toFixed(1)}% width</dd></div><div><dt className="text-text-deemphasis">Nose / rear half</dt><dd className="font-semibold text-text-secondary tabular-nums">{previewBalance.noseWeightPct.toFixed(1)}% / {previewBalance.doorWeightPct.toFixed(1)}%</dd></div><div><dt className="text-text-deemphasis">Left / right half</dt><dd className="font-semibold text-text-secondary tabular-nums">{previewBalance.sideAWeightPct.toFixed(1)}% / {previewBalance.sideBWeightPct.toFixed(1)}%</dd></div></dl></div>
+                                <div className="rounded-lg border border-[#FDE68A] bg-[#FFFBEB] p-4"><p className="mb-2 text-xs font-bold text-[#78350F]">Dispatch review</p>{previewBalance.guidance.length > 0 ? <ul className="mb-3 space-y-1.5 text-xs text-[#78350F]">{previewBalance.guidance.map(item => <li key={item} className="flex gap-2"><ChevronRight className="mt-0.5 h-3 w-3 shrink-0" />{item}</li>)}</ul> : <p className="mb-3 text-xs text-[#78350F]">The geometric cargo centre is reasonably balanced within this trailer.</p>}<p className="text-[11px] leading-relaxed text-[#78350F]"><strong>Not an axle-weight calculation.</strong> Confirm tractor weight, kingpin and axle positions, sliding tandems, fuel, and concentrated-load limits with the carrier.</p></div></div>
                             </div>}
 
-                            {activeResultTab === "details" && <div className="space-y-5 p-4 sm:p-5"><div><h3 className="text-sm font-bold text-slate-900">Cargo manifest</h3><p className="mt-1 text-[11px] text-slate-500">Rows used for this spatial calculation.</p></div><div className="space-y-2">{packingItems.map((item) => <div key={item.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-xs"><span className="h-4 w-4 rounded-md shadow-sm ring-1 ring-black/5" style={{ backgroundColor: item.color }} /><div className="min-w-0"><p className="truncate font-bold text-slate-800">{item.name}</p><p className="mt-0.5 text-[10px] text-slate-500">{toDisplay(item.length)} × {toDisplay(item.width)} × {toDisplay(item.height)} {dimUnit} · {toDisplayWeight(item.weight / Math.max(1, item.quantity))} {weightUnit} each</p></div><span className="font-bold text-slate-700">× {item.quantity}</span></div>)}</div><div><h3 className="text-sm font-bold text-slate-900">Trailer {previewTrailerIndex + 1} loading order</h3><div className="mt-3 space-y-2">{previewSequence.map((step) => <div key={step.step} className="flex items-center gap-3 rounded-xl bg-slate-50 p-3"><div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-xs font-extrabold text-sky-700 shadow-sm">{step.step}</div><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-slate-800">{step.cargoName}</p><p className="mt-0.5 text-[10px] text-slate-500">{toDisplay(step.positionFromNoseIn)} {dimUnit} from nose · {toDisplay(step.levelIn)} {dimUnit} above floor</p></div></div>)}</div></div></div>}
+                            {activeResultTab === "details" && <div className="space-y-5 p-4 sm:p-5"><div><h3 className="text-sm font-bold text-text-primary">Cargo manifest</h3><p className="mt-1 text-[11px] text-text-muted">Rows used for this spatial calculation.</p></div><div className="space-y-2">{packingItems.map((item) => <div key={item.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-border-hairline bg-white p-3 text-xs"><span className="h-4 w-4 rounded-md shadow-sm" style={{ backgroundColor: item.color }} /><div className="min-w-0"><p className="truncate font-bold text-text-secondary">{item.name}</p><p className="mt-0.5 text-[10px] text-text-muted">{toDisplay(item.length)} × {toDisplay(item.width)} × {toDisplay(item.height)} {dimUnit} · {toDisplayWeight(item.weight / Math.max(1, item.quantity))} {weightUnit} each</p></div><span className="font-bold text-text-secondary">× {item.quantity}</span></div>)}</div><div><h3 className="text-sm font-bold text-text-primary">Trailer {previewTrailerIndex + 1} loading order</h3><div className="mt-3 space-y-2">{previewSequence.map((step) => <div key={step.step} className="flex items-center gap-3 rounded-lg bg-surface-recessed p-3"><div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-xs font-extrabold text-text-secondary shadow-sm">{step.step}</div><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-text-secondary">{step.cargoName}</p><p className="mt-0.5 text-[10px] text-text-muted">{toDisplay(step.positionFromNoseIn)} {dimUnit} from nose · {toDisplay(step.levelIn)} {dimUnit} above floor</p></div></div>)}</div></div></div>}
                           </CardContent>
                         </Card>
                       )}
 
-                      <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+                      <Card className="border-border-hairline bg-surface-recessed">
                         <CardContent className="p-5">
                           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                             <div className="flex-1">
-                              <h3 className="font-bold text-slate-900 mb-1">Need help with your shipment?</h3>
-                              <p className="text-sm text-slate-600">Get expert freight, customs clearance, and compliance assistance from our team.</p>
+                              <h3 className="font-bold text-text-primary mb-1">Need help with your shipment?</h3>
+                              <p className="text-sm text-text-muted">Get expert freight, customs clearance, and compliance assistance from our team.</p>
                             </div>
                             <Link href="/contact">
                               <Button size="sm" className="gap-1" data-testid="button-contact-us">
@@ -1723,23 +1723,23 @@ export default function TruckLoadPlanner() {
 
           {/* ─── Route Planner Section ──────────────────────────────── */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="max-w-5xl mx-auto mt-10">
-            <Card className="border-slate-200">
+            <Card className="border-border-hairline">
               <CardContent className="p-5">
-                <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2" data-testid="text-route-planner-title">
-                  <Route className="w-4 h-4 text-primary" />
+                <h2 className="text-base font-bold text-text-primary mb-4 flex items-center gap-2" data-testid="text-route-planner-title">
+                  <Route className="w-4 h-4 text-text-muted" />
                   Route Planner
                 </h2>
-                <p className="text-xs text-slate-500 mb-4">
+                <p className="text-xs text-text-muted mb-4">
                   Enter origin and destination to calculate route distance, driving time, and jurisdictions crossed.
                 </p>
 
                 {mapsConfigured === null ? (
-                  <div className="flex items-center gap-2 p-4 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-600">
+                  <div className="flex items-center gap-2 p-4 rounded-lg bg-surface-recessed border border-border-hairline text-sm text-text-muted">
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Loading route planner…
                   </div>
                 ) : !mapsConfigured ? (
-                  <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
+                  <div className="p-4 rounded-lg bg-[#FFFBEB] border border-[#FDE68A] text-sm text-[#78350F]">
                     <AlertTriangle className="w-4 h-4 inline mr-1" />
                     Google Maps API key is not configured. Route planning is unavailable.
                   </div>
@@ -1747,8 +1747,8 @@ export default function TruckLoadPlanner() {
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                       <div>
-                        <Label className="text-xs text-slate-500 mb-1 flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-green-600" />
+                        <Label className="text-xs text-text-muted mb-1 flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-[#15803D]" />
                           Origin (A)
                         </Label>
                         <Input
@@ -1761,8 +1761,8 @@ export default function TruckLoadPlanner() {
                         />
                       </div>
                       <div>
-                        <Label className="text-xs text-slate-500 mb-1 flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-red-500" />
+                        <Label className="text-xs text-text-muted mb-1 flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-[#B42318]" />
                           Destination (B)
                         </Label>
                         <Input
@@ -1790,14 +1790,14 @@ export default function TruckLoadPlanner() {
                     </div>
 
                     {routeLoading && (
-                      <div className="flex items-center gap-2 p-4 rounded-lg bg-blue-50 border border-blue-200 mb-4" data-testid="route-loading">
-                        <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
-                        <span className="text-sm text-blue-700">Calculating route and detecting jurisdictions...</span>
+                      <div className="flex items-center gap-2 p-4 rounded-lg bg-surface-recessed border border-border-hairline mb-4" data-testid="route-loading">
+                        <Loader2 className="w-4 h-4 text-text-secondary animate-spin" />
+                        <span className="text-sm text-text-secondary">Calculating route and detecting jurisdictions...</span>
                       </div>
                     )}
 
                     {routeError && (
-                      <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200 mb-4 text-sm text-red-700" data-testid="route-error">
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-[#FEF3F2] border border-[#FECDCA] mb-4 text-sm text-[#7A271A]" data-testid="route-error">
                         <AlertTriangle className="w-4 h-4 shrink-0" />
                         {routeError}
                       </div>
@@ -1812,14 +1812,14 @@ export default function TruckLoadPlanner() {
                       </div>
                     )}
 
-                    <div className="relative w-full rounded-xl border border-slate-200 overflow-hidden mb-4 h-[250px] sm:h-[350px]" data-testid="route-map-wrapper">
+                    <div className="relative w-full rounded-lg border border-border-hairline overflow-hidden mb-4 h-[250px] sm:h-[350px]" data-testid="route-map-wrapper">
                       <div
                         ref={mapContainerRef}
                         className="w-full h-full"
                         data-testid="route-map"
                       />
                       {!routeInfo && !routeLoading && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-100 text-slate-400">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface-canvas text-text-deemphasis">
                           <MapPin className="w-8 h-8 mb-2 opacity-40" />
                           <p className="text-sm">Enter addresses and calculate route to see map</p>
                         </div>
@@ -1828,45 +1828,45 @@ export default function TruckLoadPlanner() {
 
                     {routeInfo && jurisdictions.length > 0 && (
                       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} data-testid="jurisdictions-section">
-                        <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-                          <Flag className="w-3.5 h-3.5 text-primary" />
+                        <h3 className="text-sm font-bold text-text-primary mb-3 flex items-center gap-2">
+                          <Flag className="w-3.5 h-3.5 text-text-muted" />
                           Jurisdictions Crossed (in travel order)
                         </h3>
 
                         {/* Desktop table */}
-                        <div className="hidden sm:block overflow-x-auto rounded-xl border border-slate-200">
+                        <div className="hidden sm:block overflow-x-auto rounded-lg border border-border-hairline">
                           <table className="w-full text-sm" data-testid="jurisdictions-table">
                             <thead>
-                              <tr className="bg-slate-50 border-b border-slate-200">
-                                <th className="px-4 py-2.5 text-left font-semibold text-slate-700 w-8">#</th>
-                                <th className="px-4 py-2.5 text-left font-semibold text-slate-700">Jurisdiction</th>
-                                <th className="px-4 py-2.5 text-left font-semibold text-slate-700">Country</th>
-                                <th className="px-4 py-2.5 text-left font-semibold text-slate-700">Rules &amp; permits</th>
+                              <tr className="bg-surface-recessed border-b border-border-hairline">
+                                <th className="px-4 py-2.5 text-left font-semibold text-text-secondary w-8">#</th>
+                                <th className="px-4 py-2.5 text-left font-semibold text-text-secondary">Jurisdiction</th>
+                                <th className="px-4 py-2.5 text-left font-semibold text-text-secondary">Country</th>
+                                <th className="px-4 py-2.5 text-left font-semibold text-text-secondary">Rules &amp; permits</th>
                               </tr>
                             </thead>
                             <tbody>
                               {jurisdictions.map((j, idx) => {
                                 const guidance = getTruckJurisdictionGuidance(j);
-                                return <tr key={j.code} className="border-b border-slate-100 last:border-0" data-testid={`jurisdiction-row-${idx}`}>
-                                  <td className="px-4 py-2.5 text-slate-400 text-xs font-medium">{idx + 1}</td>
-                                  <td className="px-4 py-2.5 font-medium text-slate-900">
+                                return <tr key={j.code} className="border-b border-border-hairline last:border-0" data-testid={`jurisdiction-row-${idx}`}>
+                                  <td className="px-4 py-2.5 text-text-deemphasis text-xs font-medium">{idx + 1}</td>
+                                  <td className="px-4 py-2.5 font-medium text-text-primary">
                                     <div className="flex items-center gap-2">
-                                      <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-primary/10 text-primary text-[10px] font-bold shrink-0">
+                                      <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-surface-recessed text-brand text-[10px] font-bold shrink-0">
                                         {j.code}
                                       </span>
                                       {j.name}
                                     </div>
                                   </td>
-                                  <td className="px-4 py-2.5 text-slate-600">
+                                  <td className="px-4 py-2.5 text-text-muted">
                                     <Badge variant="outline" className="text-[10px]">
                                       {j.country === "Canada" ? "CA" : j.country === "United States" ? "US" : j.country}
                                     </Badge>
                                   </td>
                                   <td className="px-4 py-2.5 text-xs">
-                                    <p className="font-medium text-slate-700">{guidance.summary}</p>
+                                    <p className="font-medium text-text-secondary">{guidance.summary}</p>
                                     <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
-                                      {guidance.rulesUrl && <a href={guidance.rulesUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">{guidance.rulesLabel}<ExternalLink className="h-3 w-3" /></a>}
-                                      {guidance.permitUrl && <a href={guidance.permitUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">{guidance.permitLabel}<ExternalLink className="h-3 w-3" /></a>}
+                                      {guidance.rulesUrl && <a href={guidance.rulesUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-brand hover:underline">{guidance.rulesLabel}<ExternalLink className="h-3 w-3" /></a>}
+                                      {guidance.permitUrl && <a href={guidance.permitUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-brand hover:underline">{guidance.permitLabel}<ExternalLink className="h-3 w-3" /></a>}
                                     </div>
                                   </td>
                                 </tr>
@@ -1879,26 +1879,26 @@ export default function TruckLoadPlanner() {
                         <div className="sm:hidden space-y-2" data-testid="jurisdictions-cards">
                           {jurisdictions.map((j, idx) => {
                             const guidance = getTruckJurisdictionGuidance(j);
-                            return <div key={j.code} className="p-3 rounded-lg border border-slate-200 bg-white" data-testid={`jurisdiction-card-${idx}`}>
+                            return <div key={j.code} className="p-3 rounded-lg border border-border-hairline bg-white" data-testid={`jurisdiction-card-${idx}`}>
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex items-center gap-2">
-                                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
+                                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-surface-recessed text-brand text-[10px] font-bold">
                                     {idx + 1}
                                   </span>
                                   <div>
-                                    <p className="text-sm font-semibold text-slate-900">{j.name} ({j.code})</p>
-                                    <p className="text-[11px] text-slate-500">
+                                    <p className="text-sm font-semibold text-text-primary">{j.name} ({j.code})</p>
+                                    <p className="text-[11px] text-text-muted">
                                       {j.country === "Canada" ? "Canada" : j.country === "United States" ? "United States" : j.country}
                                     </p>
                                   </div>
                                 </div>
-                                <div className="text-right text-[10px]"><p className="max-w-44 text-slate-600">{guidance.summary}</p>{guidance.permitUrl && <a href={guidance.permitUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 font-semibold text-primary">{guidance.permitLabel}<ExternalLink className="h-2.5 w-2.5" /></a>}</div>
+                                <div className="text-right text-[10px]"><p className="max-w-44 text-text-muted">{guidance.summary}</p>{guidance.permitUrl && <a href={guidance.permitUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 font-semibold text-brand">{guidance.permitLabel}<ExternalLink className="h-2.5 w-2.5" /></a>}</div>
                               </div>
                             </div>
                           })}
                         </div>
 
-                        <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+                        <p className="mt-3 text-[11px] leading-relaxed text-text-muted">
                           These are official planning references, not permit approval. Gross and axle legality depends on the tractor, axle count and spacing, registered weight, seasonal restrictions, exact roads, and local permit conditions. Scale the assembled vehicle before dispatch.
                         </p>
                       </motion.div>
@@ -1910,16 +1910,16 @@ export default function TruckLoadPlanner() {
           </motion.div>
         </div>
 
-        <section className="mt-16 border-t border-slate-200 bg-white/70 py-10" aria-labelledby="truck-planner-guide">
+        <section className="mt-16 border-t border-border-hairline bg-white py-10" aria-labelledby="truck-planner-guide">
           <div className="container mx-auto px-4 md:px-6 max-w-5xl">
-            <details className="group rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <details className="group rounded-lg border border-border-hairline bg-white shadow-sm">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 sm:p-6">
-                <h2 id="truck-planner-guide" className="text-lg font-bold font-display text-slate-900 sm:text-xl">How to choose a trailer for your cargo</h2>
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-lg text-slate-500 transition group-open:rotate-45">+</span>
+                <h2 id="truck-planner-guide" className="text-lg font-bold font-display text-text-primary sm:text-xl">How to choose a trailer for your cargo</h2>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-canvas text-lg text-text-muted transition group-open:rotate-45">+</span>
               </summary>
-              <div className="border-t border-slate-100 p-5 sm:p-6">
+              <div className="border-t border-border-hairline p-5 sm:p-6">
             <div className="max-w-3xl mb-8">
-              <p className="text-slate-600 leading-relaxed">
+              <p className="text-text-muted leading-relaxed">
                 Enter the outside dimensions, total gross weight, quantity, stacking rules, and cargo type.
                 The planner compares the load against common dry van, reefer, flatbed, step-deck, and specialized
                 trailer presets. For cartons and pallets it calculates collision-free positions, trailer count,
@@ -1929,8 +1929,8 @@ export default function TruckLoadPlanner() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-9">
               <div>
-                <h3 className="text-lg font-bold text-slate-900 mb-3">Planning checks</h3>
-                <ul className="space-y-3 text-sm text-slate-700">
+                <h3 className="text-lg font-bold text-text-primary mb-3">Planning checks</h3>
+                <ul className="space-y-3 text-sm text-text-secondary">
                   {[
                     "Collision-aware placement for every carton or pallet",
                     "Actual trailer count, utilization, and gross weight",
@@ -1940,20 +1940,20 @@ export default function TruckLoadPlanner() {
                     "Route distance and jurisdictions when Google Maps is configured",
                   ].map((item) => (
                     <li key={item} className="flex gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" aria-hidden="true" />
+                      <CheckCircle2 className="w-4 h-4 text-text-muted mt-0.5 shrink-0" aria-hidden="true" />
                       <span>{item}</span>
                     </li>
                   ))}
                 </ul>
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900 mb-3">Important limitation</h3>
-                <p className="text-sm text-slate-700 leading-relaxed mb-3">
+                <h3 className="text-lg font-bold text-text-primary mb-3">Important limitation</h3>
+                <p className="text-sm text-text-secondary leading-relaxed mb-3">
                   The result is a planning estimate, not a legal permit or axle analysis. Actual capacity changes with
                   tractor weight, trailer configuration, axle spacing, fuel, accessories, cargo centre of gravity,
                   and the laws of every jurisdiction on the route.
                 </p>
-                <p className="text-sm text-slate-700 leading-relaxed">
+                <p className="text-sm text-text-secondary leading-relaxed">
                   Before dispatch, confirm the load with the carrier and permit provider—especially for overwidth,
                   overheight, overweight, concentrated loads, or cross-border movements.
                 </p>
@@ -1961,18 +1961,18 @@ export default function TruckLoadPlanner() {
             </div>
 
             <div className="max-w-3xl space-y-3">
-              <h3 className="text-lg font-bold text-slate-900">Truck load planner FAQ</h3>
-              <details className="rounded-xl border border-slate-200 bg-white p-4">
-                <summary className="cursor-pointer font-semibold text-slate-800">Can the planner suggest a trailer automatically?</summary>
-                <p className="mt-3 text-sm text-slate-600">Yes. Select “Help Me Choose” and enter the cargo. The tool ranks presets by actual spatial fit, trailer count, utilization, and payload.</p>
+              <h3 className="text-lg font-bold text-text-primary">Truck load planner FAQ</h3>
+              <details className="rounded-lg border border-border-hairline bg-white p-4">
+                <summary className="cursor-pointer font-semibold text-text-secondary">Can the planner suggest a trailer automatically?</summary>
+                <p className="mt-3 text-sm text-text-muted">Yes. Select “Help Me Choose” and enter the cargo. The tool ranks presets by actual spatial fit, trailer count, utilization, and payload.</p>
               </details>
-              <details className="rounded-xl border border-slate-200 bg-white p-4">
-                <summary className="cursor-pointer font-semibold text-slate-800">Can I upload a packing list?</summary>
-                <p className="mt-3 text-sm text-slate-600">Yes. CSV and spreadsheet columns can be mapped, while supported documents, emails, text files, PDFs, and images use AI extraction. Confirm the preview and the tool fills every cargo input row for you.</p>
+              <details className="rounded-lg border border-border-hairline bg-white p-4">
+                <summary className="cursor-pointer font-semibold text-text-secondary">Can I upload a packing list?</summary>
+                <p className="mt-3 text-sm text-text-muted">Yes. CSV and spreadsheet columns can be mapped, while supported documents, emails, text files, PDFs, and images use AI extraction. Confirm the preview and the tool fills every cargo input row for you.</p>
               </details>
-              <details className="rounded-xl border border-slate-200 bg-white p-4">
-                <summary className="cursor-pointer font-semibold text-slate-800">Does the warning mean a permit is definitely required?</summary>
-                <p className="mt-3 text-sm text-slate-600">No. It means the entered cargo may exceed a common equipment or legal limit. Final permit needs depend on the complete vehicle configuration and route.</p>
+              <details className="rounded-lg border border-border-hairline bg-white p-4">
+                <summary className="cursor-pointer font-semibold text-text-secondary">Does the warning mean a permit is definitely required?</summary>
+                <p className="mt-3 text-sm text-text-muted">No. It means the entered cargo may exceed a common equipment or legal limit. Final permit needs depend on the complete vehicle configuration and route.</p>
               </details>
             </div>
               </div>
@@ -1982,102 +1982,102 @@ export default function TruckLoadPlanner() {
       </main>
 
       {bulkSettingsOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setBulkSettingsOpen(false)} data-testid="bulk-settings-overlay">
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-sm w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()} data-testid="bulk-settings-modal">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setBulkSettingsOpen(false)} data-testid="bulk-settings-overlay">
+          <div className="bg-white rounded-lg shadow-md border border-border-hairline max-w-sm w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()} data-testid="bulk-settings-modal">
             <div className="p-5">
               <div className="flex items-center justify-between mb-1">
-                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                  <Settings2 className="w-4 h-4 text-primary" />
+                <h3 className="font-bold text-sm text-text-primary flex items-center gap-2">
+                  <Settings2 className="w-4 h-4 text-text-muted" />
                   Bulk Cargo Settings
                 </h3>
-                <button onClick={() => setBulkSettingsOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-1" data-testid="button-close-bulk-settings">
+                <button onClick={() => setBulkSettingsOpen(false)} className="text-text-deemphasis hover:text-text-muted transition-colors p-1" data-testid="button-close-bulk-settings">
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <p className="text-[11px] text-slate-500 mb-5">Changes will apply to all existing items and set defaults for new items.</p>
+              <p className="text-[11px] text-text-muted mb-5">Changes will apply to all existing items and set defaults for new items.</p>
 
               <div className="mb-5">
-                <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-3">Stacking</h4>
+                <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-3">Stacking</h4>
                 <div className="space-y-2">
                   <button
                     onClick={() => setDefaultStacking(true)}
                     className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors text-left ${
-                      defaultStacking ? "border-green-400 bg-green-50" : "border-slate-200 bg-white hover:border-slate-300"
+                      defaultStacking ? "border-[#A6F4C5] bg-[#ECFDF3]" : "border-border-hairline bg-white hover:border-border-control"
                     }`}
                     data-testid="bulk-stack-yes"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
-                      <Layers className="w-4 h-4 text-green-700" />
+                    <div className="w-9 h-9 rounded-lg bg-[#D1FADF] flex items-center justify-center shrink-0">
+                      <Layers className="w-4 h-4 text-[#15803D]" />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-slate-900">Stackable</p>
-                      <p className="text-[10px] text-slate-500">Other items can be placed on top</p>
+                      <p className="text-xs font-semibold text-text-primary">Stackable</p>
+                      <p className="text-[10px] text-text-muted">Other items can be placed on top</p>
                     </div>
                   </button>
                   <button
                     onClick={() => setDefaultStacking(false)}
                     className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors text-left ${
-                      !defaultStacking ? "border-amber-400 bg-amber-50" : "border-slate-200 bg-white hover:border-slate-300"
+                      !defaultStacking ? "border-[#FDE68A] bg-[#FFFBEB]" : "border-border-hairline bg-white hover:border-border-control"
                     }`}
                     data-testid="bulk-stack-no"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-                      <X className="w-4 h-4 text-amber-700" />
+                    <div className="w-9 h-9 rounded-lg bg-[#FEF0C7] flex items-center justify-center shrink-0">
+                      <X className="w-4 h-4 text-[#78350F]" />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-slate-900">Not Stackable</p>
-                      <p className="text-[10px] text-slate-500">Nothing placed on top of this item</p>
+                      <p className="text-xs font-semibold text-text-primary">Not Stackable</p>
+                      <p className="text-[10px] text-text-muted">Nothing placed on top of this item</p>
                     </div>
                   </button>
                 </div>
               </div>
 
               <div className="mb-5">
-                <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-3">Rotation</h4>
+                <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-3">Rotation</h4>
                 <div className="space-y-2">
                   <button
                     onClick={() => setDefaultRotation("all")}
                     className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors text-left ${
-                      defaultRotation === "all" ? "border-blue-400 bg-blue-50" : "border-slate-200 bg-white hover:border-slate-300"
+                      defaultRotation === "all" ? "border-brand" : "border-border-app bg-white hover:border-border-control"
                     }`}
                     data-testid="bulk-rotate-all"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
-                      <Box className="w-4 h-4 text-blue-700" />
+                    <div className="w-9 h-9 rounded-lg bg-surface-canvas flex items-center justify-center shrink-0">
+                      <Box className="w-4 h-4 text-text-secondary" />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-slate-900">All Axes</p>
-                      <p className="text-[10px] text-slate-500">Rotate freely in all directions</p>
+                      <p className="text-xs font-semibold text-text-primary">All Axes</p>
+                      <p className="text-[10px] text-text-muted">Rotate freely in all directions</p>
                     </div>
                   </button>
                   <button
                     onClick={() => setDefaultRotation("horizontal")}
                     className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors text-left ${
-                      defaultRotation === "horizontal" ? "border-sky-400 bg-sky-50" : "border-slate-200 bg-white hover:border-slate-300"
+                      defaultRotation === "horizontal" ? "border-brand" : "border-border-app bg-white hover:border-border-control"
                     }`}
                     data-testid="bulk-rotate-horizontal"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-sky-100 flex items-center justify-center shrink-0">
-                      <Box className="w-4 h-4 text-sky-700" />
+                    <div className="w-9 h-9 rounded-lg bg-surface-canvas flex items-center justify-center shrink-0">
+                      <Box className="w-4 h-4 text-text-secondary" />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-slate-900">Horizontal Only</p>
-                      <p className="text-[10px] text-slate-500">Rotate on floor plane only (keeps upright)</p>
+                      <p className="text-xs font-semibold text-text-primary">Horizontal Only</p>
+                      <p className="text-[10px] text-text-muted">Rotate on floor plane only (keeps upright)</p>
                     </div>
                   </button>
                   <button
                     onClick={() => setDefaultRotation("fixed")}
                     className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors text-left ${
-                      defaultRotation === "fixed" ? "border-slate-400 bg-slate-50" : "border-slate-200 bg-white hover:border-slate-300"
+                      defaultRotation === "fixed" ? "border-border-control bg-surface-recessed" : "border-border-hairline bg-white hover:border-border-control"
                     }`}
                     data-testid="bulk-rotate-fixed"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-slate-200 flex items-center justify-center shrink-0">
-                      <Box className="w-4 h-4 text-slate-600" />
+                    <div className="w-9 h-9 rounded-lg bg-surface-canvas flex items-center justify-center shrink-0">
+                      <Box className="w-4 h-4 text-text-muted" />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-slate-900">Fixed</p>
-                      <p className="text-[10px] text-slate-500">No rotation allowed</p>
+                      <p className="text-xs font-semibold text-text-primary">Fixed</p>
+                      <p className="text-[10px] text-text-muted">No rotation allowed</p>
                     </div>
                   </button>
                 </div>
@@ -2102,15 +2102,15 @@ export default function TruckLoadPlanner() {
       )}
 
       {showImportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowImportModal(false)} data-testid="import-modal-overlay">
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()} data-testid="import-modal">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setShowImportModal(false)} data-testid="import-modal-overlay">
+          <div className="bg-white rounded-lg shadow-md border border-border-hairline max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()} data-testid="import-modal">
             <div className="p-5">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                  <FileUp className="w-4 h-4 text-primary" />
+                <h3 className="font-bold text-sm text-text-primary flex items-center gap-2">
+                  <FileUp className="w-4 h-4 text-text-muted" />
                   Import Cargo Data
                 </h3>
-                <button onClick={() => setShowImportModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-1" data-testid="button-close-import">
+                <button onClick={() => setShowImportModal(false)} className="text-text-deemphasis hover:text-text-muted transition-colors p-1" data-testid="button-close-import">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -2118,7 +2118,7 @@ export default function TruckLoadPlanner() {
               {importStep === "upload" && (
                 <>
                   <div
-                    className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${dragOver ? "border-primary bg-primary/5" : "border-slate-200 hover:border-slate-300"}`}
+                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${dragOver ? "border-brand" : "border-border-app hover:border-border-control"}`}
                     onDragOver={e => { e.preventDefault(); setDragOver(true); }}
                     onDragLeave={() => setDragOver(false)}
                     onDrop={e => { e.preventDefault(); setDragOver(false); const file = e.dataTransfer.files?.[0]; if (file) handleImportFile(file); }}
@@ -2126,42 +2126,42 @@ export default function TruckLoadPlanner() {
                   >
                     {importLoading ? (
                       <div className="flex flex-col items-center gap-2">
-                        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                        <p className="text-sm text-slate-600">Processing file...</p>
+                        <Loader2 className="w-8 h-8 text-brand animate-spin" />
+                        <p className="text-sm text-text-muted">Processing file...</p>
                       </div>
                     ) : (
                       <>
-                        <FileUp className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                        <p className="text-sm font-medium text-slate-700 mb-1">Drag & drop your file here</p>
-                        <p className="text-xs text-slate-500 mb-3">Spreadsheets, documents, emails, text, PDFs, or images</p>
+                        <FileUp className="w-8 h-8 text-text-deemphasis mx-auto mb-2" />
+                        <p className="text-sm font-medium text-text-secondary mb-1">Drag & drop your file here</p>
+                        <p className="text-xs text-text-muted mb-3">Spreadsheets, documents, emails, text, PDFs, or images</p>
                         <div className="flex justify-center gap-2 mb-3">
                           <Badge variant="outline" className="text-[10px] gap-1"><FileSpreadsheet className="w-3 h-3" /> CSV/Excel</Badge>
                           <Badge variant="outline" className="text-[10px] gap-1"><FileImage className="w-3 h-3" /> PDF/Image</Badge>
                           <Badge variant="outline" className="text-[10px] gap-1"><Sparkles className="w-3 h-3" /> AI Extract</Badge>
                         </div>
                         <label className="inline-block">
-                          <span className="px-4 py-2 text-xs font-medium text-primary border border-primary rounded-lg cursor-pointer hover:bg-primary/5 transition-colors">Browse Files</span>
+                          <span className="px-4 py-2 text-xs font-medium text-brand border-2 border-brand rounded-lg cursor-pointer hover:bg-surface-recessed transition-colors">Browse Files</span>
                           <input type="file" accept=".csv,.xlsx,.xls,.pdf,.doc,.docx,.rtf,.odt,.ppt,.pptx,.txt,.text,.md,.json,.xml,.html,.htm,.eml,.jpg,.jpeg,.png,.webp,.gif" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleImportFile(f); }} data-testid="import-file-input" />
                         </label>
                       </>
                     )}
                   </div>
 
-                  {importError && <div className="mt-3 p-2.5 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">{importError}</div>}
+                  {importError && <div className="mt-3 p-2.5 rounded-lg bg-[#FEF3F2] border border-[#FECDCA] text-xs text-[#7A271A]">{importError}</div>}
 
-                  <div className="mt-4 p-3 rounded-lg bg-slate-50 border border-slate-100">
+                  <div className="mt-4 p-3 rounded-lg bg-surface-recessed border border-border-hairline">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <Table className="w-4 h-4 text-slate-600" />
-                        <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">CSV Template</span>
+                        <Table className="w-4 h-4 text-text-muted" />
+                        <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">CSV Template</span>
                       </div>
-                      <button onClick={downloadSampleCSV} className="text-[10px] text-primary hover:underline font-medium" data-testid="button-download-template">Download</button>
+                      <button onClick={downloadSampleCSV} className="text-[10px] text-brand hover:underline font-medium" data-testid="button-download-template">Download</button>
                     </div>
-                    <p className="text-xs text-slate-500 mb-2">Use headers like: Name, Length, Width, Height, Weight Each, Quantity</p>
-                    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+                    <p className="text-xs text-text-muted mb-2">Use headers like: Name, Length, Width, Height, Weight Each, Quantity</p>
+                    <div className="overflow-x-auto rounded-lg border border-border-hairline bg-white">
                       <table className="w-full text-[11px]">
                         <thead>
-                          <tr className="bg-slate-100 text-slate-600">
+                          <tr className="bg-surface-canvas text-text-muted">
                             <th className="px-2 py-1.5 text-left font-semibold">Name</th>
                             <th className="px-2 py-1.5 text-right font-semibold">Length</th>
                             <th className="px-2 py-1.5 text-right font-semibold">Width</th>
@@ -2170,8 +2170,8 @@ export default function TruckLoadPlanner() {
                             <th className="px-2 py-1.5 text-right font-semibold">Qty</th>
                           </tr>
                         </thead>
-                        <tbody className="text-slate-600">
-                          <tr className="border-t border-slate-100">
+                        <tbody className="text-text-muted">
+                          <tr className="border-t border-border-hairline">
                             <td className="px-2 py-1.5">Cardboard Box A</td>
                             <td className="px-2 py-1.5 text-right">24</td>
                             <td className="px-2 py-1.5 text-right">18</td>
@@ -2183,10 +2183,10 @@ export default function TruckLoadPlanner() {
                       </table>
                     </div>
                     <div className="flex items-center gap-2 mt-2">
-                      <span className="text-[10px] text-slate-500">Units:</span>
-                      <div className="flex rounded border border-slate-200 overflow-hidden">
-                        <button onClick={() => setImportUnits("imperial")} className={`px-2 py-0.5 text-[10px] font-medium ${importUnits === "imperial" ? "bg-primary text-white" : "bg-white text-slate-600"}`}>in/lbs</button>
-                        <button onClick={() => setImportUnits("metric")} className={`px-2 py-0.5 text-[10px] font-medium ${importUnits === "metric" ? "bg-primary text-white" : "bg-white text-slate-600"}`}>cm/kg</button>
+                      <span className="text-[10px] text-text-muted">Units:</span>
+                      <div className="flex rounded border border-border-hairline overflow-hidden">
+                        <button onClick={() => setImportUnits("imperial")} className={`px-2 py-0.5 text-[10px] font-medium ${importUnits === "imperial" ? "bg-brand text-white" : "bg-white text-text-muted"}`}>in/lbs</button>
+                        <button onClick={() => setImportUnits("metric")} className={`px-2 py-0.5 text-[10px] font-medium ${importUnits === "metric" ? "bg-brand text-white" : "bg-white text-text-muted"}`}>cm/kg</button>
                       </div>
                     </div>
                   </div>
@@ -2195,22 +2195,22 @@ export default function TruckLoadPlanner() {
 
               {importStep === "mapping" && (
                 <>
-                  <h4 className="text-xs font-semibold text-slate-700 mb-3 uppercase tracking-wide">Map Your Columns</h4>
-                  {importError && <div className="mb-3 p-2.5 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">{importError}</div>}
+                  <h4 className="text-xs font-semibold text-text-secondary mb-3 uppercase tracking-wide">Map Your Columns</h4>
+                  {importError && <div className="mb-3 p-2.5 rounded-lg bg-[#FEF3F2] border border-[#FECDCA] text-xs text-[#7A271A]">{importError}</div>}
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {(["name", "length", "width", "height", "weight", "quantity"] as const).map(field => {
                       const labels: Record<string, string> = { name: "Item Name", length: "Length", width: "Width", height: "Height", weight: "Weight", quantity: "Quantity" };
                       const required = ["length", "width", "height"].includes(field);
                       return (
                         <div key={field}>
-                          <Label className="text-[10px] text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                          <Label className="text-[10px] text-text-muted uppercase tracking-wide flex items-center gap-1">
                             {labels[field]}
-                            {required && <span className="text-red-400">*</span>}
+                            {required && <span className="text-[#B42318]">*</span>}
                           </Label>
                           <select
                             value={importColMap[field]}
                             onChange={e => setImportColMap(prev => ({ ...prev, [field]: e.target.value }))}
-                            className="mt-1 w-full h-[30px] px-2 text-[11px] font-medium rounded-md border border-slate-200 bg-white"
+                            className="mt-1 w-full h-[30px] px-2 text-[11px] font-medium rounded-md border border-border-hairline bg-white"
                             data-testid={`mapping-select-${field}`}
                           >
                             <option value="">— Skip —</option>
@@ -2221,14 +2221,14 @@ export default function TruckLoadPlanner() {
                     })}
                   </div>
                   {importRawRows.length > 0 && (
-                    <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200">
+                    <div className="mt-4 overflow-x-auto rounded-lg border border-border-hairline">
                       <table className="w-full text-[10px]">
                         <thead>
-                          <tr className="bg-slate-100">{importRawHeaders.map(h => <th key={h} className="px-2 py-1.5 text-left font-semibold text-slate-600">{h}</th>)}</tr>
+                          <tr className="bg-surface-canvas">{importRawHeaders.map(h => <th key={h} className="px-2 py-1.5 text-left font-semibold text-text-muted">{h}</th>)}</tr>
                         </thead>
                         <tbody>
                           {importRawRows.slice(0, 3).map((r, i) => (
-                            <tr key={i} className="border-t border-slate-100">{importRawHeaders.map(h => <td key={h} className="px-2 py-1 text-slate-500">{r[h]}</td>)}</tr>
+                            <tr key={i} className="border-t border-border-hairline">{importRawHeaders.map(h => <td key={h} className="px-2 py-1 text-text-muted">{r[h]}</td>)}</tr>
                           ))}
                         </tbody>
                       </table>
@@ -2247,14 +2247,14 @@ export default function TruckLoadPlanner() {
 
               {importStep === "preview" && (
                 <>
-                  <h4 className="text-xs font-semibold text-slate-700 mb-3 uppercase tracking-wide">Preview ({importItems.filter(i => i.include).length} items)</h4>
+                  <h4 className="text-xs font-semibold text-text-secondary mb-3 uppercase tracking-wide">Preview ({importItems.filter(i => i.include).length} items)</h4>
                   <div className="max-h-60 overflow-y-auto space-y-1.5">
                     {importItems.map((item, idx) => (
-                      <div key={idx} className={`flex items-center gap-2 p-2 rounded-lg border text-xs ${item.include ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50 opacity-50"}`} data-testid={`import-row-${idx}`}>
+                      <div key={idx} className={`flex items-center gap-2 p-2 rounded-lg border text-xs ${item.include ? "border-border-hairline bg-white" : "border-border-hairline bg-surface-recessed opacity-50"}`} data-testid={`import-row-${idx}`}>
                         <input type="checkbox" checked={item.include} onChange={() => setImportItems(prev => prev.map((it, i) => i === idx ? { ...it, include: !it.include } : it))} className="shrink-0" />
                         <span className="flex-1 font-medium truncate">{item.name || `Item ${idx + 1}`}</span>
-                        <span className="text-slate-500">{item.length}×{item.width}×{item.height}</span>
-                        <span className="text-slate-400">×{item.quantity}</span>
+                        <span className="text-text-muted">{item.length}×{item.width}×{item.height}</span>
+                        <span className="text-text-deemphasis">×{item.quantity}</span>
                       </div>
                     ))}
                   </div>

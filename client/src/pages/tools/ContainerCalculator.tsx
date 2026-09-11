@@ -208,26 +208,26 @@ function CargoColorPicker({
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className={`relative ${triggerSize} overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30`}
+        className={`relative ${triggerSize} overflow-hidden rounded-md border border-border-hairline bg-white shadow-sm transition  hover:border-border-control hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px]`}
         aria-label={`Choose a colour for ${itemLabel}`}
         aria-haspopup="dialog"
         aria-expanded={open}
         data-testid={`button-${testSurface}cargo-color-${index}`}
       >
         <span className="absolute inset-1 rounded-sm" style={{ backgroundColor: value }} />
-        <span className="absolute bottom-0.5 right-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full border border-white bg-slate-700 text-white shadow-sm">
+        <span className="absolute bottom-0.5 right-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full border border-white bg-[#314158] text-white shadow-sm">
           <Palette className="h-1.5 w-1.5" />
         </span>
       </button>
 
       {open && (
         <div
-          className="absolute left-0 top-full z-[90] mt-1.5 w-44 rounded-2xl border border-white/90 bg-white/95 p-2.5 shadow-[0_18px_48px_-18px_rgba(15,23,42,0.42)] backdrop-blur-md"
+          className="absolute left-0 top-full z-[90] mt-1.5 w-44 rounded-lg border border-border-hairline bg-white p-2.5 shadow-md"
           role="dialog"
           aria-label={`Cargo colour options for ${itemLabel}`}
           data-testid={`${testSurface}cargo-color-options-${index}`}
         >
-          <p className="px-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Quick colours</p>
+          <p className="px-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-text-deemphasis">Quick colours</p>
           <div className="mt-2 grid grid-cols-4 gap-2">
             {CARGO_COLOR_PRESETS.map((preset) => {
               const selected = preset.value.toLowerCase() === value.toLowerCase();
@@ -236,21 +236,21 @@ function CargoColorPicker({
                   key={preset.value}
                   type="button"
                   onClick={() => { onChange(preset.value); setOpen(false); }}
-                  className={`group flex h-8 w-8 items-center justify-center rounded-full transition hover:-translate-y-0.5 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${selected ? "ring-2 ring-primary ring-offset-2" : "ring-1 ring-slate-200"}`}
+                  className={`group flex h-8 w-8 items-center justify-center rounded-full transition  hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] ${selected ? "  " : " "}`}
                   style={{ backgroundColor: preset.value }}
                   aria-label={`${preset.name} cargo colour`}
                   aria-pressed={selected}
                   title={preset.name}
                   data-testid={`button-${testSurface}cargo-color-${index}-${preset.name.toLowerCase()}`}
                 >
-                  <span className="h-2 w-2 rounded-full bg-white/0 transition group-hover:bg-white/55" aria-hidden="true" />
+                  <span className="h-2 w-2 rounded-full bg-transparent transition-colors duration-state group-hover:bg-white" aria-hidden="true" />
                 </button>
               );
             })}
           </div>
-          <label className="relative mt-2.5 flex cursor-pointer items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-[10px] font-semibold text-slate-600 transition hover:border-primary/30 hover:bg-white hover:text-primary">
+          <label className="relative mt-2.5 flex cursor-pointer items-center justify-between gap-2 rounded-lg border border-border-hairline bg-surface-recessed px-2.5 py-2 text-[10px] font-semibold text-text-muted transition hover:border-border-hairline hover:bg-white hover:text-brand">
             <span className="flex items-center gap-1.5"><Palette className="h-3.5 w-3.5" />Custom colour</span>
-            <span className="h-4 w-4 rounded-full ring-1 ring-slate-300 ring-offset-1" style={{ backgroundColor: value }} />
+            <span className="h-4 w-4 rounded-full" style={{ backgroundColor: value }} />
             <input
               type="color"
               value={value}
@@ -343,20 +343,20 @@ function CargoMixPanel({ placed, unitSystem }: { placed: PlacedBox[]; unitSystem
   const metric = unitSystem === "metric";
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4" data-testid="cargo-mix-panel">
+    <div className="rounded-lg border border-border-hairline bg-white p-4" data-testid="cargo-mix-panel">
       <div className="mb-3 flex items-center justify-between">
-        <div><p className="text-xs font-bold text-slate-900">Cargo breakdown</p><p className="mt-0.5 text-[10px] text-slate-500">Share of loaded volume</p></div>
+        <div><p className="text-xs font-bold text-text-primary">Cargo breakdown</p><p className="mt-0.5 text-[10px] text-text-muted">Share of loaded volume</p></div>
         <Badge variant="outline" className="text-[10px]">{placed.length} units</Badge>
       </div>
-      <div className="mb-4 flex h-2.5 overflow-hidden rounded-full bg-slate-100">
+      <div className="mb-4 flex h-2.5 overflow-hidden rounded-full bg-surface-canvas">
         {groups.map(group => <div key={`${group.name}-${group.color}`} style={{ width: `${totalVolume > 0 ? group.volumeCuFt / totalVolume * 100 : 0}%`, backgroundColor: group.color }} title={`${group.name}: ${totalVolume > 0 ? (group.volumeCuFt / totalVolume * 100).toFixed(1) : 0}%`} />)}
       </div>
       <div className="space-y-2.5">
         {groups.slice(0, 6).map(group => (
           <div key={`${group.name}-${group.color}`} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 text-[11px]">
-            <div className="flex min-w-0 items-center gap-2"><span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: group.color }} /><span className="truncate font-semibold text-slate-700">{group.name}</span></div>
-            <span className="text-slate-500">{group.pieces} pcs</span>
-            <span className="min-w-16 text-right font-medium text-slate-700">{metric ? `${(group.weightLbs * LB_TO_KG).toFixed(0)} kg` : `${group.weightLbs.toFixed(0)} lb`}</span>
+            <div className="flex min-w-0 items-center gap-2"><span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: group.color }} /><span className="truncate font-semibold text-text-secondary">{group.name}</span></div>
+            <span className="text-text-muted">{group.pieces} pcs</span>
+            <span className="min-w-16 text-right font-medium text-text-secondary">{metric ? `${(group.weightLbs * LB_TO_KG).toFixed(0)} kg` : `${group.weightLbs.toFixed(0)} lb`}</span>
           </div>
         ))}
       </div>
@@ -366,18 +366,18 @@ function CargoMixPanel({ placed, unitSystem }: { placed: PlacedBox[]; unitSystem
 
 function PlanReviewPanel({ items }: { items: PlanReviewItem[] }) {
   const appearance = {
-    pass: { icon: CheckCircle2, iconClass: "text-emerald-600", boxClass: "border-emerald-100 bg-emerald-50/55", label: "Ready" },
-    warning: { icon: AlertTriangle, iconClass: "text-amber-600", boxClass: "border-amber-100 bg-amber-50/55", label: "Review" },
-    action: { icon: X, iconClass: "text-rose-600", boxClass: "border-rose-100 bg-rose-50/60", label: "Action" },
-    manual: { icon: Settings2, iconClass: "text-sky-600", boxClass: "border-sky-100 bg-sky-50/55", label: "Manual" },
+    pass: { icon: CheckCircle2, iconClass: "text-[#15803D]", boxClass: "border-[#A6F4C5] bg-[#ECFDF3]", label: "Ready" },
+    warning: { icon: AlertTriangle, iconClass: "text-[#B45309]", boxClass: "border-[#FDE68A] bg-[#FFFBEB]", label: "Review" },
+    action: { icon: X, iconClass: "text-[#B42318]", boxClass: "border-[#FECDCA] bg-[#FEF3F2]", label: "Action" },
+    manual: { icon: Settings2, iconClass: "text-text-secondary", boxClass: "border-border-hairline bg-surface-recessed", label: "Manual" },
   } as const;
 
   return (
-    <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4" data-testid="plan-review-panel">
+    <div className="mb-5 rounded-lg border border-border-hairline bg-white p-4" data-testid="plan-review-panel">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-bold text-slate-900">Plan review</h3>
-          <p className="mt-0.5 text-[11px] text-slate-500">Checks that matter before the plan is handed to a loading crew</p>
+          <h3 className="text-sm font-bold text-text-primary">Plan review</h3>
+          <p className="mt-0.5 text-[11px] text-text-muted">Checks that matter before the plan is handed to a loading crew</p>
         </div>
         <Badge variant="outline" className="shrink-0 text-[10px]">4 operational checks</Badge>
       </div>
@@ -390,11 +390,11 @@ function PlanReviewPanel({ items }: { items: PlanReviewItem[] }) {
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <StatusIcon className={`h-4 w-4 ${style.iconClass}`} />
-                  <p className="text-xs font-bold text-slate-800">{item.label}</p>
+                  <p className="text-xs font-bold text-text-secondary">{item.label}</p>
                 </div>
                 <span className={`text-[9px] font-bold uppercase tracking-wide ${style.iconClass}`}>{style.label}</span>
               </div>
-              <p className="mt-1.5 text-[10px] leading-relaxed text-slate-600">{item.detail}</p>
+              <p className="mt-1.5 text-[10px] leading-relaxed text-text-muted">{item.detail}</p>
             </div>
           );
         })}
@@ -422,7 +422,7 @@ function ViewerHoverLabel({ children, side = "left" }: { children: string; side?
     : side === "bottom"
       ? "left-1/2 top-full mt-2 -translate-x-1/2"
       : "right-full top-1/2 mr-2 -translate-y-1/2";
-  return <span role="tooltip" className={`pointer-events-none absolute z-[80] w-max max-w-48 rounded-lg border border-slate-700/10 bg-slate-950 px-2 py-1 text-[9px] font-semibold leading-4 text-white opacity-0 shadow-lg group-hover:opacity-100 group-focus-visible:opacity-100 ${position}`}>{children}</span>;
+  return <span role="tooltip" className={`pointer-events-none absolute z-[80] w-max max-w-48 rounded-lg border border-white/10 bg-surface-dark px-2 py-1 text-[9px] font-semibold leading-4 text-white opacity-0 shadow-md group-hover:opacity-100 group-focus-visible:opacity-100 ${position}`}>{children}</span>;
 }
 
 function ContainerFallback2D({
@@ -439,13 +439,13 @@ function ContainerFallback2D({
 
   return (
     <div
-      className="w-full min-h-[340px] rounded-xl overflow-hidden border border-slate-200 bg-gradient-to-b from-slate-50 to-slate-100 p-4 sm:p-5"
+      className="w-full min-h-[340px] rounded-lg overflow-hidden border border-border-hairline bg-surface-recessed p-4 sm:p-5"
       data-testid="container-3d-viewer"
     >
       <div className="flex items-start justify-between gap-4 mb-3">
         <div>
-          <p className="text-sm font-semibold text-slate-800">2D Load Preview</p>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-sm font-semibold text-text-secondary">2D Load Preview</p>
+          <p className="text-xs text-text-muted mt-0.5">
             Interactive 3D could not start in this browser session, so the same loading plan is shown from above.
           </p>
         </div>
@@ -462,7 +462,7 @@ function ContainerFallback2D({
         </Button>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-2 shadow-inner">
+      <div className="rounded-lg border border-border-hairline bg-white p-2 shadow-inner">
         <svg
           viewBox={`${-padding} ${-padding} ${container.lengthIn + padding * 2} ${container.widthIn + padding * 2}`}
           className="block w-full h-[220px]"
@@ -526,9 +526,9 @@ function ContainerFallback2D({
         </svg>
       </div>
 
-      <div className="flex items-center justify-between gap-3 mt-3 text-[11px] text-slate-500">
+      <div className="flex items-center justify-between gap-3 mt-3 text-[11px] text-text-muted">
         <span>Universal SVG preview — no graphics hardware required</span>
-        <span className="font-medium text-slate-600">Dashed blue line: container doors</span>
+        <span className="font-medium text-text-muted">Dashed blue line: container doors</span>
       </div>
     </div>
   );
@@ -3296,7 +3296,7 @@ export function ContainerViewer3D({
   return (
     <div
       ref={workspaceRef}
-      className={`bg-white ${isFullscreen ? "h-screen w-screen overflow-hidden p-3 sm:p-4" : "rounded-xl"}`}
+      className={`bg-white ${isFullscreen ? "h-screen w-screen overflow-hidden p-3 sm:p-4" : "rounded-lg"}`}
       data-testid="container-viewer-workspace"
     >
       <h2 className="sr-only">Interactive 3D container loading workspace</h2>
@@ -3312,48 +3312,48 @@ export function ContainerViewer3D({
       ) : (
         <div className={`relative min-h-0 ${isFullscreen ? "h-[calc(100vh-1.5rem)] sm:h-[calc(100vh-2rem)]" : "h-[540px] md:h-[620px] xl:h-[700px]"}`}>
         <div
-          className="relative h-full min-h-0 w-full overflow-hidden rounded-xl border border-slate-200/90 bg-[#e6eaef]"
+          className="relative h-full min-h-0 w-full overflow-hidden rounded-lg border border-border-hairline bg-[#e6eaef]"
           data-testid="container-3d-viewer"
         >
           <div ref={mountRef} className="absolute inset-0" />
           {!arrangeMode && onPlacedChange && selectedActionIndices.length > 0 && (
-            <div className="absolute left-3 top-16 z-30 w-[min(390px,calc(100%-1.5rem))] rounded-2xl border border-white/90 bg-white/[0.96] p-2.5 shadow-[0_18px_44px_-24px_rgba(15,23,42,0.5)] backdrop-blur-xl" data-testid="selected-cargo-quick-actions">
+            <div className="absolute left-3 top-16 z-30 w-[min(390px,calc(100%-1.5rem))] rounded-lg border border-border-hairline bg-white p-2.5 shadow-md" data-testid="selected-cargo-quick-actions">
               <div className="flex items-center justify-between gap-2 px-1">
-                <div><p className="text-[10px] font-bold text-slate-800">{selectedActionIndices.length === 1 ? `Unit #${selectedActionIndices[0] + 1} selected` : `${selectedActionIndices.length} units selected`}</p><p className="mt-0.5 text-[8px] text-slate-400">Move or rotate safely</p></div>
-                <button type="button" onClick={() => setArrangeMode(true)} className="rounded-lg px-2 py-1 text-[8px] font-bold text-primary hover:bg-blue-50" data-testid="button-open-more-cargo-tools">More tools</button>
+                <div><p className="text-[10px] font-bold text-text-secondary">{selectedActionIndices.length === 1 ? `Unit #${selectedActionIndices[0] + 1} selected` : `${selectedActionIndices.length} units selected`}</p><p className="mt-0.5 text-[8px] text-text-deemphasis">Move or rotate safely</p></div>
+                <button type="button" onClick={() => setArrangeMode(true)} className="rounded-lg px-2 py-1 text-[8px] font-bold text-brand hover:bg-surface-recessed" data-testid="button-open-more-cargo-tools">More tools</button>
               </div>
               <div className="mt-2 grid grid-cols-4 gap-1">
-                <button type="button" onClick={() => applySelectionRotation("counterclockwise")} disabled={!canRotateSelectionLeft} className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl border border-slate-200 bg-white text-[8px] font-bold text-slate-600 transition hover:border-blue-300 hover:text-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label="Rotate selected cargo 90 degrees left" data-testid="button-quick-rotate-left"><RotateCcw className="h-4 w-4" /><span>Rotate left</span></button>
-                <button type="button" onClick={() => applySelectionRotation("clockwise")} disabled={!canRotateSelectionRight} className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl border border-slate-200 bg-white text-[8px] font-bold text-slate-600 transition hover:border-blue-300 hover:text-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label="Rotate selected cargo 90 degrees right" data-testid="button-quick-rotate-right"><RotateCw className="h-4 w-4" /><span>Rotate right</span></button>
-                <button type="button" onClick={() => moveSelectionVertically("up")} disabled={!canStackSelectionUp} className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl border border-slate-200 bg-white text-[8px] font-bold text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-30" aria-label="Stack selected cargo on the next supported unit" data-testid="button-quick-stack-up"><span className="relative flex h-5 w-5 items-center justify-center"><Layers className="absolute bottom-0 h-3.5 w-3.5" /><ArrowUp className="absolute -top-1 h-3 w-3" /></span><span>Stack up</span></button>
-                <button type="button" onClick={() => moveSelectionVertically("down")} disabled={!canLowerSelection} className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl border border-slate-200 bg-white text-[8px] font-bold text-slate-600 transition hover:border-amber-300 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-30" aria-label="Lower selected cargo to the next supported level" data-testid="button-quick-lower"><span className="relative flex h-5 w-5 items-center justify-center"><Layers className="absolute top-0 h-3.5 w-3.5" /><ArrowDown className="absolute -bottom-1 h-3 w-3" /></span><span>Lower</span></button>
+                <button type="button" onClick={() => applySelectionRotation("counterclockwise")} disabled={!canRotateSelectionLeft} className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-lg border border-border-hairline bg-white text-[8px] font-bold text-text-muted transition hover:border-border-hairline hover:text-brand disabled:cursor-not-allowed disabled:opacity-30" aria-label="Rotate selected cargo 90 degrees left" data-testid="button-quick-rotate-left"><RotateCcw className="h-4 w-4" /><span>Rotate left</span></button>
+                <button type="button" onClick={() => applySelectionRotation("clockwise")} disabled={!canRotateSelectionRight} className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-lg border border-border-hairline bg-white text-[8px] font-bold text-text-muted transition hover:border-border-hairline hover:text-brand disabled:cursor-not-allowed disabled:opacity-30" aria-label="Rotate selected cargo 90 degrees right" data-testid="button-quick-rotate-right"><RotateCw className="h-4 w-4" /><span>Rotate right</span></button>
+                <button type="button" onClick={() => moveSelectionVertically("up")} disabled={!canStackSelectionUp} className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-lg border border-border-hairline bg-white text-[8px] font-bold text-text-muted transition hover:border-[#A6F4C5] hover:text-[#15803D] disabled:cursor-not-allowed disabled:opacity-30" aria-label="Stack selected cargo on the next supported unit" data-testid="button-quick-stack-up"><span className="relative flex h-5 w-5 items-center justify-center"><Layers className="absolute bottom-0 h-3.5 w-3.5" /><ArrowUp className="absolute -top-1 h-3 w-3" /></span><span>Stack up</span></button>
+                <button type="button" onClick={() => moveSelectionVertically("down")} disabled={!canLowerSelection} className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-lg border border-border-hairline bg-white text-[8px] font-bold text-text-muted transition hover:border-[#FDE68A] hover:text-[#78350F] disabled:cursor-not-allowed disabled:opacity-30" aria-label="Lower selected cargo to the next supported level" data-testid="button-quick-lower"><span className="relative flex h-5 w-5 items-center justify-center"><Layers className="absolute top-0 h-3.5 w-3.5" /><ArrowDown className="absolute -bottom-1 h-3 w-3" /></span><span>Lower</span></button>
               </div>
-              <p className="mt-1.5 px-1 text-[8px] leading-3 text-slate-400">Stacking snaps to a supported surface. Unavailable actions are dimmed.</p>
+              <p className="mt-1.5 px-1 text-[8px] leading-3 text-text-deemphasis">Stacking snaps to a supported surface. Unavailable actions are dimmed.</p>
             </div>
           )}
           {arrangeMode && <div className="absolute left-3 top-3 z-30 flex items-center gap-2">
-            <button type="button" onClick={undoArrangement} disabled={historyCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/95 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white disabled:opacity-40" data-testid="button-undo-cargo-move"><Undo2 className="mr-1 inline h-3.5 w-3.5" />Undo</button><button type="button" onClick={redoArrangement} disabled={redoCount === 0} className="h-8 rounded-lg border border-white/80 bg-white/95 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white disabled:opacity-40" data-testid="button-redo-cargo-move"><Redo2 className="mr-1 inline h-3.5 w-3.5" />Redo</button><button type="button" onClick={resetArrangement} className="h-8 rounded-lg border border-white/80 bg-white/95 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white" data-testid="button-reset-cargo-layout"><RotateCcw className="mr-1 inline h-3.5 w-3.5" />Reset</button>
+            <button type="button" onClick={undoArrangement} disabled={historyCount === 0} className="h-8 rounded-lg border border-border-hairline bg-white px-2.5 text-[11px] font-medium text-text-secondary shadow-sm hover:bg-white disabled:opacity-40" data-testid="button-undo-cargo-move"><Undo2 className="mr-1 inline h-3.5 w-3.5" />Undo</button><button type="button" onClick={redoArrangement} disabled={redoCount === 0} className="h-8 rounded-lg border border-border-hairline bg-white px-2.5 text-[11px] font-medium text-text-secondary shadow-sm hover:bg-white disabled:opacity-40" data-testid="button-redo-cargo-move"><Redo2 className="mr-1 inline h-3.5 w-3.5" />Redo</button><button type="button" onClick={resetArrangement} className="h-8 rounded-lg border border-border-hairline bg-white px-2.5 text-[11px] font-medium text-text-secondary shadow-sm hover:bg-white" data-testid="button-reset-cargo-layout"><RotateCcw className="mr-1 inline h-3.5 w-3.5" />Reset</button>
           </div>}
           {arrangeMode && selectedCargoIndices.size > 0 && (
-            <div className="absolute left-3 top-14 z-20 w-[min(430px,calc(100%-5rem))] rounded-2xl border border-white/90 bg-white/[0.98] p-3 shadow-[0_18px_45px_-22px_rgba(15,23,42,0.5)]" data-testid="cargo-group-controls">
+            <div className="absolute left-3 top-14 z-20 w-[min(430px,calc(100%-5rem))] rounded-lg border border-border-hairline bg-white p-3 shadow-md" data-testid="cargo-group-controls">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">{selectedCargoIndices.size} selected</p>
-                <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5 text-[9px] font-bold">
-                  <button type="button" onClick={() => setMovementStep("fine")} className={`rounded-md px-2 py-1 ${movementStep === "fine" ? "bg-white text-primary shadow-sm" : "text-slate-400"}`} aria-pressed={movementStep === "fine"}>{unitSystem === "metric" ? "1 cm" : "1 in"}</button>
-                  <button type="button" onClick={() => setMovementStep("coarse")} className={`rounded-md px-2 py-1 ${movementStep === "coarse" ? "bg-white text-primary shadow-sm" : "text-slate-400"}`} aria-pressed={movementStep === "coarse"}>{unitSystem === "metric" ? "10 cm" : "6 in"}</button>
-                  <button type="button" onClick={() => setSelectedCargoIndices(new Set())} className="rounded-md px-2 py-1 text-slate-400 hover:bg-white hover:text-slate-700">Clear</button>
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">{selectedCargoIndices.size} selected</p>
+                <div className="flex items-center gap-1 rounded-lg bg-surface-canvas p-0.5 text-[9px] font-bold">
+                  <button type="button" onClick={() => setMovementStep("fine")} className={`rounded-md px-2 py-1 ${movementStep === "fine" ? "bg-white text-brand shadow-sm" : "text-text-deemphasis"}`} aria-pressed={movementStep === "fine"}>{unitSystem === "metric" ? "1 cm" : "1 in"}</button>
+                  <button type="button" onClick={() => setMovementStep("coarse")} className={`rounded-md px-2 py-1 ${movementStep === "coarse" ? "bg-white text-brand shadow-sm" : "text-text-deemphasis"}`} aria-pressed={movementStep === "coarse"}>{unitSystem === "metric" ? "10 cm" : "6 in"}</button>
+                  <button type="button" onClick={() => setSelectedCargoIndices(new Set())} className="rounded-md px-2 py-1 text-text-deemphasis hover:bg-white hover:text-text-secondary">Clear</button>
                 </div>
               </div>
-              <div className="mt-2 grid grid-cols-4 gap-1 text-[8px] font-bold text-slate-500 sm:grid-cols-8">
-                <button type="button" onClick={() => applySelectionRotation("counterclockwise")} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Rotate selected cargo left" title="Rotate 90° left (Q)" data-testid="button-rotate-selection-left"><RotateCcw className="h-3.5 w-3.5" /><span>Left 90°</span></button>
-                <button type="button" onClick={() => nudgeSelection(-movementStepIn, 0)} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Move selected cargo toward the closed end" title="Move toward closed end (↑)" data-testid="button-nudge-closed-end"><ArrowUp className="h-3.5 w-3.5" /><span>Closed</span></button>
-                <button type="button" onClick={() => applySelectionRotation("clockwise")} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Rotate selected cargo right" title="Rotate 90° right (E)" data-testid="button-rotate-selection-right"><RotateCw className="h-3.5 w-3.5" /><span>Right 90°</span></button><button type="button" onClick={() => moveSelectionVertically("up")} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Stack selected cargo upward" title="Move to next supported stack level" data-testid="button-stack-selection-up"><ChevronUp className="h-3.5 w-3.5" /><span>Stack up</span></button><button type="button" onClick={() => moveSelectionVertically("down")} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Lower selected cargo" title="Move to next supported level or floor" data-testid="button-stack-selection-down"><ChevronDown className="h-3.5 w-3.5" /><span>Lower</span></button>
-                <button type="button" onClick={() => nudgeSelection(0, -movementStepIn)} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Move selected cargo toward side A" title="Move toward side A (←)" data-testid="button-nudge-side-a"><ArrowLeft className="h-3.5 w-3.5" /><span>Side A</span></button>
-                <button type="button" onClick={() => nudgeSelection(movementStepIn, 0)} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Move selected cargo toward the doors" title="Move toward doors (↓)" data-testid="button-nudge-doors"><ArrowDown className="h-3.5 w-3.5" /><span>Doors</span></button>
-                <button type="button" onClick={() => nudgeSelection(0, movementStepIn)} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-primary" aria-label="Move selected cargo toward side B" title="Move toward side B (→)" data-testid="button-nudge-side-b"><ArrowRight className="h-3.5 w-3.5" /><span>Side B</span></button>
+              <div className="mt-2 grid grid-cols-4 gap-1 text-[8px] font-bold text-text-muted sm:grid-cols-8">
+                <button type="button" onClick={() => applySelectionRotation("counterclockwise")} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-border-hairline bg-white hover:border-border-hairline hover:text-brand" aria-label="Rotate selected cargo left" title="Rotate 90° left (Q)" data-testid="button-rotate-selection-left"><RotateCcw className="h-3.5 w-3.5" /><span>Left 90°</span></button>
+                <button type="button" onClick={() => nudgeSelection(-movementStepIn, 0)} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-border-hairline bg-white hover:border-border-hairline hover:text-brand" aria-label="Move selected cargo toward the closed end" title="Move toward closed end (↑)" data-testid="button-nudge-closed-end"><ArrowUp className="h-3.5 w-3.5" /><span>Closed</span></button>
+                <button type="button" onClick={() => applySelectionRotation("clockwise")} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-border-hairline bg-white hover:border-border-hairline hover:text-brand" aria-label="Rotate selected cargo right" title="Rotate 90° right (E)" data-testid="button-rotate-selection-right"><RotateCw className="h-3.5 w-3.5" /><span>Right 90°</span></button><button type="button" onClick={() => moveSelectionVertically("up")} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-border-hairline bg-white hover:border-border-hairline hover:text-brand" aria-label="Stack selected cargo upward" title="Move to next supported stack level" data-testid="button-stack-selection-up"><ChevronUp className="h-3.5 w-3.5" /><span>Stack up</span></button><button type="button" onClick={() => moveSelectionVertically("down")} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-border-hairline bg-white hover:border-border-hairline hover:text-brand" aria-label="Lower selected cargo" title="Move to next supported level or floor" data-testid="button-stack-selection-down"><ChevronDown className="h-3.5 w-3.5" /><span>Lower</span></button>
+                <button type="button" onClick={() => nudgeSelection(0, -movementStepIn)} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-border-hairline bg-white hover:border-border-hairline hover:text-brand" aria-label="Move selected cargo toward side A" title="Move toward side A (←)" data-testid="button-nudge-side-a"><ArrowLeft className="h-3.5 w-3.5" /><span>Side A</span></button>
+                <button type="button" onClick={() => nudgeSelection(movementStepIn, 0)} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-border-hairline bg-white hover:border-border-hairline hover:text-brand" aria-label="Move selected cargo toward the doors" title="Move toward doors (↓)" data-testid="button-nudge-doors"><ArrowDown className="h-3.5 w-3.5" /><span>Doors</span></button>
+                <button type="button" onClick={() => nudgeSelection(0, movementStepIn)} className="flex min-h-10 flex-col items-center justify-center rounded-lg border border-border-hairline bg-white hover:border-border-hairline hover:text-brand" aria-label="Move selected cargo toward side B" title="Move toward side B (→)" data-testid="button-nudge-side-b"><ArrowRight className="h-3.5 w-3.5" /><span>Side B</span></button>
               </div>
-              <div className="mt-1.5 grid grid-cols-3 gap-1 text-[8px] sm:grid-cols-6">{([ ["closed-end", "Align closed"], ["length-center", "Length ctr"], ["doors", "Align doors"], ["side-a", "Align A"], ["width-center", "Width ctr"], ["side-b", "Align B"] ] as const).map(([alignment, label]) => <button key={alignment} type="button" onClick={() => applySelectionAlignment(alignment)} className="rounded-lg border border-slate-200 bg-slate-50 px-1 py-1.5 font-bold text-slate-500 hover:border-blue-300 hover:bg-white hover:text-primary" data-testid={`button-align-${alignment}`}>{label}</button>)}</div>
-              <p className="mt-2 text-[9px] leading-4 text-slate-400">Drag, nudge or rotate the group. Collision, boundary and stack-support checks remain active.</p>
+              <div className="mt-1.5 grid grid-cols-3 gap-1 text-[8px] sm:grid-cols-6">{([ ["closed-end", "Align closed"], ["length-center", "Length ctr"], ["doors", "Align doors"], ["side-a", "Align A"], ["width-center", "Width ctr"], ["side-b", "Align B"] ] as const).map(([alignment, label]) => <button key={alignment} type="button" onClick={() => applySelectionAlignment(alignment)} className="rounded-lg border border-border-hairline bg-surface-recessed px-1 py-1.5 font-bold text-text-muted hover:border-border-hairline hover:bg-white hover:text-brand" data-testid={`button-align-${alignment}`}>{label}</button>)}</div>
+              <p className="mt-2 text-[9px] leading-4 text-text-deemphasis">Drag, nudge or rotate the group. Collision, boundary and stack-support checks remain active.</p>
             </div>
           )}
           <AnimatePresence initial={false}>
@@ -3373,28 +3373,28 @@ export function ContainerViewer3D({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 12 }}
                 transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.72 }}
-                className="absolute bottom-14 left-0 right-0 z-40 overflow-hidden rounded-t-2xl border-t border-white/95 bg-white/[0.96] p-3 text-slate-700 shadow-[0_-18px_42px_-24px_rgba(15,23,42,0.46)] backdrop-blur-xl lg:hidden"
+                className="absolute bottom-14 left-0 right-0 z-40 overflow-hidden rounded-t-lg border-t border-border-hairline bg-white p-3 text-text-secondary shadow-md lg:hidden"
                 aria-label="View controls"
                 data-testid="mobile-scene-settings-panel"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-primary"><Settings2 className="h-4 w-4" /></span>
-                    <div><p className="text-[11px] font-bold text-slate-900">View controls</p><p className="mt-0.5 text-[9px] text-slate-500">Display, camera and quality</p></div>
+                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-recessed text-brand"><Settings2 className="h-4 w-4" /></span>
+                    <div><p className="text-[11px] font-bold text-text-primary">View controls</p><p className="mt-0.5 text-[9px] text-text-muted">Display, camera and quality</p></div>
                   </div>
                 </div>
-                <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Display</p>
+                <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.12em] text-text-deemphasis">Display</p>
                 <div className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-4">{[
                   { label: "Grid", active: showGrid, set: setShowGrid, icon: Grid3X3 },
                   { label: "Shell", active: showShell, set: setShowShell, icon: Eye },
                   { label: "References", active: showLabels, set: setShowLabels, icon: Box },
                   { label: "Measures", active: showMeasurements, set: setShowMeasurements, icon: Ruler },
-                ].map(({ label, active, set, icon: Icon }) => <button key={label} type="button" onClick={() => set(!active)} className={`flex min-h-12 items-center justify-center gap-1.5 rounded-xl border px-2 text-[10px] font-bold transition active:scale-[0.97] ${active ? "border-blue-200 bg-blue-50 text-primary" : "border-slate-200 bg-slate-50 text-slate-400"}`} aria-pressed={active} data-testid={`button-mobile-layer-${label.toLowerCase()}`}><Icon className="h-4 w-4" />{label}</button>)}</div>
+                ].map(({ label, active, set, icon: Icon }) => <button key={label} type="button" onClick={() => set(!active)} className={`flex min-h-12 items-center justify-center gap-1.5 rounded-lg border-2 px-2 text-[10px] font-bold transition active:scale-[0.97] ${active ? "border-brand text-brand" : "border-border-app bg-surface-recessed text-text-deemphasis"}`} aria-pressed={active} data-testid={`button-mobile-layer-${label.toLowerCase()}`}><Icon className="h-4 w-4" />{label}</button>)}</div>
                 <div className="mt-3 grid grid-cols-2 gap-3">
-                  <div><p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Camera</p><div className="mt-1.5 grid grid-cols-4 gap-1">{([ ["isometric", "3D"], ["doors", "Doors"], ["side", "Side"], ["top", "Top"] ] as const).map(([preset, label]) => <button key={preset} type="button" onClick={() => setActiveView(preset)} className={`min-h-10 rounded-lg border px-1 text-[9px] font-bold transition active:scale-95 ${activeView === preset ? "border-blue-300 bg-blue-50 text-primary" : "border-slate-200 bg-white text-slate-600"}`} aria-pressed={activeView === preset} data-testid={`button-mobile-view-${preset}`}>{label}</button>)}</div></div>
-                  <div><p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Quality</p><div className="mt-1.5 grid grid-cols-3 gap-1">{([ ["auto", "Auto"], ["performance", "Fast"], ["quality", "High"] ] as const).map(([quality, label]) => <button key={quality} type="button" onClick={() => setRenderQuality(quality)} className={`min-h-10 rounded-lg border px-1 text-[9px] font-bold transition active:scale-95 ${renderQuality === quality ? "border-cyan-300 bg-cyan-50 text-cyan-700" : "border-slate-200 bg-white text-slate-500"}`} aria-pressed={renderQuality === quality} data-testid={`button-mobile-quality-${quality}`}>{label}</button>)}</div></div>
+                  <div><p className="text-[9px] font-bold uppercase tracking-[0.12em] text-text-deemphasis">Camera</p><div className="mt-1.5 grid grid-cols-4 gap-1">{([ ["isometric", "3D"], ["doors", "Doors"], ["side", "Side"], ["top", "Top"] ] as const).map(([preset, label]) => <button key={preset} type="button" onClick={() => setActiveView(preset)} className={`min-h-10 rounded-lg border-2 px-1 text-[9px] font-bold transition  ${activeView === preset ? "border-brand text-brand" : "border-border-app bg-white text-text-muted"}`} aria-pressed={activeView === preset} data-testid={`button-mobile-view-${preset}`}>{label}</button>)}</div></div>
+                  <div><p className="text-[9px] font-bold uppercase tracking-[0.12em] text-text-deemphasis">Quality</p><div className="mt-1.5 grid grid-cols-3 gap-1">{([ ["auto", "Auto"], ["performance", "Fast"], ["quality", "High"] ] as const).map(([quality, label]) => <button key={quality} type="button" onClick={() => setRenderQuality(quality)} className={`min-h-10 rounded-lg border px-1 text-[9px] font-bold transition  ${renderQuality === quality ? "border-border-hairline bg-surface-recessed text-text-secondary" : "border-border-hairline bg-white text-text-muted"}`} aria-pressed={renderQuality === quality} data-testid={`button-mobile-quality-${quality}`}>{label}</button>)}</div></div>
                 </div>
-                <div className="mt-2 flex justify-end"><button type="button" onClick={resetCameraView} className="flex h-9 items-center gap-1.5 rounded-xl px-3 text-[10px] font-bold text-slate-500 transition hover:bg-slate-100 hover:text-primary" data-testid="button-mobile-reset-camera"><Home className="h-3.5 w-3.5" />Reset camera</button></div>
+                <div className="mt-2 flex justify-end"><button type="button" onClick={resetCameraView} className="flex h-9 items-center gap-1.5 rounded-lg px-3 text-[10px] font-bold text-text-muted transition hover:bg-surface-canvas hover:text-brand" data-testid="button-mobile-reset-camera"><Home className="h-3.5 w-3.5" />Reset camera</button></div>
                 <button
                   type="button"
                   onPointerDown={(event) => viewPanelDragControls.start(event)}
@@ -3402,55 +3402,55 @@ export function ContainerViewer3D({
                   className="mx-auto mt-1 flex h-6 w-24 touch-none items-center justify-center"
                   aria-label="Close View controls; swipe up or tap"
                   data-testid="button-close-mobile-scene-settings"
-                ><span className="block h-1 w-10 rounded-full bg-slate-300 transition-colors active:bg-slate-500" /></button>
+                ><span className="block h-1 w-10 rounded-full bg-border-control transition-colors active:bg-text-muted" /></button>
               </motion.section>
             )}
           </AnimatePresence>
           <div className={`absolute right-3 top-3 z-30 hidden max-h-[calc(100%-4.5rem)] flex-col items-center gap-0.5 overflow-visible bg-transparent p-1 transition-[right] lg:flex ${sidebarOpen ? "lg:right-[344px]" : ""}`} data-testid="container-floating-tool-rail">
-            <button type="button" onClick={() => setSidebarOpen((current) => !current)} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label={sidebarOpen ? "Hide cargo panel" : "Show cargo panel"} data-testid="button-container-sidebar-toggle">{sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}<ViewerHoverLabel>{sidebarOpen ? "Hide cargo panel" : "Show cargo panel"}</ViewerHoverLabel></button>
-            <button type="button" onClick={() => { cycleCameraView(); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Change camera angle" data-testid="button-floating-camera"><Camera className="h-4 w-4" /><ViewerHoverLabel>Change camera angle</ViewerHoverLabel></button>
-            <button type="button" onClick={() => { setArrangeMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setSequenceMode((current) => { if (!current) setSequenceStep(1); return !current; }); }} disabled={placed.length === 0} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md disabled:opacity-35 ${sequenceMode ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:text-primary"}`} aria-label="Loading sequence" data-testid="button-loading-sequence"><Play className="h-4 w-4" /><ViewerHoverLabel>Loading sequence</ViewerHoverLabel></button>
-            {onPlacedChange && <button type="button" onClick={() => { setSequenceMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setArrangeMode((current) => !current); setPlacementMessage("Precision tools enabled — select one or more units to align, rotate or nudge."); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${arrangeMode ? "bg-sky-50 text-sky-600" : "text-slate-600 hover:text-primary"}`} aria-label="Precision cargo tools" data-testid="button-arrange-cargo"><Crosshair className="h-4 w-4" /><ViewerHoverLabel>Precision cargo tools</ViewerHoverLabel></button>}
-            <div className="my-0.5 h-px w-6 bg-slate-200" />
-            <button type="button" onClick={() => { setDisplayControlsOpen((current) => !current); setSharePanelOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${displayControlsOpen ? "bg-blue-50 text-primary" : "text-slate-600 hover:text-primary"}`} aria-label="View controls" data-testid="button-floating-settings"><Settings2 className="h-4 w-4" /><ViewerHoverLabel>View controls</ViewerHoverLabel></button>
-            <button type="button" onClick={() => { setWarningPanelOpen((current) => !current); setSharePanelOpen(false); setDisplayControlsOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${warningPanelOpen ? "bg-slate-900 text-white" : "text-slate-600 hover:text-primary"}`} aria-label="Placement checks" data-testid="button-floating-warnings"><AlertTriangle className="h-4 w-4" />{hasPlacementWarning && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />}<ViewerHoverLabel>Placement checks</ViewerHoverLabel></button>
-            <div className="my-0.5 h-px w-6 bg-slate-200" />
-            <button type="button" onClick={downloadCurrentSnapshot} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Download scene image" data-testid="button-floating-snapshot"><ImageDown className="h-4 w-4" /><ViewerHoverLabel>Save scene image</ViewerHoverLabel></button>
-            {onExportPdf && <button type="button" onClick={onExportPdf} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label="Download PDF report" data-testid="button-floating-pdf"><FileDown className="h-4 w-4" /><ViewerHoverLabel>Download PDF report</ViewerHoverLabel></button>}
-            <button type="button" onClick={() => { setSharePanelOpen((current) => !current); setHelpPanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${sharePanelOpen ? "bg-blue-50 text-primary" : "text-slate-600 hover:text-primary"}`} aria-label="Share loading plan" data-testid="button-share-scene"><Share2 className="h-4 w-4" /><ViewerHoverLabel>Share loading plan</ViewerHoverLabel></button>
-            {onSaveProject && <button type="button" onClick={() => runExternalAction(onSaveProject)} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:text-emerald-600 hover:shadow-md" aria-label="Save project" data-testid="button-save-scene"><Save className="h-4 w-4" /><ViewerHoverLabel>Save project</ViewerHoverLabel></button>}
-            <div className="my-0.5 h-px w-6 bg-slate-200" />
-            <button type="button" onClick={() => { setHelpPanelOpen((current) => !current); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-150 hover:-translate-x-0.5 hover:scale-105 hover:bg-white hover:shadow-md ${helpPanelOpen ? "bg-blue-50 text-primary" : "text-slate-600 hover:text-primary"}`} aria-label="Workspace help" data-testid="button-container-help"><CircleHelp className="h-4 w-4" /><ViewerHoverLabel>Workspace help</ViewerHoverLabel></button>
-            <button type="button" onClick={toggleFullscreen} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition duration-150 hover:-translate-y-0.5 hover:scale-105 hover:bg-white hover:text-primary hover:shadow-md" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} data-testid="button-container-fullscreen">{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}<ViewerHoverLabel>{isFullscreen ? "Exit full screen" : "Open full workspace"}</ViewerHoverLabel></button>
-            {displayControlsOpen && <div className="absolute right-12 top-28 w-64 rounded-2xl border border-white/95 bg-white/[0.98] p-3 text-left text-slate-700 shadow-[0_20px_55px_-22px_rgba(15,23,42,0.32)]" data-testid="floating-display-controls">
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">View controls</p>
+            <button type="button" onClick={() => setSidebarOpen((current) => !current)} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition-colors duration-state hover:bg-surface-recessed hover:text-brand" aria-label={sidebarOpen ? "Hide cargo panel" : "Show cargo panel"} data-testid="button-container-sidebar-toggle">{sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}<ViewerHoverLabel>{sidebarOpen ? "Hide cargo panel" : "Show cargo panel"}</ViewerHoverLabel></button>
+            <button type="button" onClick={() => { cycleCameraView(); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition-colors duration-state hover:bg-surface-recessed hover:text-brand" aria-label="Change camera angle" data-testid="button-floating-camera"><Camera className="h-4 w-4" /><ViewerHoverLabel>Change camera angle</ViewerHoverLabel></button>
+            <button type="button" onClick={() => { setArrangeMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setSequenceMode((current) => { if (!current) setSequenceStep(1); return !current; }); }} disabled={placed.length === 0} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-state hover:-translate-x-0.5  hover:bg-white hover:shadow-md disabled:opacity-35 ${sequenceMode ? "bg-surface-recessed text-text-secondary" : "text-text-muted hover:text-brand"}`} aria-label="Loading sequence" data-testid="button-loading-sequence"><Play className="h-4 w-4" /><ViewerHoverLabel>Loading sequence</ViewerHoverLabel></button>
+            {onPlacedChange && <button type="button" onClick={() => { setSequenceMode(false); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); setArrangeMode((current) => !current); setPlacementMessage("Precision tools enabled — select one or more units to align, rotate or nudge."); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-state hover:-translate-x-0.5  hover:bg-white hover:shadow-md ${arrangeMode ? "bg-surface-recessed text-text-secondary" : "text-text-muted hover:text-brand"}`} aria-label="Precision cargo tools" data-testid="button-arrange-cargo"><Crosshair className="h-4 w-4" /><ViewerHoverLabel>Precision cargo tools</ViewerHoverLabel></button>}
+            <div className="my-0.5 h-px w-6 bg-surface-canvas" />
+            <button type="button" onClick={() => { setDisplayControlsOpen((current) => !current); setSharePanelOpen(false); setWarningPanelOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-state hover:-translate-x-0.5  hover:bg-white hover:shadow-md ${displayControlsOpen ? "bg-surface-recessed text-brand" : "text-text-muted hover:text-brand"}`} aria-label="View controls" data-testid="button-floating-settings"><Settings2 className="h-4 w-4" /><ViewerHoverLabel>View controls</ViewerHoverLabel></button>
+            <button type="button" onClick={() => { setWarningPanelOpen((current) => !current); setSharePanelOpen(false); setDisplayControlsOpen(false); setHelpPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-state hover:-translate-x-0.5  hover:bg-white hover:shadow-md ${warningPanelOpen ? "bg-surface-dark text-white" : "text-text-muted hover:text-brand"}`} aria-label="Placement checks" data-testid="button-floating-warnings"><AlertTriangle className="h-4 w-4" />{hasPlacementWarning && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#B42318]" />}<ViewerHoverLabel>Placement checks</ViewerHoverLabel></button>
+            <div className="my-0.5 h-px w-6 bg-surface-canvas" />
+            <button type="button" onClick={downloadCurrentSnapshot} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition-colors duration-state hover:bg-surface-recessed hover:text-brand" aria-label="Download scene image" data-testid="button-floating-snapshot"><ImageDown className="h-4 w-4" /><ViewerHoverLabel>Save scene image</ViewerHoverLabel></button>
+            {onExportPdf && <button type="button" onClick={onExportPdf} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition-colors duration-state hover:bg-surface-recessed hover:text-brand" aria-label="Download PDF report" data-testid="button-floating-pdf"><FileDown className="h-4 w-4" /><ViewerHoverLabel>Download PDF report</ViewerHoverLabel></button>}
+            <button type="button" onClick={() => { setSharePanelOpen((current) => !current); setHelpPanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-state hover:-translate-x-0.5  hover:bg-white hover:shadow-md ${sharePanelOpen ? "bg-surface-recessed text-brand" : "text-text-muted hover:text-brand"}`} aria-label="Share loading plan" data-testid="button-share-scene"><Share2 className="h-4 w-4" /><ViewerHoverLabel>Share loading plan</ViewerHoverLabel></button>
+            {onSaveProject && <button type="button" onClick={() => runExternalAction(onSaveProject)} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition duration-state hover:-translate-x-0.5  hover:bg-white hover:text-[#15803D] hover:shadow-md" aria-label="Save project" data-testid="button-save-scene"><Save className="h-4 w-4" /><ViewerHoverLabel>Save project</ViewerHoverLabel></button>}
+            <div className="my-0.5 h-px w-6 bg-surface-canvas" />
+            <button type="button" onClick={() => { setHelpPanelOpen((current) => !current); setSharePanelOpen(false); setDisplayControlsOpen(false); setWarningPanelOpen(false); }} className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition duration-state hover:-translate-x-0.5  hover:bg-white hover:shadow-md ${helpPanelOpen ? "bg-surface-recessed text-brand" : "text-text-muted hover:text-brand"}`} aria-label="Workspace help" data-testid="button-container-help"><CircleHelp className="h-4 w-4" /><ViewerHoverLabel>Workspace help</ViewerHoverLabel></button>
+            <button type="button" onClick={toggleFullscreen} className="group relative flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition duration-state hover:bg-white hover:text-brand hover:shadow-md" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} data-testid="button-container-fullscreen">{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}<ViewerHoverLabel>{isFullscreen ? "Exit full screen" : "Open full workspace"}</ViewerHoverLabel></button>
+            {displayControlsOpen && <div className="absolute right-12 top-28 w-64 rounded-lg border border-border-hairline bg-white p-3 text-left text-text-secondary shadow-md" data-testid="floating-display-controls">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">View controls</p>
               <div className="mt-2 grid grid-cols-4 gap-2">{[
                 { label: "Grid", active: showGrid, set: setShowGrid, icon: Grid3X3 },
                 { label: "Shell", active: showShell, set: setShowShell, icon: Eye },
                 { label: "Refs", active: showLabels, set: setShowLabels, icon: Box },
                 { label: "Measure", active: showMeasurements, set: setShowMeasurements, icon: Ruler },
-              ].map(({ label, active, set, icon: Icon }) => <button key={label} type="button" onClick={() => set(!active)} className={`flex flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-[9px] font-bold transition hover:-translate-y-0.5 hover:shadow-sm ${active ? "border-blue-200 bg-blue-50 text-primary" : "border-slate-200 bg-slate-100 text-slate-400"}`} aria-pressed={active} data-testid={`button-container-layer-${label === "Refs" ? "labels" : label === "Measure" ? "measurements" : label.toLowerCase()}`}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm"><Icon className="h-3.5 w-3.5" /></span>{label}</button>)}</div>
-              <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">Camera angle</p>
-              <div className="mt-1.5 grid grid-cols-4 gap-1.5">{([ ["isometric", "3D"], ["doors", "Doors"], ["side", "Side"], ["top", "Top"] ] as const).map(([preset, label]) => <button key={preset} type="button" onClick={() => setActiveView(preset)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${activeView === preset ? "border-blue-300 bg-blue-50 text-primary" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`} aria-pressed={activeView === preset} data-testid={`button-container-view-${preset}`}>{label}</button>)}</div>
-              <div className="mt-2 flex justify-end"><button type="button" onClick={resetCameraView} className="rounded-lg px-2 py-1 text-[9px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-primary" data-testid="button-reset-camera"><Home className="mr-1 inline h-3 w-3" />Reset camera</button></div>
-              <p className="mt-2 text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">Rendering</p>
-              <div className="mt-1.5 grid grid-cols-3 gap-1.5">{([ ["auto", "Auto"], ["performance", "Fast"], ["quality", "High"] ] as const).map(([quality, label]) => <button key={quality} type="button" onClick={() => setRenderQuality(quality)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${renderQuality === quality ? "border-cyan-300 bg-cyan-50 text-cyan-700" : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"}`} aria-pressed={renderQuality === quality} data-testid={`button-container-quality-${quality}`}>{label}</button>)}</div>
+              ].map(({ label, active, set, icon: Icon }) => <button key={label} type="button" onClick={() => set(!active)} className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 px-1 py-2 text-[9px] font-bold transition  hover:shadow-sm ${active ? "border-brand text-brand" : "border-border-app bg-surface-canvas text-text-deemphasis"}`} aria-pressed={active} data-testid={`button-container-layer-${label === "Refs" ? "labels" : label === "Measure" ? "measurements" : label.toLowerCase()}`}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm"><Icon className="h-3.5 w-3.5" /></span>{label}</button>)}</div>
+              <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.1em] text-text-deemphasis">Camera angle</p>
+              <div className="mt-1.5 grid grid-cols-4 gap-1.5">{([ ["isometric", "3D"], ["doors", "Doors"], ["side", "Side"], ["top", "Top"] ] as const).map(([preset, label]) => <button key={preset} type="button" onClick={() => setActiveView(preset)} className={`rounded-lg border-2 px-1 py-2 text-[9px] font-bold transition ${activeView === preset ? "border-brand text-brand" : "border-border-app bg-white text-text-muted hover:border-border-control"}`} aria-pressed={activeView === preset} data-testid={`button-container-view-${preset}`}>{label}</button>)}</div>
+              <div className="mt-2 flex justify-end"><button type="button" onClick={resetCameraView} className="rounded-lg px-2 py-1 text-[9px] font-semibold text-text-muted hover:bg-surface-canvas hover:text-brand" data-testid="button-reset-camera"><Home className="mr-1 inline h-3 w-3" />Reset camera</button></div>
+              <p className="mt-2 text-[9px] font-bold uppercase tracking-[0.1em] text-text-deemphasis">Rendering</p>
+              <div className="mt-1.5 grid grid-cols-3 gap-1.5">{([ ["auto", "Auto"], ["performance", "Fast"], ["quality", "High"] ] as const).map(([quality, label]) => <button key={quality} type="button" onClick={() => setRenderQuality(quality)} className={`rounded-lg border px-1 py-2 text-[9px] font-bold transition ${renderQuality === quality ? "border-border-hairline bg-surface-recessed text-text-secondary" : "border-border-hairline bg-white text-text-muted hover:border-border-control"}`} aria-pressed={renderQuality === quality} data-testid={`button-container-quality-${quality}`}>{label}</button>)}</div>
             </div>}
-            {sharePanelOpen && <div className="absolute right-12 top-20 w-64 rounded-2xl border border-white/95 bg-white/[0.98] p-2.5 text-left shadow-[0_22px_55px_-24px_rgba(15,23,42,0.38)]" data-testid="container-share-panel">
-              <div className="flex items-center justify-between gap-2 px-1 pb-2"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Share loading plan</p><p className="mt-0.5 text-[9px] text-slate-400">Anyone with the link can preview it.</p></div><Share2 className="h-4 w-4 text-primary" /></div>
-              <button type="button" onClick={copyShareLink} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-[10px] font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-primary" data-testid="button-share-copy-link"><Link2 className="h-4 w-4" />{currentShareUrl() ? "Copy share link" : "Create share link"}</button>
-              <div className="mt-1 grid grid-cols-4 gap-1 border-t border-slate-100 pt-2">{([ ["email", "Email", Mail], ["facebook", "Facebook", Facebook], ["linkedin", "LinkedIn", Linkedin], ["whatsapp", "WhatsApp", MessageCircle] ] as const).map(([target, label, Icon]) => <button key={target} type="button" onClick={() => openShareTarget(target)} className="group/share flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[8px] font-semibold text-slate-500 transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-primary" aria-label={`Share via ${label}`} data-testid={`button-share-${target}`}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-50 transition group-hover/share:bg-white group-hover/share:shadow-sm"><Icon className="h-3.5 w-3.5" /></span>{label}</button>)}</div>
-              {!currentShareUrl() && <p className="mt-1 px-1 text-[8px] leading-3 text-slate-400">Create the secure public link first; then reopen Share to send it.</p>}
-              {currentShareUrl() && typeof navigator !== "undefined" && "share" in navigator && <button type="button" onClick={shareCurrentView} className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-xl bg-slate-900 px-3 py-2 text-[9px] font-bold text-white hover:bg-slate-700"><Share2 className="h-3.5 w-3.5" />More sharing options</button>}
+            {sharePanelOpen && <div className="absolute right-12 top-20 w-64 rounded-lg border border-border-hairline bg-white p-2.5 text-left shadow-md" data-testid="container-share-panel">
+              <div className="flex items-center justify-between gap-2 px-1 pb-2"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">Share loading plan</p><p className="mt-0.5 text-[9px] text-text-deemphasis">Anyone with the link can preview it.</p></div><Share2 className="h-4 w-4 text-text-muted" /></div>
+              <button type="button" onClick={copyShareLink} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[10px] font-semibold text-text-secondary transition hover:bg-surface-recessed hover:text-brand" data-testid="button-share-copy-link"><Link2 className="h-4 w-4" />{currentShareUrl() ? "Copy share link" : "Create share link"}</button>
+              <div className="mt-1 grid grid-cols-4 gap-1 border-t border-border-hairline pt-2">{([ ["email", "Email", Mail], ["facebook", "Facebook", Facebook], ["linkedin", "LinkedIn", Linkedin], ["whatsapp", "WhatsApp", MessageCircle] ] as const).map(([target, label, Icon]) => <button key={target} type="button" onClick={() => openShareTarget(target)} className="group/share flex min-w-0 flex-col items-center gap-1 rounded-lg px-1 py-2 text-[8px] font-semibold text-text-muted transition hover:bg-surface-recessed hover:text-brand" aria-label={`Share via ${label}`} data-testid={`button-share-${target}`}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-recessed transition group-hover/share:bg-white group-hover/share:shadow-sm"><Icon className="h-3.5 w-3.5" /></span>{label}</button>)}</div>
+              {!currentShareUrl() && <p className="mt-1 px-1 text-[8px] leading-3 text-text-deemphasis">Create the secure public link first; then reopen Share to send it.</p>}
+              {currentShareUrl() && typeof navigator !== "undefined" && "share" in navigator && <button type="button" onClick={shareCurrentView} className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg bg-surface-dark px-3 py-2 text-[9px] font-bold text-white hover:bg-[#314158]"><Share2 className="h-3.5 w-3.5" />More sharing options</button>}
             </div>}
-            {helpPanelOpen && <div className="absolute right-12 bottom-16 w-72 rounded-2xl border border-white/95 bg-white/[0.98] p-3 text-left shadow-[0_22px_55px_-24px_rgba(15,23,42,0.38)]" data-testid="container-help-panel">
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Workspace controls</p>
-              <div className="mt-2 space-y-1.5 text-[10px] leading-4 text-slate-600"><p><strong className="text-slate-800">Tap cargo</strong> once to select it; drag the selected unit to move it. Tap it again without dragging to deselect.</p><p><strong className="text-slate-800">Right-click or long-press</strong> a unit for clearances and actions. Drag empty grid space to rotate.</p><p><strong className="text-slate-800">Blue alignment</strong> means the unit fits. Docks allow free placement and gently align near open edges or the previous slot.</p></div>
+            {helpPanelOpen && <div className="absolute right-12 bottom-16 w-72 rounded-lg border border-border-hairline bg-white p-3 text-left shadow-md" data-testid="container-help-panel">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">Workspace controls</p>
+              <div className="mt-2 space-y-1.5 text-[10px] leading-4 text-text-muted"><p><strong className="text-text-secondary">Tap cargo</strong> once to select it; drag the selected unit to move it. Tap it again without dragging to deselect.</p><p><strong className="text-text-secondary">Right-click or long-press</strong> a unit for clearances and actions. Drag empty grid space to rotate.</p><p><strong className="text-text-secondary">Blue alignment</strong> means the unit fits. Docks allow free placement and gently align near open edges or the previous slot.</p></div>
             </div>}
             {warningPanelOpen && (
-              <div className="absolute right-12 top-0 w-60 rounded-2xl border border-white/90 bg-white/[0.98] p-3 text-left shadow-[0_20px_55px_-22px_rgba(15,23,42,0.45)]" data-testid="floating-warning-panel">
-                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Plan status</p>
-                <div className="mt-2 flex gap-2 rounded-xl bg-slate-50 p-2.5"><AlertTriangle className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${hasPlacementWarning ? "text-red-500" : "text-emerald-500"}`} /><p className="text-[10px] leading-4 text-slate-600">{arrangeMode || hasPlacementWarning ? placementMessage : "No active placement warnings. Open Precision cargo tools for multi-select alignment and validation."}</p></div>
+              <div className="absolute right-12 top-0 w-60 rounded-lg border border-border-hairline bg-white p-3 text-left shadow-md" data-testid="floating-warning-panel">
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">Plan status</p>
+                <div className="mt-2 flex gap-2 rounded-lg bg-surface-recessed p-2.5"><AlertTriangle className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${hasPlacementWarning ? "text-[#B42318]" : "text-[#15803D]"}`} /><p className="text-[10px] leading-4 text-text-muted">{arrangeMode || hasPlacementWarning ? placementMessage : "No active placement warnings. Open Precision cargo tools for multi-select alignment and validation."}</p></div>
               </div>
             )}
           </div>
@@ -3470,12 +3470,12 @@ export function ContainerViewer3D({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: "100%", scale: 0.98 }}
               transition={{ type: "spring", stiffness: 390, damping: 36, mass: 0.78 }}
-              className="absolute bottom-0 left-0 right-0 z-40 flex max-h-[72%] min-h-0 flex-col overflow-hidden rounded-t-2xl border-t border-white/95 bg-white/[0.97] shadow-[0_-18px_52px_-28px_rgba(15,23,42,0.5)] backdrop-blur-xl lg:hidden"
+              className="absolute bottom-0 left-0 right-0 z-40 flex max-h-[72%] min-h-0 flex-col overflow-hidden rounded-t-lg border-t border-border-hairline bg-white shadow-md lg:hidden"
               id="mobile-cargo-panel"
               aria-label="Cargo staging"
               data-testid="mobile-cargo-panel"
             >
-              <div className="border-b border-slate-200 bg-white/90 px-3 pb-3 pt-2.5">
+              <div className="border-b border-border-hairline bg-white px-3 pb-3 pt-2.5">
                 <button
                   type="button"
                   onPointerDown={(event) => cargoPanelDragControls.start(event)}
@@ -3483,57 +3483,57 @@ export function ContainerViewer3D({
                   className="mx-auto mb-1.5 flex h-5 w-24 touch-none items-center justify-center"
                   aria-label="Close Cargo staging; swipe down or tap"
                   data-testid="button-close-mobile-cargo-panel"
-                ><span className="h-1 w-11 rounded-full bg-slate-300 transition-colors active:bg-slate-500" /></button>
+                ><span className="h-1 w-11 rounded-full bg-border-control transition-colors active:bg-text-muted" /></button>
                 <div className="flex items-center gap-2.5">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-primary"><ListChecks className="h-4 w-4" /></div>
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-recessed text-brand"><ListChecks className="h-4 w-4" /></div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[11px] font-bold text-slate-900">Cargo staging</p>
-                    <p className="mt-0.5 truncate text-[9px] text-slate-500">{container.name} · {placed.length} loaded · {unitSystem === "metric" ? `${(loadSummary.totalWeight * LB_TO_KG).toLocaleString(undefined, { maximumFractionDigits: 0 })} kg` : `${loadSummary.totalWeight.toLocaleString(undefined, { maximumFractionDigits: 0 })} lb`}</p>
+                    <p className="truncate text-[11px] font-bold text-text-primary">Cargo staging</p>
+                    <p className="mt-0.5 truncate text-[9px] text-text-muted">{container.name} · {placed.length} loaded · {unitSystem === "metric" ? `${(loadSummary.totalWeight * LB_TO_KG).toLocaleString(undefined, { maximumFractionDigits: 0 })} kg` : `${loadSummary.totalWeight.toLocaleString(undefined, { maximumFractionDigits: 0 })} lb`}</p>
                   </div>
                 </div>
                 {onPlacedChange ? (
-                  <div className="mt-2.5 grid grid-cols-3 rounded-xl bg-slate-100 p-1" role="tablist" aria-label="Cargo workspace zones">
+                  <div className="mt-2.5 grid grid-cols-3 rounded-lg bg-surface-canvas p-1" role="tablist" aria-label="Cargo workspace zones">
                     {([ ["dock1", "Dock 1"], ["loaded", "Loaded"], ["dock2", "Dock 2"] ] as const).map(([zone, label]) => (
-                      <button key={zone} type="button" role="tab" aria-selected={activeCargoZone === zone} onClick={() => { setActiveCargoZone(zone); setSelectedSceneDock(zone === "loaded" ? null : zone); if (zone === "loaded") setSelectedStagedCargoId(null); }} className={`flex items-center justify-center gap-1 rounded-lg px-1.5 py-1.5 text-[9px] font-bold transition ${activeCargoZone === zone ? "bg-white text-primary shadow-sm" : "text-slate-500"}`} data-testid={`button-mobile-cargo-zone-${zone}`}>
-                        {zone === "loaded" ? <Box className="h-3 w-3" /> : <Package className="h-3 w-3" />}<span>{label}</span><span className={`min-w-4 rounded-full px-1 text-center text-[8px] ${activeCargoZone === zone ? "bg-blue-50 text-primary" : "bg-slate-200/70 text-slate-500"}`}>{zone === "loaded" ? placed.length : stagedByZone[zone].length}</span>
+                      <button key={zone} type="button" role="tab" aria-selected={activeCargoZone === zone} onClick={() => { setActiveCargoZone(zone); setSelectedSceneDock(zone === "loaded" ? null : zone); if (zone === "loaded") setSelectedStagedCargoId(null); }} className={`flex items-center justify-center gap-1 rounded-lg px-1.5 py-1.5 text-[9px] font-bold transition ${activeCargoZone === zone ? "bg-white text-brand shadow-sm" : "text-text-muted"}`} data-testid={`button-mobile-cargo-zone-${zone}`}>
+                        {zone === "loaded" ? <Box className="h-3 w-3" /> : <Package className="h-3 w-3" />}<span>{label}</span><span className={`min-w-4 rounded-full px-1 text-center text-[8px] ${activeCargoZone === zone ? "bg-surface-recessed text-brand" : "bg-surface-canvas text-text-muted"}`}>{zone === "loaded" ? placed.length : stagedByZone[zone].length}</span>
                       </button>
                     ))}
                   </div>
-                ) : <p className="mt-2 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Cargo units</p>}
+                ) : <p className="mt-2 text-[9px] font-bold uppercase tracking-[0.12em] text-text-deemphasis">Cargo units</p>}
                 {onPlacedChange && activeCargoZone === "loaded" && (
                   <div className="mt-2 flex items-center justify-between gap-2">
-                    <p className="text-[9px] text-slate-500">{arrangeMode ? `${selectedCargoIndices.size} selected` : "Inspect cargo below"}</p>
+                    <p className="text-[9px] text-text-muted">{arrangeMode ? `${selectedCargoIndices.size} selected` : "Inspect cargo below"}</p>
                     {arrangeMode ? <div className="flex gap-1">
-                      <button type="button" onClick={() => setSelectedCargoIndices(new Set(placed.map((_, index) => index)))} className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[9px] font-bold text-slate-600" data-testid="button-mobile-select-all-cargo">Select all</button>
-                      <button type="button" onClick={() => setSelectedCargoIndices(new Set())} disabled={selectedCargoIndices.size === 0} className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[9px] font-bold text-slate-500 disabled:opacity-40" data-testid="button-mobile-clear-cargo-selection">Clear</button>
-                    </div> : <button type="button" onClick={() => { setSequenceMode(false); setArrangeMode(true); setPlacementMessage("Select cargo below, then drag or use the precision controls."); }} className="rounded-lg bg-slate-900 px-2.5 py-1.5 text-[9px] font-bold text-white" data-testid="button-mobile-open-adjust-layout"><MousePointerClick className="mr-1 inline h-3 w-3" />Adjust layout</button>}
+                      <button type="button" onClick={() => setSelectedCargoIndices(new Set(placed.map((_, index) => index)))} className="rounded-lg border border-border-hairline bg-white px-2 py-1 text-[9px] font-bold text-text-muted" data-testid="button-mobile-select-all-cargo">Select all</button>
+                      <button type="button" onClick={() => setSelectedCargoIndices(new Set())} disabled={selectedCargoIndices.size === 0} className="rounded-lg border border-border-hairline bg-white px-2 py-1 text-[9px] font-bold text-text-muted disabled:opacity-40" data-testid="button-mobile-clear-cargo-selection">Clear</button>
+                    </div> : <button type="button" onClick={() => { setSequenceMode(false); setArrangeMode(true); setPlacementMessage("Select cargo below, then drag or use the precision controls."); }} className="rounded-sm border border-border-control bg-white px-2.5 py-1.5 text-[11px] font-semibold text-text-secondary transition-colors duration-state hover:border-brand hover:text-brand" data-testid="button-mobile-open-adjust-layout"><MousePointerClick className="mr-1 inline h-3 w-3" />Adjust layout</button>}
                   </div>
                 )}
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 [scrollbar-color:#cbd5e1_transparent] [scrollbar-width:thin]">
                 {activeCargoZone === "loaded" || !onPlacedChange ? <div className="space-y-1">
                   {placed.map((box, index) => (
-                    <div key={`${box.cargoId}-mobile-${index}`} className={`flex items-center gap-1.5 rounded-xl border p-1.5 transition ${selectedCargoIndices.has(index) ? "border-blue-300 bg-blue-50/80 ring-2 ring-blue-100" : hoveredCargoIndex === index ? "border-sky-300 bg-white" : "border-transparent bg-white/60"}`} data-cargo-list-index={index} data-testid={`mobile-container-cargo-row-${index}`}>
-                      {onPlacedChange && arrangeMode && <button type="button" onClick={() => toggleCargoSelection(index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-primary" aria-label={`${selectedCargoIndices.has(index) ? "Deselect" : "Select"} ${box.cargoName || "cargo item"}`} aria-pressed={selectedCargoIndices.has(index)} data-testid={`button-mobile-select-container-cargo-${index}`}>{selectedCargoIndices.has(index) ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 text-slate-400" />}</button>}
+                    <div key={`${box.cargoId}-mobile-${index}`} className={`flex items-center gap-1.5 rounded-lg border-2 p-1.5 transition ${selectedCargoIndices.has(index) ? "border-brand" : hoveredCargoIndex === index ? "border-brand bg-white" : "border-transparent bg-white"}`} data-cargo-list-index={index} data-testid={`mobile-container-cargo-row-${index}`}>
+                      {onPlacedChange && arrangeMode && <button type="button" onClick={() => toggleCargoSelection(index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-brand" aria-label={`${selectedCargoIndices.has(index) ? "Deselect" : "Select"} ${box.cargoName || "cargo item"}`} aria-pressed={selectedCargoIndices.has(index)} data-testid={`button-mobile-select-container-cargo-${index}`}>{selectedCargoIndices.has(index) ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 text-text-deemphasis" />}</button>}
                       <button type="button" onClick={() => { const next = new Set([index]); selectedCargoIndicesRef.current = next; setSelectedCargoIndices(next); setSelectedStagedCargoId(null); setSelectedSceneDock(null); setHoveredCargoIndex(index); sceneRef.current?.setCargoHover(index); sceneRef.current?.setStagedCargoFocus(null); sceneRef.current?.setDockFocus(null); }} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg p-0.5 text-left" data-testid={`button-mobile-container-cargo-${index}`}>
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-900" style={{ backgroundColor: `${box.color}45` }}><Box className="h-3.5 w-3.5" /></span>
-                        <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-slate-800">{box.cargoName || `Cargo ${index + 1}`}</span><span className="mt-0.5 block truncate text-[9px] text-slate-500">{fmt(box.l)} × {fmt(box.w)} × {fmt(box.h)} · {unitSystem === "metric" ? `${(box.weight * LB_TO_KG).toFixed(0)} kg` : `${box.weight.toFixed(0)} lb`}</span></span>
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-primary" style={{ backgroundColor: `${box.color}45` }}><Box className="h-3.5 w-3.5" /></span>
+                        <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-text-secondary">{box.cargoName || `Cargo ${index + 1}`}</span><span className="mt-0.5 block truncate text-[9px] text-text-muted">{fmt(box.l)} × {fmt(box.w)} × {fmt(box.h)} · {unitSystem === "metric" ? `${(box.weight * LB_TO_KG).toFixed(0)} kg` : `${box.weight.toFixed(0)} lb`}</span></span>
                       </button>
                       {onPlacedChange && <div className="flex shrink-0 gap-1">
-                        <button type="button" onClick={() => stageCargo(index, "dock1")} onPointerEnter={() => previewDock("dock1")} onPointerLeave={restoreDockPreview} onFocus={() => previewDock("dock1")} onBlur={restoreDockPreview} className="flex h-8 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 text-[8px] font-bold text-slate-500 hover:border-blue-300 hover:bg-blue-50 hover:text-primary" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 1`} title="Move to Dock 1" data-testid={`button-mobile-stage-dock1-${index}`}><Package className="h-3 w-3" />D1</button>
-                        <button type="button" onClick={() => stageCargo(index, "dock2")} onPointerEnter={() => previewDock("dock2")} onPointerLeave={restoreDockPreview} onFocus={() => previewDock("dock2")} onBlur={restoreDockPreview} className="flex h-8 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 text-[8px] font-bold text-slate-500 hover:border-blue-300 hover:bg-blue-50 hover:text-primary" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 2`} title="Move to Dock 2" data-testid={`button-mobile-stage-dock2-${index}`}><Package className="h-3 w-3" />D2</button>
+                        <button type="button" onClick={() => stageCargo(index, "dock1")} onPointerEnter={() => previewDock("dock1")} onPointerLeave={restoreDockPreview} onFocus={() => previewDock("dock1")} onBlur={restoreDockPreview} className="flex h-8 items-center justify-center gap-1 rounded-lg border border-border-hairline bg-white px-1.5 text-[8px] font-bold text-text-muted hover:border-border-hairline hover:bg-surface-recessed hover:text-brand" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 1`} title="Move to Dock 1" data-testid={`button-mobile-stage-dock1-${index}`}><Package className="h-3 w-3" />D1</button>
+                        <button type="button" onClick={() => stageCargo(index, "dock2")} onPointerEnter={() => previewDock("dock2")} onPointerLeave={restoreDockPreview} onFocus={() => previewDock("dock2")} onBlur={restoreDockPreview} className="flex h-8 items-center justify-center gap-1 rounded-lg border border-border-hairline bg-white px-1.5 text-[8px] font-bold text-text-muted hover:border-border-hairline hover:bg-surface-recessed hover:text-brand" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 2`} title="Move to Dock 2" data-testid={`button-mobile-stage-dock2-${index}`}><Package className="h-3 w-3" />D2</button>
                       </div>}
                     </div>
                   ))}
                 </div> : stagedByZone[activeCargoZone].length > 0 ? <div className="space-y-1">
-                  {stagedByZone[activeCargoZone].map((entry) => <div key={`${entry.id}-mobile`} className={`flex items-center gap-2 rounded-xl border p-2 shadow-sm ${selectedStagedCargoId === entry.id ? "border-blue-300 bg-blue-50/80 ring-2 ring-blue-100" : "border-slate-200 bg-white"}`} data-testid={`mobile-staged-cargo-${entry.id}`}>
+                  {stagedByZone[activeCargoZone].map((entry) => <div key={`${entry.id}-mobile`} className={`flex items-center gap-2 rounded-lg border-2 p-2 shadow-sm ${selectedStagedCargoId === entry.id ? "border-brand" : "border-border-app bg-white"}`} data-testid={`mobile-staged-cargo-${entry.id}`}>
                     <button type="button" onClick={() => { setSelectedStagedCargoId(entry.id); setSelectedSceneDock(entry.zone); setSelectedCargoIndices(new Set()); sceneRef.current?.setStagedCargoFocus(entry.id); sceneRef.current?.setDockFocus(entry.zone); }} className="flex min-w-0 flex-1 items-center gap-2 text-left" aria-pressed={selectedStagedCargoId === entry.id}>
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-900" style={{ backgroundColor: `${entry.box.color}45` }}><Package className="h-4 w-4" /></span>
-                      <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-slate-800">{entry.box.cargoName || "Cargo item"}</span><span className="mt-0.5 block truncate text-[9px] text-slate-500">{fmt(entry.box.l)} × {fmt(entry.box.w)} × {fmt(entry.box.h)}</span></span>
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-primary" style={{ backgroundColor: `${entry.box.color}45` }}><Package className="h-4 w-4" /></span>
+                      <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-text-secondary">{entry.box.cargoName || "Cargo item"}</span><span className="mt-0.5 block truncate text-[9px] text-text-muted">{fmt(entry.box.l)} × {fmt(entry.box.w)} × {fmt(entry.box.h)}</span></span>
                     </button>
-                    <button type="button" onClick={() => loadStagedCargo(entry.id)} className="rounded-lg bg-slate-900 px-2.5 py-1.5 text-[9px] font-bold text-white" data-testid={`button-mobile-load-staged-${entry.id}`}>Load</button>
+                    <button type="button" onClick={() => loadStagedCargo(entry.id)} className="rounded-sm border border-border-control bg-white px-2.5 py-1.5 text-[11px] font-semibold text-text-secondary transition-colors duration-state hover:border-brand hover:text-brand" data-testid={`button-mobile-load-staged-${entry.id}`}>Load</button>
                   </div>)}
-                </div> : <div className="px-4 py-7 text-center"><Package className="mx-auto h-6 w-6 text-slate-300" /><p className="mt-2 text-[11px] font-bold text-slate-600">No cargo staged here</p><p className="mt-1 text-[9px] leading-4 text-slate-400">Use the D1 or D2 control beside a loaded unit.</p></div>}
+                </div> : <div className="px-4 py-7 text-center"><Package className="mx-auto h-6 w-6 text-text-deemphasis" /><p className="mt-2 text-[11px] font-bold text-text-muted">No cargo staged here</p><p className="mt-1 text-[9px] leading-4 text-text-deemphasis">Use the D1 or D2 control beside a loaded unit.</p></div>}
               </div>
             </motion.section>
           )}
@@ -3542,22 +3542,22 @@ export function ContainerViewer3D({
             <div className="absolute inset-x-2 bottom-2 z-40 lg:hidden" data-testid="mobile-viewer-shortcut-bar-shell">
               <nav
                 ref={mobileShortcutBarRef}
-                className="flex h-11 items-center gap-1 overflow-x-auto scroll-smooth rounded-2xl border border-white/90 bg-white/[0.92] px-8 shadow-[0_12px_34px_-16px_rgba(15,23,42,0.42)] backdrop-blur-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="flex h-11 items-center gap-1 overflow-x-auto scroll-smooth rounded-lg border border-border-hairline bg-white px-8 shadow-md  [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 aria-label="Viewer shortcuts"
                 data-testid="mobile-viewer-shortcut-bar"
                 onScroll={updateMobileShortcutScroll}
               >
-              <button type="button" onClick={() => { setActiveCargoZone(selectedSceneDock ?? "loaded"); setMobilePanelOpen(true); setDisplayControlsOpen(false); }} className="flex h-9 min-w-10 shrink-0 items-center justify-center gap-1 rounded-xl px-2 text-slate-600 active:bg-blue-50 active:text-primary" aria-label="Open cargo staging" data-testid="button-mobile-cargo-panel">
+              <button type="button" onClick={() => { setActiveCargoZone(selectedSceneDock ?? "loaded"); setMobilePanelOpen(true); setDisplayControlsOpen(false); }} className="flex h-9 min-w-10 shrink-0 items-center justify-center gap-1 rounded-lg px-2 text-text-muted active:bg-surface-recessed active:text-brand" aria-label="Open cargo staging" data-testid="button-mobile-cargo-panel">
                 <ListChecks className="h-4 w-4" />
-                <span className="rounded-full bg-blue-50 px-1 text-[8px] font-bold text-primary">{placed.length}</span>
+                <span className="rounded-full bg-surface-recessed px-1 text-[8px] font-bold text-brand">{placed.length}</span>
               </button>
-              <button type="button" onClick={() => { cycleCameraView(); setDisplayControlsOpen(false); }} className="flex h-9 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 active:bg-blue-50 active:text-primary" aria-label="Change camera angle" data-testid="button-mobile-cycle-camera"><Camera className="h-4 w-4" /></button>
-              <button type="button" onClick={() => { setArrangeMode(false); setDisplayControlsOpen(false); setSequenceMode((current) => { if (!current) setSequenceStep(1); return !current; }); }} disabled={placed.length === 0} className={`flex h-9 w-10 shrink-0 items-center justify-center rounded-xl disabled:opacity-35 ${sequenceMode ? "bg-indigo-50 text-indigo-600" : "text-slate-600 active:bg-blue-50 active:text-primary"}`} aria-label="Loading sequence" data-testid="button-mobile-loading-sequence"><Play className="h-4 w-4" /></button>
-              {onPlacedChange && <button type="button" onClick={() => { setSequenceMode(false); setDisplayControlsOpen(false); setArrangeMode((current) => !current); setPlacementMessage("Precision tools enabled — select one or more units to align, rotate or nudge."); }} className={`flex h-9 w-10 shrink-0 items-center justify-center rounded-xl ${arrangeMode ? "bg-sky-50 text-sky-600" : "text-slate-600 active:bg-blue-50 active:text-primary"}`} aria-label="Precision cargo tools" data-testid="button-mobile-arrange-cargo"><Crosshair className="h-4 w-4" /></button>}
-              <button type="button" onClick={() => { setDisplayControlsOpen((current) => !current); setSequenceMode(false); }} className={`flex h-9 w-10 shrink-0 items-center justify-center rounded-xl ${displayControlsOpen ? "bg-blue-50 text-primary" : "text-slate-600 active:bg-blue-50 active:text-primary"}`} aria-label="View controls" aria-expanded={displayControlsOpen} aria-controls="mobile-scene-settings" data-testid="button-mobile-scene-settings"><Settings2 className="h-4 w-4" /></button>
-              <button type="button" onClick={downloadCurrentSnapshot} className="flex h-9 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 active:bg-blue-50 active:text-primary" aria-label="Download scene image" data-testid="button-mobile-snapshot"><ImageDown className="h-4 w-4" /></button>
-              {onExportPdf && <button type="button" onClick={onExportPdf} className="flex h-9 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 active:bg-blue-50 active:text-primary" aria-label="Download PDF report" data-testid="button-mobile-pdf"><FileDown className="h-4 w-4" /></button>}
-              <button type="button" onClick={toggleFullscreen} className="flex h-9 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 active:bg-blue-50 active:text-primary" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} data-testid="button-mobile-fullscreen">{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
+              <button type="button" onClick={() => { cycleCameraView(); setDisplayControlsOpen(false); }} className="flex h-9 w-10 shrink-0 items-center justify-center rounded-lg text-text-muted active:bg-surface-recessed active:text-brand" aria-label="Change camera angle" data-testid="button-mobile-cycle-camera"><Camera className="h-4 w-4" /></button>
+              <button type="button" onClick={() => { setArrangeMode(false); setDisplayControlsOpen(false); setSequenceMode((current) => { if (!current) setSequenceStep(1); return !current; }); }} disabled={placed.length === 0} className={`flex h-9 w-10 shrink-0 items-center justify-center rounded-lg disabled:opacity-35 ${sequenceMode ? "bg-surface-recessed text-text-secondary" : "text-text-muted active:bg-surface-recessed active:text-brand"}`} aria-label="Loading sequence" data-testid="button-mobile-loading-sequence"><Play className="h-4 w-4" /></button>
+              {onPlacedChange && <button type="button" onClick={() => { setSequenceMode(false); setDisplayControlsOpen(false); setArrangeMode((current) => !current); setPlacementMessage("Precision tools enabled — select one or more units to align, rotate or nudge."); }} className={`flex h-9 w-10 shrink-0 items-center justify-center rounded-lg ${arrangeMode ? "bg-surface-recessed text-text-secondary" : "text-text-muted active:bg-surface-recessed active:text-brand"}`} aria-label="Precision cargo tools" data-testid="button-mobile-arrange-cargo"><Crosshair className="h-4 w-4" /></button>}
+              <button type="button" onClick={() => { setDisplayControlsOpen((current) => !current); setSequenceMode(false); }} className={`flex h-9 w-10 shrink-0 items-center justify-center rounded-lg ${displayControlsOpen ? "bg-surface-recessed text-brand" : "text-text-muted active:bg-surface-recessed active:text-brand"}`} aria-label="View controls" aria-expanded={displayControlsOpen} aria-controls="mobile-scene-settings" data-testid="button-mobile-scene-settings"><Settings2 className="h-4 w-4" /></button>
+              <button type="button" onClick={downloadCurrentSnapshot} className="flex h-9 w-10 shrink-0 items-center justify-center rounded-lg text-text-muted active:bg-surface-recessed active:text-brand" aria-label="Download scene image" data-testid="button-mobile-snapshot"><ImageDown className="h-4 w-4" /></button>
+              {onExportPdf && <button type="button" onClick={onExportPdf} className="flex h-9 w-10 shrink-0 items-center justify-center rounded-lg text-text-muted active:bg-surface-recessed active:text-brand" aria-label="Download PDF report" data-testid="button-mobile-pdf"><FileDown className="h-4 w-4" /></button>}
+              <button type="button" onClick={toggleFullscreen} className="flex h-9 w-10 shrink-0 items-center justify-center rounded-lg text-text-muted active:bg-surface-recessed active:text-brand" aria-label={isFullscreen ? "Exit full screen" : "Open full workspace"} data-testid="button-mobile-fullscreen">{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
               </nav>
               <AnimatePresence>
                 {mobileShortcutScroll.left && (
@@ -3567,7 +3567,7 @@ export function ContainerViewer3D({
                     exit={{ opacity: 0 }}
                     type="button"
                     onClick={() => mobileShortcutBarRef.current?.scrollBy({ left: -160, behavior: "smooth" })}
-                    className="absolute inset-y-px left-px flex w-7 items-center justify-center rounded-l-2xl bg-gradient-to-r from-white via-white/95 to-white/20 text-slate-400"
+                    className="absolute inset-y-px left-px flex w-7 items-center justify-center rounded-l-2xl bg-white text-text-deemphasis"
                     aria-label="Scroll shortcuts left"
                     data-testid="button-mobile-shortcuts-left"
                   >
@@ -3581,7 +3581,7 @@ export function ContainerViewer3D({
                     exit={{ opacity: 0 }}
                     type="button"
                     onClick={() => mobileShortcutBarRef.current?.scrollBy({ left: 160, behavior: "smooth" })}
-                    className="absolute inset-y-px right-px flex w-7 items-center justify-center rounded-r-2xl bg-gradient-to-l from-white via-white/95 to-white/20 text-slate-400"
+                    className="absolute inset-y-px right-px flex w-7 items-center justify-center rounded-r-2xl bg-white text-text-deemphasis"
                     aria-label="Scroll shortcuts right"
                     data-testid="button-mobile-shortcuts-right"
                   >
@@ -3592,21 +3592,21 @@ export function ContainerViewer3D({
             </div>
           )}
           <div
-            className={`pointer-events-none absolute top-12 z-20 w-max max-w-[calc(100%-7rem)] -translate-x-1/2 rounded-2xl border border-white/90 bg-white/[0.86] px-3 py-2 text-slate-700 shadow-[0_14px_36px_-22px_rgba(15,23,42,0.32)] backdrop-blur-xl sm:top-3 sm:max-w-[calc(100%-7rem)] ${sidebarOpen ? "left-[42%] lg:left-[calc(50%-172px)]" : "left-[42%] lg:left-1/2"}`}
+            className={`pointer-events-none absolute top-12 z-20 w-max max-w-[calc(100%-7rem)] -translate-x-1/2 rounded-lg border border-border-hairline bg-white px-3 py-2 text-text-secondary shadow-md  sm:top-3 sm:max-w-[calc(100%-7rem)] ${sidebarOpen ? "left-[42%] lg:left-[calc(50%-172px)]" : "left-[42%] lg:left-1/2"}`}
             data-testid="container-cargo-hover-card"
           >
             {infoCargo && infoCargoIndex !== null && infoCargoIndex !== undefined ? <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-0.5">
               <span className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-sm ring-1 ring-slate-300" style={{ backgroundColor: infoCargo.color }} />
-                <strong className="max-w-32 truncate text-[10px] text-slate-800">Unit #{infoCargoIndex + 1}</strong>
+                <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: infoCargo.color }} />
+                <strong className="max-w-32 truncate text-[10px] text-text-secondary">Unit #{infoCargoIndex + 1}</strong>
               </span>
-              <span className="text-[9px] text-slate-500"><strong className="text-slate-700">Size</strong> {fmt(infoCargo.l)} × {fmt(infoCargo.w)} × {fmt(infoCargo.h)}</span>
-              <span className="hidden text-[9px] text-slate-500 sm:inline"><strong className="text-slate-700">Weight</strong> {unitSystem === "metric" ? `${(infoCargo.weight * LB_TO_KG).toFixed(0)} kg` : `${infoCargo.weight.toFixed(0)} lb`}</span>
-              <span className="basis-full text-center text-[8px] font-medium text-slate-400 sm:basis-auto sm:text-left">
+              <span className="text-[9px] text-text-muted"><strong className="text-text-secondary">Size</strong> {fmt(infoCargo.l)} × {fmt(infoCargo.w)} × {fmt(infoCargo.h)}</span>
+              <span className="hidden text-[9px] text-text-muted sm:inline"><strong className="text-text-secondary">Weight</strong> {unitSystem === "metric" ? `${(infoCargo.weight * LB_TO_KG).toFixed(0)} kg` : `${infoCargo.weight.toFixed(0)} lb`}</span>
+              <span className="basis-full text-center text-[8px] font-medium text-text-deemphasis sm:basis-auto sm:text-left">
                 <span className="sm:hidden">Tap again to deselect · Drag to move · Long-press for stats</span>
                 <span className="hidden sm:inline">Drag selected cargo to move · Right-click for stats</span>
               </span>
-            </div> : <p className="text-center text-[9px] font-medium text-slate-500"><span className="sm:hidden">Tap cargo to select · Drag grid to rotate · Long-press for stats</span><span className="hidden sm:inline">Click cargo to select · Drag grid to rotate · Right-click cargo for stats</span></p>}
+            </div> : <p className="text-center text-[9px] font-medium text-text-muted"><span className="sm:hidden">Tap cargo to select · Drag grid to rotate · Long-press for stats</span><span className="hidden sm:inline">Click cargo to select · Drag grid to rotate · Right-click cargo for stats</span></p>}
           </div>
           <AnimatePresence>
             {cargoContextCard && contextCargo && (
@@ -3615,33 +3615,33 @@ export function ContainerViewer3D({
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.97, y: 4 }}
                 transition={{ duration: 0.14, ease: "easeOut" }}
-                className="absolute z-50 w-[min(292px,calc(100%-24px))] overflow-hidden rounded-[22px] border border-white/90 bg-white/[0.84] text-slate-700 shadow-[0_24px_70px_-28px_rgba(15,23,42,0.5)] backdrop-blur-2xl"
+                className="absolute z-50 w-[min(292px,calc(100%-24px))] overflow-hidden rounded-lg border border-border-hairline bg-white text-text-secondary shadow-md"
                 style={{ left: cargoContextCard.x, top: cargoContextCard.y }}
                 onPointerDown={(event) => event.stopPropagation()}
                 data-testid="cargo-stats-card"
               >
-                <div className="flex items-center justify-between gap-3 border-b border-slate-200/70 px-4 py-3">
-                  <div className="min-w-0"><p className="truncate text-xs font-bold text-slate-900">Unit #{cargoContextCard.index + 1} · {contextCargo.cargoName || "Cargo item"}</p><p className="mt-0.5 truncate text-[9px] text-slate-500">{fmt(contextCargo.l)} × {fmt(contextCargo.w)} × {fmt(contextCargo.h)} · {unitSystem === "metric" ? `${(contextCargo.weight * LB_TO_KG).toFixed(0)} kg` : `${contextCargo.weight.toFixed(0)} lb`}</p></div>
-                  <button type="button" onClick={() => setCargoContextCard(null)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-white hover:text-slate-700" aria-label="Close cargo statistics"><X className="h-3.5 w-3.5" /></button>
+                <div className="flex items-center justify-between gap-3 border-b border-border-hairline px-4 py-3">
+                  <div className="min-w-0"><p className="truncate text-xs font-bold text-text-primary">Unit #{cargoContextCard.index + 1} · {contextCargo.cargoName || "Cargo item"}</p><p className="mt-0.5 truncate text-[9px] text-text-muted">{fmt(contextCargo.l)} × {fmt(contextCargo.w)} × {fmt(contextCargo.h)} · {unitSystem === "metric" ? `${(contextCargo.weight * LB_TO_KG).toFixed(0)} kg` : `${contextCargo.weight.toFixed(0)} lb`}</p></div>
+                  <button type="button" onClick={() => setCargoContextCard(null)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-text-deemphasis transition hover:bg-white hover:text-text-secondary" aria-label="Close cargo statistics"><X className="h-3.5 w-3.5" /></button>
                 </div>
                 <div className="p-2">
-                  <button type="button" onClick={() => revealCargoInList(cargoContextCard.index)} className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-[10px] font-semibold text-slate-700 transition hover:bg-white/80 hover:text-primary" data-testid="button-show-cargo-in-list"><ListChecks className="h-4 w-4" />Show in cargo list</button>
+                  <button type="button" onClick={() => revealCargoInList(cargoContextCard.index)} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[10px] font-semibold text-text-secondary transition hover:bg-white hover:text-brand" data-testid="button-show-cargo-in-list"><ListChecks className="h-4 w-4" />Show in cargo list</button>
                   {onPlacedChange && <>
                     <div className="grid grid-cols-2 gap-1">
-                      <button type="button" onClick={() => { stageCargo(cargoContextCard.index, "dock1"); setCargoContextCard(null); }} onMouseEnter={() => previewDock("dock1")} onMouseLeave={restoreDockPreview} className="flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-[9px] font-bold text-slate-600 transition hover:bg-blue-50 hover:text-primary" data-testid="button-context-move-dock1"><Package className="h-3.5 w-3.5" />Move to D1</button>
-                      <button type="button" onClick={() => { stageCargo(cargoContextCard.index, "dock2"); setCargoContextCard(null); }} onMouseEnter={() => previewDock("dock2")} onMouseLeave={restoreDockPreview} className="flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-[9px] font-bold text-slate-600 transition hover:bg-blue-50 hover:text-primary" data-testid="button-context-move-dock2"><Package className="h-3.5 w-3.5" />Move to D2</button>
+                      <button type="button" onClick={() => { stageCargo(cargoContextCard.index, "dock1"); setCargoContextCard(null); }} onMouseEnter={() => previewDock("dock1")} onMouseLeave={restoreDockPreview} className="flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[9px] font-bold text-text-muted transition hover:bg-surface-recessed hover:text-brand" data-testid="button-context-move-dock1"><Package className="h-3.5 w-3.5" />Move to D1</button>
+                      <button type="button" onClick={() => { stageCargo(cargoContextCard.index, "dock2"); setCargoContextCard(null); }} onMouseEnter={() => previewDock("dock2")} onMouseLeave={restoreDockPreview} className="flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[9px] font-bold text-text-muted transition hover:bg-surface-recessed hover:text-brand" data-testid="button-context-move-dock2"><Package className="h-3.5 w-3.5" />Move to D2</button>
                     </div>
                     <div className="grid grid-cols-4 gap-1 px-1 pb-1">
-                      <button type="button" onClick={() => { applySelectionRotation("counterclockwise"); setCargoContextCard(null); }} disabled={!canRotateSelectionLeft} className="flex min-h-10 flex-col items-center justify-center rounded-lg text-[8px] font-bold text-slate-600 hover:bg-blue-50 hover:text-primary disabled:opacity-30" aria-label="Rotate left"><RotateCcw className="h-3.5 w-3.5" />Left</button>
-                      <button type="button" onClick={() => { applySelectionRotation("clockwise"); setCargoContextCard(null); }} disabled={!canRotateSelectionRight} className="flex min-h-10 flex-col items-center justify-center rounded-lg text-[8px] font-bold text-slate-600 hover:bg-blue-50 hover:text-primary disabled:opacity-30" aria-label="Rotate right"><RotateCw className="h-3.5 w-3.5" />Right</button>
-                      <button type="button" onClick={() => { moveSelectionVertically("up"); setCargoContextCard(null); }} disabled={!canStackSelectionUp} className="flex min-h-10 flex-col items-center justify-center rounded-lg text-[8px] font-bold text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-30" aria-label="Stack up"><ArrowUp className="h-3.5 w-3.5" />Stack</button>
-                      <button type="button" onClick={() => { moveSelectionVertically("down"); setCargoContextCard(null); }} disabled={!canLowerSelection} className="flex min-h-10 flex-col items-center justify-center rounded-lg text-[8px] font-bold text-slate-600 hover:bg-amber-50 hover:text-amber-700 disabled:opacity-30" aria-label="Lower"><ArrowDown className="h-3.5 w-3.5" />Lower</button>
+                      <button type="button" onClick={() => { applySelectionRotation("counterclockwise"); setCargoContextCard(null); }} disabled={!canRotateSelectionLeft} className="flex min-h-10 flex-col items-center justify-center rounded-lg text-[8px] font-bold text-text-muted hover:bg-surface-recessed hover:text-brand disabled:opacity-30" aria-label="Rotate left"><RotateCcw className="h-3.5 w-3.5" />Left</button>
+                      <button type="button" onClick={() => { applySelectionRotation("clockwise"); setCargoContextCard(null); }} disabled={!canRotateSelectionRight} className="flex min-h-10 flex-col items-center justify-center rounded-lg text-[8px] font-bold text-text-muted hover:bg-surface-recessed hover:text-brand disabled:opacity-30" aria-label="Rotate right"><RotateCw className="h-3.5 w-3.5" />Right</button>
+                      <button type="button" onClick={() => { moveSelectionVertically("up"); setCargoContextCard(null); }} disabled={!canStackSelectionUp} className="flex min-h-10 flex-col items-center justify-center rounded-lg text-[8px] font-bold text-text-muted hover:bg-[#ECFDF3] hover:text-[#15803D] disabled:opacity-30" aria-label="Stack up"><ArrowUp className="h-3.5 w-3.5" />Stack</button>
+                      <button type="button" onClick={() => { moveSelectionVertically("down"); setCargoContextCard(null); }} disabled={!canLowerSelection} className="flex min-h-10 flex-col items-center justify-center rounded-lg text-[8px] font-bold text-text-muted hover:bg-[#FFFBEB] hover:text-[#78350F] disabled:opacity-30" aria-label="Lower"><ArrowDown className="h-3.5 w-3.5" />Lower</button>
                     </div>
-                    <button type="button" onClick={() => { setArrangeMode(true); setCargoContextCard(null); setPlacementMessage("Precision tools enabled — align, rotate or nudge the selected cargo."); }} className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-[10px] font-semibold text-slate-700 transition hover:bg-white/80 hover:text-primary" data-testid="button-cargo-precision-tools"><Crosshair className="h-4 w-4" />Open precision tools</button>
+                    <button type="button" onClick={() => { setArrangeMode(true); setCargoContextCard(null); setPlacementMessage("Precision tools enabled — align, rotate or nudge the selected cargo."); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[10px] font-semibold text-text-secondary transition hover:bg-white hover:text-brand" data-testid="button-cargo-precision-tools"><Crosshair className="h-4 w-4" />Open precision tools</button>
                   </>}
                 </div>
-                <div className="border-y border-slate-200/70 bg-white/30 px-4 py-3">
-                  <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Clearance to container</p>
+                <div className="border-y border-border-hairline bg-white px-4 py-3">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-text-deemphasis">Clearance to container</p>
                   <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 text-[10px]">
                     {([
                       ["Closed end", contextCargo.x],
@@ -3650,31 +3650,31 @@ export function ContainerViewer3D({
                       ["Side B", Math.max(0, container.widthIn - contextCargo.z - contextCargo.w)],
                       ["Floor", contextCargo.y],
                       ["Ceiling", Math.max(0, container.heightIn - contextCargo.y - contextCargo.h)],
-                    ] as const).map(([label, value]) => <Fragment key={label}><dt className="text-slate-500">{label}</dt><dd className="font-bold tabular-nums text-slate-800">{fmt(value)}</dd></Fragment>)}
+                    ] as const).map(([label, value]) => <Fragment key={label}><dt className="text-text-muted">{label}</dt><dd className="font-bold tabular-nums text-text-secondary">{fmt(value)}</dd></Fragment>)}
                   </dl>
                 </div>
                 <div className="p-2">
-                  <button type="button" onClick={() => { const validation = validateManualLayout(placed, container); setPlacementMessage(validation.valid ? "Placement rechecked — this layout passes boundary, collision and support checks." : "Placement check found an issue. Open Placement checks for details."); setCargoContextCard(null); }} className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-[10px] font-semibold text-slate-600 transition hover:bg-white/80 hover:text-primary" data-testid="button-recheck-cargo-placement"><RotateCcw className="h-4 w-4" />Recheck placement</button>
+                  <button type="button" onClick={() => { const validation = validateManualLayout(placed, container); setPlacementMessage(validation.valid ? "Placement rechecked — this layout passes boundary, collision and support checks." : "Placement check found an issue. Open Placement checks for details."); setCargoContextCard(null); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[10px] font-semibold text-text-muted transition hover:bg-white hover:text-brand" data-testid="button-recheck-cargo-placement"><RotateCcw className="h-4 w-4" />Recheck placement</button>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
           {sequenceMode ? (
-            <div className="absolute bottom-16 left-3 right-3 z-30 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:min-w-[390px] lg:bottom-14 rounded-xl border border-indigo-200 bg-white/[0.98] p-2 shadow-lg" data-testid="loading-sequence-controls">
+            <div className="absolute bottom-16 left-3 right-3 z-30 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:min-w-[390px] lg:bottom-14 rounded-lg border border-border-hairline bg-white p-2 shadow-md" data-testid="loading-sequence-controls">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setSequenceStep((step) => Math.max(0, step - 1))}
                   disabled={sequenceStep === 0}
-                  className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:border-indigo-300 hover:text-indigo-600 disabled:opacity-35 disabled:cursor-not-allowed"
+                  className="w-8 h-8 rounded-lg border border-border-hairline bg-white flex items-center justify-center text-text-muted hover:border-border-hairline hover:text-text-secondary disabled:opacity-35 disabled:cursor-not-allowed"
                   aria-label="Previous loading step"
                   data-testid="button-sequence-previous"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <div className="min-w-0 flex-1 text-center">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-indigo-500">Loading step {sequenceStep} of {sequenceOrder.length}</p>
-                  <p className="truncate text-xs font-bold text-slate-900 mt-0.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-text-deemphasis">Loading step {sequenceStep} of {sequenceOrder.length}</p>
+                  <p className="truncate text-xs font-bold text-text-primary mt-0.5">
                     {sequenceCargo ? sequenceCargo.cargoName || "Cargo item" : "Empty container — begin loading"}
                   </p>
                 </div>
@@ -3682,25 +3682,25 @@ export function ContainerViewer3D({
                   type="button"
                   onClick={() => setSequenceStep((step) => Math.min(sequenceOrder.length, step + 1))}
                   disabled={sequenceStep >= sequenceOrder.length}
-                  className="w-8 h-8 rounded-lg border border-indigo-200 bg-indigo-600 flex items-center justify-center text-white hover:bg-indigo-700 disabled:opacity-35 disabled:cursor-not-allowed"
+                  className="w-8 h-8 rounded-lg border border-border-hairline bg-indigo-600 flex items-center justify-center text-white hover:bg-indigo-700 disabled:opacity-35 disabled:cursor-not-allowed"
                   aria-label="Next loading step"
                   data-testid="button-sequence-next"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
-              <div className="mt-2 h-1.5 rounded-full overflow-hidden bg-indigo-100">
-                <div className="h-full rounded-full bg-indigo-500 transition-[width] duration-200" style={{ width: `${sequenceOrder.length > 0 ? (sequenceStep / sequenceOrder.length) * 100 : 0}%` }} />
+              <div className="mt-2 h-1.5 rounded-full overflow-hidden bg-surface-canvas">
+                <div className="h-full rounded-full bg-indigo-500 transition-[width] duration-state" style={{ width: `${sequenceOrder.length > 0 ? (sequenceStep / sequenceOrder.length) * 100 : 0}%` }} />
               </div>
-              <p className="mt-1.5 text-center text-[9px] text-slate-500">Suggested order: closed end to doors, lower levels first</p>
+              <p className="mt-1.5 text-center text-[9px] text-text-muted">Suggested order: closed end to doors, lower levels first</p>
             </div>
           ) : !mobilePanelOpen && (
             <div className={`pointer-events-none absolute bottom-14 left-0 right-0 z-20 rounded-tr-xl border-r border-t px-2.5 py-1.5 text-[10px] font-medium sm:left-auto sm:right-[8.75rem] sm:max-w-[65%] lg:hidden ${
               arrangeMode
                 ? placementMessage.includes("overlap") || placementMessage.includes("without enough") || placementMessage.includes("cancelled")
-                  ? "border-red-200 bg-red-50/90 text-red-700"
-                  : "border-sky-200 bg-white/90 text-slate-700"
-                : "border-white/80 bg-white/75 text-slate-600"
+                  ? "border-[#FECDCA] bg-[#FEF3F2] text-[#7A271A]"
+                  : "border-border-control bg-white text-text-secondary"
+                : "border-border-hairline bg-white text-text-muted"
             }`}>
               {selectedStagedCargoId
                 ? "Staged cargo selected · Drag into the container or open Details"
@@ -3713,32 +3713,32 @@ export function ContainerViewer3D({
                     : <><span className="sm:hidden">Drag to rotate · Pinch to zoom · Tap cargo to select</span><span className="hidden sm:inline">Drag to rotate · Scroll or pinch to zoom</span></>}
             </div>
           )}
-          <div className="pointer-events-none absolute bottom-14 left-3 z-20 hidden max-w-[440px] items-center gap-3 rounded-xl border border-white/85 bg-white/95 px-3 py-2 text-[9px] text-slate-500 shadow-[0_12px_32px_-20px_rgba(15,23,42,0.45)] lg:flex" data-testid="container-interaction-legend">
-            <Mouse className="h-4 w-4 shrink-0 text-slate-500" />
-            <span><strong className="text-slate-700">Left-drag</strong> rotate scene / move selected cargo</span>
-            <span><strong className="text-slate-700">Right-drag</strong> pan</span>
-            <span><strong className="text-slate-700">Wheel</strong> zoom</span>
+          <div className="pointer-events-none absolute bottom-14 left-3 z-20 hidden max-w-[440px] items-center gap-3 rounded-lg border border-border-hairline bg-white px-3 py-2 text-[9px] text-text-muted shadow-md lg:flex" data-testid="container-interaction-legend">
+            <Mouse className="h-4 w-4 shrink-0 text-text-muted" />
+            <span><strong className="text-text-secondary">Left-drag</strong> rotate scene / move selected cargo</span>
+            <span><strong className="text-text-secondary">Right-drag</strong> pan</span>
+            <span><strong className="text-text-secondary">Wheel</strong> zoom</span>
           </div>
-          {(onOpenProjects || onEditCargo || onEditContainer) && <nav className="absolute inset-x-0 bottom-0 z-40 hidden h-12 grid-cols-4 border-t border-white/90 bg-white/95 shadow-[0_-12px_30px_-24px_rgba(15,23,42,0.42)] lg:grid" aria-label="Loading plan workflow" data-testid="container-workflow-bar">
-            <button type="button" onClick={() => runExternalAction(onOpenProjects)} disabled={!onOpenProjects} className="flex items-center justify-center gap-2 border-r border-slate-200/70 text-[10px] font-semibold text-slate-500 transition hover:bg-white hover:text-primary disabled:cursor-default disabled:opacity-60"><FolderOpen className="h-3.5 w-3.5" />Projects</button>
-            <button type="button" onClick={() => runExternalAction(onEditCargo)} disabled={!onEditCargo} className="flex items-center justify-center gap-2 border-r border-slate-200/70 text-[10px] font-semibold text-slate-500 transition hover:bg-white hover:text-primary disabled:cursor-default disabled:opacity-60"><Package className="h-3.5 w-3.5" />Cargo</button>
-            <button type="button" onClick={() => runExternalAction(onEditContainer)} disabled={!onEditContainer} className="flex items-center justify-center gap-2 border-r border-slate-200/70 text-[10px] font-semibold text-slate-500 transition hover:bg-white hover:text-primary disabled:cursor-default disabled:opacity-60"><Ship className="h-3.5 w-3.5" />Container</button>
-            <span className="flex items-center justify-center gap-2 bg-blue-50/80 text-[10px] font-bold text-primary"><LayoutDashboard className="h-3.5 w-3.5" />Loading plan</span>
+          {(onOpenProjects || onEditCargo || onEditContainer) && <nav className="absolute inset-x-0 bottom-0 z-40 hidden h-12 grid-cols-4 border-t border-border-hairline bg-white shadow-md lg:grid" aria-label="Loading plan workflow" data-testid="container-workflow-bar">
+            <button type="button" onClick={() => runExternalAction(onOpenProjects)} disabled={!onOpenProjects} className="flex items-center justify-center gap-2 border-r border-border-hairline text-[10px] font-semibold text-text-muted transition hover:bg-white hover:text-brand disabled:cursor-default disabled:opacity-60"><FolderOpen className="h-3.5 w-3.5" />Projects</button>
+            <button type="button" onClick={() => runExternalAction(onEditCargo)} disabled={!onEditCargo} className="flex items-center justify-center gap-2 border-r border-border-hairline text-[10px] font-semibold text-text-muted transition hover:bg-white hover:text-brand disabled:cursor-default disabled:opacity-60"><Package className="h-3.5 w-3.5" />Cargo</button>
+            <button type="button" onClick={() => runExternalAction(onEditContainer)} disabled={!onEditContainer} className="flex items-center justify-center gap-2 border-r border-border-hairline text-[10px] font-semibold text-text-muted transition hover:bg-white hover:text-brand disabled:cursor-default disabled:opacity-60"><Ship className="h-3.5 w-3.5" />Container</button>
+            <span className="flex items-center justify-center gap-2 bg-white text-[11px] font-semibold text-brand"><LayoutDashboard className="h-3.5 w-3.5" />Loading plan</span>
           </nav>}
         </div>
         {sidebarOpen && (
-          <aside className="absolute bottom-14 right-3 top-3 z-20 hidden w-[320px] min-h-0 flex-col overflow-hidden rounded-3xl border border-white/95 bg-white/[0.98] shadow-[0_24px_70px_-24px_rgba(15,23,42,0.3)] lg:flex" data-testid="container-viewer-sidebar">
-            <div className="border-b border-slate-200 bg-white/90 p-3">
+          <aside className="absolute bottom-14 right-3 top-3 z-20 hidden w-[320px] min-h-0 flex-col overflow-hidden rounded-lg border border-border-hairline bg-white shadow-md lg:flex" data-testid="container-viewer-sidebar">
+            <div className="border-b border-border-hairline bg-white p-3">
               <div className="grid grid-cols-[32px_1fr_32px] items-center gap-2">
-                <button type="button" onClick={onPreviousPlan} disabled={!onPreviousPlan || planIndex <= 0} className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-50 text-slate-500 transition hover:bg-white hover:text-primary disabled:opacity-30" aria-label="Previous container plan" data-testid="button-viewer-previous-plan"><ChevronLeft className="h-4 w-4" /></button>
+                <button type="button" onClick={onPreviousPlan} disabled={!onPreviousPlan || planIndex <= 0} className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-recessed text-text-muted transition hover:bg-white hover:text-brand disabled:opacity-30" aria-label="Previous container plan" data-testid="button-viewer-previous-plan"><ChevronLeft className="h-4 w-4" /></button>
                 <div className="min-w-0 text-center">
-                  <p className="truncate text-xs font-bold text-slate-900">{container.name}</p>
-                  <p className="mt-0.5 truncate text-[9px] text-slate-500">{fmt(container.lengthIn)} × {fmt(container.widthIn)} × {fmt(container.heightIn)} · {unitSystem === "metric" ? `${(container.volumeCuFt * 0.0283168).toFixed(1)} m³` : `${container.volumeCuFt.toFixed(0)} ft³`}</p>
+                  <p className="truncate text-xs font-bold text-text-primary">{container.name}</p>
+                  <p className="mt-0.5 truncate text-[9px] text-text-muted">{fmt(container.lengthIn)} × {fmt(container.widthIn)} × {fmt(container.heightIn)} · {unitSystem === "metric" ? `${(container.volumeCuFt * 0.0283168).toFixed(1)} m³` : `${container.volumeCuFt.toFixed(0)} ft³`}</p>
                 </div>
-                <button type="button" onClick={onNextPlan} disabled={!onNextPlan || planIndex >= planCount - 1} className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-50 text-slate-500 transition hover:bg-white hover:text-primary disabled:opacity-30" aria-label="Next container plan" data-testid="button-viewer-next-plan"><ChevronRight className="h-4 w-4" /></button>
+                <button type="button" onClick={onNextPlan} disabled={!onNextPlan || planIndex >= planCount - 1} className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-recessed text-text-muted transition hover:bg-white hover:text-brand disabled:opacity-30" aria-label="Next container plan" data-testid="button-viewer-next-plan"><ChevronRight className="h-4 w-4" /></button>
               </div>
-              <p className="mt-1.5 text-center text-[9px] font-semibold uppercase tracking-[0.1em] text-slate-400">Container {planIndex + 1} / {Math.max(1, planCount)}</p>
-              <div className="mt-2 grid grid-cols-3 rounded-xl bg-slate-100 p-1" role="tablist" aria-label="Cargo workspace zones">
+              <p className="mt-1.5 text-center text-[9px] font-semibold uppercase tracking-[0.1em] text-text-deemphasis">Container {planIndex + 1} / {Math.max(1, planCount)}</p>
+              <div className="mt-2 grid grid-cols-3 rounded-lg bg-surface-canvas p-1" role="tablist" aria-label="Cargo workspace zones">
                 {([
                   ["dock1", "Dock 1"],
                   ["loaded", "Loaded"],
@@ -3750,67 +3750,67 @@ export function ContainerViewer3D({
                     role="tab"
                     aria-selected={activeCargoZone === zone}
                     onClick={() => { setActiveCargoZone(zone); setSelectedSceneDock(zone === "loaded" ? null : zone); if (zone === "loaded") setSelectedStagedCargoId(null); }}
-                    className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] font-bold transition ${activeCargoZone === zone ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                    className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] font-bold transition ${activeCargoZone === zone ? "bg-white text-brand shadow-sm" : "text-text-muted hover:text-text-secondary"}`}
                     data-testid={`button-cargo-zone-${zone}`}
                   >
-                    {zone === "loaded" ? <Box className="h-3 w-3" /> : <Package className="h-3 w-3" />}<span>{label}</span><span className={`min-w-4 rounded-full px-1 text-center text-[8px] ${activeCargoZone === zone ? "bg-blue-50 text-primary" : "bg-slate-200/70 text-slate-500"}`}>{zone === "loaded" ? placed.length : stagedByZone[zone].length}</span>
+                    {zone === "loaded" ? <Box className="h-3 w-3" /> : <Package className="h-3 w-3" />}<span>{label}</span><span className={`min-w-4 rounded-full px-1 text-center text-[8px] ${activeCargoZone === zone ? "bg-surface-recessed text-brand" : "bg-surface-canvas text-text-muted"}`}>{zone === "loaded" ? placed.length : stagedByZone[zone].length}</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="border-b border-slate-200 bg-white/90">
-              <button type="button" onClick={() => setPlacementSummaryOpen((current) => !current)} className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-slate-50" aria-expanded={placementSummaryOpen} data-testid="button-toggle-placement-summary">
-                <span><span className="block text-[10px] font-bold uppercase tracking-[0.1em] text-slate-600">Placement calculations</span><span className="mt-0.5 block text-[9px] text-slate-400">{volumeUtilization.toFixed(0)}% volume · {payloadUtilization.toFixed(0)}% payload · {placed.length} units</span></span>
-                <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${placementSummaryOpen ? "rotate-180" : ""}`} />
+            <div className="border-b border-border-hairline bg-white">
+              <button type="button" onClick={() => setPlacementSummaryOpen((current) => !current)} className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-surface-recessed" aria-expanded={placementSummaryOpen} data-testid="button-toggle-placement-summary">
+                <span><span className="block text-[10px] font-bold uppercase tracking-[0.1em] text-text-muted">Placement calculations</span><span className="mt-0.5 block text-[9px] text-text-deemphasis tabular-nums">{volumeUtilization.toFixed(0)}% volume · {payloadUtilization.toFixed(0)}% payload · {placed.length} units</span></span>
+                <ChevronDown className={`h-4 w-4 shrink-0 text-text-deemphasis transition-transform ${placementSummaryOpen ? "rotate-180" : ""}`} />
               </button>
-              {placementSummaryOpen && <div className="border-t border-slate-100 px-3 pb-3 pt-2" data-testid="viewer-placement-summary">
+              {placementSummaryOpen && <div className="border-t border-border-hairline px-3 pb-3 pt-2" data-testid="viewer-placement-summary">
                 <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-1.5 text-[10px]">
-                  <span className="font-medium text-slate-500">Used</span><span className="text-right font-medium text-slate-400">Capacity</span><span className="text-right font-medium text-slate-400">Free</span>
+                  <span className="font-medium text-text-muted">Used</span><span className="text-right font-medium text-text-deemphasis">Capacity</span><span className="text-right font-medium text-text-deemphasis">Free</span>
                   {[
                     [fmt(loadSummary.usedLength), fmt(container.lengthIn), fmt(Math.max(0, container.lengthIn - loadSummary.usedLength))],
                     [fmt(loadSummary.usedWidth), fmt(container.widthIn), fmt(Math.max(0, container.widthIn - loadSummary.usedWidth))],
                     [fmt(loadSummary.usedHeight), fmt(container.heightIn), fmt(Math.max(0, container.heightIn - loadSummary.usedHeight))],
-                  ].map((row, index) => <Fragment key={index}><span className="font-semibold text-slate-800">{row[0]}</span><span className="text-right text-slate-500">{row[1]}</span><span className="text-right font-bold text-emerald-600">{row[2]}</span></Fragment>)}
+                  ].map((row, index) => <Fragment key={index}><span className="font-semibold text-text-secondary">{row[0]}</span><span className="text-right text-text-muted">{row[1]}</span><span className="text-right font-bold text-[#15803D]">{row[2]}</span></Fragment>)}
                 </div>
-                <div className="mt-2 grid grid-cols-2 gap-2 text-[9px]"><div className="rounded-lg bg-slate-50 p-2"><span className="text-slate-400">Weight</span><strong className="mt-0.5 block text-[10px] text-slate-800">{unitSystem === "metric" ? `${(loadSummary.totalWeight * LB_TO_KG).toLocaleString(undefined, { maximumFractionDigits: 0 })} kg` : `${loadSummary.totalWeight.toLocaleString(undefined, { maximumFractionDigits: 0 })} lb`}</strong></div><div className="rounded-lg bg-slate-50 p-2"><span className="text-slate-400">Volume</span><strong className="mt-0.5 block text-[10px] text-slate-800">{unitSystem === "metric" ? `${(loadSummary.usedVolumeCuFt * 0.0283168).toFixed(1)} m³` : `${loadSummary.usedVolumeCuFt.toFixed(1)} ft³`}</strong></div></div>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-[9px]"><div className="rounded-lg bg-surface-recessed p-2"><span className="text-text-deemphasis">Weight</span><strong className="mt-0.5 block text-[10px] text-text-secondary">{unitSystem === "metric" ? `${(loadSummary.totalWeight * LB_TO_KG).toLocaleString(undefined, { maximumFractionDigits: 0 })} kg` : `${loadSummary.totalWeight.toLocaleString(undefined, { maximumFractionDigits: 0 })} lb`}</strong></div><div className="rounded-lg bg-surface-recessed p-2"><span className="text-text-deemphasis">Volume</span><strong className="mt-0.5 block text-[10px] text-text-secondary">{unitSystem === "metric" ? `${(loadSummary.usedVolumeCuFt * 0.0283168).toFixed(1)} m³` : `${loadSummary.usedVolumeCuFt.toFixed(1)} ft³`}</strong></div></div>
               </div>}
-              <button type="button" onClick={() => setBalanceSummaryOpen((current) => !current)} className="flex w-full items-center justify-between gap-3 border-t border-slate-100 px-3 py-2.5 text-left hover:bg-slate-50" aria-expanded={balanceSummaryOpen} data-testid="button-toggle-viewer-balance">
-                <span><span className="block text-[10px] font-bold uppercase tracking-[0.1em] text-slate-600">Weight balance &amp; COG</span><span className="mt-0.5 block text-[9px] capitalize text-slate-400">{balance.status} · length {balance.longitudinalPct.toFixed(0)}% · side {balance.lateralPct.toFixed(0)}%</span></span>
-                <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${balanceSummaryOpen ? "rotate-180" : ""}`} />
+              <button type="button" onClick={() => setBalanceSummaryOpen((current) => !current)} className="flex w-full items-center justify-between gap-3 border-t border-border-hairline px-3 py-2.5 text-left hover:bg-surface-recessed" aria-expanded={balanceSummaryOpen} data-testid="button-toggle-viewer-balance">
+                <span><span className="block text-[10px] font-bold uppercase tracking-[0.1em] text-text-muted">Weight balance &amp; COG</span><span className="mt-0.5 block text-[9px] capitalize text-text-deemphasis">{balance.status} · length {balance.longitudinalPct.toFixed(0)}% · side {balance.lateralPct.toFixed(0)}%</span></span>
+                <ChevronDown className={`h-4 w-4 shrink-0 text-text-deemphasis transition-transform ${balanceSummaryOpen ? "rotate-180" : ""}`} />
               </button>
-              {balanceSummaryOpen && <div className="border-t border-slate-100 px-3 pb-3 pt-2" data-testid="viewer-balance-summary">
-                <div className="grid grid-cols-2 gap-2 text-[9px]"><div className="rounded-lg bg-slate-50 p-2 text-slate-500"><span className="block">Closed end / doors</span><strong className="mt-0.5 block text-[10px] text-slate-800">{balance.closedEndWeightPct.toFixed(0)}% / {balance.doorEndWeightPct.toFixed(0)}%</strong></div><div className="rounded-lg bg-slate-50 p-2 text-slate-500"><span className="block">Side A / Side B</span><strong className="mt-0.5 block text-[10px] text-slate-800">{balance.sideAWeightPct.toFixed(0)}% / {balance.sideBWeightPct.toFixed(0)}%</strong></div></div>
-                <p className="mt-2 flex gap-1.5 text-[9px] leading-4 text-slate-400"><Info className="mt-0.5 h-3 w-3 shrink-0" />A practical planning aid only. Real loads still require appropriate blocking, bracing and carrier checks.</p>
+              {balanceSummaryOpen && <div className="border-t border-border-hairline px-3 pb-3 pt-2" data-testid="viewer-balance-summary">
+                <div className="grid grid-cols-2 gap-2 text-[9px]"><div className="rounded-lg bg-surface-recessed p-2 text-text-muted"><span className="block">Closed end / doors</span><strong className="mt-0.5 block text-[10px] text-text-secondary">{balance.closedEndWeightPct.toFixed(0)}% / {balance.doorEndWeightPct.toFixed(0)}%</strong></div><div className="rounded-lg bg-surface-recessed p-2 text-text-muted"><span className="block">Side A / Side B</span><strong className="mt-0.5 block text-[10px] text-text-secondary">{balance.sideAWeightPct.toFixed(0)}% / {balance.sideBWeightPct.toFixed(0)}%</strong></div></div>
+                <p className="mt-2 flex gap-1.5 text-[9px] leading-4 text-text-deemphasis"><Info className="mt-0.5 h-3 w-3 shrink-0" />A practical planning aid only. Real loads still require appropriate blocking, bracing and carrier checks.</p>
               </div>}
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2 [scrollbar-color:#cbd5e1_transparent] [scrollbar-width:thin]">
-              <div className="sticky top-0 z-10 mb-1 flex items-center justify-between rounded-lg bg-slate-50 px-2 py-1.5">
-                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">{activeCargoZone === "loaded" ? "Cargo units" : activeCargoZone === "dock1" ? "Dock 1 staging" : "Dock 2 staging"}</p>
-                <p className="text-[9px] text-slate-400">{activeCargoZone === "loaded" ? "Hover to inspect" : `${stagedByZone[activeCargoZone].length} staged`}</p>
+              <div className="sticky top-0 z-10 mb-1 flex items-center justify-between rounded-lg bg-surface-recessed px-2 py-1.5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">{activeCargoZone === "loaded" ? "Cargo units" : activeCargoZone === "dock1" ? "Dock 1 staging" : "Dock 2 staging"}</p>
+                <p className="text-[9px] text-text-deemphasis">{activeCargoZone === "loaded" ? "Hover to inspect" : `${stagedByZone[activeCargoZone].length} staged`}</p>
               </div>
               {activeCargoZone === "loaded" ? <div className="space-y-1.5">
-                {cargoGroups.map((cargoGroup) => <div key={cargoGroup.id} className="overflow-hidden rounded-xl border border-slate-200/80 bg-white/75">
+                {cargoGroups.map((cargoGroup) => <div key={cargoGroup.id} className="overflow-hidden rounded-lg border border-border-hairline bg-white">
                   <div className="flex items-center gap-1.5 p-1.5">
-                    {onPlacedChange && arrangeMode && <button type="button" onClick={() => toggleCargoGroupSelection(cargoGroup.indexes)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-primary hover:bg-blue-50" aria-label={`Select all ${cargoGroup.name} units`} data-testid={`button-select-cargo-group-${cargoGroup.id}`}><CheckSquare className="h-3.5 w-3.5" /></button>}
+                    {onPlacedChange && arrangeMode && <button type="button" onClick={() => toggleCargoGroupSelection(cargoGroup.indexes)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-brand hover:bg-surface-recessed" aria-label={`Select all ${cargoGroup.name} units`} data-testid={`button-select-cargo-group-${cargoGroup.id}`}><CheckSquare className="h-3.5 w-3.5" /></button>}
                     <button type="button" onClick={() => { setHoveredCargoIndex(cargoGroup.indexes[0]); sceneRef.current?.setCargoHover(cargoGroup.indexes[0]); }} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg p-0.5 text-left">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-900" style={{ backgroundColor: `${cargoGroup.color}45` }}><Box className="h-3.5 w-3.5" /></span>
-                      <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-slate-800">{cargoGroup.name}</span><span className="mt-0.5 block truncate text-[9px] text-slate-500">{cargoGroup.indexes.length} units · {fmt(cargoGroup.box.l)} × {fmt(cargoGroup.box.w)} × {fmt(cargoGroup.box.h)}</span></span>
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-primary" style={{ backgroundColor: `${cargoGroup.color}45` }}><Box className="h-3.5 w-3.5" /></span>
+                      <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-text-secondary">{cargoGroup.name}</span><span className="mt-0.5 block truncate text-[9px] text-text-muted">{cargoGroup.indexes.length} units · {fmt(cargoGroup.box.l)} × {fmt(cargoGroup.box.w)} × {fmt(cargoGroup.box.h)}</span></span>
                     </button>
-                    <button type="button" onClick={() => toggleCargoGroup(cargoGroup.id)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-700" aria-label={`${expandedCargoGroups.has(cargoGroup.id) ? "Collapse" : "Expand"} ${cargoGroup.name}`} aria-expanded={expandedCargoGroups.has(cargoGroup.id)} data-testid={`button-toggle-cargo-group-${cargoGroup.id}`}><ChevronDown className={`h-3.5 w-3.5 transition-transform ${expandedCargoGroups.has(cargoGroup.id) ? "rotate-180" : ""}`} /></button>
+                    <button type="button" onClick={() => toggleCargoGroup(cargoGroup.id)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-text-deemphasis hover:bg-surface-recessed hover:text-text-secondary" aria-label={`${expandedCargoGroups.has(cargoGroup.id) ? "Collapse" : "Expand"} ${cargoGroup.name}`} aria-expanded={expandedCargoGroups.has(cargoGroup.id)} data-testid={`button-toggle-cargo-group-${cargoGroup.id}`}><ChevronDown className={`h-3.5 w-3.5 transition-transform ${expandedCargoGroups.has(cargoGroup.id) ? "rotate-180" : ""}`} /></button>
                   </div>
-                  {expandedCargoGroups.has(cargoGroup.id) && <div className="space-y-0.5 border-t border-slate-100 bg-slate-50/65 p-1">
+                  {expandedCargoGroups.has(cargoGroup.id) && <div className="space-y-0.5 border-t border-border-hairline bg-surface-recessed p-1">
                   {cargoGroup.indexes.map((index) => { const box = placed[index]; return (
                   <div
                     key={`${box.cargoId}-${index}`}
                     onMouseEnter={() => setHoveredCargoIndex(index)}
                     onMouseLeave={() => setHoveredCargoIndex(null)}
-                    className={`group flex w-full items-center gap-1 rounded-xl border p-1.5 text-left transition ${selectedCargoIndices.has(index) ? "border-blue-300 bg-blue-50/70 shadow-sm ring-2 ring-blue-100" : hoveredCargoIndex === index ? "border-blue-300 bg-white shadow-sm ring-2 ring-blue-100" : "border-transparent hover:border-slate-200 hover:bg-white"}`}
+                    className={`group flex w-full items-center gap-1 rounded-lg border-2 p-1.5 text-left transition ${selectedCargoIndices.has(index) ? "border-brand" : hoveredCargoIndex === index ? "border-brand bg-white" : "border-transparent hover:border-border-control hover:bg-white"}`}
                     data-cargo-list-index={index}
                     data-testid={`container-cargo-row-${index}`}
                   >
-                    {onPlacedChange && arrangeMode && <button type="button" onClick={() => toggleCargoSelection(index)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-primary hover:bg-white" aria-label={`${selectedCargoIndices.has(index) ? "Deselect" : "Select"} ${box.cargoName || "cargo item"}`} aria-pressed={selectedCargoIndices.has(index)} data-testid={`button-select-container-cargo-${index}`}>{selectedCargoIndices.has(index) ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 text-slate-400" />}</button>}
+                    {onPlacedChange && arrangeMode && <button type="button" onClick={() => toggleCargoSelection(index)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-brand hover:bg-white" aria-label={`${selectedCargoIndices.has(index) ? "Deselect" : "Select"} ${box.cargoName || "cargo item"}`} aria-pressed={selectedCargoIndices.has(index)} data-testid={`button-select-container-cargo-${index}`}>{selectedCargoIndices.has(index) ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 text-text-deemphasis" />}</button>}
                     <button
                       type="button"
                       onFocus={() => setHoveredCargoIndex(index)}
@@ -3818,18 +3818,18 @@ export function ContainerViewer3D({
                       className="flex min-w-0 flex-1 items-start gap-2 rounded-lg p-0.5 text-left"
                       data-testid={`button-container-cargo-${index}`}
                     >
-                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-900" style={{ backgroundColor: `${box.color}45` }}>
+                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-text-primary" style={{ backgroundColor: `${box.color}45` }}>
                         <Box className="h-3.5 w-3.5" />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[10px] font-bold text-slate-800">{box.cargoName || `Cargo ${index + 1}`}</span>
-                        <span className="mt-0.5 block truncate text-[9px] text-slate-500">{fmt(box.l)} × {fmt(box.w)} × {fmt(box.h)}</span>
-                        <span className="mt-0.5 block text-[9px] text-slate-400">{unitSystem === "metric" ? `${(box.weight * LB_TO_KG).toFixed(0)} kg` : `${box.weight.toFixed(0)} lb`} · x {box.x.toFixed(0)} / y {box.y.toFixed(0)}</span>
+                        <span className="block truncate text-[10px] font-bold text-text-secondary">{box.cargoName || `Cargo ${index + 1}`}</span>
+                        <span className="mt-0.5 block truncate text-[9px] text-text-muted">{fmt(box.l)} × {fmt(box.w)} × {fmt(box.h)}</span>
+                        <span className="mt-0.5 block text-[9px] text-text-deemphasis">{unitSystem === "metric" ? `${(box.weight * LB_TO_KG).toFixed(0)} kg` : `${box.weight.toFixed(0)} lb`} · x {box.x.toFixed(0)} / y {box.y.toFixed(0)}</span>
                       </span>
                     </button>
                     {onPlacedChange && <div className="flex shrink-0 gap-1 opacity-60 transition group-hover:opacity-100 group-focus-within:opacity-100">
-                      <button type="button" onClick={() => stageCargo(index, "dock1")} onMouseEnter={() => previewDock("dock1")} onMouseLeave={restoreDockPreview} onFocus={() => previewDock("dock1")} onBlur={restoreDockPreview} className="flex h-7 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 text-[8px] font-bold text-slate-500 hover:border-blue-300 hover:bg-blue-50 hover:text-primary" title="Move to Dock 1" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 1`} data-testid={`button-stage-dock1-${index}`}><Package className="h-3 w-3" />D1</button>
-                      <button type="button" onClick={() => stageCargo(index, "dock2")} onMouseEnter={() => previewDock("dock2")} onMouseLeave={restoreDockPreview} onFocus={() => previewDock("dock2")} onBlur={restoreDockPreview} className="flex h-7 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 text-[8px] font-bold text-slate-500 hover:border-blue-300 hover:bg-blue-50 hover:text-primary" title="Move to Dock 2" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 2`} data-testid={`button-stage-dock2-${index}`}><Package className="h-3 w-3" />D2</button>
+                      <button type="button" onClick={() => stageCargo(index, "dock1")} onMouseEnter={() => previewDock("dock1")} onMouseLeave={restoreDockPreview} onFocus={() => previewDock("dock1")} onBlur={restoreDockPreview} className="flex h-7 items-center justify-center gap-1 rounded-lg border border-border-hairline bg-white px-1.5 text-[8px] font-bold text-text-muted hover:border-border-hairline hover:bg-surface-recessed hover:text-brand" title="Move to Dock 1" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 1`} data-testid={`button-stage-dock1-${index}`}><Package className="h-3 w-3" />D1</button>
+                      <button type="button" onClick={() => stageCargo(index, "dock2")} onMouseEnter={() => previewDock("dock2")} onMouseLeave={restoreDockPreview} onFocus={() => previewDock("dock2")} onBlur={restoreDockPreview} className="flex h-7 items-center justify-center gap-1 rounded-lg border border-border-hairline bg-white px-1.5 text-[8px] font-bold text-text-muted hover:border-border-hairline hover:bg-surface-recessed hover:text-brand" title="Move to Dock 2" aria-label={`Move ${box.cargoName || "cargo item"} to Dock 2`} data-testid={`button-stage-dock2-${index}`}><Package className="h-3 w-3" />D2</button>
                     </div>}
                   </div>
                   ); })}
@@ -3837,23 +3837,23 @@ export function ContainerViewer3D({
                 </div>)}
               </div> : (
                 stagedByZone[activeCargoZone].length > 0 ? <div className="space-y-1">
-                  {stagedByZone[activeCargoZone].map((entry) => <div key={entry.id} className={`flex items-center gap-2 rounded-xl border p-2 shadow-sm ${selectedStagedCargoId === entry.id ? "border-blue-300 bg-blue-50/80 ring-2 ring-blue-100" : "border-slate-200 bg-white"}`} data-testid={`staged-cargo-${entry.id}`}>
+                  {stagedByZone[activeCargoZone].map((entry) => <div key={entry.id} className={`flex items-center gap-2 rounded-lg border-2 p-2 shadow-sm ${selectedStagedCargoId === entry.id ? "border-brand" : "border-border-app bg-white"}`} data-testid={`staged-cargo-${entry.id}`}>
                     <button type="button" onClick={() => { setSelectedStagedCargoId(entry.id); setSelectedSceneDock(entry.zone); setSelectedCargoIndices(new Set()); sceneRef.current?.setStagedCargoFocus(entry.id); sceneRef.current?.setDockFocus(entry.zone); }} className="flex min-w-0 flex-1 items-center gap-2 text-left" aria-pressed={selectedStagedCargoId === entry.id}>
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-900" style={{ backgroundColor: `${entry.box.color}45` }}><Package className="h-4 w-4" /></span>
-                      <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-slate-800">{entry.box.cargoName || "Cargo item"}</span><span className="mt-0.5 block truncate text-[9px] text-slate-500">{fmt(entry.box.l)} × {fmt(entry.box.w)} × {fmt(entry.box.h)}</span></span>
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-primary" style={{ backgroundColor: `${entry.box.color}45` }}><Package className="h-4 w-4" /></span>
+                      <span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-bold text-text-secondary">{entry.box.cargoName || "Cargo item"}</span><span className="mt-0.5 block truncate text-[9px] text-text-muted">{fmt(entry.box.l)} × {fmt(entry.box.w)} × {fmt(entry.box.h)}</span></span>
                     </button>
-                    <button type="button" onClick={() => loadStagedCargo(entry.id)} className="rounded-lg bg-slate-900 px-2 py-1.5 text-[9px] font-bold text-white hover:bg-slate-700" data-testid={`button-load-staged-${entry.id}`}>Load</button>
+                    <button type="button" onClick={() => loadStagedCargo(entry.id)} className="rounded-sm border border-border-control bg-white px-2 py-1.5 text-[11px] font-semibold text-text-secondary transition-colors duration-state hover:border-brand hover:text-brand" data-testid={`button-load-staged-${entry.id}`}>Load</button>
                   </div>)}
-                </div> : <div className="mx-2 mt-8 rounded-2xl border border-dashed border-slate-300 bg-white/70 px-4 py-7 text-center">
-                  <Package className="mx-auto h-6 w-6 text-slate-300" />
-                  <p className="mt-2 text-[11px] font-bold text-slate-600">No cargo staged here</p>
-                  <p className="mt-1 text-[9px] leading-4 text-slate-400">Use the arrows beside a loaded unit to move it into this dock.</p>
+                </div> : <div className="mx-2 mt-8 rounded-lg border border-dashed border-border-control bg-white px-4 py-7 text-center">
+                  <Package className="mx-auto h-6 w-6 text-text-deemphasis" />
+                  <p className="mt-2 text-[11px] font-bold text-text-muted">No cargo staged here</p>
+                  <p className="mt-1 text-[9px] leading-4 text-text-deemphasis">Use the arrows beside a loaded unit to move it into this dock.</p>
                 </div>
               )}
             </div>
-            <div className="grid shrink-0 grid-cols-2 gap-1.5 border-t border-slate-200 bg-white/92 px-3 py-2" data-testid="viewer-export-actions">
-              {onExportCsv ? <button type="button" onClick={() => runExternalAction(onExportCsv)} className="flex h-8 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white text-[9px] font-bold text-slate-600 hover:border-emerald-300 hover:text-emerald-700" data-testid="button-viewer-export-csv"><FileSpreadsheet className="h-3.5 w-3.5" />Placement CSV</button> : <span />}
-              {onExportPdf && <button type="button" onClick={() => runExternalAction(onExportPdf)} className="flex h-8 items-center justify-center gap-1.5 rounded-lg bg-slate-900 text-[9px] font-bold text-white hover:bg-slate-700" data-testid="button-viewer-export-pdf"><FileDown className="h-3.5 w-3.5" />Save to PDF</button>}
+            <div className="grid shrink-0 grid-cols-2 gap-1.5 border-t border-border-hairline bg-white px-3 py-2" data-testid="viewer-export-actions">
+              {onExportCsv ? <button type="button" onClick={() => runExternalAction(onExportCsv)} className="flex h-8 items-center justify-center gap-1.5 rounded-lg border border-border-hairline bg-white text-[9px] font-bold text-text-muted hover:border-[#A6F4C5] hover:text-[#15803D]" data-testid="button-viewer-export-csv"><FileSpreadsheet className="h-3.5 w-3.5" />Placement CSV</button> : <span />}
+              {onExportPdf && <button type="button" onClick={() => runExternalAction(onExportPdf)} className="flex h-8 items-center justify-center gap-1.5 rounded-md bg-brand text-[11px] font-semibold text-white transition-colors duration-state hover:bg-brand-hover" data-testid="button-viewer-export-pdf"><FileDown className="h-3.5 w-3.5" />Save to PDF</button>}
             </div>
           </aside>
         )}
@@ -3877,7 +3877,7 @@ function StatCard({
   color: string;
 }) {
   return (
-    <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl p-4">
+    <div className="flex items-center gap-3 bg-white border border-border-hairline rounded-lg p-4">
       <div
         className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
         style={{ backgroundColor: `${color}15` }}
@@ -3885,9 +3885,9 @@ function StatCard({
         <Icon className="w-5 h-5" style={{ color }} />
       </div>
       <div className="min-w-0">
-        <p className="text-xs text-slate-500 font-medium">{label}</p>
-        <p className="text-lg font-bold text-slate-900 leading-tight">{value}</p>
-        {sub && <p className="text-xs text-slate-400">{sub}</p>}
+        <p className="text-xs text-text-muted font-medium">{label}</p>
+        <p className="text-lg font-bold text-text-primary leading-tight tabular-nums">{value}</p>
+        {sub && <p className="text-xs text-text-deemphasis tabular-nums">{sub}</p>}
       </div>
     </div>
   );
@@ -3898,14 +3898,14 @@ function UtilBar({ pct, label, color }: { pct: number; label: string; color: str
   return (
     <div>
       <div className="flex justify-between items-center mb-1">
-        <span className="text-sm font-medium text-slate-700">{label}</span>
+        <span className="text-sm font-medium text-text-secondary">{label}</span>
         <span className="text-sm font-bold" style={{ color }}>
           {pct.toFixed(1)}%
         </span>
       </div>
-      <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+      <div className="w-full h-3 bg-surface-canvas rounded-full overflow-hidden">
         <div
-          className="h-full rounded-full transition-all duration-700"
+          className="h-full rounded-full transition-colors duration-300"
           style={{ width: `${capped}%`, backgroundColor: color }}
         />
       </div>
@@ -3924,13 +3924,13 @@ function BalanceSplitBar({
 }) {
   return (
     <div>
-      <div className="flex items-center justify-between gap-3 mb-1.5 text-[11px] font-medium text-slate-600">
-        <span>{firstLabel} <strong className="text-slate-900">{firstPct.toFixed(0)}%</strong></span>
-        <span><strong className="text-slate-900">{(100 - firstPct).toFixed(0)}%</strong> {secondLabel}</span>
+      <div className="flex items-center justify-between gap-3 mb-1.5 text-[11px] font-medium text-text-muted">
+        <span>{firstLabel} <strong className="text-text-primary">{firstPct.toFixed(0)}%</strong></span>
+        <span><strong className="text-text-primary">{(100 - firstPct).toFixed(0)}%</strong> {secondLabel}</span>
       </div>
-      <div className="relative h-2.5 overflow-hidden rounded-full bg-slate-200">
-        <div className="absolute inset-y-0 left-0 bg-slate-700" style={{ width: `${firstPct}%` }} />
-        <div className="absolute inset-y-0 left-1/2 w-px bg-white/90" />
+      <div className="relative h-2.5 overflow-hidden rounded-full bg-surface-canvas">
+        <div className="absolute inset-y-0 left-0 bg-[#314158]" style={{ width: `${firstPct}%` }} />
+        <div className="absolute inset-y-0 left-1/2 w-px bg-white" />
       </div>
     </div>
   );
@@ -3960,47 +3960,47 @@ function ContainerBalancePanel({
     ? `${(inches * IN_TO_CM).toFixed(0)} cm`
     : `${inches.toFixed(1)} in`;
   const status = balance.status === "balanced"
-    ? { label: "Well balanced", badge: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" }
+    ? { label: "Well balanced", badge: "bg-[#ECFDF3] text-[#15803D] border-[#A6F4C5]", dot: "bg-[#15803D]" }
     : balance.status === "caution"
-      ? { label: "Balance caution", badge: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-500" }
+      ? { label: "Balance caution", badge: "bg-[#FFFBEB] text-[#78350F] border-[#FDE68A]", dot: "bg-[#B45309]" }
       : balance.status === "review"
-        ? { label: "Review balance", badge: "bg-rose-50 text-rose-700 border-rose-200", dot: "bg-rose-500" }
-        : { label: "No weight data", badge: "bg-slate-50 text-slate-600 border-slate-200", dot: "bg-slate-400" };
+        ? { label: "Review balance", badge: "bg-[#FEF3F2] text-[#7A271A] border-[#FECDCA]", dot: "bg-[#B42318]" }
+        : { label: "No weight data", badge: "bg-surface-recessed text-text-muted border-border-hairline", dot: "bg-text-deemphasis" };
 
   return (
-    <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white" data-testid="container-balance-panel">
-      <div className="flex items-center transition-colors hover:bg-slate-50">
+    <div className="mt-4 overflow-hidden rounded-lg border border-border-hairline bg-white" data-testid="container-balance-panel">
+      <div className="flex items-center transition-colors hover:bg-surface-recessed">
         <button type="button" onClick={() => setOpen(value => !value)} className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3 text-left" data-testid="button-toggle-container-balance" aria-expanded={open}>
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-600"><Crosshair className="h-4 w-4" /></div>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-recessed text-text-secondary"><Crosshair className="h-4 w-4" /></div>
             <div className="min-w-0">
-              <h3 className="text-sm font-bold text-slate-900">Weight Balance & Center of Gravity</h3>
-              <p className="mt-0.5 truncate text-[11px] text-slate-500">Optional planning aid · closed by default</p>
+              <h3 className="text-sm font-bold text-text-primary">Weight Balance & Center of Gravity</h3>
+              <p className="mt-0.5 truncate text-[11px] text-text-muted">Optional planning aid · closed by default</p>
             </div>
           </div>
           <span className="flex shrink-0 items-center gap-2">
             <span className={`hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold sm:inline-flex ${status.badge}`}><span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />{status.label}</span>
-            <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
+            <ChevronDown className={`h-4 w-4 text-text-deemphasis transition-transform ${open ? "rotate-180" : ""}`} />
           </span>
         </button>
-        <span className="group relative mr-4 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700" tabIndex={0} aria-label="Practical centre-of-gravity note">
+        <span className="group relative mr-4 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-text-deemphasis hover:bg-surface-canvas hover:text-text-secondary" tabIndex={0} aria-label="Practical centre-of-gravity note">
           <Info className="h-3.5 w-3.5" />
-          <span role="tooltip" className="pointer-events-none absolute right-0 top-9 z-20 hidden w-72 rounded-lg border border-slate-200 bg-slate-950 px-3 py-2.5 text-[10px] font-normal leading-relaxed text-white shadow-xl group-hover:block group-focus:block">
+          <span role="tooltip" className="pointer-events-none absolute right-0 top-9 z-20 hidden w-72 rounded-lg border border-border-hairline bg-surface-dark px-3 py-2.5 text-[10px] font-normal leading-relaxed text-white shadow-md group-hover:block group-focus:block">
             Ocean loads are rarely centred perfectly. Moving cargo only to improve the calculated COG can make blocking, bracing, forklift access, or unloading less practical. Treat this as guidance—not a loading rule.
           </span>
         </span>
       </div>
 
-      {open && <div className="border-t border-slate-200 p-4">
+      {open && <div className="border-t border-border-hairline p-4">
       <div className="grid lg:grid-cols-[1.25fr_1fr] gap-4">
-        <div className="rounded-xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-3 shadow-sm">
-          <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-2">
+        <div className="rounded-lg border border-border-hairline bg-white p-3 shadow-sm">
+          <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-text-deemphasis mb-2">
             <span>Closed end</span>
             <span>Doors</span>
           </div>
           <svg
             viewBox={`0 0 ${container.lengthIn} ${container.widthIn}`}
-            className="block w-full rounded-md bg-slate-100"
+            className="block w-full rounded-md bg-surface-canvas"
             role="img"
             aria-label={`Top view showing center of gravity at ${balance.longitudinalPct.toFixed(0)} percent of container length and ${balance.lateralPct.toFixed(0)} percent of container width`}
           >
@@ -4039,28 +4039,28 @@ function ContainerBalancePanel({
             <circle cx={balance.centerXIn} cy={balance.centerZIn} r={Math.max(0.9, container.widthIn * 0.016)} fill="#0f7fe5" />
             <line x1={container.lengthIn} y1="0" x2={container.lengthIn} y2={container.widthIn} stroke="#0f7fe5" strokeWidth="1.6" strokeDasharray="3 2" />
           </svg>
-          <div className="flex items-center justify-between gap-3 mt-2 text-[10px] text-slate-500">
+          <div className="flex items-center justify-between gap-3 mt-2 text-[10px] text-text-muted">
             <span>Green zone is a neutral planning target</span>
-            <span className="font-semibold text-slate-700">● Estimated CG</span>
+            <span className="font-semibold text-text-secondary">● Estimated CG</span>
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
+        <div className="rounded-lg border border-border-hairline bg-white p-4 space-y-4">
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">From closed end</p>
-              <p className="text-sm font-bold text-slate-900 mt-0.5">{fmtDim(balance.centerXIn)}</p>
-              <p className="text-[10px] text-slate-500">{balance.longitudinalPct.toFixed(0)}% of length</p>
+              <p className="text-[10px] uppercase tracking-wide text-text-deemphasis font-semibold">From closed end</p>
+              <p className="text-sm font-bold text-text-primary mt-0.5">{fmtDim(balance.centerXIn)}</p>
+              <p className="text-[10px] text-text-muted tabular-nums">{balance.longitudinalPct.toFixed(0)}% of length</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">From Side A</p>
-              <p className="text-sm font-bold text-slate-900 mt-0.5">{fmtDim(balance.centerZIn)}</p>
-              <p className="text-[10px] text-slate-500">{balance.lateralPct.toFixed(0)}% of width</p>
+              <p className="text-[10px] uppercase tracking-wide text-text-deemphasis font-semibold">From Side A</p>
+              <p className="text-sm font-bold text-text-primary mt-0.5">{fmtDim(balance.centerZIn)}</p>
+              <p className="text-[10px] text-text-muted tabular-nums">{balance.lateralPct.toFixed(0)}% of width</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">CG height</p>
-              <p className="text-sm font-bold text-slate-900 mt-0.5">{fmtDim(balance.centerYIn)}</p>
-              <p className="text-[10px] text-slate-500">{balance.heightPct.toFixed(0)}% of height</p>
+              <p className="text-[10px] uppercase tracking-wide text-text-deemphasis font-semibold">CG height</p>
+              <p className="text-sm font-bold text-text-primary mt-0.5">{fmtDim(balance.centerYIn)}</p>
+              <p className="text-[10px] text-text-muted tabular-nums">{balance.heightPct.toFixed(0)}% of height</p>
             </div>
           </div>
 
@@ -4068,9 +4068,9 @@ function ContainerBalancePanel({
           <BalanceSplitBar firstLabel="Side A" secondLabel="Side B" firstPct={balance.sideAWeightPct} />
 
           {balance.guidance.length > 0 ? (
-            <div className={`rounded-lg border p-3 ${balance.status === "review" ? "bg-rose-50 border-rose-200" : "bg-amber-50 border-amber-200"}`}>
-              <p className={`text-[11px] font-bold ${balance.status === "review" ? "text-rose-800" : "text-amber-800"}`}>Suggested adjustment</p>
-              <ul className={`mt-1 space-y-0.5 text-[11px] ${balance.status === "review" ? "text-rose-700" : "text-amber-700"}`}>
+            <div className={`rounded-lg border p-3 ${balance.status === "review" ? "bg-[#FEF3F2] border-[#FECDCA]" : "bg-[#FFFBEB] border-[#FDE68A]"}`}>
+              <p className={`text-[11px] font-bold ${balance.status === "review" ? "text-[#7A271A]" : "text-[#78350F]"}`}>Suggested adjustment</p>
+              <ul className={`mt-1 space-y-0.5 text-[11px] ${balance.status === "review" ? "text-[#7A271A]" : "text-[#78350F]"}`}>
                 {balance.guidance.map((item) => <li key={item}>• {item}</li>)}
               </ul>
               {onPlacedChange && (
@@ -4088,7 +4088,7 @@ function ContainerBalancePanel({
                     ].filter(Boolean);
                     setAdjustmentNote(`The complete cargo block moved ${parts.join(" and ")}. Existing spacing and stacking were preserved.`);
                   }}
-                  className="mt-3 h-8 gap-1.5 border-current bg-white/70 text-[11px]"
+                  className="mt-3 h-8 gap-1.5 border-current bg-white text-[11px]"
                   data-testid="button-apply-cog-adjustment"
                 >
                   <Crosshair className="h-3.5 w-3.5" /> Apply safe centering
@@ -4096,17 +4096,17 @@ function ContainerBalancePanel({
               )}
             </div>
           ) : (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-[11px] text-emerald-700">
+            <div className="rounded-lg border border-[#A6F4C5] bg-[#ECFDF3] p-3 text-[11px] text-[#15803D]">
               Weight is reasonably centered for planning purposes.
             </div>
           )}
         </div>
       </div>
 
-      <p className="mt-3 text-[10px] leading-relaxed text-slate-400">
+      <p className="mt-3 text-[10px] leading-relaxed text-text-deemphasis">
         Planning estimate only. It does not calculate chassis axle loads, floor point loads, lashing forces, or regulatory compliance. Confirm the final plan with the carrier and loading facility.
       </p>
-      {adjustmentNote && <p className="mt-2 rounded-lg bg-sky-50 px-3 py-2 text-[10px] leading-relaxed text-sky-700" data-testid="cog-adjustment-note">{adjustmentNote}</p>}
+      {adjustmentNote && <p className="mt-2 rounded-lg bg-surface-recessed px-3 py-2 text-[10px] leading-relaxed text-text-secondary" data-testid="cog-adjustment-note">{adjustmentNote}</p>}
       {undoPlaced && onUndo && (
         <Button
           type="button"
@@ -4116,7 +4116,7 @@ function ContainerBalancePanel({
             onUndo();
             setAdjustmentNote("Safe centering was undone and the previous calculated layout was restored.");
           }}
-          className="mt-2 h-8 gap-1.5 text-[11px] text-slate-600"
+          className="mt-2 h-8 gap-1.5 text-[11px] text-text-muted"
           data-testid="button-undo-cog-adjustment"
         >
           <Undo2 className="h-3.5 w-3.5" /> Undo safe centering
@@ -4155,15 +4155,15 @@ function ContainerComparisonPanel({
     : `${Math.round(cuFt).toLocaleString()} ft³`;
 
   return (
-    <Card className="border-slate-200 overflow-hidden" data-testid="container-comparison-panel">
-      <button type="button" onClick={() => setOpen(value => !value)} className="flex w-full items-center justify-between gap-4 bg-gradient-to-r from-slate-50 to-white px-5 py-4 text-left hover:bg-slate-50" aria-expanded={open} data-testid="button-toggle-container-comparison">
+    <Card className="border-border-hairline overflow-hidden" data-testid="container-comparison-panel">
+      <button type="button" onClick={() => setOpen(value => !value)} className="flex w-full items-center justify-between gap-4 bg-white px-5 py-4 text-left hover:bg-surface-recessed" aria-expanded={open} data-testid="button-toggle-container-comparison">
         <div>
-          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2"><Table className="w-4 h-4 text-primary" />Why this container?</h2>
-          <p className="text-xs text-slate-500 mt-1">Calculated comparison of all standard sizes · closed by default</p>
+          <h2 className="text-base font-bold text-text-primary flex items-center gap-2"><Table className="w-4 h-4 text-text-muted" />Why this container?</h2>
+          <p className="text-xs text-text-muted mt-1">Calculated comparison of all standard sizes · closed by default</p>
         </div>
-        <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-4 w-4 shrink-0 text-text-deemphasis transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
-      {open && <CardContent className="border-t border-slate-200 p-4">
+      {open && <CardContent className="border-t border-border-hairline p-4">
         <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
           {comparisons.map((comparison) => {
             const isRecommended = comparison.container.id === effectiveRecommendedId;
@@ -4187,46 +4187,46 @@ function ContainerComparisonPanel({
             return (
               <div
                 key={comparison.container.id}
-                className={`relative rounded-xl border p-3.5 transition-colors ${
+                className={`relative rounded-lg border-2 p-3.5 transition-colors ${
                   isRecommended
-                    ? "border-primary/45 bg-primary/[0.035] shadow-sm"
+                    ? "border-brand"
                     : isActive
-                      ? "border-slate-400 bg-slate-50"
-                      : "border-slate-200 bg-white"
+                      ? "border-border-control bg-surface-recessed"
+                      : "border-border-app bg-white"
                 }`}
                 data-testid={`container-comparison-${comparison.container.id}`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-sm font-bold text-slate-900">{comparison.container.name}</p>
-                    <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+                    <p className="text-sm font-bold text-text-primary">{comparison.container.name}</p>
+                    <p className="mt-0.5 text-[11px] font-semibold text-text-muted">
                       {comparison.containerCount} container{comparison.containerCount === 1 ? "" : "s"}
                     </p>
                   </div>
                   {isRecommended && (
-                    <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                    <span className="shrink-0 rounded-full bg-brand px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
                       Best fit
                     </span>
                   )}
                 </div>
 
                 <div className="mt-3 grid grid-cols-2 gap-2">
-                  <div className="rounded-lg bg-slate-50 px-2 py-2">
-                    <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Space used</p>
-                    <p className="mt-0.5 text-sm font-bold text-slate-800">{comparison.volumeUtilPct.toFixed(1)}%</p>
+                  <div className="rounded-lg bg-surface-recessed px-2 py-2">
+                    <p className="text-[9px] font-semibold uppercase tracking-wide text-text-deemphasis">Space used</p>
+                    <p className="mt-0.5 text-sm font-bold text-text-secondary tabular-nums">{comparison.volumeUtilPct.toFixed(1)}%</p>
                   </div>
-                  <div className="rounded-lg bg-slate-50 px-2 py-2">
-                    <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Weight used</p>
-                    <p className="mt-0.5 text-sm font-bold text-slate-800">{comparison.weightUtilPct.toFixed(1)}%</p>
+                  <div className="rounded-lg bg-surface-recessed px-2 py-2">
+                    <p className="text-[9px] font-semibold uppercase tracking-wide text-text-deemphasis">Weight used</p>
+                    <p className="mt-0.5 text-sm font-bold text-text-secondary tabular-nums">{comparison.weightUtilPct.toFixed(1)}%</p>
                   </div>
                 </div>
 
-                <p className={`mt-3 min-h-8 text-[11px] leading-4 ${comparison.complete ? "text-slate-600" : "font-medium text-rose-600"}`}>
+                <p className={`mt-3 min-h-8 text-[11px] leading-4 ${comparison.complete ? "text-text-muted" : "font-medium text-[#B42318]"}`}>
                   {explanation}
                 </p>
 
                 {isActive ? (
-                  <div className="mt-3 h-8 rounded-lg border border-emerald-200 bg-emerald-50 flex items-center justify-center text-[11px] font-semibold text-emerald-700">
+                  <div className="mt-3 h-8 rounded-lg border border-[#A6F4C5] bg-[#ECFDF3] flex items-center justify-center text-[11px] font-semibold text-[#15803D]">
                     Current plan
                   </div>
                 ) : (
@@ -4234,7 +4234,7 @@ function ContainerComparisonPanel({
                     type="button"
                     onClick={() => onSelect(comparison.container.id)}
                     disabled={!comparison.complete}
-                    className="mt-3 h-8 w-full rounded-lg border border-slate-200 bg-white text-[11px] font-semibold text-slate-700 transition-colors hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-45"
+                    className="mt-3 h-8 w-full rounded-lg border border-border-hairline bg-white text-[11px] font-semibold text-text-secondary transition-colors hover:border-border-hairline hover:text-brand disabled:cursor-not-allowed disabled:opacity-45"
                     data-testid={`button-use-container-${comparison.container.id}`}
                   >
                     {comparison.complete ? "Use this container" : "Not suitable"}
@@ -5210,70 +5210,70 @@ export default function ContainerCalculator() {
   }, [managedShareLink, toast]);
 
   return (
-    <div className="min-h-screen flex flex-col font-sans bg-slate-50">
+    <div className="min-h-screen flex flex-col font-sans bg-surface-recessed">
       {calculating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm" data-testid="calculating-overlay">
-          <div className="bg-white rounded-2xl shadow-2xl px-10 py-8 flex flex-col items-center gap-4 max-w-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-dark/40" data-testid="calculating-overlay">
+          <div className="bg-white rounded-lg shadow-md px-10 py-8 flex flex-col items-center gap-4 max-w-xs">
             <div className="relative w-16 h-16">
-              <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
+              <div className="absolute inset-0 rounded-full border-4 border-border-hairline" />
               <div className="absolute inset-0 rounded-full border-4 border-t-primary animate-spin" />
-              <Package className="absolute inset-0 m-auto w-7 h-7 text-primary" />
+              <Package className="absolute inset-0 m-auto w-7 h-7 text-text-muted" />
             </div>
             <div className="text-center">
-              <p className="font-semibold text-slate-900 text-sm">Calculating optimal layout...</p>
-              <p className="text-xs text-slate-500 mt-1">Packing your cargo into the container</p>
+              <p className="font-semibold text-text-primary text-sm">Calculating optimal layout...</p>
+              <p className="text-xs text-text-muted mt-1">Packing your cargo into the container</p>
             </div>
           </div>
         </div>
       )}
       {projectDialogOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm" onClick={() => setProjectDialogOpen(false)} data-testid="project-library-overlay">
-          <div className="flex max-h-[86vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-white/80 bg-white shadow-2xl" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="project-library-title" data-testid="project-library-dialog">
-            <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5">
-              <div><p id="project-library-title" className="text-lg font-bold text-slate-950">Loading plan projects</p><p className="mt-1 text-sm leading-5 text-slate-500">Save complete inputs and calculated placements. Projects remain private on this device.</p></div>
-              <button type="button" onClick={() => setProjectDialogOpen(false)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close project library"><X className="h-4 w-4" /></button>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-surface-dark/35 p-4" onClick={() => setProjectDialogOpen(false)} data-testid="project-library-overlay">
+          <div className="flex max-h-[86vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border-hairline bg-white shadow-md" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="project-library-title" data-testid="project-library-dialog">
+            <div className="flex items-start justify-between gap-4 border-b border-border-hairline p-5">
+              <div><p id="project-library-title" className="text-lg font-bold text-text-primary">Loading plan projects</p><p className="mt-1 text-sm leading-5 text-text-muted">Save complete inputs and calculated placements. Projects remain private on this device.</p></div>
+              <button type="button" onClick={() => setProjectDialogOpen(false)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-text-deemphasis hover:bg-surface-canvas hover:text-text-secondary" aria-label="Close project library"><X className="h-4 w-4" /></button>
             </div>
-            <div className="border-b border-slate-200 bg-slate-50/70 p-4 sm:p-5">
-              <Label htmlFor="container-project-name" className="text-xs font-bold text-slate-600">Project name</Label>
+            <div className="border-b border-border-hairline bg-surface-recessed p-4 sm:p-5">
+              <Label htmlFor="container-project-name" className="text-xs font-bold text-text-muted">Project name</Label>
               <div className="mt-2 flex gap-2"><Input id="container-project-name" value={projectName} onChange={(event) => setProjectName(event.target.value)} maxLength={120} placeholder="e.g. Montreal export — 7 pallets" onKeyDown={(event) => { if (event.key === "Enter") saveCurrentProject(); }} /><Button type="button" className="shrink-0 gap-2" onClick={saveCurrentProject} data-testid="button-save-container-project"><Save className="h-4 w-4" />{currentProjectId ? "Update" : "Save"}</Button></div>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
-              <div className="mb-3 flex items-center justify-between"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Saved projects ({savedProjects.length}/20)</p><Button type="button" size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { handleReset(); setProjectDialogOpen(false); }}>New blank plan</Button></div>
+              <div className="mb-3 flex items-center justify-between"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">Saved projects ({savedProjects.length}/20)</p><Button type="button" size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { handleReset(); setProjectDialogOpen(false); }}>New blank plan</Button></div>
               {savedProjects.length ? <div className="space-y-2">{savedProjects.map((project) => (
-                <div key={project.id} className={`flex items-center gap-3 rounded-2xl border p-3 transition ${currentProjectId === project.id ? "border-blue-300 bg-blue-50/50 ring-2 ring-blue-100" : "border-slate-200 hover:border-slate-300"}`} data-testid={`saved-project-${project.id}`}>
+                <div key={project.id} className={`flex items-center gap-3 rounded-lg border-2 p-3 transition ${currentProjectId === project.id ? "border-brand" : "border-border-app hover:border-border-control"}`} data-testid={`saved-project-${project.id}`}>
                   <button type="button" className="min-w-0 flex-1 text-left" onClick={() => restoreSavedProject(project)}>
-                    <span className="block truncate text-sm font-bold text-slate-900">{project.name}</span>
-                    <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-500"><span>{project.snapshot.cargoItems.length} cargo row{project.snapshot.cargoItems.length === 1 ? "" : "s"}</span><span>{project.snapshot.multiResult?.totalContainers ? `${project.snapshot.multiResult.totalContainers} container${project.snapshot.multiResult.totalContainers === 1 ? "" : "s"}` : "Not calculated"}</span><span className="inline-flex items-center gap-1"><Clock3 className="h-3 w-3" />{new Date(project.updatedAt).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" })}</span></span>
+                    <span className="block truncate text-sm font-bold text-text-primary">{project.name}</span>
+                    <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-text-muted"><span>{project.snapshot.cargoItems.length} cargo row{project.snapshot.cargoItems.length === 1 ? "" : "s"}</span><span>{project.snapshot.multiResult?.totalContainers ? `${project.snapshot.multiResult.totalContainers} container${project.snapshot.multiResult.totalContainers === 1 ? "" : "s"}` : "Not calculated"}</span><span className="inline-flex items-center gap-1"><Clock3 className="h-3 w-3" />{new Date(project.updatedAt).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" })}</span></span>
                   </button>
                   <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => duplicateSavedProject(project)} aria-label={`Duplicate ${project.name}`} title="Duplicate project"><Copy className="h-3.5 w-3.5" /></Button>
-                  <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-slate-400 hover:bg-red-50 hover:text-red-600" onClick={() => deleteSavedProject(project)} aria-label={`Delete ${project.name}`} title="Delete project"><Trash2 className="h-3.5 w-3.5" /></Button>
+                  <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-text-deemphasis hover:bg-[#FEF3F2] hover:text-[#B42318]" onClick={() => deleteSavedProject(project)} aria-label={`Delete ${project.name}`} title="Delete project"><Trash2 className="h-3.5 w-3.5" /></Button>
                 </div>
-              ))}</div> : <div className="rounded-2xl border border-dashed border-slate-300 px-6 py-10 text-center"><FolderOpen className="mx-auto h-8 w-8 text-slate-300" /><p className="mt-3 text-sm font-bold text-slate-700">No named projects yet</p><p className="mt-1 text-xs text-slate-500">Your current draft is still saved automatically.</p></div>}
+              ))}</div> : <div className="rounded-lg border border-dashed border-border-control px-6 py-10 text-center"><FolderOpen className="mx-auto h-8 w-8 text-text-deemphasis" /><p className="mt-3 text-sm font-bold text-text-secondary">No named projects yet</p><p className="mt-1 text-xs text-text-muted">Your current draft is still saved automatically.</p></div>}
             </div>
           </div>
         </div>
       )}
       {shareDialogOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm" onClick={() => setShareDialogOpen(false)} data-testid="share-plan-dialog-overlay">
-          <div className="w-full max-w-lg rounded-3xl border border-white/80 bg-white p-5 shadow-2xl" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="share-plan-title" data-testid="share-plan-dialog">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-surface-dark/35 p-4" onClick={() => setShareDialogOpen(false)} data-testid="share-plan-dialog-overlay">
+          <div className="w-full max-w-lg rounded-lg border border-border-hairline bg-white p-5 shadow-md" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="share-plan-title" data-testid="share-plan-dialog">
             <div className="flex items-start justify-between gap-4">
-              <div><p id="share-plan-title" className="text-lg font-bold text-slate-950">Share loading plan</p><p className="mt-1 text-sm leading-5 text-slate-500">Anyone with the link can inspect the read-only 3D plan without an account.</p></div>
-              <button type="button" onClick={() => setShareDialogOpen(false)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close share dialog"><X className="h-4 w-4" /></button>
+              <div><p id="share-plan-title" className="text-lg font-bold text-text-primary">Share loading plan</p><p className="mt-1 text-sm leading-5 text-text-muted">Anyone with the link can inspect the read-only 3D plan without an account.</p></div>
+              <button type="button" onClick={() => setShareDialogOpen(false)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-text-deemphasis hover:bg-surface-canvas hover:text-text-secondary" aria-label="Close share dialog"><X className="h-4 w-4" /></button>
             </div>
 
             {!managedShareLink ? <>
-              <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Link expires after</p>
+              <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">Link expires after</p>
               <div className="mt-2 grid grid-cols-4 gap-2">
-                {([7, 30, 90, 180] as ShareLifetimeDays[]).map((days) => <button key={days} type="button" onClick={() => setShareLifetimeDays(days)} className={`rounded-xl border px-2 py-2.5 text-xs font-bold transition ${shareLifetimeDays === days ? "border-blue-400 bg-blue-50 text-primary ring-2 ring-blue-100" : "border-slate-200 text-slate-600 hover:border-slate-300"}`} aria-pressed={shareLifetimeDays === days}>{days === 180 ? "6 months" : `${days} days`}</button>)}
+                {([7, 30, 90, 180] as ShareLifetimeDays[]).map((days) => <button key={days} type="button" onClick={() => setShareLifetimeDays(days)} className={`rounded-lg border-2 px-2 py-2.5 text-xs font-bold transition ${shareLifetimeDays === days ? "border-brand text-brand" : "border-border-app text-text-muted hover:border-border-control"}`} aria-pressed={shareLifetimeDays === days}>{days === 180 ? "6 months" : `${days} days`}</button>)}
               </div>
               <Button className="mt-5 w-full gap-2" onClick={handleSharePlan} disabled={creatingShareLink} data-testid="button-create-share-link">{creatingShareLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}Create and copy link</Button>
             </> : <>
-              <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
-                <div className="flex items-center gap-2 text-sm font-bold text-emerald-800"><CheckCircle2 className="h-4 w-4" />Link is active</div>
+              <div className="mt-5 rounded-lg border border-[#A6F4C5] bg-[#ECFDF3] p-4">
+                <div className="flex items-center gap-2 text-sm font-bold text-[#15803D]"><CheckCircle2 className="h-4 w-4" />Link is active</div>
                 <div className="mt-3 flex gap-2"><Input readOnly value={managedShareLink.url} className="min-w-0 bg-white text-xs" aria-label="Share loading plan URL" /><Button type="button" variant="outline" onClick={copyManagedShareLink}>Copy</Button></div>
-                <p className="mt-2 text-[11px] text-emerald-800/70">Expires {new Date(managedShareLink.expiresAt).toLocaleDateString("en-CA", { dateStyle: "medium" })}</p>
+                <p className="mt-2 text-[11px] text-[#15803D]/70">Expires {new Date(managedShareLink.expiresAt).toLocaleDateString("en-CA", { dateStyle: "medium" })}</p>
               </div>
-              <div className="mt-4 flex items-center justify-between gap-3"><p className="text-xs leading-5 text-slate-500">You can disable this exact link at any time.</p><Button type="button" variant="ghost" className="text-red-600 hover:bg-red-50 hover:text-red-700" onClick={revokeManagedShareLink} data-testid="button-revoke-share-link">Revoke link</Button></div>
+              <div className="mt-4 flex items-center justify-between gap-3"><p className="text-xs leading-5 text-text-muted">You can disable this exact link at any time.</p><Button type="button" variant="ghost" className="text-[#B42318] hover:bg-[#FEF3F2] hover:text-[#7A271A]" onClick={revokeManagedShareLink} data-testid="button-revoke-share-link">Revoke link</Button></div>
             </>}
           </div>
         </div>
@@ -5288,41 +5288,39 @@ export default function ContainerCalculator() {
             ]}
           />}
 
-          <header className="mb-4 border-b border-slate-200/80 pb-3 sm:mb-5 sm:flex sm:items-end sm:justify-between sm:gap-5">
+          <header className="mb-4 border-b border-border-hairline pb-3 sm:mb-5 sm:flex sm:items-end sm:justify-between sm:gap-5">
             <div className="min-w-0">
               <h1
-                className="font-display text-2xl font-extrabold leading-tight text-slate-900 md:text-3xl"
+                className="font-display text-2xl font-extrabold leading-tight text-text-primary md:text-3xl"
                 data-testid="text-calculator-title"
               >
                 Container Loading Calculator
               </h1>
-              <p className="mt-1 text-xs leading-5 text-slate-500 sm:text-sm">
+              <p className="mt-1 text-xs leading-5 text-text-muted sm:text-sm">
                 Plan container loads with an interactive 3D view.
               </p>
             </div>
             <div className="mt-3 flex shrink-0 items-center gap-1.5 sm:mt-0" aria-label="Project controls">
-              <Button type="button" size="sm" variant="outline" className="h-9 gap-1.5 bg-white px-2.5 text-xs" onClick={openProjectLibrary} data-testid="button-open-project-library"><FolderOpen className="h-3.5 w-3.5 text-primary" />Plans{savedProjects.length ? ` (${savedProjects.length})` : ""}</Button>
-              <Button type="button" size="sm" variant="outline" className="h-9 gap-1.5 bg-white px-2.5 text-xs" onClick={saveCurrentProject} data-testid="button-quick-save-project"><Save className="h-3.5 w-3.5 text-emerald-600" />{currentProjectId ? "Save changes" : "Save"}</Button>
-              <span className="hidden items-center gap-1.5 px-1 text-[10px] text-slate-400 lg:inline-flex"><Clock3 className="h-3.5 w-3.5" />{lastSavedAt ? `Autosaved ${new Date(lastSavedAt).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}` : "Autosave ready"}</span>
+              <Button type="button" size="sm" variant="outline" className="h-9 gap-1.5 bg-white px-2.5 text-xs" onClick={openProjectLibrary} data-testid="button-open-project-library"><FolderOpen className="h-3.5 w-3.5 text-text-muted" />Plans{savedProjects.length ? ` (${savedProjects.length})` : ""}</Button>
+              <Button type="button" size="sm" variant="outline" className="h-9 gap-1.5 bg-white px-2.5 text-xs" onClick={saveCurrentProject} data-testid="button-quick-save-project"><Save className="h-3.5 w-3.5 text-[#15803D]" />{currentProjectId ? "Save changes" : "Save"}</Button>
+              <span className="hidden items-center gap-1.5 px-1 text-[10px] text-text-deemphasis lg:inline-flex"><Clock3 className="h-3.5 w-3.5" />{lastSavedAt ? `Autosaved ${new Date(lastSavedAt).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}` : "Autosave ready"}</span>
             </div>
           </header>
 
           <div className="mx-auto grid max-w-[1800px] grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
             <div className="lg:col-span-5 space-y-5">
-              <Card id="container-type-setup" className="border-slate-200 scroll-mt-28" data-testid="container-type-section">
+              <Card id="container-type-setup" className="border-border-hairline scroll-mt-28" data-testid="container-type-section">
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                      <Package className="w-4 h-4 text-primary" />
+                    <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
+                      <Package className="w-4 h-4 text-text-muted" />
                       Container Type
                     </h2>
-                    <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+                    <div className="flex gap-0.5 rounded-md bg-surface-canvas p-0.5">
                       <button
                         onClick={() => handleUnitSwitch("imperial")}
-                        className={`px-2.5 py-1 text-xs font-medium transition-colors ${
-                          unitSystem === "imperial"
-                            ? "bg-primary text-white"
-                            : "bg-white text-slate-600 hover:bg-slate-50"
+                        className={`rounded-sm px-2.5 py-1 text-xs font-semibold transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] ${
+                          unitSystem === "imperial" ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"
                         }`}
                         data-testid="button-unit-imperial"
                       >
@@ -5330,10 +5328,8 @@ export default function ContainerCalculator() {
                       </button>
                       <button
                         onClick={() => handleUnitSwitch("metric")}
-                        className={`px-2.5 py-1 text-xs font-medium transition-colors ${
-                          unitSystem === "metric"
-                            ? "bg-primary text-white"
-                            : "bg-white text-slate-600 hover:bg-slate-50"
+                        className={`rounded-sm px-2.5 py-1 text-xs font-semibold transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] ${
+                          unitSystem === "metric" ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"
                         }`}
                         data-testid="button-unit-metric"
                       >
@@ -5347,18 +5343,18 @@ export default function ContainerCalculator() {
                           setContainerSelectionMode("recommend");
                           invalidateCalculatedPlan();
                       }}
-                      className={`col-span-2 text-left p-3 rounded-lg border text-sm transition-all ${
+                      className={`col-span-2 text-left p-3 rounded-lg border-2 text-sm transition-colors ${
                         containerSelectionMode === "recommend"
-                          ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                          : "border-slate-200 hover:border-primary/40"
+                          ? "border-brand"
+                          : "border-border-app hover:border-border-control"
                       }`}
                       data-testid="button-container-recommend"
                     >
-                      <span className="font-semibold text-slate-900 flex items-center gap-1.5 text-xs">
-                        <Sparkles className="w-3.5 h-3.5 text-primary" />
+                      <span className="font-semibold text-text-primary flex items-center gap-1.5 text-xs">
+                        <Sparkles className="w-3.5 h-3.5 text-text-muted" />
                         Recommend the best container
                       </span>
-                      <span className="text-[10px] text-slate-500 block mt-1">
+                      <span className="text-[10px] text-text-muted block mt-1">
                         We’ll compare every standard size after you enter the cargo details.
                       </span>
                     </button>
@@ -5377,18 +5373,18 @@ export default function ContainerCalculator() {
                             setContainerId(ct.id);
                             invalidateCalculatedPlan();
                           }}
-                          className={`text-left p-2.5 rounded-lg border text-sm transition-all ${
+                          className={`text-left p-2.5 rounded-lg border-2 text-sm transition-colors ${
                             containerSelectionMode === "manual" && containerId === ct.id
-                              ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                              : "border-slate-200 hover:border-slate-300"
+                              ? "border-brand"
+                              : "border-border-app hover:border-border-control"
                           }`}
                           data-testid={`button-container-${ct.id}`}
                         >
                           <span className="flex items-start gap-2">
                             <span data-testid={`container-icon-${ct.id}`} className={`mt-0.5 flex h-9 w-12 shrink-0 items-center justify-center rounded-lg ${
                               containerSelectionMode === "manual" && containerId === ct.id
-                                ? "bg-blue-50"
-                                : "bg-slate-50"
+                                ? "bg-surface-recessed"
+                                : "bg-surface-recessed"
                             }`}>
                               <ContainerLineIcon
                                 active={containerSelectionMode === "manual" && containerId === ct.id}
@@ -5397,11 +5393,11 @@ export default function ContainerCalculator() {
                               />
                             </span>
                             <span className="min-w-0">
-                              <span className="font-semibold text-slate-900 block leading-tight text-xs">
+                              <span className="font-semibold text-text-primary block leading-tight text-xs">
                                 {ct.name}
                               </span>
-                              <span className="text-[10px] text-slate-400 block mt-0.5 leading-snug">{dimsDisplay}</span>
-                              <span className="text-[10px] text-slate-500 block">{volDisplay}</span>
+                              <span className="text-[10px] text-text-deemphasis block mt-0.5 leading-snug">{dimsDisplay}</span>
+                              <span className="text-[10px] text-text-muted block">{volDisplay}</span>
                             </span>
                           </span>
                         </button>
@@ -5413,25 +5409,25 @@ export default function ContainerCalculator() {
                         setContainerId("custom");
                         invalidateCalculatedPlan();
                       }}
-                      className={`text-left p-2.5 rounded-lg border text-sm transition-all col-span-2 ${
+                      className={`text-left p-2.5 rounded-lg border-2 text-sm transition-colors col-span-2 ${
                         containerSelectionMode === "manual" && containerId === "custom"
-                          ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                          : "border-slate-200 hover:border-slate-300"
+                          ? "border-brand"
+                          : "border-border-app hover:border-border-control"
                       }`}
                       data-testid="button-container-custom"
                     >
-                      <span className="font-semibold text-slate-900 flex items-center gap-1.5 text-xs">
-                        <Settings2 className="w-3.5 h-3.5 text-primary" />
+                      <span className="font-semibold text-text-primary flex items-center gap-1.5 text-xs">
+                        <Settings2 className="w-3.5 h-3.5 text-text-muted" />
                         Custom Dimensions
                       </span>
                     </button>
                   </div>
 
                   {containerSelectionMode === "manual" && containerId === "custom" && (
-                    <div className="mt-3 p-3 rounded-lg bg-primary/5 border border-primary/15">
+                    <div className="mt-3 p-3 rounded-lg bg-surface-recessed border border-border-hairline">
                       <div className="grid grid-cols-4 gap-1.5">
                         <div>
-                          <Label className="text-[10px] text-slate-500">L ({dimUnit})</Label>
+                          <Label className="text-[10px] text-text-muted">L ({dimUnit})</Label>
                           <Input
                             type="number"
                             min={1}
@@ -5444,12 +5440,12 @@ export default function ContainerCalculator() {
                               }));
                               invalidateCalculatedPlan();
                             }}
-                            className="h-7 text-xs px-1.5"
+                            className="h-7 text-xs px-1.5 text-right tabular-nums"
                             data-testid="input-custom-length"
                           />
                         </div>
                         <div>
-                          <Label className="text-[10px] text-slate-500">W ({dimUnit})</Label>
+                          <Label className="text-[10px] text-text-muted">W ({dimUnit})</Label>
                           <Input
                             type="number"
                             min={1}
@@ -5462,12 +5458,12 @@ export default function ContainerCalculator() {
                               }));
                               invalidateCalculatedPlan();
                             }}
-                            className="h-7 text-xs px-1.5"
+                            className="h-7 text-xs px-1.5 text-right tabular-nums"
                             data-testid="input-custom-width"
                           />
                         </div>
                         <div>
-                          <Label className="text-[10px] text-slate-500">H ({dimUnit})</Label>
+                          <Label className="text-[10px] text-text-muted">H ({dimUnit})</Label>
                           <Input
                             type="number"
                             min={1}
@@ -5480,12 +5476,12 @@ export default function ContainerCalculator() {
                               }));
                               invalidateCalculatedPlan();
                             }}
-                            className="h-7 text-xs px-1.5"
+                            className="h-7 text-xs px-1.5 text-right tabular-nums"
                             data-testid="input-custom-height"
                           />
                         </div>
                         <div>
-                          <Label className="text-[10px] text-slate-500">Payload ({weightUnit})</Label>
+                          <Label className="text-[10px] text-text-muted">Payload ({weightUnit})</Label>
                           <Input
                             type="number"
                             min={1}
@@ -5498,7 +5494,7 @@ export default function ContainerCalculator() {
                               }));
                               invalidateCalculatedPlan();
                             }}
-                            className="h-7 text-xs px-1.5"
+                            className="h-7 text-xs px-1.5 text-right tabular-nums"
                             data-testid="input-custom-payload"
                           />
                         </div>
@@ -5506,47 +5502,47 @@ export default function ContainerCalculator() {
                     </div>
                   )}
 
-                  <div className="mt-3 p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+                  <div className="mt-3 p-2.5 rounded-lg bg-surface-recessed border border-border-hairline">
                     <div className="grid grid-cols-5 gap-1 text-center text-[11px]">
                       <div>
-                        <p className="font-bold text-slate-900" data-testid="text-container-length">
+                        <p className="font-bold text-text-primary tabular-nums" data-testid="text-container-length">
                           {isMetric
                             ? `${(container.lengthIn * IN_TO_CM).toFixed(0)}`
                             : `${parseFloat(container.lengthIn.toFixed(1))}`}
                         </p>
-                        <p className="text-[9px] text-slate-400">L ({dimUnit})</p>
+                        <p className="text-[9px] text-text-deemphasis">L ({dimUnit})</p>
                       </div>
                       <div>
-                        <p className="font-bold text-slate-900" data-testid="text-container-width">
+                        <p className="font-bold text-text-primary tabular-nums" data-testid="text-container-width">
                           {isMetric
                             ? `${(container.widthIn * IN_TO_CM).toFixed(0)}`
                             : `${parseFloat(container.widthIn.toFixed(1))}`}
                         </p>
-                        <p className="text-[9px] text-slate-400">W ({dimUnit})</p>
+                        <p className="text-[9px] text-text-deemphasis">W ({dimUnit})</p>
                       </div>
                       <div>
-                        <p className="font-bold text-slate-900" data-testid="text-container-height">
+                        <p className="font-bold text-text-primary tabular-nums" data-testid="text-container-height">
                           {isMetric
                             ? `${(container.heightIn * IN_TO_CM).toFixed(0)}`
                             : `${parseFloat(container.heightIn.toFixed(1))}`}
                         </p>
-                        <p className="text-[9px] text-slate-400">H ({dimUnit})</p>
+                        <p className="text-[9px] text-text-deemphasis">H ({dimUnit})</p>
                       </div>
                       <div>
-                        <p className="font-bold text-slate-900" data-testid="text-container-payload">
+                        <p className="font-bold text-text-primary tabular-nums" data-testid="text-container-payload">
                           {isMetric
                             ? `${Math.round(container.maxPayloadLbs * LB_TO_KG).toLocaleString()}`
                             : `${container.maxPayloadLbs.toLocaleString()}`}
                         </p>
-                        <p className="text-[9px] text-slate-400">{weightUnit}</p>
+                        <p className="text-[9px] text-text-deemphasis">{weightUnit}</p>
                       </div>
                       <div>
-                        <p className="font-bold text-slate-900" data-testid="text-container-volume">
+                        <p className="font-bold text-text-primary tabular-nums" data-testid="text-container-volume">
                           {isMetric
                             ? `${(container.volumeCuFt * 0.0283168).toFixed(1)}`
                             : `${container.volumeCuFt.toLocaleString()}`}
                         </p>
-                        <p className="text-[9px] text-slate-400">{isMetric ? "m³" : "ft³"}</p>
+                        <p className="text-[9px] text-text-deemphasis">{isMetric ? "m³" : "ft³"}</p>
                       </div>
                     </div>
                   </div>
@@ -5555,21 +5551,19 @@ export default function ContainerCalculator() {
             </div>
 
             <div className="contents">
-              <Card id="packing-list-setup" className="border-slate-200 scroll-mt-28 lg:col-span-7" data-testid="packing-list-section">
+              <Card id="packing-list-setup" className="border-border-hairline scroll-mt-28 lg:col-span-7" data-testid="packing-list-section">
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                    <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                      <Box className="w-4 h-4 text-primary" />
+                    <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
+                      <Box className="w-4 h-4 text-text-muted" />
                       Packing List
                     </h2>
                     <div className="flex items-center gap-2 ml-auto">
-                      <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+                      <div className="flex gap-0.5 rounded-md bg-surface-canvas p-0.5">
                         <button
                           onClick={() => handleUnitSwitch("imperial")}
-                          className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                            unitSystem === "imperial"
-                              ? "bg-primary text-white"
-                              : "bg-white text-slate-600 hover:bg-slate-50"
+                          className={`rounded-sm px-2.5 py-1 text-[11px] font-semibold transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] ${
+                            unitSystem === "imperial" ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"
                           }`}
                           data-testid="button-unit-imperial-table"
                         >
@@ -5577,10 +5571,8 @@ export default function ContainerCalculator() {
                         </button>
                         <button
                           onClick={() => handleUnitSwitch("metric")}
-                          className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                            unitSystem === "metric"
-                              ? "bg-primary text-white"
-                              : "bg-white text-slate-600 hover:bg-slate-50"
+                          className={`rounded-sm px-2.5 py-1 text-[11px] font-semibold transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] ${
+                            unitSystem === "metric" ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"
                           }`}
                           data-testid="button-unit-metric-table"
                         >
@@ -5612,7 +5604,7 @@ export default function ContainerCalculator() {
                     </div>
                   </div>
 
-                  <div className="mb-3 flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50/70 px-3 py-2.5 text-blue-800">
+                  <div className="mb-3 flex items-start gap-2 rounded-lg border border-border-hairline bg-surface-recessed px-3 py-2.5 text-text-secondary">
                     <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                     <p className="min-w-0 text-[11px] leading-[1.55] text-left">
                       Enter the <strong>total gross weight for each row</strong>. The calculator divides it across the quantity automatically.
@@ -5621,29 +5613,29 @@ export default function ContainerCalculator() {
 
                   {selectedIds.size > 0 && (
                     <div
-                      className="mb-4 p-3 rounded-xl bg-primary/5 border border-primary/15"
+                      className="mb-4 p-3 rounded-lg bg-surface-recessed border border-border-hairline"
                       data-testid="bulk-actions-bar"
                     >
                       <div className="flex items-center gap-2 mb-2">
-                        <Settings2 className="w-3.5 h-3.5 text-primary" />
-                        <span className="text-xs font-semibold text-primary uppercase tracking-wide">
+                        <Settings2 className="w-3.5 h-3.5 text-text-muted" />
+                        <span className="text-xs font-semibold text-brand uppercase tracking-wide">
                           Bulk Actions ({selectedIds.size} items)
                         </span>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                         <div>
-                          <Label className="text-[10px] text-slate-500 uppercase tracking-wide">Stackable</Label>
+                          <Label className="text-[10px] text-text-muted uppercase tracking-wide">Stackable</Label>
                           <div className="flex gap-1 mt-1">
                             <button
                               onClick={() => bulkUpdate("stackable", true)}
-                              className="flex-1 px-2 py-1.5 text-[11px] font-medium rounded-md border border-slate-200 bg-white hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors"
+                              className="flex-1 px-2 py-1.5 text-[11px] font-medium rounded-md border border-border-hairline bg-white hover:bg-[#ECFDF3] hover:border-[#A6F4C5] hover:text-[#15803D] transition-colors"
                               data-testid="bulk-stackable-yes"
                             >
                               Yes
                             </button>
                             <button
                               onClick={() => bulkUpdate("stackable", false)}
-                              className="flex-1 px-2 py-1.5 text-[11px] font-medium rounded-md border border-slate-200 bg-white hover:bg-red-50 hover:border-red-300 hover:text-red-700 transition-colors"
+                              className="flex-1 px-2 py-1.5 text-[11px] font-medium rounded-md border border-border-hairline bg-white hover:bg-[#FEF3F2] hover:border-[#FECDCA] hover:text-[#7A271A] transition-colors"
                               data-testid="bulk-stackable-no"
                             >
                               No
@@ -5651,10 +5643,10 @@ export default function ContainerCalculator() {
                           </div>
                         </div>
                         <div>
-                          <Label className="text-[10px] text-slate-500 uppercase tracking-wide">Rotation</Label>
+                          <Label className="text-[10px] text-text-muted uppercase tracking-wide">Rotation</Label>
                           <select
                             onChange={(e) => bulkUpdate("rotationMode", e.target.value as RotationMode)}
-                            className="mt-1 w-full h-[30px] px-2 text-[11px] font-medium rounded-md border border-slate-200 bg-white hover:border-primary/50 transition-colors cursor-pointer"
+                            className="mt-1 w-full h-[30px] px-2 text-[11px] font-medium rounded-md border border-border-hairline bg-white hover:border-border-hairline transition-colors cursor-pointer"
                             defaultValue=""
                             data-testid="bulk-rotation"
                           >
@@ -5665,10 +5657,10 @@ export default function ContainerCalculator() {
                           </select>
                         </div>
                         <div>
-                          <Label className="text-[10px] text-slate-500 uppercase tracking-wide">Priority</Label>
+                          <Label className="text-[10px] text-text-muted uppercase tracking-wide">Priority</Label>
                           <select
                             onChange={(e) => bulkUpdate("loadPriority", e.target.value as LoadPriority)}
-                            className="mt-1 w-full h-[30px] px-2 text-[11px] font-medium rounded-md border border-slate-200 bg-white hover:border-primary/50 transition-colors cursor-pointer"
+                            className="mt-1 w-full h-[30px] px-2 text-[11px] font-medium rounded-md border border-border-hairline bg-white hover:border-border-hairline transition-colors cursor-pointer"
                             defaultValue=""
                             data-testid="bulk-priority"
                           >
@@ -5679,25 +5671,25 @@ export default function ContainerCalculator() {
                           </select>
                         </div>
                         <div>
-                          <Label className="text-[10px] text-slate-500 uppercase tracking-wide">Pallet</Label>
+                          <Label className="text-[10px] text-text-muted uppercase tracking-wide">Pallet</Label>
                           <div className="flex gap-1 mt-1">
                             <button
                               onClick={() => { bulkUpdate("palletized", false); bulkUpdate("palletType", "none"); }}
-                              className="flex-1 px-1.5 py-1.5 text-[11px] font-medium rounded-md border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-400 transition-colors"
+                              className="flex-1 px-1.5 py-1.5 text-[11px] font-medium rounded-md border border-border-hairline bg-white hover:bg-surface-recessed hover:border-border-control transition-colors"
                               data-testid="bulk-pallet-none"
                             >
                               None
                             </button>
                             <button
                               onClick={() => { bulkUpdate("palletized", true); bulkUpdate("palletType", "us48x40"); }}
-                              className="flex-1 px-1.5 py-1.5 text-[11px] font-medium rounded-md border border-slate-200 bg-white hover:bg-teal-50 hover:border-teal-300 hover:text-teal-700 transition-colors"
+                              className="flex-1 px-1.5 py-1.5 text-[11px] font-medium rounded-md border border-border-hairline bg-white hover:bg-surface-recessed hover:border-border-hairline hover:text-text-secondary transition-colors"
                               data-testid="bulk-pallet-us"
                             >
                               US
                             </button>
                             <button
                               onClick={() => { bulkUpdate("palletized", true); bulkUpdate("palletType", "euro"); }}
-                              className="flex-1 px-1.5 py-1.5 text-[11px] font-medium rounded-md border border-slate-200 bg-white hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-700 transition-colors"
+                              className="flex-1 px-1.5 py-1.5 text-[11px] font-medium rounded-md border border-border-hairline bg-white hover:bg-surface-recessed hover:border-border-hairline hover:text-text-secondary transition-colors"
                               data-testid="bulk-pallet-euro"
                             >
                               Euro
@@ -5705,18 +5697,18 @@ export default function ContainerCalculator() {
                           </div>
                         </div>
                         <div>
-                          <Label className="text-[10px] text-slate-500 uppercase tracking-wide">Include</Label>
+                          <Label className="text-[10px] text-text-muted uppercase tracking-wide">Include</Label>
                           <div className="flex gap-1 mt-1">
                             <button
                               onClick={() => bulkUpdate("included", true)}
-                              className="flex-1 px-2 py-1.5 text-[11px] font-medium rounded-md border border-slate-200 bg-white hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors"
+                              className="flex-1 px-2 py-1.5 text-[11px] font-medium rounded-md border border-border-hairline bg-white hover:bg-[#ECFDF3] hover:border-[#A6F4C5] hover:text-[#15803D] transition-colors"
                               data-testid="bulk-include-yes"
                             >
                               Yes
                             </button>
                             <button
                               onClick={() => bulkUpdate("included", false)}
-                              className="flex-1 px-2 py-1.5 text-[11px] font-medium rounded-md border border-slate-200 bg-white hover:bg-red-50 hover:border-red-300 hover:text-red-700 transition-colors"
+                              className="flex-1 px-2 py-1.5 text-[11px] font-medium rounded-md border border-border-hairline bg-white hover:bg-[#FEF3F2] hover:border-[#FECDCA] hover:text-[#7A271A] transition-colors"
                               data-testid="bulk-include-no"
                             >
                               No
@@ -5728,16 +5720,16 @@ export default function ContainerCalculator() {
                   )}
 
                   {visualPopup && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setVisualPopup(null)} data-testid="visual-popup-overlay">
-                      <div className={`bg-white rounded-xl shadow-2xl border border-slate-200 p-5 w-full mx-4 ${visualPopup.type === "palletized" ? "max-w-md" : "max-w-sm"}`} onClick={(e) => e.stopPropagation()} data-testid="visual-popup">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setVisualPopup(null)} data-testid="visual-popup-overlay">
+                      <div className={`bg-white rounded-lg shadow-md border border-border-hairline p-5 w-full mx-4 ${visualPopup.type === "palletized" ? "max-w-md" : "max-w-sm"}`} onClick={(e) => e.stopPropagation()} data-testid="visual-popup">
                         <div className="flex items-center justify-between mb-4">
-                          <h3 className="font-bold text-sm text-slate-900">
+                          <h3 className="font-bold text-sm text-text-primary">
                             {visualPopup.type === "stackable" ? "Stackable Options"
                               : visualPopup.type === "rotation" ? "Rotation Modes"
                               : visualPopup.type === "palletized" ? "Pallet Options"
                               : "Loading Sequence"}
                           </h3>
-                          <button onClick={() => setVisualPopup(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-1" data-testid="button-close-popup">
+                          <button onClick={() => setVisualPopup(null)} className="text-text-deemphasis hover:text-text-muted transition-colors p-1" data-testid="button-close-popup">
                             <X className="w-4 h-4" />
                           </button>
                         </div>
@@ -5749,10 +5741,10 @@ export default function ContainerCalculator() {
                                 updateItem(visualPopup.itemId, "stackable", true);
                                 setVisualPopup(null);
                               }}
-                              className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                              className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
                                 cargoItems.find(i => i.id === visualPopup.itemId)?.stackable
-                                  ? "border-green-400 bg-green-50"
-                                  : "border-slate-200 hover:border-green-300 hover:bg-green-50/50"
+                                  ? "border-[#A6F4C5] bg-[#ECFDF3]"
+                                  : "border-border-hairline hover:border-[#A6F4C5] hover:bg-[#ECFDF3]"
                               }`}
                               data-testid="popup-stackable-yes"
                             >
@@ -5764,8 +5756,8 @@ export default function ContainerCalculator() {
                                 <text x="28" y="20" textAnchor="middle" fontSize="7" fill="#15803d" fontWeight="600">BOX</text>
                               </svg>
                               <div className="text-left">
-                                <div className="text-xs font-semibold text-green-700">Stackable (✓)</div>
-                                <div className="text-[10px] text-slate-500 mt-0.5">Other items can be placed on top</div>
+                                <div className="text-xs font-semibold text-[#15803D]">Stackable (✓)</div>
+                                <div className="text-[10px] text-text-muted mt-0.5">Other items can be placed on top</div>
                               </div>
                             </button>
                             <button
@@ -5773,10 +5765,10 @@ export default function ContainerCalculator() {
                                 updateItem(visualPopup.itemId, "stackable", false);
                                 setVisualPopup(null);
                               }}
-                              className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                              className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
                                 !cargoItems.find(i => i.id === visualPopup.itemId)?.stackable
-                                  ? "border-amber-400 bg-amber-50"
-                                  : "border-slate-200 hover:border-amber-300 hover:bg-amber-50/50"
+                                  ? "border-[#FDE68A] bg-[#FFFBEB]"
+                                  : "border-border-hairline hover:border-[#FDE68A] hover:bg-[#FFFBEB]"
                               }`}
                               data-testid="popup-stackable-no"
                             >
@@ -5787,8 +5779,8 @@ export default function ContainerCalculator() {
                                 <line x1="42" y1="8" x2="14" y2="16" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" />
                               </svg>
                               <div className="text-left">
-                                <div className="text-xs font-semibold text-amber-700">Not Stackable (✗)</div>
-                                <div className="text-[10px] text-slate-500 mt-0.5">Nothing placed on top of this item</div>
+                                <div className="text-xs font-semibold text-[#78350F]">Not Stackable (✗)</div>
+                                <div className="text-[10px] text-text-muted mt-0.5">Nothing placed on top of this item</div>
                               </div>
                             </button>
                           </div>
@@ -5800,8 +5792,8 @@ export default function ContainerCalculator() {
                                 <>
                                   <button
                                     onClick={() => { updateItem(visualPopup.itemId, "rotationMode", "all"); setVisualPopup(null); }}
-                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                                      currentMode === "all" ? "border-blue-400 bg-blue-50" : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/50"
+                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
+                                      currentMode === "all" ? "border-brand" : "border-border-app hover:border-border-control hover:bg-surface-recessed"
                                     }`}
                                     data-testid="popup-rotation-all"
                                   >
@@ -5814,14 +5806,14 @@ export default function ContainerCalculator() {
                                       <defs><marker id="arrowBlue" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="#3b82f6" /></marker></defs>
                                     </svg>
                                     <div className="text-left">
-                                      <div className="text-xs font-semibold text-blue-700">All Axes</div>
-                                      <div className="text-[10px] text-slate-500 mt-0.5">Rotate freely in all directions</div>
+                                      <div className="text-xs font-semibold text-text-secondary">All Axes</div>
+                                      <div className="text-[10px] text-text-muted mt-0.5">Rotate freely in all directions</div>
                                     </div>
                                   </button>
                                   <button
                                     onClick={() => { updateItem(visualPopup.itemId, "rotationMode", "horizontal"); setVisualPopup(null); }}
-                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                                      currentMode === "horizontal" ? "border-purple-400 bg-purple-50" : "border-slate-200 hover:border-purple-300 hover:bg-purple-50/50"
+                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
+                                      currentMode === "horizontal" ? "border-border-hairline bg-surface-recessed" : "border-border-hairline hover:border-border-hairline hover:bg-surface-recessed"
                                     }`}
                                     data-testid="popup-rotation-horizontal"
                                   >
@@ -5835,14 +5827,14 @@ export default function ContainerCalculator() {
                                       <circle cx="28" cy="52" r="1.5" fill="#dc2626" />
                                     </svg>
                                     <div className="text-left">
-                                      <div className="text-xs font-semibold text-purple-700">Horizontal Only</div>
-                                      <div className="text-[10px] text-slate-500 mt-0.5">Rotate on floor plane only (keeps upright)</div>
+                                      <div className="text-xs font-semibold text-text-secondary">Horizontal Only</div>
+                                      <div className="text-[10px] text-text-muted mt-0.5">Rotate on floor plane only (keeps upright)</div>
                                     </div>
                                   </button>
                                   <button
                                     onClick={() => { updateItem(visualPopup.itemId, "rotationMode", "fixed"); setVisualPopup(null); }}
-                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                                      currentMode === "fixed" ? "border-slate-400 bg-slate-50" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
+                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
+                                      currentMode === "fixed" ? "border-border-control bg-surface-recessed" : "border-border-hairline hover:border-border-control hover:bg-surface-recessed"
                                     }`}
                                     data-testid="popup-rotation-fixed"
                                   >
@@ -5854,8 +5846,8 @@ export default function ContainerCalculator() {
                                       <rect x="27" y="10" width="2" height="4" rx="0.5" fill="#ef4444" />
                                     </svg>
                                     <div className="text-left">
-                                      <div className="text-xs font-semibold text-slate-700">Fixed</div>
-                                      <div className="text-[10px] text-slate-500 mt-0.5">No rotation — exactly as entered</div>
+                                      <div className="text-xs font-semibold text-text-secondary">Fixed</div>
+                                      <div className="text-[10px] text-text-muted mt-0.5">No rotation — exactly as entered</div>
                                     </div>
                                   </button>
                                 </>
@@ -5876,8 +5868,8 @@ export default function ContainerCalculator() {
                                       updateItem(visualPopup.itemId, "palletType", "none");
                                       setVisualPopup(null);
                                     }}
-                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                                      !isPalletized ? "border-slate-400 bg-slate-50" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
+                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
+                                      !isPalletized ? "border-border-control bg-surface-recessed" : "border-border-hairline hover:border-border-control hover:bg-surface-recessed"
                                     }`}
                                     data-testid="popup-pallet-none"
                                   >
@@ -5888,19 +5880,19 @@ export default function ContainerCalculator() {
                                       <text x="28" y="54" textAnchor="middle" fontSize="5" fill="#94a3b8">FLOOR</text>
                                     </svg>
                                     <div className="text-left">
-                                      <div className="text-xs font-semibold text-slate-700">No Pallet</div>
-                                      <div className="text-[10px] text-slate-500 mt-0.5">Cargo placed directly on container floor</div>
+                                      <div className="text-xs font-semibold text-text-secondary">No Pallet</div>
+                                      <div className="text-[10px] text-text-muted mt-0.5">Cargo placed directly on container floor</div>
                                     </div>
                                   </button>
 
-                                  <div className={`rounded-lg border-2 transition-all ${isPalletized && currentPalletType === "us48x40" ? "border-teal-400 bg-teal-50/50" : "border-slate-200"}`}>
+                                  <div className={`rounded-lg border-2 transition-colors ${isPalletized && currentPalletType === "us48x40" ? "border-border-hairline bg-surface-recessed" : "border-border-hairline"}`}>
                                     <button
                                       onClick={() => {
                                         updateItem(visualPopup.itemId, "palletized", true);
                                         updateItem(visualPopup.itemId, "palletType", "us48x40");
                                         setVisualPopup(null);
                                       }}
-                                      className="w-full flex items-center gap-3 p-3 rounded-t-lg hover:bg-teal-50/50 transition-all"
+                                      className="w-full flex items-center gap-3 p-3 rounded-t-lg hover:bg-surface-recessed transition-colors"
                                       data-testid="popup-pallet-us48x40"
                                     >
                                       <svg width="56" height="56" viewBox="0 0 56 56" className="shrink-0">
@@ -5912,20 +5904,20 @@ export default function ContainerCalculator() {
                                         <text x="26" y="28" textAnchor="middle" fontSize="7" fill="#1d4ed8" fontWeight="600">BOX</text>
                                       </svg>
                                       <div className="text-left">
-                                        <div className="text-xs font-semibold text-teal-700">US Standard Pallet</div>
-                                        <div className="text-[10px] text-slate-500 mt-0.5">48 × 40 × 6 in — GMA standard, most common in North America</div>
+                                        <div className="text-xs font-semibold text-text-secondary">US Standard Pallet</div>
+                                        <div className="text-[10px] text-text-muted mt-0.5">48 × 40 × 6 in — GMA standard, most common in North America</div>
                                       </div>
                                     </button>
                                   </div>
 
-                                  <div className={`rounded-lg border-2 transition-all ${isPalletized && currentPalletType === "euro" ? "border-indigo-400 bg-indigo-50/50" : "border-slate-200"}`}>
+                                  <div className={`rounded-lg border-2 transition-colors ${isPalletized && currentPalletType === "euro" ? "border-border-hairline bg-surface-recessed" : "border-border-hairline"}`}>
                                     <button
                                       onClick={() => {
                                         updateItem(visualPopup.itemId, "palletized", true);
                                         updateItem(visualPopup.itemId, "palletType", "euro");
                                         setVisualPopup(null);
                                       }}
-                                      className="w-full flex items-center gap-3 p-3 rounded-t-lg hover:bg-indigo-50/50 transition-all"
+                                      className="w-full flex items-center gap-3 p-3 rounded-t-lg hover:bg-surface-recessed transition-colors"
                                       data-testid="popup-pallet-euro"
                                     >
                                       <svg width="56" height="56" viewBox="0 0 56 56" className="shrink-0">
@@ -5937,19 +5929,19 @@ export default function ContainerCalculator() {
                                         <text x="27" y="29" textAnchor="middle" fontSize="7" fill="#1d4ed8" fontWeight="600">BOX</text>
                                       </svg>
                                       <div className="text-left">
-                                        <div className="text-xs font-semibold text-indigo-700">Euro Pallet (EPAL)</div>
-                                        <div className="text-[10px] text-slate-500 mt-0.5">1200 × 800 × 144 mm — European standard pallet</div>
+                                        <div className="text-xs font-semibold text-text-secondary">Euro Pallet (EPAL)</div>
+                                        <div className="text-[10px] text-text-muted mt-0.5">1200 × 800 × 144 mm — European standard pallet</div>
                                       </div>
                                     </button>
                                   </div>
 
-                                  <div className={`rounded-lg border-2 transition-all ${isPalletized && currentPalletType === "custom" ? "border-orange-400 bg-orange-50/50" : "border-slate-200"}`}>
+                                  <div className={`rounded-lg border-2 transition-colors ${isPalletized && currentPalletType === "custom" ? "border-[#FDE68A] bg-[#FFFBEB]" : "border-border-hairline"}`}>
                                     <button
                                       onClick={() => {
                                         updateItem(visualPopup.itemId, "palletized", true);
                                         updateItem(visualPopup.itemId, "palletType", "custom");
                                       }}
-                                      className="w-full flex items-center gap-3 p-3 hover:bg-orange-50/50 transition-all"
+                                      className="w-full flex items-center gap-3 p-3 hover:bg-[#FFFBEB] transition-colors"
                                       data-testid="popup-pallet-custom"
                                     >
                                       <svg width="56" height="56" viewBox="0 0 56 56" className="shrink-0">
@@ -5962,16 +5954,16 @@ export default function ContainerCalculator() {
                                         <text x="26" y="34" textAnchor="middle" fontSize="5" fill="#ea580c">? × ? × ?</text>
                                       </svg>
                                       <div className="text-left">
-                                        <div className="text-xs font-semibold text-orange-700">Custom Pallet Size</div>
-                                        <div className="text-[10px] text-slate-500 mt-0.5">Enter your own pallet dimensions below</div>
+                                        <div className="text-xs font-semibold text-[#78350F]">Custom Pallet Size</div>
+                                        <div className="text-[10px] text-text-muted mt-0.5">Enter your own pallet dimensions below</div>
                                       </div>
                                     </button>
                                     {isPalletized && currentPalletType === "custom" && (
-                                      <div className="px-3 pb-3 pt-1 border-t border-orange-200">
-                                        <div className="text-[10px] text-orange-600 font-medium mb-2">Custom pallet dimensions ({isMetric ? "cm" : "in"}):</div>
+                                      <div className="px-3 pb-3 pt-1 border-t border-[#FDE68A]">
+                                        <div className="text-[10px] text-[#B45309] font-medium mb-2">Custom pallet dimensions ({isMetric ? "cm" : "in"}):</div>
                                         <div className="grid grid-cols-3 gap-2">
                                           <div>
-                                            <label className="text-[9px] text-slate-400 uppercase">Length</label>
+                                            <label className="text-[9px] text-text-deemphasis uppercase">Length</label>
                                             <input
                                               type="number"
                                               placeholder="L"
@@ -5980,13 +5972,13 @@ export default function ContainerCalculator() {
                                                 const value = parseFloat(e.target.value) || 0;
                                                 updateItem(visualPopup.itemId, "customPalletL", isMetric ? value * CM_TO_IN : value);
                                               }}
-                                              className="w-full h-7 px-2 text-xs rounded border border-orange-200 focus:border-orange-400 focus:ring-1 focus:ring-orange-200 outline-none"
+                                              className="w-full h-7 px-2 text-xs rounded border border-[#FDE68A] focus:outline focus:outline-2 focus:outline-brand focus:!outline-offset-[-2px] outline-none text-right tabular-nums"
                                               data-testid="popup-pallet-custom-l"
                                               onKeyDown={(e) => e.stopPropagation()}
                                             />
                                           </div>
                                           <div>
-                                            <label className="text-[9px] text-slate-400 uppercase">Width</label>
+                                            <label className="text-[9px] text-text-deemphasis uppercase">Width</label>
                                             <input
                                               type="number"
                                               placeholder="W"
@@ -5995,12 +5987,12 @@ export default function ContainerCalculator() {
                                                 const value = parseFloat(e.target.value) || 0;
                                                 updateItem(visualPopup.itemId, "customPalletW", isMetric ? value * CM_TO_IN : value);
                                               }}
-                                              className="w-full h-7 px-2 text-xs rounded border border-orange-200 focus:border-orange-400 focus:ring-1 focus:ring-orange-200 outline-none"
+                                              className="w-full h-7 px-2 text-xs rounded border border-[#FDE68A] focus:outline focus:outline-2 focus:outline-brand focus:!outline-offset-[-2px] outline-none text-right tabular-nums"
                                               data-testid="popup-pallet-custom-w"
                                             />
                                           </div>
                                           <div>
-                                            <label className="text-[9px] text-slate-400 uppercase">Height</label>
+                                            <label className="text-[9px] text-text-deemphasis uppercase">Height</label>
                                             <input
                                               type="number"
                                               placeholder="H"
@@ -6009,14 +6001,14 @@ export default function ContainerCalculator() {
                                                 const value = parseFloat(e.target.value) || 0;
                                                 updateItem(visualPopup.itemId, "customPalletH", isMetric ? value * CM_TO_IN : value);
                                               }}
-                                              className="w-full h-7 px-2 text-xs rounded border border-orange-200 focus:border-orange-400 focus:ring-1 focus:ring-orange-200 outline-none"
+                                              className="w-full h-7 px-2 text-xs rounded border border-[#FDE68A] focus:outline focus:outline-2 focus:outline-brand focus:!outline-offset-[-2px] outline-none text-right tabular-nums"
                                               data-testid="popup-pallet-custom-h"
                                             />
                                           </div>
                                         </div>
                                         <button
                                           onClick={() => setVisualPopup(null)}
-                                          className="mt-2 w-full h-7 text-xs font-medium rounded bg-orange-500 text-white hover:bg-orange-600 transition-colors"
+                                          className="mt-2 w-full h-7 text-xs font-medium rounded bg-[#B45309] text-white hover:bg-[#B45309] transition-colors"
                                           data-testid="popup-pallet-custom-apply"
                                         >
                                           Apply Custom Pallet
@@ -6036,8 +6028,8 @@ export default function ContainerCalculator() {
                                 <>
                                   <button
                                     onClick={() => { updateItem(visualPopup.itemId, "loadPriority", "first"); setVisualPopup(null); }}
-                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                                      currentPriority === "first" ? "border-red-400 bg-red-50" : "border-slate-200 hover:border-red-300 hover:bg-red-50/50"
+                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
+                                      currentPriority === "first" ? "border-[#FECDCA] bg-[#FEF3F2]" : "border-border-hairline hover:border-[#FECDCA] hover:bg-[#FEF3F2]"
                                     }`}
                                     data-testid="popup-priority-first"
                                   >
@@ -6054,14 +6046,14 @@ export default function ContainerCalculator() {
                                       <path d="M10 24 L14 20 L18 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
                                     <div className="text-left">
-                                      <div className="text-xs font-semibold text-red-700">Load First</div>
-                                      <div className="text-[10px] text-slate-500 mt-0.5">Prioritized — loaded at the back of the container first</div>
+                                      <div className="text-xs font-semibold text-[#7A271A]">Load First</div>
+                                      <div className="text-[10px] text-text-muted mt-0.5">Prioritized — loaded at the back of the container first</div>
                                     </div>
                                   </button>
                                   <button
                                     onClick={() => { updateItem(visualPopup.itemId, "loadPriority", "normal"); setVisualPopup(null); }}
-                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                                      currentPriority === "normal" ? "border-blue-400 bg-blue-50" : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/50"
+                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
+                                      currentPriority === "normal" ? "border-brand" : "border-border-app hover:border-border-control hover:bg-surface-recessed"
                                     }`}
                                     data-testid="popup-priority-normal"
                                   >
@@ -6078,14 +6070,14 @@ export default function ContainerCalculator() {
                                       <path d="M30 22 L34 26 L30 30" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
                                     <div className="text-left">
-                                      <div className="text-xs font-semibold text-blue-700">Normal Order</div>
-                                      <div className="text-[10px] text-slate-500 mt-0.5">Standard — loaded in default sequence, no special priority</div>
+                                      <div className="text-xs font-semibold text-text-secondary">Normal Order</div>
+                                      <div className="text-[10px] text-text-muted mt-0.5">Standard — loaded in default sequence, no special priority</div>
                                     </div>
                                   </button>
                                   <button
                                     onClick={() => { updateItem(visualPopup.itemId, "loadPriority", "last"); setVisualPopup(null); }}
-                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                                      currentPriority === "last" ? "border-emerald-400 bg-emerald-50" : "border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/50"
+                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
+                                      currentPriority === "last" ? "border-[#A6F4C5] bg-[#ECFDF3]" : "border-border-hairline hover:border-[#A6F4C5] hover:bg-[#ECFDF3]"
                                     }`}
                                     data-testid="popup-priority-last"
                                   >
@@ -6102,8 +6094,8 @@ export default function ContainerCalculator() {
                                       <path d="M38 24 L42 28 L46 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
                                     <div className="text-left">
-                                      <div className="text-xs font-semibold text-emerald-700">Load Last</div>
-                                      <div className="text-[10px] text-slate-500 mt-0.5">Near door — loaded last for easy first access at destination</div>
+                                      <div className="text-xs font-semibold text-[#15803D]">Load Last</div>
+                                      <div className="text-[10px] text-text-muted mt-0.5">Near door — loaded last for easy first access at destination</div>
                                     </div>
                                   </button>
                                 </>
@@ -6116,26 +6108,26 @@ export default function ContainerCalculator() {
                   )}
 
                   {showBulkModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowBulkModal(false)} data-testid="bulk-modal-overlay">
-                      <div className="bg-white rounded-xl shadow-2xl border border-slate-200 p-5 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()} data-testid="bulk-modal">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setShowBulkModal(false)} data-testid="bulk-modal-overlay">
+                      <div className="bg-white rounded-lg shadow-md border border-border-hairline p-5 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()} data-testid="bulk-modal">
                         <div className="flex items-center justify-between mb-5">
-                          <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                            <Settings2 className="w-4 h-4 text-primary" />
+                          <h3 className="font-bold text-sm text-text-primary flex items-center gap-2">
+                            <Settings2 className="w-4 h-4 text-text-muted" />
                             Bulk Cargo Settings
                           </h3>
-                          <button onClick={() => setShowBulkModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-1" data-testid="bulk-modal-close" aria-label="Close">
+                          <button onClick={() => setShowBulkModal(false)} className="text-text-deemphasis hover:text-text-muted transition-colors p-1" data-testid="bulk-modal-close" aria-label="Close">
                             <X className="w-4 h-4" />
                           </button>
                         </div>
-                        <p className="text-xs text-slate-500 mb-4">Changes will apply to all existing items and set defaults for new items.</p>
+                        <p className="text-xs text-text-muted mb-4">Changes will apply to all existing items and set defaults for new items.</p>
                         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
                           <div>
-                            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide block mb-2">Stacking</label>
+                            <label className="text-xs font-semibold text-text-muted uppercase tracking-wide block mb-2">Stacking</label>
                             <div className="space-y-2">
                               <button
                                 onClick={() => setTempBulk(p => ({ ...p, stackable: true }))}
-                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                                  tempBulk.stackable ? "border-green-400 bg-green-50" : "border-slate-200 hover:border-green-300 hover:bg-green-50/50"
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
+                                  tempBulk.stackable ? "border-[#A6F4C5] bg-[#ECFDF3]" : "border-border-hairline hover:border-[#A6F4C5] hover:bg-[#ECFDF3]"
                                 }`}
                                 data-testid="bulk-modal-stackable-yes"
                               >
@@ -6147,14 +6139,14 @@ export default function ContainerCalculator() {
                                   <text x="28" y="20" textAnchor="middle" fontSize="7" fill="#15803d" fontWeight="600">BOX</text>
                                 </svg>
                                 <div className="text-left">
-                                  <div className="text-xs font-semibold text-green-700">Stackable</div>
-                                  <div className="text-[10px] text-slate-500 mt-0.5">Other items can be placed on top</div>
+                                  <div className="text-xs font-semibold text-[#15803D]">Stackable</div>
+                                  <div className="text-[10px] text-text-muted mt-0.5">Other items can be placed on top</div>
                                 </div>
                               </button>
                               <button
                                 onClick={() => setTempBulk(p => ({ ...p, stackable: false }))}
-                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                                  !tempBulk.stackable ? "border-amber-400 bg-amber-50" : "border-slate-200 hover:border-amber-300 hover:bg-amber-50/50"
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
+                                  !tempBulk.stackable ? "border-[#FDE68A] bg-[#FFFBEB]" : "border-border-hairline hover:border-[#FDE68A] hover:bg-[#FFFBEB]"
                                 }`}
                                 data-testid="bulk-modal-stackable-no"
                               >
@@ -6165,20 +6157,20 @@ export default function ContainerCalculator() {
                                   <line x1="42" y1="8" x2="14" y2="16" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" />
                                 </svg>
                                 <div className="text-left">
-                                  <div className="text-xs font-semibold text-amber-700">Not Stackable</div>
-                                  <div className="text-[10px] text-slate-500 mt-0.5">Nothing placed on top of this item</div>
+                                  <div className="text-xs font-semibold text-[#78350F]">Not Stackable</div>
+                                  <div className="text-[10px] text-text-muted mt-0.5">Nothing placed on top of this item</div>
                                 </div>
                               </button>
                             </div>
                           </div>
 
                           <div>
-                            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide block mb-2">Rotation</label>
+                            <label className="text-xs font-semibold text-text-muted uppercase tracking-wide block mb-2">Rotation</label>
                             <div className="space-y-2">
                               <button
                                 onClick={() => setTempBulk(p => ({ ...p, rotationMode: "all" }))}
-                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                                  tempBulk.rotationMode === "all" ? "border-blue-400 bg-blue-50" : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/50"
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
+                                  tempBulk.rotationMode === "all" ? "border-brand" : "border-border-app hover:border-border-control hover:bg-surface-recessed"
                                 }`}
                                 data-testid="bulk-modal-rotation-all"
                               >
@@ -6191,14 +6183,14 @@ export default function ContainerCalculator() {
                                   <defs><marker id="bArrowBlue" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="#3b82f6" /></marker></defs>
                                 </svg>
                                 <div className="text-left">
-                                  <div className="text-xs font-semibold text-blue-700">All Axes</div>
-                                  <div className="text-[10px] text-slate-500 mt-0.5">Rotate freely in all directions</div>
+                                  <div className="text-xs font-semibold text-text-secondary">All Axes</div>
+                                  <div className="text-[10px] text-text-muted mt-0.5">Rotate freely in all directions</div>
                                 </div>
                               </button>
                               <button
                                 onClick={() => setTempBulk(p => ({ ...p, rotationMode: "horizontal" }))}
-                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                                  tempBulk.rotationMode === "horizontal" ? "border-purple-400 bg-purple-50" : "border-slate-200 hover:border-purple-300 hover:bg-purple-50/50"
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
+                                  tempBulk.rotationMode === "horizontal" ? "border-border-hairline bg-surface-recessed" : "border-border-hairline hover:border-border-hairline hover:bg-surface-recessed"
                                 }`}
                                 data-testid="bulk-modal-rotation-horizontal"
                               >
@@ -6212,14 +6204,14 @@ export default function ContainerCalculator() {
                                   <circle cx="28" cy="52" r="1.5" fill="#dc2626" />
                                 </svg>
                                 <div className="text-left">
-                                  <div className="text-xs font-semibold text-purple-700">Horizontal Only</div>
-                                  <div className="text-[10px] text-slate-500 mt-0.5">Rotate on floor plane only (keeps upright)</div>
+                                  <div className="text-xs font-semibold text-text-secondary">Horizontal Only</div>
+                                  <div className="text-[10px] text-text-muted mt-0.5">Rotate on floor plane only (keeps upright)</div>
                                 </div>
                               </button>
                               <button
                                 onClick={() => setTempBulk(p => ({ ...p, rotationMode: "fixed" }))}
-                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                                  tempBulk.rotationMode === "fixed" ? "border-slate-400 bg-slate-50" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
+                                  tempBulk.rotationMode === "fixed" ? "border-border-control bg-surface-recessed" : "border-border-hairline hover:border-border-control hover:bg-surface-recessed"
                                 }`}
                                 data-testid="bulk-modal-rotation-fixed"
                               >
@@ -6231,20 +6223,20 @@ export default function ContainerCalculator() {
                                   <rect x="27" y="10" width="2" height="4" rx="0.5" fill="#ef4444" />
                                 </svg>
                                 <div className="text-left">
-                                  <div className="text-xs font-semibold text-slate-700">Fixed</div>
-                                  <div className="text-[10px] text-slate-500 mt-0.5">No rotation — exactly as entered</div>
+                                  <div className="text-xs font-semibold text-text-secondary">Fixed</div>
+                                  <div className="text-[10px] text-text-muted mt-0.5">No rotation — exactly as entered</div>
                                 </div>
                               </button>
                             </div>
                           </div>
 
                           <div>
-                            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide block mb-2">Loading Sequence</label>
+                            <label className="text-xs font-semibold text-text-muted uppercase tracking-wide block mb-2">Loading Sequence</label>
                             <div className="space-y-2">
                               <button
                                 onClick={() => setTempBulk(p => ({ ...p, loadPriority: "first" }))}
-                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                                  tempBulk.loadPriority === "first" ? "border-red-400 bg-red-50" : "border-slate-200 hover:border-red-300 hover:bg-red-50/50"
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
+                                  tempBulk.loadPriority === "first" ? "border-[#FECDCA] bg-[#FEF3F2]" : "border-border-hairline hover:border-[#FECDCA] hover:bg-[#FEF3F2]"
                                 }`}
                                 data-testid="bulk-modal-priority-first"
                               >
@@ -6257,14 +6249,14 @@ export default function ContainerCalculator() {
                                   <rect x="36" y="10" width="12" height="12" rx="1" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1" />
                                 </svg>
                                 <div className="text-left">
-                                  <div className="text-xs font-semibold text-red-700">Load First</div>
-                                  <div className="text-[10px] text-slate-500 mt-0.5">Goes in first, at the back of container</div>
+                                  <div className="text-xs font-semibold text-[#7A271A]">Load First</div>
+                                  <div className="text-[10px] text-text-muted mt-0.5">Goes in first, at the back of container</div>
                                 </div>
                               </button>
                               <button
                                 onClick={() => setTempBulk(p => ({ ...p, loadPriority: "normal" }))}
-                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                                  tempBulk.loadPriority === "normal" ? "border-blue-400 bg-blue-50" : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/50"
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
+                                  tempBulk.loadPriority === "normal" ? "border-brand" : "border-border-app hover:border-border-control hover:bg-surface-recessed"
                                 }`}
                                 data-testid="bulk-modal-priority-normal"
                               >
@@ -6277,14 +6269,14 @@ export default function ContainerCalculator() {
                                   <rect x="40" y="10" width="12" height="12" rx="1" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1" />
                                 </svg>
                                 <div className="text-left">
-                                  <div className="text-xs font-semibold text-blue-700">Normal</div>
-                                  <div className="text-[10px] text-slate-500 mt-0.5">Algorithm decides best placement</div>
+                                  <div className="text-xs font-semibold text-text-secondary">Normal</div>
+                                  <div className="text-[10px] text-text-muted mt-0.5">Algorithm decides best placement</div>
                                 </div>
                               </button>
                               <button
                                 onClick={() => setTempBulk(p => ({ ...p, loadPriority: "last" }))}
-                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                                  tempBulk.loadPriority === "last" ? "border-emerald-400 bg-emerald-50" : "border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/50"
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
+                                  tempBulk.loadPriority === "last" ? "border-[#A6F4C5] bg-[#ECFDF3]" : "border-border-hairline hover:border-[#A6F4C5] hover:bg-[#ECFDF3]"
                                 }`}
                                 data-testid="bulk-modal-priority-last"
                               >
@@ -6297,20 +6289,20 @@ export default function ContainerCalculator() {
                                   <text x="40" y="18" textAnchor="middle" fontSize="5" fill="#047857" fontWeight="700">LAST</text>
                                 </svg>
                                 <div className="text-left">
-                                  <div className="text-xs font-semibold text-emerald-700">Load Last</div>
-                                  <div className="text-[10px] text-slate-500 mt-0.5">Placed near container doors for easy access</div>
+                                  <div className="text-xs font-semibold text-[#15803D]">Load Last</div>
+                                  <div className="text-[10px] text-text-muted mt-0.5">Placed near container doors for easy access</div>
                                 </div>
                               </button>
                             </div>
                           </div>
 
                           <div>
-                            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide block mb-2">Pallet</label>
+                            <label className="text-xs font-semibold text-text-muted uppercase tracking-wide block mb-2">Pallet</label>
                             <div className="space-y-2">
                               <button
                                 onClick={() => setTempBulk(p => ({ ...p, palletized: false, palletType: "none" }))}
-                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                                  !tempBulk.palletized ? "border-slate-400 bg-slate-50" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
+                                  !tempBulk.palletized ? "border-border-control bg-surface-recessed" : "border-border-hairline hover:border-border-control hover:bg-surface-recessed"
                                 }`}
                                 data-testid="bulk-modal-pallet-none"
                               >
@@ -6321,14 +6313,14 @@ export default function ContainerCalculator() {
                                   <text x="28" y="54" textAnchor="middle" fontSize="5" fill="#94a3b8">FLOOR</text>
                                 </svg>
                                 <div className="text-left">
-                                  <div className="text-xs font-semibold text-slate-700">No Pallet</div>
-                                  <div className="text-[10px] text-slate-500 mt-0.5">Cargo placed directly on container floor</div>
+                                  <div className="text-xs font-semibold text-text-secondary">No Pallet</div>
+                                  <div className="text-[10px] text-text-muted mt-0.5">Cargo placed directly on container floor</div>
                                 </div>
                               </button>
                               <button
                                 onClick={() => setTempBulk(p => ({ ...p, palletized: true, palletType: "us48x40" }))}
-                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                                  tempBulk.palletized && tempBulk.palletType === "us48x40" ? "border-teal-400 bg-teal-50/50" : "border-slate-200 hover:border-teal-300 hover:bg-teal-50/50"
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
+                                  tempBulk.palletized && tempBulk.palletType === "us48x40" ? "border-border-hairline bg-surface-recessed" : "border-border-hairline hover:border-border-hairline hover:bg-surface-recessed"
                                 }`}
                                 data-testid="bulk-modal-pallet-us48x40"
                               >
@@ -6341,14 +6333,14 @@ export default function ContainerCalculator() {
                                   <text x="26" y="28" textAnchor="middle" fontSize="7" fill="#1d4ed8" fontWeight="600">BOX</text>
                                 </svg>
                                 <div className="text-left">
-                                  <div className="text-xs font-semibold text-teal-700">US Standard Pallet</div>
-                                  <div className="text-[10px] text-slate-500 mt-0.5">48 × 40 × 6 in — GMA standard</div>
+                                  <div className="text-xs font-semibold text-text-secondary">US Standard Pallet</div>
+                                  <div className="text-[10px] text-text-muted mt-0.5">48 × 40 × 6 in — GMA standard</div>
                                 </div>
                               </button>
                               <button
                                 onClick={() => setTempBulk(p => ({ ...p, palletized: true, palletType: "euro" }))}
-                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                                  tempBulk.palletized && tempBulk.palletType === "euro" ? "border-indigo-400 bg-indigo-50/50" : "border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50"
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
+                                  tempBulk.palletized && tempBulk.palletType === "euro" ? "border-border-hairline bg-surface-recessed" : "border-border-hairline hover:border-border-hairline hover:bg-surface-recessed"
                                 }`}
                                 data-testid="bulk-modal-pallet-euro"
                               >
@@ -6361,16 +6353,16 @@ export default function ContainerCalculator() {
                                   <text x="27" y="29" textAnchor="middle" fontSize="7" fill="#1d4ed8" fontWeight="600">BOX</text>
                                 </svg>
                                 <div className="text-left">
-                                  <div className="text-xs font-semibold text-indigo-700">Euro Pallet (EPAL)</div>
-                                  <div className="text-[10px] text-slate-500 mt-0.5">1200 × 800 × 144 mm — European standard</div>
+                                  <div className="text-xs font-semibold text-text-secondary">Euro Pallet (EPAL)</div>
+                                  <div className="text-[10px] text-text-muted mt-0.5">1200 × 800 × 144 mm — European standard</div>
                                 </div>
                               </button>
-                              <div className={`rounded-lg border-2 transition-all ${
-                                tempBulk.palletized && tempBulk.palletType === "custom" ? "border-orange-400 bg-orange-50/50" : "border-slate-200 hover:border-orange-300"
+                              <div className={`rounded-lg border-2 transition-colors ${
+                                tempBulk.palletized && tempBulk.palletType === "custom" ? "border-[#FDE68A] bg-[#FFFBEB]" : "border-border-hairline hover:border-[#FDE68A]"
                               }`}>
                                 <button
                                   onClick={() => setTempBulk(p => ({ ...p, palletized: true, palletType: "custom" }))}
-                                  className="w-full flex items-center gap-3 p-3 hover:bg-orange-50/50 transition-all"
+                                  className="w-full flex items-center gap-3 p-3 hover:bg-[#FFFBEB] transition-colors"
                                   data-testid="bulk-modal-pallet-custom"
                                 >
                                   <svg width="44" height="44" viewBox="0 0 56 56" className="shrink-0">
@@ -6383,16 +6375,16 @@ export default function ContainerCalculator() {
                                     <text x="26" y="34" textAnchor="middle" fontSize="5" fill="#ea580c">? × ? × ?</text>
                                   </svg>
                                   <div className="text-left">
-                                    <div className="text-xs font-semibold text-orange-700">Custom Pallet Size</div>
-                                    <div className="text-[10px] text-slate-500 mt-0.5">Enter your own pallet dimensions below</div>
+                                    <div className="text-xs font-semibold text-[#78350F]">Custom Pallet Size</div>
+                                    <div className="text-[10px] text-text-muted mt-0.5">Enter your own pallet dimensions below</div>
                                   </div>
                                 </button>
                                 {tempBulk.palletized && tempBulk.palletType === "custom" && (
-                                  <div className="px-3 pb-3 pt-1 border-t border-orange-200">
-                                    <div className="text-[10px] text-orange-600 font-medium mb-2">Custom pallet dimensions ({isMetric ? "cm" : "in"}):</div>
+                                  <div className="px-3 pb-3 pt-1 border-t border-[#FDE68A]">
+                                    <div className="text-[10px] text-[#B45309] font-medium mb-2">Custom pallet dimensions ({isMetric ? "cm" : "in"}):</div>
                                     <div className="grid grid-cols-3 gap-2">
                                       <div>
-                                        <label className="text-[9px] text-slate-400 uppercase">Length</label>
+                                        <label className="text-[9px] text-text-deemphasis uppercase">Length</label>
                                         <input
                                           type="number"
                                           value={isMetric ? +(tempBulk.customPalletL * IN_TO_CM).toFixed(1) : tempBulk.customPalletL}
@@ -6400,13 +6392,13 @@ export default function ContainerCalculator() {
                                             const v = parseFloat(e.target.value) || 0;
                                             setTempBulk(p => ({ ...p, customPalletL: isMetric ? v / IN_TO_CM : v }));
                                           }}
-                                          className="w-full h-7 px-2 text-xs rounded border border-orange-200 focus:border-orange-400 focus:ring-1 focus:ring-orange-200 outline-none"
+                                          className="w-full h-7 px-2 text-xs rounded border border-[#FDE68A] focus:outline focus:outline-2 focus:outline-brand focus:!outline-offset-[-2px] outline-none text-right tabular-nums"
                                           data-testid="bulk-modal-custom-pallet-l"
                                           onKeyDown={(e) => e.stopPropagation()}
                                         />
                                       </div>
                                       <div>
-                                        <label className="text-[9px] text-slate-400 uppercase">Width</label>
+                                        <label className="text-[9px] text-text-deemphasis uppercase">Width</label>
                                         <input
                                           type="number"
                                           value={isMetric ? +(tempBulk.customPalletW * IN_TO_CM).toFixed(1) : tempBulk.customPalletW}
@@ -6414,13 +6406,13 @@ export default function ContainerCalculator() {
                                             const v = parseFloat(e.target.value) || 0;
                                             setTempBulk(p => ({ ...p, customPalletW: isMetric ? v / IN_TO_CM : v }));
                                           }}
-                                          className="w-full h-7 px-2 text-xs rounded border border-orange-200 focus:border-orange-400 focus:ring-1 focus:ring-orange-200 outline-none"
+                                          className="w-full h-7 px-2 text-xs rounded border border-[#FDE68A] focus:outline focus:outline-2 focus:outline-brand focus:!outline-offset-[-2px] outline-none text-right tabular-nums"
                                           data-testid="bulk-modal-custom-pallet-w"
                                           onKeyDown={(e) => e.stopPropagation()}
                                         />
                                       </div>
                                       <div>
-                                        <label className="text-[9px] text-slate-400 uppercase">Height</label>
+                                        <label className="text-[9px] text-text-deemphasis uppercase">Height</label>
                                         <input
                                           type="number"
                                           value={isMetric ? +(tempBulk.customPalletH * IN_TO_CM).toFixed(1) : tempBulk.customPalletH}
@@ -6428,7 +6420,7 @@ export default function ContainerCalculator() {
                                             const v = parseFloat(e.target.value) || 0;
                                             setTempBulk(p => ({ ...p, customPalletH: isMetric ? v / IN_TO_CM : v }));
                                           }}
-                                          className="w-full h-7 px-2 text-xs rounded border border-orange-200 focus:border-orange-400 focus:ring-1 focus:ring-orange-200 outline-none"
+                                          className="w-full h-7 px-2 text-xs rounded border border-[#FDE68A] focus:outline focus:outline-2 focus:outline-brand focus:!outline-offset-[-2px] outline-none text-right tabular-nums"
                                           data-testid="bulk-modal-custom-pallet-h"
                                           onKeyDown={(e) => e.stopPropagation()}
                                         />
@@ -6441,12 +6433,12 @@ export default function ContainerCalculator() {
                           </div>
 
                           <div>
-                            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide block mb-2">Apply To</label>
+                            <label className="text-xs font-semibold text-text-muted uppercase tracking-wide block mb-2">Apply To</label>
                             <div className="grid grid-cols-3 gap-2">
                               <button
                                 onClick={() => setBulkApplyScope("all")}
-                                className={`p-2.5 rounded-lg border-2 text-[11px] font-medium transition-all text-center ${
-                                  bulkApplyScope === "all" ? "border-primary bg-primary/10 text-primary" : "border-slate-200 text-slate-600 hover:border-primary/40"
+                                className={`p-2.5 rounded-lg border-2 text-[11px] font-medium transition-colors text-center ${
+                                  bulkApplyScope === "all" ? "border-brand text-brand" : "border-border-app text-text-muted hover:border-border-control"
                                 }`}
                                 data-testid="bulk-modal-scope-all"
                               >
@@ -6456,10 +6448,10 @@ export default function ContainerCalculator() {
                               <button
                                 onClick={() => setBulkApplyScope("selected")}
                                 disabled={selectedIds.size === 0}
-                                className={`p-2.5 rounded-lg border-2 text-[11px] font-medium transition-all text-center ${
-                                  bulkApplyScope === "selected" ? "border-primary bg-primary/10 text-primary"
-                                    : selectedIds.size === 0 ? "border-slate-100 text-slate-300 cursor-not-allowed"
-                                    : "border-slate-200 text-slate-600 hover:border-primary/40"
+                                className={`p-2.5 rounded-lg border-2 text-[11px] font-medium transition-colors text-center ${
+                                  bulkApplyScope === "selected" ? "border-brand text-brand"
+                                    : selectedIds.size === 0 ? "border-border-app text-text-deemphasis cursor-not-allowed"
+                                    : "border-border-app text-text-muted hover:border-border-control"
                                 }`}
                                 data-testid="bulk-modal-scope-selected"
                               >
@@ -6468,8 +6460,8 @@ export default function ContainerCalculator() {
                               </button>
                               <button
                                 onClick={() => setBulkApplyScope("defaults")}
-                                className={`p-2.5 rounded-lg border-2 text-[11px] font-medium transition-all text-center ${
-                                  bulkApplyScope === "defaults" ? "border-primary bg-primary/10 text-primary" : "border-slate-200 text-slate-600 hover:border-primary/40"
+                                className={`p-2.5 rounded-lg border-2 text-[11px] font-medium transition-colors text-center ${
+                                  bulkApplyScope === "defaults" ? "border-brand text-brand" : "border-border-app text-text-muted hover:border-border-control"
                                 }`}
                                 data-testid="bulk-modal-scope-defaults"
                               >
@@ -6479,7 +6471,7 @@ export default function ContainerCalculator() {
                             </div>
                           </div>
 
-                          <div className="flex gap-3 pt-2 border-t border-slate-100">
+                          <div className="flex gap-3 pt-2 border-t border-border-hairline">
                             <Button
                               onClick={() => {
                                 setBulkDefaults({ ...tempBulk });
@@ -6527,23 +6519,23 @@ export default function ContainerCalculator() {
 
                   {showImportModal && (
                     <div
-                      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+                      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
                       onClick={() => setShowImportModal(false)}
                       data-testid="import-modal-overlay"
                     >
                       <div
-                        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto"
+                        className="bg-white rounded-lg shadow-md w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="p-6">
                           <div className="flex items-center justify-between mb-5">
-                            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                              <FileUp className="w-5 h-5 text-primary" />
+                            <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
+                              <FileUp className="w-5 h-5 text-text-muted" />
                               Import Cargo Data
                             </h3>
                             <button
                               onClick={() => setShowImportModal(false)}
-                              className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+                              className="text-text-deemphasis hover:text-text-muted transition-colors p-1"
                               data-testid="import-modal-close"
                               aria-label="Close"
                             >
@@ -6554,10 +6546,10 @@ export default function ContainerCalculator() {
                           {importStep === "upload" && (
                             <div className="space-y-5">
                               <div
-                                className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
+                                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
                                   dragOver
-                                    ? "border-primary bg-primary/5"
-                                    : "border-slate-300 hover:border-primary/50 hover:bg-slate-50"
+                                    ? "border-brand bg-surface-recessed"
+                                    : "border-border-app hover:border-border-control hover:bg-surface-recessed"
                                 }`}
                                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                                 onDragLeave={() => setDragOver(false)}
@@ -6579,27 +6571,27 @@ export default function ContainerCalculator() {
                                 />
                                 {importLoading ? (
                                   <div className="py-4">
-                                    <Loader2 className="w-10 h-10 text-primary mx-auto animate-spin mb-3" />
-                                    <p className="text-sm font-medium text-slate-700">Processing document...</p>
-                                    <p className="text-xs text-slate-500 mt-1">AI is reading your file and extracting cargo data</p>
+                                    <Loader2 className="w-10 h-10 text-brand mx-auto animate-spin mb-3" />
+                                    <p className="text-sm font-medium text-text-secondary">Processing document...</p>
+                                    <p className="text-xs text-text-muted mt-1">AI is reading your file and extracting cargo data</p>
                                   </div>
                                 ) : (
                                   <>
                                     <div className="flex justify-center gap-3 mb-4">
-                                      <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center">
-                                        <FileSpreadsheet className="w-6 h-6 text-emerald-600" />
+                                      <div className="w-12 h-12 rounded-lg bg-[#ECFDF3] flex items-center justify-center">
+                                        <FileSpreadsheet className="w-6 h-6 text-[#15803D]" />
                                       </div>
-                                      <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
-                                        <FileImage className="w-6 h-6 text-blue-600" />
+                                      <div className="w-12 h-12 rounded-lg bg-surface-recessed flex items-center justify-center">
+                                        <FileImage className="w-6 h-6 text-text-secondary" />
                                       </div>
-                                      <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center">
-                                        <Sparkles className="w-6 h-6 text-purple-600" />
+                                      <div className="w-12 h-12 rounded-lg bg-surface-recessed flex items-center justify-center">
+                                        <Sparkles className="w-6 h-6 text-text-secondary" />
                                       </div>
                                     </div>
-                                    <p className="text-sm font-semibold text-slate-700 mb-1">
+                                    <p className="text-sm font-semibold text-text-secondary mb-1">
                                       Drop your file here, or click to browse
                                     </p>
-                                    <p className="text-xs text-slate-500">
+                                    <p className="text-xs text-text-muted">
                                       Spreadsheets are parsed instantly. Documents, emails, PDFs, and images are read by AI.
                                     </p>
                                     <div className="flex flex-wrap justify-center gap-2 mt-3">
@@ -6624,27 +6616,27 @@ export default function ContainerCalculator() {
                               </div>
 
                               {importError && (
-                                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700 flex items-start gap-2" data-testid="import-error">
+                                <div className="p-3 rounded-lg bg-[#FEF3F2] border border-[#FECDCA] text-sm text-[#7A271A] flex items-start gap-2" data-testid="import-error">
                                   <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                                   {importError}
                                 </div>
                               )}
 
-                              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                              <div className="p-4 rounded-lg bg-surface-recessed border border-border-hairline">
                                 <div className="flex items-center gap-2 mb-2">
-                                  <Table className="w-4 h-4 text-slate-600" />
-                                  <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">CSV Template</span>
+                                  <Table className="w-4 h-4 text-text-muted" />
+                                  <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">CSV Template</span>
                                 </div>
-                                <p className="text-xs text-slate-500 mb-2">
+                                <p className="text-xs text-text-muted mb-2">
                                   Use headers like: Name, Length, Width, Height, Total Weight, Quantity, Stackable, Rotation, Priority, Palletized
                                 </p>
-                                <p className="text-[10px] text-slate-400 mb-3">
+                                <p className="text-[10px] text-text-deemphasis mb-3">
                                   Stackable/Palletized: yes/no &bull; Rotation: all/horizontal/fixed &bull; Priority: first/normal/last
                                 </p>
-                                <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white mb-3">
+                                <div className="overflow-x-auto rounded-lg border border-border-hairline bg-white mb-3">
                                   <table className="w-full text-[11px]">
                                     <thead>
-                                      <tr className="bg-slate-100 text-slate-600">
+                                      <tr className="bg-surface-canvas text-text-muted">
                                         <th className="px-2 py-1.5 text-left font-semibold">Name</th>
                                         <th className="px-2 py-1.5 text-right font-semibold">Length</th>
                                         <th className="px-2 py-1.5 text-right font-semibold">Width</th>
@@ -6657,8 +6649,8 @@ export default function ContainerCalculator() {
                                         <th className="px-2 py-1.5 text-center font-semibold">Palletized</th>
                                       </tr>
                                     </thead>
-                                    <tbody className="text-slate-600">
-                                      <tr className="border-t border-slate-100">
+                                    <tbody className="text-text-muted">
+                                      <tr className="border-t border-border-hairline">
                                         <td className="px-2 py-1.5">Cardboard Box A</td>
                                         <td className="px-2 py-1.5 text-right">24</td>
                                         <td className="px-2 py-1.5 text-right">18</td>
@@ -6670,7 +6662,7 @@ export default function ContainerCalculator() {
                                         <td className="px-2 py-1.5 text-center">normal</td>
                                         <td className="px-2 py-1.5 text-center">no</td>
                                       </tr>
-                                      <tr className="border-t border-slate-100">
+                                      <tr className="border-t border-border-hairline">
                                         <td className="px-2 py-1.5">Pallet Load B</td>
                                         <td className="px-2 py-1.5 text-right">48</td>
                                         <td className="px-2 py-1.5 text-right">40</td>
@@ -6702,15 +6694,15 @@ export default function ContainerCalculator() {
                           {importStep === "mapping" && (
                             <div className="space-y-4">
                               <div className="flex items-center gap-2 mb-1">
-                                <Layers className="w-4 h-4 text-primary" />
-                                <h4 className="text-sm font-semibold text-slate-800">Map Your Columns</h4>
+                                <Layers className="w-4 h-4 text-text-muted" />
+                                <h4 className="text-sm font-semibold text-text-secondary">Map Your Columns</h4>
                               </div>
-                              <p className="text-xs text-slate-500">
+                              <p className="text-xs text-text-muted">
                                 We detected {importRawHeaders.length} columns and {importRawRows.length} rows. Verify the mapping below matches your data.
                               </p>
 
                               {importError && (
-                                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700 flex items-start gap-2" data-testid="mapping-error">
+                                <div className="p-3 rounded-lg bg-[#FEF3F2] border border-[#FECDCA] text-sm text-[#7A271A] flex items-start gap-2" data-testid="mapping-error">
                                   <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                                   {importError}
                                 </div>
@@ -6722,14 +6714,14 @@ export default function ContainerCalculator() {
                                   const required = field === "length" || field === "width" || field === "height";
                                   return (
                                     <div key={field}>
-                                      <Label className="text-[10px] text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                                      <Label className="text-[10px] text-text-muted uppercase tracking-wide flex items-center gap-1">
                                         {labels[field]}
-                                        {required && <span className="text-red-400">*</span>}
+                                        {required && <span className="text-[#B42318]">*</span>}
                                       </Label>
                                       <select
                                         value={importColMap[field]}
                                         onChange={(e) => setImportColMap((prev) => ({ ...prev, [field]: e.target.value }))}
-                                        className="mt-1 w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none"
+                                        className="mt-1 w-full text-xs border border-border-hairline rounded-lg px-2 py-1.5 bg-white focus:outline focus:outline-2 focus:outline-brand focus:!outline-offset-[-2px] outline-none"
                                         data-testid={`mapping-select-${field}`}
                                       >
                                         <option value="">— Skip —</option>
@@ -6744,19 +6736,19 @@ export default function ContainerCalculator() {
 
                               {importRawRows.length > 0 && (
                                 <div className="mt-3">
-                                  <p className="text-[10px] text-slate-500 uppercase tracking-wide font-medium mb-1">Preview (first 3 rows)</p>
-                                  <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+                                  <p className="text-[10px] text-text-muted uppercase tracking-wide font-medium mb-1">Preview (first 3 rows)</p>
+                                  <div className="overflow-x-auto rounded-lg border border-border-hairline bg-white">
                                     <table className="w-full text-[11px]">
                                       <thead>
-                                        <tr className="bg-slate-100 text-slate-600">
+                                        <tr className="bg-surface-canvas text-text-muted">
                                           {importRawHeaders.map((h) => (
                                             <th key={h} className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">{h}</th>
                                           ))}
                                         </tr>
                                       </thead>
-                                      <tbody className="text-slate-600">
+                                      <tbody className="text-text-muted">
                                         {importRawRows.slice(0, 3).map((row, idx) => (
-                                          <tr key={idx} className="border-t border-slate-100">
+                                          <tr key={idx} className="border-t border-border-hairline">
                                             {importRawHeaders.map((h) => (
                                               <td key={h} className="px-2 py-1 whitespace-nowrap">{row[h]}</td>
                                             ))}
@@ -6784,19 +6776,17 @@ export default function ContainerCalculator() {
                           {importStep === "preview" && (
                             <div className="space-y-4">
                               <div className="flex items-center justify-between">
-                                <p className="text-sm text-slate-600">
-                                  <span className="font-semibold text-slate-800">{importItems.filter((i) => i.include).length}</span> of{" "}
-                                  <span className="font-semibold text-slate-800">{importItems.length}</span> items selected for import
+                                <p className="text-sm text-text-muted">
+                                  <span className="font-semibold text-text-secondary">{importItems.filter((i) => i.include).length}</span> of{" "}
+                                  <span className="font-semibold text-text-secondary">{importItems.length}</span> items selected for import
                                 </p>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-[10px] text-slate-500 uppercase tracking-wide font-medium">Units:</span>
-                                  <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+                                  <span className="text-[10px] text-text-muted uppercase tracking-wide font-medium">Units:</span>
+                                  <div className="flex gap-0.5 rounded-md bg-surface-canvas p-0.5">
                                     <button
                                       onClick={() => setImportUnits("imperial")}
-                                      className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                                        importUnits === "imperial"
-                                          ? "bg-primary text-white"
-                                          : "bg-white text-slate-600 hover:bg-slate-50"
+                                      className={`rounded-sm px-2.5 py-1 text-[11px] font-semibold transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] ${
+                                        importUnits === "imperial" ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"
                                       }`}
                                       data-testid="import-unit-imperial"
                                     >
@@ -6804,10 +6794,8 @@ export default function ContainerCalculator() {
                                     </button>
                                     <button
                                       onClick={() => setImportUnits("metric")}
-                                      className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                                        importUnits === "metric"
-                                          ? "bg-primary text-white"
-                                          : "bg-white text-slate-600 hover:bg-slate-50"
+                                      className={`rounded-sm px-2.5 py-1 text-[11px] font-semibold transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] ${
+                                        importUnits === "metric" ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"
                                       }`}
                                       data-testid="import-unit-metric"
                                     >
@@ -6818,7 +6806,7 @@ export default function ContainerCalculator() {
                               </div>
 
                               {importWarnings.length > 0 && (
-                                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800" data-testid="import-warnings">
+                                <div className="p-3 rounded-lg bg-[#FFFBEB] border border-[#FDE68A] text-xs text-[#78350F]" data-testid="import-warnings">
                                   <p className="font-semibold mb-1">Please verify these extracted details:</p>
                                   <ul className="list-disc pl-4 space-y-0.5">
                                     {importWarnings.map((warning, index) => <li key={index}>{warning}</li>)}
@@ -6826,10 +6814,10 @@ export default function ContainerCalculator() {
                                 </div>
                               )}
 
-                              <div className="overflow-x-auto rounded-xl border border-slate-200 max-h-[45vh]">
+                              <div className="overflow-x-auto rounded-lg border border-border-hairline max-h-[45vh]">
                                 <table className="w-full text-xs">
                                   <thead className="sticky top-0 z-10">
-                                    <tr className="bg-slate-100 text-slate-600">
+                                    <tr className="bg-surface-canvas text-text-muted">
                                       <th className="px-2 py-2 text-center w-8">
                                         <button
                                           onClick={() => {
@@ -6840,9 +6828,9 @@ export default function ContainerCalculator() {
                                           data-testid="import-toggle-all"
                                         >
                                           {importItems.every((i) => i.include) ? (
-                                            <CheckSquare className="w-3.5 h-3.5 text-primary" />
+                                            <CheckSquare className="w-3.5 h-3.5 text-text-muted" />
                                           ) : (
-                                            <Square className="w-3.5 h-3.5 text-slate-400" />
+                                            <Square className="w-3.5 h-3.5 text-text-deemphasis" />
                                           )}
                                         </button>
                                       </th>
@@ -6858,8 +6846,8 @@ export default function ContainerCalculator() {
                                     {importItems.map((item, idx) => (
                                       <tr
                                         key={idx}
-                                        className={`border-t border-slate-100 transition-colors ${
-                                          item.include ? "bg-white" : "bg-slate-50 opacity-50"
+                                        className={`border-t border-border-hairline transition-colors ${
+                                          item.include ? "bg-white" : "bg-surface-recessed opacity-50"
                                         }`}
                                         data-testid={`import-row-${idx}`}
                                       >
@@ -6873,9 +6861,9 @@ export default function ContainerCalculator() {
                                             data-testid={`import-check-${idx}`}
                                           >
                                             {item.include ? (
-                                              <CheckSquare className="w-3.5 h-3.5 text-primary" />
+                                              <CheckSquare className="w-3.5 h-3.5 text-text-muted" />
                                             ) : (
-                                              <Square className="w-3.5 h-3.5 text-slate-400" />
+                                              <Square className="w-3.5 h-3.5 text-text-deemphasis" />
                                             )}
                                           </button>
                                         </td>
@@ -6888,7 +6876,7 @@ export default function ContainerCalculator() {
                                                 prev.map((r, i) => (i === idx ? { ...r, name: e.target.value } : r))
                                               )
                                             }
-                                            className="w-full min-w-[100px] bg-transparent border-0 outline-none text-xs text-slate-800 focus:bg-blue-50 rounded px-1 py-0.5"
+                                            className="w-full min-w-[100px] bg-transparent border-0 outline-none text-xs text-text-secondary focus:bg-white rounded px-1 py-0.5"
                                             data-testid={`import-name-${idx}`}
                                           />
                                         </td>
@@ -6903,7 +6891,7 @@ export default function ContainerCalculator() {
                                                 )
                                               )
                                             }
-                                            className="w-14 text-right bg-transparent border-0 outline-none text-xs text-slate-800 focus:bg-blue-50 rounded px-1 py-0.5"
+                                            className="w-14 bg-transparent border-0 outline-none text-xs text-text-secondary focus:bg-white rounded px-1 py-0.5 text-right tabular-nums"
                                             data-testid={`import-length-${idx}`}
                                           />
                                         </td>
@@ -6918,7 +6906,7 @@ export default function ContainerCalculator() {
                                                 )
                                               )
                                             }
-                                            className="w-14 text-right bg-transparent border-0 outline-none text-xs text-slate-800 focus:bg-blue-50 rounded px-1 py-0.5"
+                                            className="w-14 bg-transparent border-0 outline-none text-xs text-text-secondary focus:bg-white rounded px-1 py-0.5 text-right tabular-nums"
                                             data-testid={`import-width-${idx}`}
                                           />
                                         </td>
@@ -6933,7 +6921,7 @@ export default function ContainerCalculator() {
                                                 )
                                               )
                                             }
-                                            className="w-14 text-right bg-transparent border-0 outline-none text-xs text-slate-800 focus:bg-blue-50 rounded px-1 py-0.5"
+                                            className="w-14 bg-transparent border-0 outline-none text-xs text-text-secondary focus:bg-white rounded px-1 py-0.5 text-right tabular-nums"
                                             data-testid={`import-height-${idx}`}
                                           />
                                         </td>
@@ -6948,7 +6936,7 @@ export default function ContainerCalculator() {
                                                 )
                                               )
                                             }
-                                            className="w-14 text-right bg-transparent border-0 outline-none text-xs text-slate-800 focus:bg-blue-50 rounded px-1 py-0.5"
+                                            className="w-14 bg-transparent border-0 outline-none text-xs text-text-secondary focus:bg-white rounded px-1 py-0.5 text-right tabular-nums"
                                             data-testid={`import-weight-${idx}`}
                                           />
                                         </td>
@@ -6963,7 +6951,7 @@ export default function ContainerCalculator() {
                                                 )
                                               )
                                             }
-                                            className="w-12 text-right bg-transparent border-0 outline-none text-xs text-slate-800 focus:bg-blue-50 rounded px-1 py-0.5"
+                                            className="w-12 bg-transparent border-0 outline-none text-xs text-text-secondary focus:bg-white rounded px-1 py-0.5 text-right tabular-nums"
                                             data-testid={`import-qty-${idx}`}
                                           />
                                         </td>
@@ -7017,16 +7005,16 @@ export default function ContainerCalculator() {
                       return (
                         <div
                           key={item.id}
-                          className={`border rounded-lg p-2.5 transition-all ${
-                            !item.included ? "opacity-40 border-slate-200/60 bg-slate-50/50"
-                              : selectedIds.has(item.id) ? "border-primary/30 bg-primary/[0.02]"
-                              : "border-slate-200"
+                          className={`border-2 rounded-lg p-2.5 transition-colors ${
+                            !item.included ? "opacity-40 border-border-app bg-surface-recessed"
+                              : selectedIds.has(item.id) ? "border-brand"
+                              : "border-border-app"
                           }`}
                           data-testid={`cargo-item-${idx}`}
                         >
                           <div className="flex items-center gap-1.5 mb-2">
-                            <button onClick={() => toggleSelect(item.id)} className="shrink-0 text-slate-400 hover:text-primary" data-testid={`checkbox-cargo-${idx}`}>
-                              {selectedIds.has(item.id) ? <CheckSquare className="w-3.5 h-3.5 text-primary" /> : <Square className="w-3.5 h-3.5" />}
+                            <button onClick={() => toggleSelect(item.id)} className="shrink-0 text-text-deemphasis hover:text-brand" data-testid={`checkbox-cargo-${idx}`}>
+                              {selectedIds.has(item.id) ? <CheckSquare className="w-3.5 h-3.5 text-text-muted" /> : <Square className="w-3.5 h-3.5" />}
                             </button>
                             <CargoColorPicker
                               value={item.color}
@@ -7039,11 +7027,11 @@ export default function ContainerCalculator() {
                               placeholder={`Cargo ${idx + 1}`}
                               value={item.name}
                               onChange={(e) => updateItem(item.id, "name", e.target.value)}
-                              className="h-7 text-xs flex-1 min-w-0"
+                              className="h-9 text-xs flex-1 min-w-0"
                               data-testid={`input-cargo-name-${idx}`}
                             />
                             {cargoItems.length > 1 && (
-                              <button onClick={() => removeItem(item.id)} className="shrink-0 text-slate-300 hover:text-red-500 p-0.5" data-testid={`button-remove-cargo-${idx}`}>
+                              <button onClick={() => removeItem(item.id)} className="shrink-0 text-text-deemphasis hover:text-[#B42318] p-0.5" data-testid={`button-remove-cargo-${idx}`}>
                                 <X className="w-3.5 h-3.5" />
                               </button>
                             )}
@@ -7051,28 +7039,28 @@ export default function ContainerCalculator() {
 
                           <div className="grid grid-cols-6 gap-1 mb-1.5">
                             <div className="text-center">
-                              <span className="text-[8px] text-slate-400 uppercase block">L</span>
-                              <Input type="number" min={0} step="0.1" value={toDisplay(item.length)} onChange={(e) => updateItem(item.id, "length", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-cargo-length-${idx}`} />
+                              <span className="text-[8px] text-text-deemphasis uppercase block">L</span>
+                              <Input type="number" min={0} step="0.1" value={toDisplay(item.length)} onChange={(e) => updateItem(item.id, "length", fromDisplay(e.target.value))} className="h-8 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-cargo-length-${idx}`} />
                             </div>
                             <div className="text-center">
-                              <span className="text-[8px] text-slate-400 uppercase block">W</span>
-                              <Input type="number" min={0} step="0.1" value={toDisplay(item.width)} onChange={(e) => updateItem(item.id, "width", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-cargo-width-${idx}`} />
+                              <span className="text-[8px] text-text-deemphasis uppercase block">W</span>
+                              <Input type="number" min={0} step="0.1" value={toDisplay(item.width)} onChange={(e) => updateItem(item.id, "width", fromDisplay(e.target.value))} className="h-8 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-cargo-width-${idx}`} />
                             </div>
                             <div className="text-center">
-                              <span className="text-[8px] text-slate-400 uppercase block">H</span>
-                              <Input type="number" min={0} step="0.1" value={toDisplay(item.height)} onChange={(e) => updateItem(item.id, "height", fromDisplay(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-cargo-height-${idx}`} />
+                              <span className="text-[8px] text-text-deemphasis uppercase block">H</span>
+                              <Input type="number" min={0} step="0.1" value={toDisplay(item.height)} onChange={(e) => updateItem(item.id, "height", fromDisplay(e.target.value))} className="h-8 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-cargo-height-${idx}`} />
                             </div>
                             <div className="text-center">
-                              <span className="text-[8px] text-slate-400 uppercase block">Qty</span>
-                              <Input type="number" min={1} value={item.quantity || ""} onChange={(e) => updateItem(item.id, "quantity", parseInt(e.target.value) || 0)} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-cargo-qty-${idx}`} />
+                              <span className="text-[8px] text-text-deemphasis uppercase block">Qty</span>
+                              <Input type="number" min={1} value={item.quantity || ""} onChange={(e) => updateItem(item.id, "quantity", parseInt(e.target.value) || 0)} className="h-8 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-cargo-qty-${idx}`} />
                             </div>
                             <div className="text-center">
-                              <span className="text-[8px] text-slate-400 uppercase block">Total wt</span>
-                              <Input type="number" min={0} step="0.1" value={toDisplayWeight(item.weight)} onChange={(e) => updateItem(item.id, "weight", fromDisplayWeight(e.target.value))} className="h-6 text-[10px] text-center px-0.5" data-testid={`input-cargo-weight-${idx}`} />
+                              <span className="text-[8px] text-text-deemphasis uppercase block">Total wt</span>
+                              <Input type="number" min={0} step="0.1" value={toDisplayWeight(item.weight)} onChange={(e) => updateItem(item.id, "weight", fromDisplayWeight(e.target.value))} className="h-8 text-[10px] px-0.5 text-right tabular-nums" data-testid={`input-cargo-weight-${idx}`} />
                             </div>
                             <div className="text-center">
-                              <span className="text-[8px] text-slate-400 uppercase block">Per pc</span>
-                              <div className="h-6 flex items-center justify-center text-[10px] text-slate-500 font-medium" data-testid={`text-wtotal-${idx}`}>
+                              <span className="text-[8px] text-text-deemphasis uppercase block">Per pc</span>
+                              <div className="h-8 flex items-center justify-center text-[10px] text-text-muted font-medium" data-testid={`text-wtotal-${idx}`}>
                                 {item.weight > 0 && item.quantity > 0 ? displayPerPieceWt : "—"}
                               </div>
                             </div>
@@ -7080,11 +7068,11 @@ export default function ContainerCalculator() {
 
                           <div className="grid grid-cols-4 gap-1.5">
                             <div>
-                              <span className="text-[8px] text-slate-400 uppercase block mb-0.5">Stack</span>
+                              <span className="text-[8px] text-text-deemphasis uppercase block mb-0.5">Stack</span>
                               <button
                                 onClick={() => setVisualPopup({ type: "stackable", itemId: item.id })}
-                                className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                  item.stackable ? "bg-green-50 border-green-300 text-green-700" : "bg-amber-50 border-amber-300 text-amber-700"
+                                className={`w-full h-8 rounded-sm text-[10px] font-semibold border-2 transition-colors duration-state ${
+                                  item.stackable ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                 }`}
                                 data-testid={`toggle-stackable-yes-${idx}`}
                               >
@@ -7092,15 +7080,11 @@ export default function ContainerCalculator() {
                               </button>
                             </div>
                             <div>
-                              <span className="text-[8px] text-slate-400 uppercase block mb-0.5">Rotate</span>
+                              <span className="text-[8px] text-text-deemphasis uppercase block mb-0.5">Rotate</span>
                               <button
                                 onClick={() => setVisualPopup({ type: "rotation", itemId: item.id })}
-                                className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                  item.rotationMode === "all"
-                                    ? "bg-blue-50 border-blue-300 text-blue-700"
-                                    : item.rotationMode === "horizontal"
-                                    ? "bg-purple-50 border-purple-300 text-purple-700"
-                                    : "bg-slate-50 border-slate-300 text-slate-700"
+                                className={`w-full h-8 rounded-sm text-[10px] font-semibold border-2 transition-colors duration-state ${
+                                  item.rotationMode === "all" ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                 }`}
                                 data-testid={`select-rotation-${idx}`}
                               >
@@ -7108,13 +7092,11 @@ export default function ContainerCalculator() {
                               </button>
                             </div>
                             <div>
-                              <span className="text-[8px] text-slate-400 uppercase block mb-0.5">Priority</span>
+                              <span className="text-[8px] text-text-deemphasis uppercase block mb-0.5">Priority</span>
                               <button
                                 onClick={() => setVisualPopup({ type: "priority", itemId: item.id })}
-                                className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                  item.loadPriority === "first" ? "bg-red-50 border-red-300 text-red-700"
-                                    : item.loadPriority === "last" ? "bg-emerald-50 border-emerald-300 text-emerald-700"
-                                    : "bg-blue-50 border-blue-300 text-blue-700"
+                                className={`w-full h-8 rounded-sm text-[10px] font-semibold border-2 transition-colors duration-state ${
+                                  item.loadPriority === "normal" ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                 }`}
                                 data-testid={`select-priority-${idx}`}
                               >
@@ -7122,11 +7104,11 @@ export default function ContainerCalculator() {
                               </button>
                             </div>
                             <div>
-                              <span className="text-[8px] text-slate-400 uppercase block mb-0.5">Pallet</span>
+                              <span className="text-[8px] text-text-deemphasis uppercase block mb-0.5">Pallet</span>
                               <button
                                 onClick={() => setVisualPopup({ type: "palletized", itemId: item.id })}
-                                className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                  item.palletized ? "bg-teal-50 border-teal-300 text-teal-700" : "border-slate-200 bg-white text-slate-600"
+                                className={`w-full h-8 rounded text-[10px] font-medium border transition-colors ${
+                                  item.palletized ? "bg-surface-recessed border-border-hairline text-text-secondary" : "border-border-hairline bg-white text-text-muted"
                                 }`}
                                 data-testid={`toggle-palletized-yes-${idx}`}
                               >
@@ -7142,49 +7124,49 @@ export default function ContainerCalculator() {
                   <div className="hidden sm:block -mx-5 px-5" data-testid="cargo-table-scroll">
                     <table className="w-full border-collapse table-fixed" data-testid="cargo-table">
                       <thead>
-                        <tr className="border-b border-slate-200">
+                        <tr className="border-b border-border-hairline">
                           <th className="px-0.5 py-2 text-left" style={{ width: 46 }}>
                             <button
                               onClick={toggleSelectAll}
-                              className="text-slate-400 hover:text-primary transition-colors"
+                              className="text-text-deemphasis hover:text-brand transition-colors"
                               data-testid="button-select-all"
                               title={selectedIds.size === cargoItems.length ? "Deselect All" : "Select All"}
                             >
                               {selectedIds.size === cargoItems.length && cargoItems.length > 0 ? (
-                                <CheckSquare className="w-3.5 h-3.5 text-primary" />
+                                <CheckSquare className="w-3.5 h-3.5 text-text-muted" />
                               ) : selectedIds.size > 0 ? (
-                                <Minus className="w-3.5 h-3.5 text-primary" />
+                                <Minus className="w-3.5 h-3.5 text-text-muted" />
                               ) : (
                                 <Square className="w-3.5 h-3.5" />
                               )}
                             </button>
                           </th>
                           <th className="px-0.5 py-2 text-left">
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Name</span>
+                            <span className="text-[10px] font-semibold text-text-deemphasis uppercase tracking-wide">Name</span>
                           </th>
                           <th className="px-0.5 py-2 text-center" style={{ width: 52 }}>
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">L</span>
+                            <span className="text-[10px] font-semibold text-text-deemphasis uppercase tracking-wide">L</span>
                           </th>
                           <th className="px-0.5 py-2 text-center" style={{ width: 52 }}>
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">W</span>
+                            <span className="text-[10px] font-semibold text-text-deemphasis uppercase tracking-wide">W</span>
                           </th>
                           <th className="px-0.5 py-2 text-center" style={{ width: 52 }}>
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">H</span>
+                            <span className="text-[10px] font-semibold text-text-deemphasis uppercase tracking-wide">H</span>
                           </th>
                           <th className="px-0.5 py-2 text-center" style={{ width: 40 }}>
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Qty</span>
+                            <span className="text-[10px] font-semibold text-text-deemphasis uppercase tracking-wide">Qty</span>
                           </th>
                           <th className="px-0.5 py-2 text-center" style={{ width: 56 }}>
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide" title="Total gross weight for this row">Total {weightUnit}</span>
+                            <span className="text-[10px] font-semibold text-text-deemphasis uppercase tracking-wide" title="Total gross weight for this row">Total {weightUnit}</span>
                           </th>
                           <th className="px-0.5 py-2 text-center" style={{ width: 52 }}>
-                            <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Stack</div>
+                            <div className="text-[10px] font-semibold text-text-deemphasis uppercase tracking-wide">Stack</div>
                           </th>
                           <th className="px-0.5 py-2 text-center" style={{ width: 62 }}>
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Rot.</span>
+                            <span className="text-[10px] font-semibold text-text-deemphasis uppercase tracking-wide">Rot.</span>
                           </th>
                           <th className="px-0.5 py-2 text-center" style={{ width: 60 }}>
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Priority</span>
+                            <span className="text-[10px] font-semibold text-text-deemphasis uppercase tracking-wide">Priority</span>
                           </th>
                           <th className="px-0.5 py-2 text-center" style={{ width: 50 }}>
                           </th>
@@ -7195,12 +7177,12 @@ export default function ContainerCalculator() {
                           return (
                             <tr
                               key={item.id}
-                              className={`border-b border-slate-100 transition-colors ${
+                              className={`border-b border-border-hairline transition-colors ${
                                 !item.included
                                   ? "opacity-40"
                                   : selectedIds.has(item.id)
-                                  ? "bg-primary/[0.03]"
-                                  : "hover:bg-slate-50/50"
+                                  ? "bg-surface-recessed"
+                                  : "hover:bg-surface-recessed"
                               }`}
                               data-testid={`cargo-item-${idx}`}
                             >
@@ -7208,11 +7190,11 @@ export default function ContainerCalculator() {
                                 <div className="flex items-center gap-0.5">
                                   <button
                                     onClick={() => toggleSelect(item.id)}
-                                    className="shrink-0 text-slate-400 hover:text-primary transition-colors"
+                                    className="shrink-0 text-text-deemphasis hover:text-brand transition-colors"
                                     data-testid={`checkbox-cargo-${idx}`}
                                   >
                                     {selectedIds.has(item.id) ? (
-                                      <CheckSquare className="w-3.5 h-3.5 text-primary" />
+                                      <CheckSquare className="w-3.5 h-3.5 text-text-muted" />
                                     ) : (
                                       <Square className="w-3.5 h-3.5" />
                                     )}
@@ -7230,7 +7212,7 @@ export default function ContainerCalculator() {
                                   placeholder={`Cargo ${idx + 1}`}
                                   value={item.name}
                                   onChange={(e) => updateItem(item.id, "name", e.target.value)}
-                                  className="h-7 text-xs min-w-0"
+                                  className="h-9 text-xs min-w-0"
                                   data-testid={`input-cargo-name-${idx}`}
                                 />
                               </td>
@@ -7239,7 +7221,7 @@ export default function ContainerCalculator() {
                                   type="number" min={0} step="0.1"
                                   value={toDisplay(item.length)}
                                   onChange={(e) => updateItem(item.id, "length", fromDisplay(e.target.value))}
-                                  className="h-7 text-xs text-center px-0.5"
+                                  className="h-9 text-xs px-0.5 text-right tabular-nums"
                                   data-testid={`input-cargo-length-${idx}`}
                                 />
                               </td>
@@ -7248,7 +7230,7 @@ export default function ContainerCalculator() {
                                   type="number" min={0} step="0.1"
                                   value={toDisplay(item.width)}
                                   onChange={(e) => updateItem(item.id, "width", fromDisplay(e.target.value))}
-                                  className="h-7 text-xs text-center px-0.5"
+                                  className="h-9 text-xs px-0.5 text-right tabular-nums"
                                   data-testid={`input-cargo-width-${idx}`}
                                 />
                               </td>
@@ -7257,7 +7239,7 @@ export default function ContainerCalculator() {
                                   type="number" min={0} step="0.1"
                                   value={toDisplay(item.height)}
                                   onChange={(e) => updateItem(item.id, "height", fromDisplay(e.target.value))}
-                                  className="h-7 text-xs text-center px-0.5"
+                                  className="h-9 text-xs px-0.5 text-right tabular-nums"
                                   data-testid={`input-cargo-height-${idx}`}
                                 />
                               </td>
@@ -7266,7 +7248,7 @@ export default function ContainerCalculator() {
                                   type="number" min={1}
                                   value={item.quantity || ""}
                                   onChange={(e) => updateItem(item.id, "quantity", parseInt(e.target.value) || 0)}
-                                  className="h-7 text-xs text-center px-0.5"
+                                  className="h-9 text-xs px-0.5 text-right tabular-nums"
                                   data-testid={`input-cargo-qty-${idx}`}
                                 />
                               </td>
@@ -7275,17 +7257,17 @@ export default function ContainerCalculator() {
                                   type="number" min={0} step="0.1"
                                   value={toDisplayWeight(item.weight)}
                                   onChange={(e) => updateItem(item.id, "weight", fromDisplayWeight(e.target.value))}
-                                  className="h-7 text-xs text-center px-0.5"
+                                  className="h-9 text-xs px-0.5 text-right tabular-nums"
                                   data-testid={`input-cargo-weight-${idx}`}
                                 />
                               </td>
                               <td className="px-0.5 py-1">
                                 <button
                                   onClick={() => setVisualPopup({ type: "stackable", itemId: item.id })}
-                                  className={`w-full flex items-center justify-center h-7 rounded-md border text-[10px] font-medium transition-colors cursor-pointer ${
+                                  className={`w-full flex items-center justify-center h-9 rounded-sm border-2 text-[10px] font-semibold tabular-nums transition-colors duration-state cursor-pointer ${
                                     item.stackable
-                                      ? "bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
-                                      : "bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100"
+                                      ? "bg-white border-border-app text-text-muted hover:border-border-control"
+                                      : "bg-surface-canvas border-border-control text-text-primary"
                                   }`}
                                   data-testid={`toggle-stackable-yes-${idx}`}
                                   title="Click to change"
@@ -7296,12 +7278,8 @@ export default function ContainerCalculator() {
                               <td className="px-0.5 py-1">
                                 <button
                                   onClick={() => setVisualPopup({ type: "rotation", itemId: item.id })}
-                                  className={`w-full flex items-center justify-center h-7 rounded-md border text-[10px] font-medium transition-colors cursor-pointer ${
-                                    item.rotationMode === "all"
-                                      ? "bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100"
-                                      : item.rotationMode === "horizontal"
-                                      ? "bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100"
-                                      : "bg-slate-50 border-slate-300 text-slate-700 hover:bg-slate-100"
+                                  className={`w-full flex items-center justify-center h-9 rounded-sm border-2 text-[10px] font-semibold transition-colors duration-state cursor-pointer ${
+                                    item.rotationMode === "all" ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                   }`}
                                   data-testid={`select-rotation-${idx}`}
                                   title="Click to change"
@@ -7312,12 +7290,8 @@ export default function ContainerCalculator() {
                               <td className="px-0.5 py-1">
                                 <button
                                   onClick={() => setVisualPopup({ type: "priority", itemId: item.id })}
-                                  className={`w-full flex items-center justify-center h-7 rounded-md border text-[10px] font-medium transition-colors cursor-pointer ${
-                                    item.loadPriority === "first"
-                                      ? "bg-red-50 border-red-300 text-red-700 hover:bg-red-100"
-                                      : item.loadPriority === "last"
-                                      ? "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
-                                      : "bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100"
+                                  className={`w-full flex items-center justify-center h-9 rounded-sm border-2 text-[10px] font-semibold transition-colors duration-state cursor-pointer ${
+                                    item.loadPriority === "normal" ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                   }`}
                                   data-testid={`select-priority-${idx}`}
                                   title="Click to change"
@@ -7329,7 +7303,7 @@ export default function ContainerCalculator() {
                                 <div className="flex items-center gap-0 justify-center">
                                   <button
                                     onClick={() => duplicateItem(item.id)}
-                                    className="text-slate-300 hover:text-primary transition-colors p-0.5"
+                                    className="text-text-deemphasis hover:text-brand transition-colors p-0.5"
                                     data-testid={`button-duplicate-cargo-${idx}`}
                                     title="Duplicate row"
                                   >
@@ -7338,7 +7312,7 @@ export default function ContainerCalculator() {
                                   {cargoItems.length > 1 ? (
                                     <button
                                       onClick={() => removeItem(item.id)}
-                                      className="text-slate-300 hover:text-red-500 transition-colors p-0.5"
+                                      className="text-text-deemphasis hover:text-[#B42318] transition-colors p-0.5"
                                       data-testid={`button-remove-cargo-${idx}`}
                                       title="Remove row"
                                     >
@@ -7402,11 +7376,11 @@ export default function ContainerCalculator() {
                       recommendation.container.id !== containerId
                       || recommendation.plan.totalContainers < multiResult.totalContainers
                     ) && (
-                    <div className="p-4 rounded-lg bg-blue-50 border border-blue-200 flex items-start gap-3" data-testid="notice-container-recommendation">
-                      <Sparkles className="w-5 h-5 text-blue-700 mt-0.5 shrink-0" />
+                    <div className="p-4 rounded-lg bg-surface-recessed border border-border-hairline flex items-start gap-3" data-testid="notice-container-recommendation">
+                      <Sparkles className="w-5 h-5 text-text-secondary mt-0.5 shrink-0" />
                       <div className="text-sm flex-1">
-                        <p className="font-semibold text-blue-900">Recommended container: {recommendation.container.name}</p>
-                        <p className="text-blue-800 mt-1">
+                        <p className="font-semibold text-text-secondary">Recommended container: {recommendation.container.name}</p>
+                        <p className="text-text-secondary mt-1">
                           The best-fit plan uses <strong>{recommendation.plan.totalContainers} × {recommendation.container.name}</strong>
                           {multiResult.totalContainers !== recommendation.plan.totalContainers
                             ? ` instead of ${multiResult.totalContainers} × ${container.name}.`
@@ -7431,24 +7405,24 @@ export default function ContainerCalculator() {
                   )}
 
                   {multiResult.totalPiecesLoaded < multiResult.totalPiecesAll && (
-                    <div className="rounded-xl border border-rose-200 bg-rose-50 p-4" data-testid="notice-unplaced-cargo">
+                    <div className="rounded-lg border border-[#FECDCA] bg-[#FEF3F2] p-4" data-testid="notice-unplaced-cargo">
                       <div className="flex items-start gap-3">
-                        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
+                        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[#B42318]" />
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold text-rose-900">Loading plan incomplete</p>
-                          <p className="mt-1 text-xs leading-relaxed text-rose-800">
+                          <p className="text-sm font-bold text-[#7A271A]">Loading plan incomplete</p>
+                          <p className="mt-1 text-xs leading-relaxed text-[#7A271A]">
                             {multiResult.totalPiecesAll - multiResult.totalPiecesLoaded} of {multiResult.totalPiecesAll} pieces remain unassigned. They have no visual position; the CSV lists them separately as exceptions.
                           </p>
                           {multiResult.totalContainers >= 10 && (
-                            <p className="mt-1 text-[11px] font-semibold text-rose-700">
+                            <p className="mt-1 text-[11px] font-semibold text-[#7A271A]">
                               The automatic calculation stops after 10 containers. Split very large shipments into smaller planning batches.
                             </p>
                           )}
                           {unplacedDiagnostics.length > 0 && (
                             <ul className="mt-3 space-y-2">
                               {unplacedDiagnostics.map((diagnosis, index) => (
-                                <li key={`${diagnosis.name}-${index}`} className="rounded-lg border border-rose-100 bg-white/75 px-3 py-2 text-[11px] text-slate-700">
-                                  <span className="font-bold text-slate-900">{diagnosis.quantity} × {diagnosis.name}:</span> {diagnosis.reason}
+                                <li key={`${diagnosis.name}-${index}`} className="rounded-lg border border-[#FECDCA] bg-white px-3 py-2 text-[11px] text-text-secondary">
+                                  <span className="font-bold text-text-primary">{diagnosis.quantity} × {diagnosis.name}:</span> {diagnosis.reason}
                                 </li>
                               ))}
                             </ul>
@@ -7471,13 +7445,13 @@ export default function ContainerCalculator() {
                   />
 
                   {multiResult.totalContainers > 1 && multiResult.totalPiecesLoaded === multiResult.totalPiecesAll && (
-                    <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-3" data-testid="notice-multi-container">
-                      <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                    <div className="p-4 rounded-lg bg-[#FFFBEB] border border-[#FDE68A] flex items-start gap-3" data-testid="notice-multi-container">
+                      <AlertTriangle className="w-5 h-5 text-[#B45309] mt-0.5 shrink-0" />
                       <div className="text-sm">
-                        <p className="font-semibold text-amber-900">
+                        <p className="font-semibold text-[#78350F]">
                           Multiple containers required
                         </p>
-                        <p className="text-amber-800 mt-1">
+                        <p className="text-[#78350F] mt-1">
                           Your cargo requires <strong>{multiResult.totalContainers} containers</strong> to
                           fit all {multiResult.totalPiecesAll} pieces.
                         </p>
@@ -7486,18 +7460,18 @@ export default function ContainerCalculator() {
                   )}
 
                   {multiResult.totalContainers === 1 && multiResult.containers[0].result.unplaced.length === 0 && (
-                    <div className="p-4 rounded-lg bg-green-50 border border-green-200 flex items-start gap-3" data-testid="notice-all-fit">
-                      <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
-                      <p className="text-sm font-semibold text-green-800">
+                    <div className="p-4 rounded-lg bg-[#ECFDF3] border border-[#A6F4C5] flex items-start gap-3" data-testid="notice-all-fit">
+                      <CheckCircle2 className="w-5 h-5 text-[#15803D] mt-0.5 shrink-0" />
+                      <p className="text-sm font-semibold text-[#15803D]">
                         All {multiResult.totalPiecesAll} piece(s) fit in 1 × {multiResult.containers[0].container.name}
                         {recommendation?.container.id === containerId ? " — best-fit container" : ""}
                       </p>
                     </div>
                   )}
 
-                  <Card className="border-slate-200 overflow-hidden shadow-sm" data-testid="container-results-workspace">
-                    <div className="border-b border-slate-200 bg-white px-3 py-3 sm:px-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                      <div className="grid w-full grid-cols-3 gap-1 sm:gap-2 lg:flex lg:w-auto" role="tablist" aria-label="Loading result views" data-testid="result-workspace-tabs">
+                  <Card className="border-border-hairline overflow-hidden shadow-sm" data-testid="container-results-workspace">
+                    <div className="border-b border-border-hairline bg-white px-3 py-3 sm:px-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="grid w-full grid-cols-3 gap-1 rounded-lg bg-surface-canvas p-1 lg:flex lg:w-auto" role="tablist" aria-label="Loading result views" data-testid="result-workspace-tabs">
                         {([
                           { id: "plan" as const, label: "Loading Plan", icon: Ship },
                           { id: "overview" as const, label: "Overview", icon: LayoutDashboard },
@@ -7513,10 +7487,10 @@ export default function ContainerCalculator() {
                               aria-selected={selected}
                               onClick={() => setActiveResultTab(tab.id)}
                               data-testid={`result-tab-${tab.id}`}
-                              className={`min-w-0 w-full inline-flex items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-[10px] font-semibold whitespace-nowrap transition-colors sm:gap-2 sm:px-3.5 sm:text-sm ${
+                              className={`min-w-0 w-full lg:w-auto h-10 inline-flex items-center justify-center gap-1 rounded-md px-1.5 text-[11px] font-semibold whitespace-nowrap transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] sm:gap-2 sm:px-3.5 sm:text-sm ${
                                 selected
-                                  ? "bg-blue-50 text-primary ring-1 ring-inset ring-blue-200"
-                                  : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                                  ? "bg-white text-text-primary shadow-sm"
+                                  : "bg-transparent text-text-muted hover:text-text-primary"
                               }`}
                             >
                               <TabIcon className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
@@ -7534,7 +7508,7 @@ export default function ContainerCalculator() {
                           disabled={creatingShareLink}
                           data-testid="button-share-loading-plan"
                         >
-                          {creatingShareLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4 text-primary" />}
+                          {creatingShareLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4 text-text-muted" />}
                           Share
                         </Button>
                         <Button
@@ -7544,7 +7518,7 @@ export default function ContainerCalculator() {
                           onClick={handleExportCSV}
                           data-testid="button-export-csv"
                         >
-                          <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                          <FileSpreadsheet className="w-4 h-4 text-[#15803D]" />
                           Placement CSV
                         </Button>
                         <Button
@@ -7560,7 +7534,7 @@ export default function ContainerCalculator() {
                       </div>
                     </div>
 
-                    <div className="relative bg-slate-50/70 p-3" data-testid="result-container-carousel">
+                    <div className="relative bg-surface-recessed p-3" data-testid="result-container-carousel">
                       {multiResult.totalContainers > 2 && (
                         <>
                           <button
@@ -7572,7 +7546,7 @@ export default function ContainerCalculator() {
                               (resultContainerRailRef.current?.children[nextIndex] as HTMLElement | undefined)?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
                             }}
                             disabled={activeResultContainer === 0}
-                            className="absolute left-1 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/80 bg-white/90 text-slate-700 shadow-lg shadow-slate-900/10 backdrop-blur-md transition-all hover:scale-105 hover:text-primary disabled:pointer-events-none disabled:opacity-0"
+                            className="absolute left-1 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border-hairline bg-white text-text-secondary shadow-md   transition-colors hover:text-brand disabled:pointer-events-none disabled:opacity-0"
                             data-testid="button-container-carousel-previous"
                           >
                             <ChevronLeft className="h-4 w-4" />
@@ -7586,7 +7560,7 @@ export default function ContainerCalculator() {
                               (resultContainerRailRef.current?.children[nextIndex] as HTMLElement | undefined)?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
                             }}
                             disabled={activeResultContainer === multiResult.totalContainers - 1}
-                            className="absolute right-1 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/80 bg-white/90 text-slate-700 shadow-lg shadow-slate-900/10 backdrop-blur-md transition-all hover:scale-105 hover:text-primary disabled:pointer-events-none disabled:opacity-0"
+                            className="absolute right-1 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border-hairline bg-white text-text-secondary shadow-md   transition-colors hover:text-brand disabled:pointer-events-none disabled:opacity-0"
                             data-testid="button-container-carousel-next"
                           >
                             <ChevronRight className="h-4 w-4" />
@@ -7610,32 +7584,32 @@ export default function ContainerCalculator() {
                               }}
                               data-testid={`result-container-card-${index}`}
                               aria-pressed={selected}
-                              className={`w-[86%] shrink-0 snap-start rounded-2xl border bg-white p-3 text-left transition-all sm:w-[calc((100%_-_0.75rem)/2)] ${
+                              className={`w-[86%] shrink-0 snap-start rounded-lg border-2 bg-white p-3 text-left transition-colors sm:w-[calc((100%_-_0.75rem)/2)] ${
                                 selected
-                                  ? "border-primary shadow-sm ring-2 ring-primary/10"
-                                  : "border-slate-200 hover:border-slate-300 hover:shadow-sm"
+                                  ? "border-brand"
+                                  : "border-border-app hover:border-border-control hover:shadow-sm"
                               }`}
                             >
                               <div className="flex items-center gap-3">
-                                <div className={`rounded-lg p-2 ${selected ? "bg-blue-50 text-primary" : "bg-slate-50 text-slate-500"}`}>
+                                <div className={`rounded-lg p-2 ${selected ? "bg-surface-recessed text-brand" : "bg-surface-recessed text-text-muted"}`}>
                                   <ContainerLineIcon active={selected} short={entry.container.id.startsWith("20")} className="w-16 h-9" />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <p className="font-bold text-sm text-slate-900 truncate">{entry.label}</p>
-                                  <p className="text-xs text-slate-500 truncate">{entry.container.name}</p>
-                                  <p className="mt-1 text-xs font-semibold text-primary">{entryResult.piecesLoaded} pieces assigned</p>
+                                  <p className="font-bold text-sm text-text-primary truncate">{entry.label}</p>
+                                  <p className="text-xs text-text-muted truncate">{entry.container.name}</p>
+                                  <p className="mt-1 text-xs font-semibold text-brand">{entryResult.piecesLoaded} pieces assigned</p>
                                 </div>
                               </div>
                               <div className="mt-3 grid grid-cols-2 gap-3">
                                 {[
                                   { label: "Volume", value: entryResult.volumeUtil, color: "bg-violet-500" },
-                                  { label: "Payload", value: entryResult.weightUtil, color: "bg-emerald-500" },
+                                  { label: "Payload", value: entryResult.weightUtil, color: "bg-[#15803D]" },
                                 ].map((metric) => (
                                   <div key={metric.label}>
-                                    <div className="mb-1 flex items-center justify-between text-[9px] font-semibold text-slate-500">
+                                    <div className="mb-1 flex items-center justify-between text-[9px] font-semibold text-text-muted">
                                       <span>{metric.label}</span><span>{metric.value.toFixed(0)}%</span>
                                     </div>
-                                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                                    <div className="h-1.5 overflow-hidden rounded-full bg-surface-canvas">
                                       <div className={`h-full rounded-full ${metric.color}`} style={{ width: `${Math.min(100, metric.value)}%` }} />
                                     </div>
                                   </div>
@@ -7656,7 +7630,7 @@ export default function ContainerCalculator() {
                     return (
                       <div key={ci} className="space-y-5" data-testid={`container-result-${ci}`}>
                         {activeResultTab === "plan" && (
-                        <Card className="-mx-3 overflow-hidden rounded-xl border-slate-200 sm:mx-0">
+                        <Card className="-mx-3 overflow-hidden rounded-lg border-border-hairline sm:mx-0">
                           <CardContent className="p-1 sm:p-2">
                             <div ref={viewerRef}>
                               <ContainerViewer3D
@@ -7720,13 +7694,13 @@ export default function ContainerCalculator() {
                         )}
 
                         {activeResultTab === "overview" && (
-                        <Card className="border-slate-200">
+                        <Card className="border-border-hairline">
                           <CardContent className="p-5">
-                            <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
-                              <BarChart3 className="w-4 h-4 text-primary" />
+                            <h2 className="text-base font-bold text-text-primary mb-4 flex items-center gap-2">
+                              <BarChart3 className="w-4 h-4 text-text-muted" />
                               Loading Summary
                               {multiResult.totalContainers > 1 && (
-                                <span className="text-xs font-normal text-slate-500 ml-1">
+                                <span className="text-xs font-normal text-text-muted ml-1">
                                   — {cr.container.name}
                                 </span>
                               )}
@@ -7767,7 +7741,7 @@ export default function ContainerCalculator() {
                             </div>
 
                             <div className="grid gap-4 lg:grid-cols-[1fr_0.9fr]">
-                              <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+                              <div className="space-y-3 rounded-lg border border-border-hairline bg-surface-recessed p-4">
                                 <UtilBar
                                   pct={cResult.volumeUtil}
                                   label="Volume Utilization"
@@ -7829,13 +7803,13 @@ export default function ContainerCalculator() {
                         )}
 
                         {activeResultTab === "details" && (
-                        <Card className="border-slate-200">
+                        <Card className="border-border-hairline">
                           <CardContent className="p-5">
-                            <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
-                              <Info className="w-4 h-4 text-primary" />
+                            <h2 className="text-base font-bold text-text-primary mb-4 flex items-center gap-2">
+                              <Info className="w-4 h-4 text-text-muted" />
                               Loading Details
                               {multiResult.totalContainers > 1 && (
-                                <span className="text-xs font-normal text-slate-500 ml-1">
+                                <span className="text-xs font-normal text-text-muted ml-1">
                                   — {cr.container.name}
                                 </span>
                               )}
@@ -7843,15 +7817,15 @@ export default function ContainerCalculator() {
                             <div className="overflow-x-auto">
                               <table className="w-full text-xs" data-testid={`table-loading-details-${ci}`}>
                                 <thead>
-                                  <tr className="border-b border-slate-200">
-                                    <th className="text-left py-1.5 pr-1 font-semibold text-slate-500 uppercase" style={{ fontSize: "10px" }}>#</th>
-                                    <th className="text-left py-1.5 pr-1 font-semibold text-slate-500 uppercase" style={{ fontSize: "10px" }}>Item</th>
-                                    <th className="text-right py-1.5 pr-1 font-semibold text-slate-500 uppercase" style={{ fontSize: "10px" }}>L×W×H ({dimUnit})</th>
-                                    <th className="text-right py-1.5 pr-1 font-semibold text-slate-500 uppercase" style={{ fontSize: "10px" }}>Pos (X,Y,Z)</th>
-                                    <th className="text-right py-1.5 pr-1 font-semibold text-slate-500 uppercase" style={{ fontSize: "10px" }}>{weightUnit}</th>
-                                    <th className="text-center py-1.5 pr-1 font-semibold text-slate-500 uppercase" style={{ fontSize: "10px" }}>Stack</th>
-                                    <th className="text-center py-1.5 pr-1 font-semibold text-slate-500 uppercase" style={{ fontSize: "10px" }}>Rot.</th>
-                                    <th className="text-right py-1.5 font-semibold text-slate-500 uppercase" style={{ fontSize: "10px" }}>{isMetric ? "m³" : "ft³"}</th>
+                                  <tr className="border-b border-border-hairline">
+                                    <th className="text-left py-1.5 pr-1 font-semibold text-text-muted uppercase" style={{ fontSize: "10px" }}>#</th>
+                                    <th className="text-left py-1.5 pr-1 font-semibold text-text-muted uppercase" style={{ fontSize: "10px" }}>Item</th>
+                                    <th className="text-right py-1.5 pr-1 font-semibold text-text-muted uppercase" style={{ fontSize: "10px" }}>L×W×H ({dimUnit})</th>
+                                    <th className="text-right py-1.5 pr-1 font-semibold text-text-muted uppercase" style={{ fontSize: "10px" }}>Pos (X,Y,Z)</th>
+                                    <th className="text-right py-1.5 pr-1 font-semibold text-text-muted uppercase" style={{ fontSize: "10px" }}>{weightUnit}</th>
+                                    <th className="text-center py-1.5 pr-1 font-semibold text-text-muted uppercase" style={{ fontSize: "10px" }}>Stack</th>
+                                    <th className="text-center py-1.5 pr-1 font-semibold text-text-muted uppercase" style={{ fontSize: "10px" }}>Rot.</th>
+                                    <th className="text-right py-1.5 font-semibold text-text-muted uppercase" style={{ fontSize: "10px" }}>{isMetric ? "m³" : "ft³"}</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -7874,7 +7848,7 @@ export default function ContainerCalculator() {
                                       return (
                                         <Fragment key={groupKey}>
                                           <tr
-                                            className="border-b border-slate-200 bg-slate-50/80 cursor-pointer hover:bg-slate-100 transition-colors"
+                                            className="border-b border-border-hairline bg-surface-recessed cursor-pointer hover:bg-surface-canvas transition-colors"
                                             onClick={() => setExpandedGroups((prev) => {
                                               const next = new Set(prev);
                                               next.has(groupKey) ? next.delete(groupKey) : next.add(groupKey);
@@ -7887,36 +7861,36 @@ export default function ContainerCalculator() {
                                                 <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? "rotate-180" : ""}`} />
                                               </div>
                                             </td>
-                                            <td className="py-1.5 pr-1 font-semibold text-slate-800">{name}</td>
-                                            <td className="py-1.5 pr-1 text-right text-slate-500">{group.items.length} pcs</td>
+                                            <td className="py-1.5 pr-1 font-semibold text-text-secondary">{name}</td>
+                                            <td className="py-1.5 pr-1 text-right text-text-muted">{group.items.length} pcs</td>
                                             <td className="py-1.5 pr-1"></td>
-                                            <td className="py-1.5 pr-1 text-right text-slate-600 font-medium">{groupWt.toFixed(0)}</td>
-                                            <td className="py-1.5 pr-1 text-center text-slate-500">{group.items[0].stackable ? "Y" : "N"}</td>
+                                            <td className="py-1.5 pr-1 text-right text-text-muted font-medium">{groupWt.toFixed(0)}</td>
+                                            <td className="py-1.5 pr-1 text-center text-text-muted">{group.items[0].stackable ? "Y" : "N"}</td>
                                             <td className="py-1.5 pr-1"></td>
-                                            <td className="py-1.5 text-right text-slate-600 font-medium">{groupVol.toFixed(isMetric ? 3 : 1)}</td>
+                                            <td className="py-1.5 text-right text-text-muted font-medium">{groupVol.toFixed(isMetric ? 3 : 1)}</td>
                                           </tr>
                                           {isOpen && group.items.map((p, gi) => {
                                             const volVal = isMetric
                                               ? (p.l * IN_TO_CM * p.w * IN_TO_CM * p.h * IN_TO_CM / 1000000)
                                               : cuInToCuFt(p.l * p.w * p.h);
                                             return (
-                                              <tr key={`${groupKey}-${gi}`} className="border-b border-slate-100 last:border-0">
+                                              <tr key={`${groupKey}-${gi}`} className="border-b border-border-hairline last:border-0">
                                                 <td className="py-1 pr-1 pl-2">
-                                                  <span className="text-slate-400 font-mono" style={{ fontSize: "9px" }}>{startIdx + gi + 1}</span>
+                                                  <span className="text-text-deemphasis font-mono" style={{ fontSize: "9px" }}>{startIdx + gi + 1}</span>
                                                 </td>
-                                                <td className="py-1 pr-1 text-slate-600 pl-2">#{gi + 1}</td>
-                                                <td className="py-1 pr-1 text-right text-slate-600 whitespace-nowrap">
+                                                <td className="py-1 pr-1 text-text-muted pl-2">#{gi + 1}</td>
+                                                <td className="py-1 pr-1 text-right text-text-muted whitespace-nowrap">
                                                   {(p.l * dimFactor).toFixed(1)}×{(p.w * dimFactor).toFixed(1)}×{(p.h * dimFactor).toFixed(1)}
                                                 </td>
-                                                <td className="py-1 pr-1 text-right text-slate-500 font-mono whitespace-nowrap" style={{ fontSize: "10px" }}>
+                                                <td className="py-1 pr-1 text-right text-text-muted font-mono whitespace-nowrap" style={{ fontSize: "10px" }}>
                                                   {(p.x * dimFactor).toFixed(0)},{(p.y * dimFactor).toFixed(0)},{(p.z * dimFactor).toFixed(0)}
                                                 </td>
-                                                <td className="py-1 pr-1 text-right text-slate-600">{(p.weight * weightFactor).toFixed(0)}</td>
-                                                <td className="py-1 pr-1 text-center text-slate-500">{p.stackable ? "Y" : "N"}</td>
+                                                <td className="py-1 pr-1 text-right text-text-muted">{(p.weight * weightFactor).toFixed(0)}</td>
+                                                <td className="py-1 pr-1 text-center text-text-muted">{p.stackable ? "Y" : "N"}</td>
                                                 <td className="py-1 pr-1 text-center">
-                                                  <span className="font-mono text-slate-400" style={{ fontSize: "10px" }}>{p.rotation}</span>
+                                                  <span className="font-mono text-text-deemphasis" style={{ fontSize: "10px" }}>{p.rotation}</span>
                                                 </td>
-                                                <td className="py-1 text-right text-slate-600">{volVal.toFixed(isMetric ? 3 : 1)}</td>
+                                                <td className="py-1 text-right text-text-muted">{volVal.toFixed(isMetric ? 3 : 1)}</td>
                                               </tr>
                                             );
                                           })}
@@ -7926,15 +7900,15 @@ export default function ContainerCalculator() {
                                   })()}
                                 </tbody>
                                 <tfoot>
-                                  <tr className="border-t-2 border-slate-300">
-                                    <td colSpan={4} className="py-1.5 pr-1 font-bold text-slate-800">
+                                  <tr className="border-t-2 border-border-control">
+                                    <td colSpan={4} className="py-1.5 pr-1 font-bold text-text-secondary">
                                       Total: {cResult.placed.length} pcs
                                     </td>
-                                    <td className="py-1.5 pr-1 text-right font-bold text-slate-800">
+                                    <td className="py-1.5 pr-1 text-right font-bold text-text-secondary">
                                       {(cResult.placed.reduce((s, p) => s + p.weight, 0) * weightFactor).toFixed(0)}
                                     </td>
                                     <td colSpan={2}></td>
-                                    <td className="py-1.5 text-right font-bold text-slate-800">
+                                    <td className="py-1.5 text-right font-bold text-text-secondary">
                                       {isMetric
                                         ? (cResult.placed.reduce((s, p) => s + p.l * IN_TO_CM * p.w * IN_TO_CM * p.h * IN_TO_CM / 1000000, 0)).toFixed(3)
                                         : cuInToCuFt(cResult.placed.reduce((s, p) => s + p.l * p.w * p.h, 0)).toFixed(1)
@@ -7951,14 +7925,14 @@ export default function ContainerCalculator() {
                     );
                   })}
 
-                  <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+                  <Card className="border-border-hairline bg-surface-recessed">
                     <CardContent className="p-5">
                       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                         <div className="flex-1">
-                          <h3 className="font-bold text-slate-900 mb-1">
+                          <h3 className="font-bold text-text-primary mb-1">
                             Need help with your shipment?
                           </h3>
-                          <p className="text-sm text-slate-600">
+                          <p className="text-sm text-text-muted">
                             Get expert customs clearance, HS classification, and import compliance
                             assistance from our team.
                           </p>
@@ -8018,7 +7992,7 @@ export default function ContainerCalculator() {
                               </Button>
                               <button
                                 onClick={() => setShowEmail(false)}
-                                className="text-slate-400 hover:text-slate-600"
+                                className="text-text-deemphasis hover:text-text-muted"
                               >
                                 <X className="w-4 h-4" />
                               </button>
@@ -8034,30 +8008,30 @@ export default function ContainerCalculator() {
           </div>
         </div>
 
-        <section className="mt-12 border-t border-slate-200 bg-white/70 py-8" aria-labelledby="container-guide-heading">
+        <section className="mt-12 border-t border-border-hairline bg-white py-8" aria-labelledby="container-guide-heading">
           <div className="container mx-auto px-4 md:px-6 max-w-5xl">
-            <details className="group rounded-2xl border border-slate-200 bg-white shadow-sm" data-testid="container-guide-details">
+            <details className="group rounded-lg border border-border-hairline bg-white shadow-sm" data-testid="container-guide-details">
               <summary className="flex cursor-pointer list-none items-center gap-4 p-5 md:p-6 [&::-webkit-details-marker]:hidden">
-                <div className="rounded-xl bg-blue-50 p-2.5 text-primary">
+                <div className="rounded-lg bg-surface-recessed p-2.5 text-brand">
                   <Info className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 id="container-guide-heading" className="text-lg md:text-xl font-bold font-display text-slate-900">
+                  <h2 id="container-guide-heading" className="text-lg md:text-xl font-bold font-display text-text-primary">
                     How this calculator works, limits &amp; FAQ
                   </h2>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-text-muted">
                     Container sizes, calculation rules, practical limitations, and common questions
                   </p>
                 </div>
-                <ChevronDown className="h-5 w-5 shrink-0 text-slate-400 transition-transform group-open:rotate-180" aria-hidden="true" />
+                <ChevronDown className="h-5 w-5 shrink-0 text-text-deemphasis transition-transform group-open:rotate-180" aria-hidden="true" />
               </summary>
 
-              <div className="border-t border-slate-200 p-5 md:p-7">
+              <div className="border-t border-border-hairline p-5 md:p-7">
                 <div className="max-w-3xl mb-9">
-                  <h3 className="text-xl md:text-2xl font-bold font-display text-slate-900 mb-3">
+                  <h3 className="text-xl md:text-2xl font-bold font-display text-text-primary mb-3">
                     How the 3D container loading calculator works
                   </h3>
-                  <p className="text-slate-600 leading-relaxed">
+                  <p className="text-text-muted leading-relaxed">
                     Add each pallet, crate, or carton with its outside dimensions, quantity, and total gross weight.
                     The planner checks physical placement and payload limits, compares standard container sizes, and
                     recommends the smallest practical option that fits the complete load. You can then inspect the
@@ -8067,17 +8041,17 @@ export default function ContainerCalculator() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
               <div>
-                <h3 className="text-lg font-bold text-slate-900 mb-3">Supported container sizes</h3>
-                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <h3 className="text-lg font-bold text-text-primary mb-3">Supported container sizes</h3>
+                <div className="overflow-x-auto rounded-lg border border-border-hairline">
                   <table className="w-full text-sm">
-                    <thead className="bg-slate-50 text-slate-600">
+                    <thead className="bg-surface-recessed text-text-muted">
                       <tr>
                         <th className="text-left px-4 py-3">Type</th>
                         <th className="text-left px-4 py-3">Internal dimensions*</th>
                         <th className="text-right px-4 py-3">Volume</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                    <tbody className="divide-y divide-border-hairline text-text-secondary">
                       <tr><td className="px-4 py-3 font-medium">20&apos; DC</td><td className="px-4 py-3">5.90 × 2.35 × 2.39 m</td><td className="px-4 py-3 text-right">33.2 m³</td></tr>
                       <tr><td className="px-4 py-3 font-medium">40&apos; DC</td><td className="px-4 py-3">12.03 × 2.35 × 2.39 m</td><td className="px-4 py-3 text-right">67.7 m³</td></tr>
                       <tr><td className="px-4 py-3 font-medium">40&apos; HC</td><td className="px-4 py-3">12.03 × 2.35 × 2.67 m</td><td className="px-4 py-3 text-right">76.3 m³</td></tr>
@@ -8085,12 +8059,12 @@ export default function ContainerCalculator() {
                     </tbody>
                   </table>
                 </div>
-                <p className="text-xs text-slate-500 mt-2">*Preset dimensions are approximate. Confirm the shipping line&apos;s equipment specification before loading.</p>
+                <p className="text-xs text-text-muted mt-2">*Preset dimensions are approximate. Confirm the shipping line&apos;s equipment specification before loading.</p>
               </div>
 
               <div>
-                <h3 className="text-lg font-bold text-slate-900 mb-3">What the calculation checks</h3>
-                <ul className="space-y-3 text-sm text-slate-700">
+                <h3 className="text-lg font-bold text-text-primary mb-3">What the calculation checks</h3>
+                <ul className="space-y-3 text-sm text-text-secondary">
                   {[
                     "Whether every piece fits through the container's usable internal space",
                     "Allowed horizontal rotation, fixed orientation, pallet footprint, and stacking rules",
@@ -8100,7 +8074,7 @@ export default function ContainerCalculator() {
                     "Volume, floor-area, and weight utilization for the proposed plan",
                   ].map((item) => (
                     <li key={item} className="flex gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" aria-hidden="true" />
+                      <CheckCircle2 className="w-4 h-4 text-text-muted mt-0.5 shrink-0" aria-hidden="true" />
                       <span>{item}</span>
                     </li>
                   ))}
@@ -8109,27 +8083,27 @@ export default function ContainerCalculator() {
                 </div>
 
                 <div className="max-w-3xl">
-              <h3 className="text-lg font-bold text-slate-900 mb-3">Container loading calculator FAQ</h3>
+              <h3 className="text-lg font-bold text-text-primary mb-3">Container loading calculator FAQ</h3>
               <div className="space-y-3">
-                <details className="rounded-xl border border-slate-200 bg-white p-4">
-                  <summary className="cursor-pointer font-semibold text-slate-800">Is this container loading calculator free?</summary>
-                  <p className="mt-3 text-sm text-slate-600">Yes. The calculator, best-fit recommendation, 3D preview, document import, and PDF report can be used without creating an account.</p>
+                <details className="rounded-lg border border-border-hairline bg-white p-4">
+                  <summary className="cursor-pointer font-semibold text-text-secondary">Is this container loading calculator free?</summary>
+                  <p className="mt-3 text-sm text-text-muted">Yes. The calculator, best-fit recommendation, 3D preview, document import, and PDF report can be used without creating an account.</p>
                 </details>
-                <details className="rounded-xl border border-slate-200 bg-white p-4">
-                  <summary className="cursor-pointer font-semibold text-slate-800">Should I enter total weight or weight per pallet?</summary>
-                  <p className="mt-3 text-sm text-slate-600">Enter the total gross weight for the complete cargo row. If one row represents seven identical pallets, enter the combined weight of all seven; the calculator derives the per-piece weight.</p>
+                <details className="rounded-lg border border-border-hairline bg-white p-4">
+                  <summary className="cursor-pointer font-semibold text-text-secondary">Should I enter total weight or weight per pallet?</summary>
+                  <p className="mt-3 text-sm text-text-muted">Enter the total gross weight for the complete cargo row. If one row represents seven identical pallets, enter the combined weight of all seven; the calculator derives the per-piece weight.</p>
                 </details>
-                <details className="rounded-xl border border-slate-200 bg-white p-4">
-                  <summary className="cursor-pointer font-semibold text-slate-800">Does a calculated fit guarantee the cargo can be loaded?</summary>
-                  <p className="mt-3 text-sm text-slate-600">No. Treat the result as a planning estimate. Confirm door clearance, lifting access, blocking and bracing, axle or floor concentration limits, cargo compatibility, and the carrier&apos;s exact container specification.</p>
+                <details className="rounded-lg border border-border-hairline bg-white p-4">
+                  <summary className="cursor-pointer font-semibold text-text-secondary">Does a calculated fit guarantee the cargo can be loaded?</summary>
+                  <p className="mt-3 text-sm text-text-muted">No. Treat the result as a planning estimate. Confirm door clearance, lifting access, blocking and bracing, axle or floor concentration limits, cargo compatibility, and the carrier&apos;s exact container specification.</p>
                 </details>
-                <details className="rounded-xl border border-slate-200 bg-white p-4">
-                  <summary className="cursor-pointer font-semibold text-slate-800">Can I import a packing list instead of typing dimensions?</summary>
-                  <p className="mt-3 text-sm text-slate-600">Yes. Spreadsheets are parsed locally, and supported documents or images can be analyzed to extract cargo dimensions for review before they are added.</p>
+                <details className="rounded-lg border border-border-hairline bg-white p-4">
+                  <summary className="cursor-pointer font-semibold text-text-secondary">Can I import a packing list instead of typing dimensions?</summary>
+                  <p className="mt-3 text-sm text-text-muted">Yes. Spreadsheets are parsed locally, and supported documents or images can be analyzed to extract cargo dimensions for review before they are added.</p>
                 </details>
               </div>
-              <p className="mt-6 text-sm text-slate-600">
-                Planning Canadian imports? Use the free <Link href="/tools/hs-code-finder" className="text-primary hover:underline">Canadian HS Code Finder</Link> and <Link href="/customs-calculator" className="text-primary hover:underline">customs duty calculator</Link> to estimate classification and landed costs.
+              <p className="mt-6 text-sm text-text-muted">
+                Planning Canadian imports? Use the free <Link href="/tools/hs-code-finder" className="text-brand hover:underline">Canadian HS Code Finder</Link> and <Link href="/customs-calculator" className="text-brand hover:underline">customs duty calculator</Link> to estimate classification and landed costs.
               </p>
                 </div>
               </div>
