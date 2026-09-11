@@ -1,6 +1,4 @@
 import { Link } from "wouter";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -75,7 +73,6 @@ export default function Tools() {
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
-      <Navbar />
       <main className="flex-1 pt-28 pb-16">
         <div className="container mx-auto px-4 md:px-6">
           <div className="text-center max-w-3xl mx-auto mb-12">
@@ -128,7 +125,6 @@ export default function Tools() {
           </div>
         </div>
       </main>
-      <Footer />
     </div>
   );
 }

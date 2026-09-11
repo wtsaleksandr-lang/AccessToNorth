@@ -1,8 +1,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 import { ToolWorkedExample } from "@/components/ToolWorkedExample";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1069,7 +1067,6 @@ export default function TruckLoadPlanner() {
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
-      <Navbar />
       <main className="flex-1 pt-28 pb-16">
         <div className="container mx-auto px-4 md:px-6">
           <Breadcrumbs items={[{ label: "Tools", href: "/tools" }, { label: "Truck Load Planner" }]} />
@@ -2276,7 +2273,6 @@ export default function TruckLoadPlanner() {
         </div>
       )}
       <ToolWorkedExample kind="truck" />
-      <Footer />
     </div>
   );
 }

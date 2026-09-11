@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, Code2, Copy, ExternalLink, LayoutDashboard, ShieldCheck, Sparkles } from "lucide-react";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -53,7 +51,7 @@ export default function ContainerLoadingApi() {
     }
   }
 
-  return <div className="min-h-screen bg-slate-50"><Navbar /><main className="pb-20 pt-28">
+  return <div className="min-h-screen bg-slate-50"><main className="pb-20 pt-28">
     <section className="mx-auto max-w-5xl px-4 text-center sm:px-6">
       <Badge className="mb-4 border-blue-200 bg-blue-50 text-primary hover:bg-blue-50"><Code2 className="mr-1.5 h-3.5 w-3.5" /> Developer & partner access</Badge>
       <h1 className="mx-auto max-w-4xl text-3xl font-extrabold tracking-tight text-slate-950 sm:text-5xl">Put premium 3D load planning inside your product.</h1>
@@ -75,7 +73,7 @@ export default function ContainerLoadingApi() {
     </section>
 
     <section className="mx-auto mt-14 grid max-w-6xl gap-6 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr]"><div className="rounded-2xl bg-slate-950 p-7 text-white"><Sparkles className="h-6 w-6 text-sky-400" /><h2 className="mt-5 text-2xl font-bold">Hosted means always current</h2><p className="mt-3 text-sm leading-6 text-slate-300">The embed and versioned API run on our infrastructure. Compatible packing-engine improvements, container data, and security fixes reach every client automatically—without copying a new script or updating an SDK.</p><div className="mt-6 flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" /><span>Domain restrictions, isolated API keys, rate limits, usage allowances, and Stripe-managed billing are included.</span></div></div><div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="flex items-center justify-between border-b border-slate-200 px-5 py-3"><div><p className="text-sm font-bold">One request, complete placement</p><p className="text-xs text-slate-500">REST + JSON · imperial or metric</p></div><button onClick={() => navigator.clipboard.writeText(sampleRequest).then(() => toast({ title: "API example copied" }))} className="rounded-lg border p-2" aria-label="Copy API example"><Copy className="h-4 w-4" /></button></div><pre className="overflow-x-auto bg-slate-900 p-5 text-xs leading-6 text-slate-200"><code>{sampleRequest}</code></pre></div></section>
-  </main><Footer />
+  </main>
   <Dialog open={Boolean(selectedTier)} onOpenChange={(open) => !open && setSelectedTier(null)}><DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle>Start your 14-day free trial</DialogTitle><DialogDescription>{selectedTier?.name} · {billing === "annual" ? `CA$${selectedTier?.annual}/year` : `CA$${selectedTier?.monthly}/month`} after trial. You will receive reminders and can cancel before renewal.</DialogDescription></DialogHeader><div className="space-y-4"><div><Label htmlFor="trial-email">Work email</Label><Input id="trial-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" autoComplete="email" /></div>{promotionCode && <div><Label htmlFor="promo">Promotion code</Label><Input id="promo" value={promotionCode} onChange={(e) => setPromotionCode(e.target.value)} /></div>}<Button className="w-full" disabled={submitting} onClick={beginCheckout}>{submitting ? "Opening secure checkout…" : "Continue to Stripe Checkout"}</Button><p className="text-center text-xs leading-5 text-slate-500">Stripe securely collects your card. One free trial per customer. By continuing, you agree to the Terms and recurring renewal shown above.</p></div></DialogContent></Dialog>
   </div>;
 }

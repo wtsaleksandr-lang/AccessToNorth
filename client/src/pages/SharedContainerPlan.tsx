@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "wouter";
 import { AlertTriangle, CalendarClock, ChevronLeft, ChevronRight, CopyPlus, Eye, Package, Scale, Ship } from "lucide-react";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -81,7 +79,6 @@ export default function SharedContainerPlan() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <Navbar />
       <main className="mx-auto w-full max-w-[1500px] px-3 pb-16 pt-24 sm:px-6 lg:px-8">
         {error ? (
           <Card className="mx-auto mt-12 max-w-xl border-slate-200 shadow-sm">
@@ -158,7 +155,6 @@ export default function SharedContainerPlan() {
           </>
         )}
       </main>
-      <Footer />
     </div>
   );
 }

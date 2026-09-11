@@ -9,6 +9,7 @@ import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { LocaleProvider } from "@/contexts/LocaleContext";
 import { CartPanel } from "@/components/CartPanel";
 import { SiteChatWidget } from "@/components/SiteChatWidget";
+import { Layout } from "@/components/Layout";
 
 // Eagerly loaded — the homepage is the primary entry point and should not
 // wait for a second route chunk before it can paint.
@@ -103,6 +104,11 @@ function Router() {
   return (
     <>
       <ScrollToTop />
+      {/* The site shell (Navbar + Footer) is rendered ONCE here rather than by
+          each of the ~40 page components. Layout owns the chromeless-route and
+          darkHero decisions. It sits outside <Suspense> so the header and
+          footer stay painted while a lazy route chunk loads. */}
+      <Layout>
       <Suspense fallback={<RouterFallback />}>
       <Switch>
         <Route path="/" component={Home} />
@@ -168,6 +174,7 @@ function Router() {
         <Route component={NotFound} />
       </Switch>
       </Suspense>
+      </Layout>
     </>
   );
 }

@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import { useSearch, Link } from "wouter";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { usePageMeta } from "@/hooks/use-page-meta";
@@ -69,7 +67,6 @@ export default function OrderConfirmation() {
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
-      <Navbar />
       <main className="flex-1 pt-28 pb-16">
         <div className="container mx-auto px-4 md:px-6 max-w-2xl">
           {loading && (
@@ -208,7 +205,6 @@ export default function OrderConfirmation() {
           )}
         </div>
       </main>
-      <Footer />
     </div>
   );
 }

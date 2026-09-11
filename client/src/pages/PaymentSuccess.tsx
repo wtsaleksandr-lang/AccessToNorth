@@ -4,8 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Loader2, ArrowRight, FileText } from "lucide-react";
 import { useLocation } from "wouter";
 import { useCart } from "@/contexts/CartContext";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 
 interface CartOrderResult {
   kind: "cart";
@@ -96,7 +94,6 @@ export default function PaymentSuccess() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      <Navbar />
       <main className="flex-1 flex items-center justify-center p-4">
         <Card className="max-w-lg w-full">
           <CardHeader className="text-center pb-2">
@@ -216,7 +213,6 @@ export default function PaymentSuccess() {
           </CardContent>
         </Card>
       </main>
-      <Footer />
     </div>
   );
 }

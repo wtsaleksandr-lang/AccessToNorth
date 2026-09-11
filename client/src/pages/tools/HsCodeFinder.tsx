@@ -1,8 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 import { ToolWorkedExample } from "@/components/ToolWorkedExample";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -248,7 +246,6 @@ export default function HsCodeFinder() {
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
-      <Navbar />
       <main className="flex-1 pt-28 pb-16">
         <div className="container mx-auto px-4 md:px-6 max-w-4xl">
           <Breadcrumbs
@@ -673,7 +670,6 @@ export default function HsCodeFinder() {
         </div>
       </main>
       <ToolWorkedExample kind="hs" />
-      <Footer />
     </div>
   );
 }

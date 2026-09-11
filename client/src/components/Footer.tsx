@@ -9,6 +9,12 @@ const trustChips = [
   { icon: Star, label: "Money-Back Guarantee" },
 ];
 
+/**
+ * Reference agencies only. This row is compliance copy, not a badge wall —
+ * it names the authorities our filings are addressed to. The "reference
+ * agencies only" caveat immediately below it must stay with it, and both must
+ * stay legible (>= WCAG AA) on the dark surface.
+ */
 const agencies = [
   { label: "CRA", icon: Landmark },
   { label: "IRS", icon: Shield },
@@ -17,52 +23,135 @@ const agencies = [
   { label: "SBA", icon: Building2 },
 ];
 
+interface FooterLink {
+  label: string;
+  href: string;
+  testId: string;
+}
+
+/**
+ * The footer link columns mirror the mega-menu's grouping exactly. When the nav
+ * headings change, change them here too — the two are meant to read as one
+ * information architecture.
+ *
+ * As in the nav: the reference's FOR USA / BY INDUSTRY columns have no content
+ * to fill yet, so these name the split the live catalogue actually has.
+ */
+const linkGroups: { heading: string; links: FooterLink[] }[] = [
+  {
+    heading: "For Canada",
+    links: [
+      { label: "Business Number (BN)", href: "/services/business-number-bn", testId: "link-footer-bn" },
+      { label: "GST/HST Registration", href: "/services/gst-hst-registration", testId: "link-footer-gst" },
+      { label: "CARM Registration", href: "/services/carm-registration-canada", testId: "link-footer-carm" },
+      { label: "RPP / Bond Coordination", href: "/services/rpp-bond-coordination", testId: "link-footer-rpp" },
+      { label: "All Services", href: "/services", testId: "link-footer-services" },
+    ],
+  },
+  {
+    heading: "Cross-border",
+    links: [
+      { label: "Non-Resident Importer", href: "/services/non-resident-importer-canada", testId: "link-footer-nri" },
+      { label: "Customs Clearance", href: "/services/customs-clearance-canada", testId: "link-footer-clearance" },
+      { label: "B13 Export Declaration", href: "/services/b13-export-declaration", testId: "link-footer-b13" },
+      { label: "HS Code Classification", href: "/services/hs-code-classification-canada", testId: "link-footer-hs" },
+      { label: "Import Compliance Review", href: "/services/import-compliance-review", testId: "link-footer-compliance" },
+    ],
+  },
+  {
+    heading: "Platform",
+    links: [
+      { label: "Trade Tools", href: "/tools", testId: "link-footer-tools" },
+      { label: "Pricing", href: "/pricing", testId: "link-footer-pricing" },
+      { label: "Loading API & Embed", href: "/developers/container-loading-api", testId: "link-footer-loading-api" },
+      { label: "Resources", href: "/resources", testId: "link-footer-resources" },
+      { label: "Blog", href: "/blog", testId: "link-footer-blog" },
+      { label: "About", href: "/about", testId: "link-footer-about" },
+      { label: "FAQ", href: "/faq", testId: "link-footer-faq" },
+    ],
+  },
+];
+
+const legalLinks: FooterLink[] = [
+  { label: "Terms", href: "/terms", testId: "link-terms" },
+  { label: "Privacy", href: "/privacy", testId: "link-privacy" },
+  { label: "Security", href: "/security", testId: "link-security" },
+  { label: "Refund Policy", href: "/refunds", testId: "link-refunds" },
+];
+
+/* Link ink on #0C111D. #CAD5E2 gives ~11:1 and #90A1B9 ~7:1 — both clear AA
+   (and AAA) for body text, which the disclaimer copy needs. */
+const linkClass =
+  "text-[#CAD5E2] transition-colors duration-state hover:text-white";
+
 export function Footer() {
   return (
-    <footer className="bg-slate-900 text-slate-400 py-10 md:py-12" data-testid="footer">
+    <footer className="bg-surface-dark py-12 md:py-14" data-testid="footer">
       <div className="container mx-auto px-4 md:px-6">
 
         {/* A) TRUST STRIP */}
-        <div className="mb-8 pb-8 border-b border-slate-800">
-          <div className="grid grid-cols-2 md:flex md:flex-wrap md:justify-center gap-2.5 md:gap-3 mb-6">
+        <div className="mb-10 pb-10 border-b border-white/10">
+          <div className="grid grid-cols-2 md:flex md:flex-wrap md:justify-center gap-2 md:gap-3 mb-6">
             {trustChips.map((chip) => (
               <div
                 key={chip.label}
-                className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-slate-700/60 bg-slate-800/50 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-600 hover:shadow-lg hover:shadow-black/20"
+                className="flex items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 transition-colors duration-state hover:border-brand"
               >
-                <chip.icon className={`w-3.5 h-3.5 shrink-0 ${chip.label.includes("4.9") ? "text-amber-400" : "text-blue-400"}`} />
-                <span className="text-xs font-medium text-slate-300 whitespace-nowrap">{chip.label}</span>
+                <chip.icon className="w-3.5 h-3.5 shrink-0 text-[#90A1B9]" aria-hidden="true" />
+                <span className="text-xs font-medium text-[#CAD5E2] leading-snug">{chip.label}</span>
               </div>
             ))}
           </div>
-          <div className="flex justify-center items-center gap-4 sm:gap-5 flex-wrap">
+          <div className="flex justify-center items-center gap-4 sm:gap-6 flex-wrap">
             {agencies.map((a) => (
-              <div key={a.label} className="flex items-center gap-1 opacity-50">
-                <a.icon className="w-3.5 h-3.5 text-white" />
-                <span className="text-[11px] font-semibold text-white tracking-wide">{a.label}</span>
+              <div key={a.label} className="flex items-center gap-1.5">
+                <a.icon className="w-3.5 h-3.5 text-[#CAD5E2]" aria-hidden="true" />
+                <span className="text-[11px] font-semibold tracking-wide text-[#CAD5E2]">{a.label}</span>
               </div>
             ))}
           </div>
+          <p className="mt-3 text-center text-[11px] leading-relaxed text-[#90A1B9]">
+            Reference agencies only. AccessToNorth is not affiliated with, endorsed by, or acting on
+            behalf of any government agency.
+          </p>
         </div>
 
-        {/* B) MIDDLE ROW — 3 COLUMNS */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-10 mb-8">
-          <div className="md:col-span-2">
+        {/* B) MIDDLE ROW — brand + jurisdiction columns mirroring the nav */}
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-12 md:gap-8 mb-10">
+          <div className="md:col-span-4">
             <Link href="/" className="group mb-4 inline-flex" data-testid="link-footer-home">
-              <BrandLogo light accentClassName="text-sky-400" />
+              <BrandLogo light accentClassName="text-[#90A1B9]" />
             </Link>
-            <details className="group max-w-lg border-t border-slate-800">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-2.5 text-[11px] font-medium text-slate-500 transition-colors hover:text-slate-400 [&::-webkit-details-marker]:hidden">
+            <ul className="space-y-2 text-sm">
+              <li className="flex items-center gap-2">
+                <Mail className="w-3.5 h-3.5 shrink-0 text-[#90A1B9]" aria-hidden="true" />
+                <a href="mailto:operations@accesstonorth.com" className={`${linkClass} break-all`} data-testid="link-footer-email">operations@accesstonorth.com</a>
+              </li>
+              <li className="flex items-start gap-2 pt-1 text-xs">
+                <Clock className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#90A1B9]" aria-hidden="true" />
+                <span className="text-[#CAD5E2]">
+                  Mon–Fri, 9:00 a.m.–6:00 p.m. ET<br />
+                  <span className="text-[#90A1B9]">Responses typically within one business day.</span>
+                </span>
+              </li>
+            </ul>
+
+            {/* SERVICE DISCLAIMER — regulatory copy. Do not shorten, reword or
+                de-emphasise. It stays collapsed by default (smoke.spec.ts
+                asserts the collapse/expand contract); prominence comes from
+                contrast and size, not from forcing it open. */}
+            <details className="group mt-6 max-w-lg border-t border-white/10">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-2.5 text-xs font-medium text-[#CAD5E2] transition-colors duration-state hover:text-white [&::-webkit-details-marker]:hidden">
                 <span>Service disclaimer</span>
-                <ChevronDown className="h-3.5 w-3.5 text-slate-600 transition-transform duration-200 group-open:rotate-180" />
+                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#90A1B9] transition-transform duration-state group-open:rotate-180" aria-hidden="true" />
               </summary>
-              <div className="border-t border-slate-800/70 py-3 text-[11px] leading-relaxed text-slate-500">
+              <div className="border-t border-white/10 py-3 text-xs leading-relaxed text-[#CAD5E2]">
                 <p className="mb-3">
                   AccessToNorth coordinates Canadian CRA and CBSA administrative filings for resident
                   and non-resident businesses under signed authorization. We are not a law firm,
                   accounting firm, or licensed customs broker.
                 </p>
-                <ul className="space-y-1 text-slate-500">
+                <ul className="space-y-1.5">
                   <li>No legal, tax, accounting, or customs-brokerage advice.</li>
                   <li>No approval guarantees — decisions are made by the CRA, CBSA, and other authorities.</li>
                   <li>AccessToNorth is not affiliated with or endorsed by any government agency.</li>
@@ -71,76 +160,71 @@ export function Footer() {
             </details>
           </div>
 
-          <div>
-            <h4 className="font-semibold text-white mb-3 text-xs tracking-widest uppercase">Services</h4>
-            <ul className="space-y-2 text-sm">
-              <li><Link href="/services" className="hover:text-white transition-colors" data-testid="link-footer-services">All Services</Link></li>
-              <li><Link href="/pricing" className="hover:text-white transition-colors" data-testid="link-footer-pricing">Pricing</Link></li>
-              <li><Link href="/tools" className="hover:text-white transition-colors" data-testid="link-footer-tools">Trade Tools</Link></li>
-              <li><Link href="/developers/container-loading-api" className="hover:text-white transition-colors" data-testid="link-footer-loading-api">Loading API &amp; Embed</Link></li>
-              <li><Link href="/resources" className="hover:text-white transition-colors" data-testid="link-footer-resources">Resources</Link></li>
-              <li><Link href="/blog" className="hover:text-white transition-colors" data-testid="link-footer-blog">Blog</Link></li>
-              <li><Link href="/about" className="hover:text-white transition-colors" data-testid="link-footer-about">About</Link></li>
-              <li><Link href="/faq" className="hover:text-white transition-colors" data-testid="link-footer-faq">FAQ</Link></li>
-            </ul>
-          </div>
+          {linkGroups.map((group) => (
+            <div key={group.heading} className="md:col-span-2">
+              <h4 className="mb-3 text-eyebrow uppercase text-[#90A1B9]">{group.heading}</h4>
+              <ul className="space-y-2 text-sm">
+                {group.links.map((l) => (
+                  <li key={l.href}>
+                    <Link href={l.href} className={linkClass} data-testid={l.testId}>{l.label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
 
-          <div>
-            <h4 className="font-semibold text-white mb-3 text-xs tracking-widest uppercase">Contact</h4>
+          <div className="md:col-span-2">
+            <h4 className="mb-3 text-eyebrow uppercase text-[#90A1B9]">Legal</h4>
             <ul className="space-y-2 text-sm">
-              <li className="flex items-center gap-2">
-                <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <a href="mailto:operations@accesstonorth.com" className="hover:text-white transition-colors break-all" data-testid="link-footer-email">operations@accesstonorth.com</a>
-              </li>
-              <li className="flex items-start gap-2 text-xs text-slate-500 pt-1">
-                <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-                <span>Mon–Fri, 9:00 a.m.–6:00 p.m. ET<br />
-                <span className="text-slate-600">Responses typically within one business day.</span></span>
-              </li>
-            </ul>
-            <h4 className="font-semibold text-white mt-5 mb-3 text-xs tracking-widest uppercase">Legal</h4>
-            <ul className="space-y-2 text-sm">
-              <li><Link href="/terms" className="hover:text-white transition-colors" data-testid="link-terms">Terms</Link></li>
-              <li><Link href="/privacy" className="hover:text-white transition-colors" data-testid="link-privacy">Privacy</Link></li>
-              <li><Link href="/security" className="hover:text-white transition-colors" data-testid="link-security">Security</Link></li>
-              <li><Link href="/refunds" className="hover:text-white transition-colors" data-testid="link-refunds">Refund Policy</Link></li>
+              {legalLinks.map((l) => (
+                <li key={l.href}>
+                  <Link href={l.href} className={linkClass} data-testid={l.testId}>{l.label}</Link>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
 
-        {/* C) BOTTOM ROW */}
-        <div className="border-t border-slate-800 pt-6 space-y-3">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-sm">
-              <Shield className="w-4 h-4 text-green-500" />
-              <span>Secure checkout powered by Stripe</span>
+        {/* C) BOTTOM SUB-BAR — copyright, status indicator, payment rail */}
+        <div className="border-t border-white/10 pt-6 space-y-4">
+          <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+            <div className="flex items-center gap-2 text-sm text-[#CAD5E2]" data-testid="footer-status">
+              {/* Static dot — the system has no keyframes, so no pulse. */}
+              <span className="h-2 w-2 shrink-0 rounded-full bg-[#3ECF8E]" aria-hidden="true" />
+              <span>All systems operational</span>
             </div>
-            <div className="flex items-center gap-2.5 text-xs text-slate-500">
-              <CreditCard className="w-4 h-4" />
+            <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-xs text-[#90A1B9]">
+              <CreditCard className="w-4 h-4 shrink-0" aria-hidden="true" />
               <span>Visa</span>
-              <span className="text-slate-700">/</span>
+              <span aria-hidden="true">/</span>
               <span>Mastercard</span>
-              <span className="text-slate-700">/</span>
+              <span aria-hidden="true">/</span>
               <span>Amex</span>
-              <span className="text-slate-700">/</span>
-              <span>Apple Pay</span>
-              <span className="text-slate-700">/</span>
-              <span>Google Pay</span>
+              <span aria-hidden="true">/</span>
+              <span>Apple&nbsp;Pay</span>
+              <span aria-hidden="true">/</span>
+              <span>Google&nbsp;Pay</span>
             </div>
           </div>
-          <p className="text-center text-xs text-slate-500">
+
+          <div className="flex items-center justify-center gap-2 text-sm text-[#CAD5E2]">
+            <Shield className="w-4 h-4 shrink-0 text-[#90A1B9]" aria-hidden="true" />
+            <span>Secure checkout powered by Stripe</span>
+          </div>
+
+          <p className="text-center text-xs leading-relaxed text-[#CAD5E2]">
             All services subject to our{" "}
-            <Link href="/terms" className="underline hover:text-white transition-colors" data-testid="link-footer-terms">Terms of Service</Link>
+            <Link href="/terms" className="underline transition-colors duration-state hover:text-white" data-testid="link-footer-terms">Terms of Service</Link>
             {" "}and{" "}
-            <Link href="/refunds" className="underline hover:text-white transition-colors" data-testid="link-footer-refunds">Refund Policy</Link>.
+            <Link href="/refunds" className="underline transition-colors duration-state hover:text-white" data-testid="link-footer-refunds">Refund Policy</Link>.
           </p>
-          <p className="text-center text-xs text-slate-600 pb-4">
+          <p className="text-center text-xs text-[#90A1B9]">
             &copy; {new Date().getFullYear()} AccessToNorth.com
           </p>
-          <p className="border-t border-slate-800/70 pt-3 text-center text-[10px] leading-relaxed tracking-wide text-slate-700">
+          <p className="border-t border-white/10 pt-4 pb-2 text-center text-[11px] leading-relaxed tracking-wide text-[#90A1B9]">
             AccessToNorth operates through affiliated entities in the United States and Canada
-            <span className="mx-1.5">•</span>US entity: MR Holdings &amp; Trade LLC
-            <span className="mx-1.5">•</span>Toronto, Canada
+            <span className="mx-1.5" aria-hidden="true">•</span>US entity: MR Holdings &amp; Trade LLC
+            <span className="mx-1.5" aria-hidden="true">•</span>Toronto, Canada
           </p>
         </div>
       </div>

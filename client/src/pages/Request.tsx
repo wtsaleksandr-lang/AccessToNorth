@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearch } from "wouter";
 import { Link } from "wouter";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 import { RegistrationModal } from "@/components/RegistrationModal";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { Button } from "@/components/ui/button";
@@ -77,7 +75,6 @@ export default function Request() {
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
-      <Navbar />
       <main className="flex-1 pt-28 pb-16">
         <div className="container mx-auto px-4 md:px-6 max-w-4xl">
           <div className="text-center mb-10">
@@ -190,7 +187,6 @@ export default function Request() {
           )}
         </div>
       </main>
-      <Footer />
 
       <RegistrationModal
         isOpen={modalOpen}

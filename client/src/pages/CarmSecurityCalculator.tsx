@@ -1,6 +1,4 @@
 import { useState, useRef } from "react";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 import { ToolWorkedExample } from "@/components/ToolWorkedExample";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -201,7 +199,6 @@ export default function CarmSecurityCalculator() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Navbar darkHero />
 
       <section
         className="relative pt-28 pb-16 md:pt-36 md:pb-24 overflow-hidden"
@@ -844,7 +841,6 @@ export default function CarmSecurityCalculator() {
         </DialogContent>
       </Dialog>
       <ToolWorkedExample kind="carm" />
-      <Footer />
     </div>
   );
 }

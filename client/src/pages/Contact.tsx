@@ -5,8 +5,6 @@ import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -70,7 +68,6 @@ export default function Contact() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
       <main className="flex-1 bg-white">
         <div className="container mx-auto px-4 md:px-6 py-16 max-w-4xl">
           <div className="text-center mb-12">
@@ -228,7 +225,6 @@ export default function Contact() {
           </div>
         </div>
       </main>
-      <Footer />
     </div>
   );
 }
