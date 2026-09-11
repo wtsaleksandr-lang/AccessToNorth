@@ -4,11 +4,13 @@ export default {
   darkMode: ["class"],
   content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
   theme: {
-    container: {
-      center: true,
-      padding: { DEFAULT: "1rem", sm: "1.5rem", lg: "2rem" },
-      screens: { "2xl": "1240px" },
-    },
+    // NOTE: the 1240px content width ships as the opt-in `max-w-container`
+    // utility (and `--container-max`) rather than as a `theme.container`
+    // override. `.container` is used in 62 places including Navbar.tsx, and
+    // capping it globally makes the desktop nav overflow and wrap
+    // ("Client Login" breaks onto two lines, header grows taller). Adopting
+    // 1240px site-wide needs matching nav changes, which belong to the
+    // component wave — not to this tokens-only PR.
     // `colors.card` (shadcn) and `boxShadow.card` (new token) both claim the
     // class `shadow-card`. The boxShadowColor plugin is registered later, so it
     // would win and paint the shadow white (hsl(var(--card))), silently erasing
