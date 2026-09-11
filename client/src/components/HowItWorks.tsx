@@ -31,47 +31,64 @@ const STEPS = [
   },
 ];
 
-export function HowItWorksSection() {
+interface HowItWorksSectionProps {
+  /** Card-on-canvas shell classes, supplied by the host page. */
+  shellClassName?: string;
+  /** Asymmetric vertical padding for this slot in the page rhythm. */
+  padClassName?: string;
+  /** Inner content rail. */
+  railClassName?: string;
+}
+
+export function HowItWorksSection({
+  shellClassName = "w-[98%] max-w-container-outer mx-auto rounded-lg overflow-hidden",
+  padClassName = "pt-12 pb-10 md:pt-[72px] md:pb-14",
+  railClassName = "mx-auto max-w-container px-5 md:px-10",
+}: HowItWorksSectionProps = {}) {
   return (
-    <section className="py-12 md:py-20 bg-slate-50" aria-labelledby="how-it-works-heading">
-      <div className="container mx-auto px-4 md:px-6 max-w-5xl">
-        <div className="text-center mb-10 md:mb-14">
-          <p className="text-xs font-semibold text-primary tracking-widest uppercase mb-2">
-            The process
-          </p>
+    <section
+      className={`${shellClassName} bg-surface-recessed ${padClassName}`}
+      aria-labelledby="how-it-works-heading"
+    >
+      <div className={railClassName}>
+        <div className="max-w-2xl">
+          <p className="text-eyebrow uppercase text-text-muted">The process</p>
           <h2
             id="how-it-works-heading"
-            className="text-2xl md:text-3xl font-bold font-display mb-3"
+            className="mt-3 text-h2 text-text-primary"
             data-testid="text-how-it-works-title"
           >
             How an engagement works
           </h2>
-          <p className="text-slate-600 max-w-2xl mx-auto text-sm md:text-base">
+          <p className="mt-4 text-lead text-text-muted">
             Every engagement follows the same four steps. You stay in the loop at each one — no
             black-box filings, no unexpected CRA correspondence.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          {STEPS.map((step) => (
-            <div
-              key={step.title}
-              className="relative bg-white border border-slate-200 rounded-xl p-5"
-              data-testid={`how-it-works-step-${step.title.slice(0, 1)}`}
-            >
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
-                <step.icon className="w-5 h-5 text-primary" aria-hidden="true" />
+        {/*
+          The divider between steps is GAP, not a border: a 4px grid gap over
+          the #F2F4F7 canvas shell, so the shell itself reads as the rule.
+          Concentric radii — 12px shell, 4px padding, 8px children.
+        */}
+        <div className="mt-10 rounded-lg bg-surface-canvas p-1">
+          <div className="grid grid-cols-1 gap-1 md:grid-cols-2 xl:grid-cols-4">
+            {STEPS.map((step) => (
+              <div
+                key={step.title}
+                className="flex flex-col rounded-md bg-white p-5"
+                data-testid={`how-it-works-step-${step.title.slice(0, 1)}`}
+              >
+                <step.icon className="h-5 w-5 text-text-muted" aria-hidden="true" />
+                <h3 className="mt-4 text-h3 text-text-primary">{step.title}</h3>
+                <p className="mt-2 flex-1 text-body text-text-muted">{step.body}</p>
+                <p className="mt-4 text-eyebrow uppercase text-text-deemphasis">{step.timing}</p>
               </div>
-              <h3 className="font-semibold text-slate-900 mb-1 text-sm">{step.title}</h3>
-              <p className="text-sm text-slate-600 leading-relaxed mb-3">{step.body}</p>
-              <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
-                {step.timing}
-              </p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
-        <p className="text-xs text-slate-500 text-center mt-8 max-w-2xl mx-auto">
+        <p className="mt-8 max-w-2xl text-body text-text-deemphasis">
           Agency processing times — including CRA Business Number issuance and CARM account
           activation — are set by the CRA and CBSA. We file promptly and monitor every file, but
           we cannot guarantee a specific issuance date.

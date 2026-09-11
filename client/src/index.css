@@ -129,8 +129,19 @@
     @apply bg-background text-foreground antialiased font-sans selection:bg-primary/20 selection:text-primary;
   }
 
+  /* Headings INHERIT their colour — do not hard-set one here.
+     `text-foreground` on this rule sets the colour on the heading element
+     itself, which beats a `text-white` (or any colour) inherited from a dark
+     ancestor. That shipped three headings at a 1.00 contrast ratio — literally
+     invisible ink on near-black: the hero filing panel and the dark
+     "who we serve" card on /, and "Hosted means always current" on
+     /developers/container-loading-api.
+     The default ink is not lost: `body` above is `text-foreground`, so every
+     heading in a normal context still resolves to #020618, while an explicit
+     colour on an ancestor now propagates the way the markup intends. */
   h1, h2, h3, h4, h5, h6 {
-    @apply font-display tracking-tight text-foreground;
+    @apply font-display tracking-tight;
+    color: inherit;
   }
 }
 
