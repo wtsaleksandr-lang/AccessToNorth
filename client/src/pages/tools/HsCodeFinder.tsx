@@ -36,7 +36,12 @@ interface HsCodeResult {
  * Card-on-canvas shell, matching Home and the duty calculator.
  */
 const SHELL = "w-[98%] max-w-container-outer mx-auto rounded-lg border overflow-hidden";
-const RAIL = "mx-auto max-w-container px-5 md:px-10";
+/**
+ * One rail for the whole page. The hero, the search card, the results, the
+ * pricing grid, the next-step cards and the FAQ all start at the same left
+ * edge — mixing a 1280px rail with an 896px one made content jump ~190px
+ * sideways every time the reader crossed a card boundary.
+ */
 const TOOL_RAIL = "mx-auto max-w-4xl px-5 md:px-10";
 
 const PAD = {
@@ -348,7 +353,7 @@ export default function HsCodeFinder() {
               {results.length > 0 ? (
                 <>
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <h2 className="text-h2 text-text-primary">
+                    <h2 className="text-h3 text-text-primary">
                       {results.length} suggested code{results.length !== 1 ? "s" : ""} found
                     </h2>
                     <p className="text-body text-text-muted">Search relevance is not classification certainty</p>
@@ -494,7 +499,7 @@ export default function HsCodeFinder() {
           id="classification-pricing"
           className={`${SHELL} bg-white scroll-mt-24 ${PAD.topHeavy}`}
         >
-          <div className={RAIL}>
+          <div className={TOOL_RAIL}>
             <div className="max-w-2xl">
               <p className="text-eyebrow uppercase text-text-muted">Paid review</p>
               <h2 className="mt-3 text-h2 text-text-primary">
@@ -554,7 +559,7 @@ export default function HsCodeFinder() {
 
         {/* ── Next steps ──────────────────────────────────────────────── */}
         <section className={`${SHELL} bg-surface-recessed ${PAD.tight}`}>
-          <div className={RAIL}>
+          <div className={TOOL_RAIL}>
             <div className="max-w-2xl">
               <p className="text-eyebrow uppercase text-text-muted">Next</p>
               <h2 className="mt-3 text-h2 text-text-primary">Planning Your Import?</h2>

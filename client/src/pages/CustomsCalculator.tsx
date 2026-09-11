@@ -68,7 +68,7 @@ const RAIL = "mx-auto max-w-container px-5 md:px-10";
  * The tool itself reads better narrow — a 1280px-wide form makes the eye travel
  * the full width between a label and its control.
  */
-const FORM_RAIL = "mx-auto max-w-3xl px-5 md:px-10";
+const FORM_RAIL = "mx-auto max-w-4xl px-5 md:px-10";
 
 /**
  * Asymmetric section padding. Adjacent sections pull from different pairs so
@@ -991,14 +991,7 @@ export default function CustomsCalculator() {
                   </div>
 
                   <div>
-                    <FieldLabel
-                      htmlFor="quantity"
-                      help={
-                        selectedHsCode?.unitOfMeasure
-                          ? `Unit: ${selectedHsCode.unitOfMeasure}`
-                          : "Required for per-unit duty rates"
-                      }
-                    >
+                    <FieldLabel htmlFor="quantity">
                       Quantity{selectedHsCode?.unitOfMeasure ? ` (${selectedHsCode.unitOfMeasure})` : " (optional)"}
                     </FieldLabel>
                     <div className="relative">
@@ -1013,6 +1006,19 @@ export default function CustomsCalculator() {
                         className="tabular-nums"
                       />
                     </div>
+                    {/*
+                      This hint stays BELOW the control, where it was on main.
+                      Help text belongs above a field when it qualifies what to
+                      enter; this one restates the unit already in the label, and
+                      putting it above pushes this input ~22px lower than "Value
+                      of Goods" beside it — two controls in one grid row that
+                      visibly fail to line up.
+                    */}
+                    <p className="mt-1.5 text-[13px] leading-[18px] text-text-muted">
+                      {selectedHsCode?.unitOfMeasure
+                        ? `Unit: ${selectedHsCode.unitOfMeasure}`
+                        : "Required for per-unit duty rates"}
+                    </p>
                   </div>
                 </div>
 
