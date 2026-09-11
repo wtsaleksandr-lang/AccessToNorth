@@ -4,17 +4,88 @@ export default {
   darkMode: ["class"],
   content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
   theme: {
+    container: {
+      center: true,
+      padding: { DEFAULT: "1rem", sm: "1.5rem", lg: "2rem" },
+      screens: { "2xl": "1240px" },
+    },
+    // `colors.card` (shadcn) and `boxShadow.card` (new token) both claim the
+    // class `shadow-card`. The boxShadowColor plugin is registered later, so it
+    // would win and paint the shadow white (hsl(var(--card))), silently erasing
+    // the elevation token. Drop only `card` from the shadow-color palette.
+    boxShadowColor: ({ theme }: { theme: (k: string) => Record<string, unknown> }) => {
+      const { card: _card, ...rest } = theme("colors");
+      return rest;
+    },
     extend: {
+      maxWidth: {
+        container: "1240px",
+      },
       borderRadius: {
-        lg: ".5625rem", /* 9px */
-        md: ".375rem", /* 6px */
-        sm: ".1875rem", /* 3px */
+        sm: "6px",
+        md: "10px",
+        lg: "16px",
+        xl: "24px",
+        full: "9999px",
+      },
+      fontSize: {
+        h1: ["clamp(2.5rem, 5vw, 3.75rem)", { lineHeight: "1.12", letterSpacing: "-0.025em", fontWeight: "700" }],
+        h2: ["clamp(2rem, 3.5vw, 2.75rem)", { lineHeight: "1.2", letterSpacing: "-0.02em", fontWeight: "700" }],
+        h3: ["1.25rem", { lineHeight: "1.35", fontWeight: "600" }],
+        "body-lg": ["1.125rem", { lineHeight: "1.6", fontWeight: "400" }],
+        body: ["0.9375rem", { lineHeight: "1.55", fontWeight: "400" }],
+        caption: ["0.8125rem", { lineHeight: "1.4", fontWeight: "500" }],
+      },
+      boxShadow: {
+        subtle: "0 1px 2px 0 rgba(15, 23, 42, .05)",
+        card: "0 4px 6px -1px rgba(15, 23, 42, .05), 0 2px 4px -2px rgba(15, 23, 42, .03)",
+        "card-hover": "0 12px 24px -4px rgba(15, 23, 42, .08), 0 4px 8px -2px rgba(15, 23, 42, .04)",
+        flyout: "0 20px 30px -10px rgba(15, 23, 42, .12), 0 8px 12px -4px rgba(15, 23, 42, .06)",
+      },
+      backgroundImage: {
+        "hero-mesh": "var(--gradient-hero-mesh)",
+        "dark-banner": "var(--gradient-dark-banner)",
       },
       colors: {
+        // --- Design-token brand scale (additive; --accent stays Canadian red) ---
+        brand: {
+          DEFAULT: "hsl(var(--brand) / <alpha-value>)",
+          primary: "hsl(var(--brand) / <alpha-value>)",
+          hover: "hsl(var(--brand-hover) / <alpha-value>)",
+          active: "hsl(var(--brand-active) / <alpha-value>)",
+          subtle: "hsl(var(--brand-subtle) / <alpha-value>)",
+          border: "hsl(var(--brand-border) / <alpha-value>)",
+          electric: "hsl(var(--brand-electric) / <alpha-value>)",
+          success: "hsl(var(--status-success) / <alpha-value>)",
+        },
+        surface: {
+          primary: "hsl(var(--background) / <alpha-value>)",
+          secondary: "hsl(var(--surface-secondary) / <alpha-value>)",
+          tertiary: "hsl(var(--surface-tertiary) / <alpha-value>)",
+          dark: "hsl(var(--surface-dark) / <alpha-value>)",
+          "dark-card": "hsl(var(--surface-dark-card) / <alpha-value>)",
+        },
+        text: {
+          primary: "hsl(var(--foreground) / <alpha-value>)",
+          secondary: "hsl(var(--muted-foreground) / <alpha-value>)",
+          muted: "hsl(var(--text-muted-hsl) / <alpha-value>)",
+          inverse: "hsl(0 0% 100% / <alpha-value>)",
+        },
+        badge: {
+          bg: "hsl(var(--badge-bg-hsl) / <alpha-value>)",
+          text: "hsl(var(--badge-text-hsl) / <alpha-value>)",
+        },
+        // --- shadcn contract (unchanged keys) ---
         // Flat / base colors (regular buttons)
         background: "hsl(var(--background) / <alpha-value>)",
         foreground: "hsl(var(--foreground) / <alpha-value>)",
-        border: "hsl(var(--border) / <alpha-value>)",
+        border: {
+          DEFAULT: "hsl(var(--border) / <alpha-value>)",
+          subtle: "hsl(var(--border) / <alpha-value>)",
+          strong: "hsl(var(--border-strong-hsl) / <alpha-value>)",
+          focus: "hsl(var(--ring) / <alpha-value>)",
+          "card-hover": "hsl(var(--border-card-hover-hsl) / <alpha-value>)",
+        },
         input: "hsl(var(--input) / <alpha-value>)",
         card: {
           DEFAULT: "hsl(var(--card) / <alpha-value>)",
