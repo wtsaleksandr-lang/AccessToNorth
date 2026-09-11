@@ -71,6 +71,16 @@ const trustSignals = [
   { icon: Lock, label: "Encrypted document handling", testId: "trust-badge-secure" },
 ];
 
+/**
+ * Reference agencies, NOT endorsements or partners.
+ *
+ * AccessToNorth is not affiliated with, endorsed by, or acting on behalf of
+ * any of these bodies — the caveat below the row says so, and it must stay.
+ * These are rendered deliberately greyscale and de-emphasised so the row reads
+ * as "these are the filing environments we work in", never as a logo wall of
+ * customers or partners. Do not restyle this into social proof, and do not add
+ * customer logos, client counts, or ratings here.
+ */
 const agencies = [
   { icon: Landmark, label: "CRA", testId: "inst-badge-cra" },
   { icon: Building2, label: "CBSA", testId: "inst-badge-cbsa" },
@@ -94,26 +104,48 @@ export function HeroFilingWorkflow({ onStart, helpRequested = false }: HeroFilin
   }, [helpRequested]);
 
   return (
-    <div id="filing-assistant" className="relative mx-auto w-full max-w-[620px] scroll-mt-24" data-testid="hero-filing-workflow">
-      <div className="absolute inset-x-8 -bottom-4 top-8 rounded-[30px] bg-slate-300/50 blur-2xl" aria-hidden="true" />
+    <div
+      id="filing-assistant"
+      className="mx-auto w-full max-w-[620px] scroll-mt-24"
+      data-testid="hero-filing-workflow"
+    >
+      <div
+        className="overflow-hidden rounded-lg border border-border-hairline bg-white shadow-md"
+        data-testid="hero-workflow-card"
+      >
+        {/*
+          Dark panel header. `text-white` on this wrapper is NOT enough for the
+          heading: the global `h1..h6 { @apply text-foreground }` base rule sets
+          the colour on the element itself, which beats an inherited value — so
+          the h2 painted #020618 ink on #0C111D and was invisible. Every heading
+          on a dark surface needs its colour stated explicitly.
 
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_30px_80px_-42px_rgba(15,23,42,0.55)]" data-testid="hero-workflow-card">
-        <div className="border-b border-slate-200 bg-slate-950 px-4 py-4 text-white sm:px-6 sm:py-5">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="mb-1.5 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-300">
-                <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+          Layout: the badge is in normal flow with `shrink-0`, and the text
+          column is `min-w-0`, so the two can never stack on top of each other —
+          they wrap instead.
+        */}
+        <div className="surface-dark px-5 py-5">
+          <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+            <div className="min-w-0 flex-1">
+              <p className="flex items-center gap-2 text-eyebrow uppercase text-text-deemphasis">
+                <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                 Filing assistant
-              </div>
-              <h2 className="text-lg font-bold tracking-tight sm:text-xl">What do you need set up?</h2>
-              <p className="mt-1 text-xs text-slate-400">Select a service to see the exact price and next step.</p>
+              </p>
+              <h2 className="mt-2 text-h3 text-white sm:text-lead sm:font-semibold">
+                What do you need set up?
+              </h2>
             </div>
-            <span className="hidden shrink-0 rounded-full border border-blue-400/25 bg-blue-400/10 px-2.5 py-1 text-[10px] font-semibold text-blue-200 sm:block">Fixed pricing</span>
+            <span className="shrink-0 rounded-sm border border-white/10 px-2.5 py-1 text-eyebrow uppercase text-text-deemphasis">
+              Fixed pricing
+            </span>
           </div>
+          <p className="mt-2 text-body text-text-deemphasis">
+            Select a service to see the exact price and next step.
+          </p>
         </div>
 
-        <div className="p-3.5 sm:p-5">
-          <div className="grid grid-cols-2 gap-2.5" role="list" aria-label="Registration services">
+        <div className="p-4 sm:p-5">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="list" aria-label="Registration services">
             {filingOptions.map((option) => {
               const active = option.id === selected.id;
               const Icon = option.icon;
@@ -123,17 +155,28 @@ export function HeroFilingWorkflow({ onStart, helpRequested = false }: HeroFilin
                     type="button"
                     aria-pressed={active}
                     onClick={() => { setSelectedId(option.id); setShowHelp(false); }}
-                    className={`h-full w-full min-w-0 rounded-2xl border p-3 text-left transition-all sm:p-3.5 ${active ? "border-primary bg-blue-50 shadow-[0_8px_22px_-16px_rgba(0,113,227,0.8)] ring-1 ring-primary/15" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"}`}
+                    /*
+                      Selection is a 2px border COLOUR swap only
+                      (#EAECF0 → #3356EE). The width never changes, so
+                      selecting a card reflows nothing, and there is no bright
+                      fill competing with the text.
+                    */
+                    className={`h-full w-full min-w-0 rounded-md border-2 bg-white p-4 text-left transition-colors duration-state ${
+                      active ? "border-brand" : "border-border-app hover:border-border-control"
+                    }`}
                     data-testid={`hero-option-${option.id}`}
                   >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${active ? "bg-primary text-white" : "bg-slate-100 text-slate-500"}`}>
-                      <Icon className="h-4 w-4" aria-hidden="true" />
-                    </span>
-                    <span className={`text-xs font-bold ${active ? "text-primary" : "text-slate-800"}`}>{option.price}</span>
-                  </div>
-                  <span className="mt-2.5 block text-xs font-bold leading-tight text-slate-900 sm:text-sm">{option.title}</span>
-                  <span className="mt-1 block text-[10px] leading-snug text-slate-500 sm:text-[11px]">{option.short}</span>
+                    <div className="flex items-start justify-between gap-2">
+                      <Icon
+                        className={`h-5 w-5 shrink-0 ${active ? "text-brand" : "text-text-deemphasis"}`}
+                        aria-hidden="true"
+                      />
+                      <span className={`text-body font-bold ${active ? "text-brand" : "text-text-primary"}`}>
+                        {option.price}
+                      </span>
+                    </div>
+                    <span className="mt-3 block text-h3 text-text-primary">{option.title}</span>
+                    <span className="mt-1 block text-body leading-snug text-text-muted">{option.short}</span>
                   </button>
                 </div>
               );
@@ -143,77 +186,124 @@ export function HeroFilingWorkflow({ onStart, helpRequested = false }: HeroFilin
           <button
             type="button"
             onClick={() => setShowHelp((current) => !current)}
-            className="mt-3 flex w-full items-center justify-between gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-3.5 py-2.5 text-left text-xs font-semibold text-slate-700 transition-colors hover:border-primary/40 hover:text-primary"
+            className="mt-2 flex w-full items-center justify-between gap-3 rounded-md border-2 border-border-app bg-white px-4 py-3 text-left text-body font-semibold text-text-secondary transition-colors duration-state hover:border-brand"
             aria-expanded={showHelp}
             data-testid="hero-help-choose"
           >
-            <span className="flex items-center gap-2"><CircleHelp className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />Not sure which service fits?</span>
-            <span className="shrink-0 text-primary">Help me choose</span>
+            <span className="flex min-w-0 items-center gap-2">
+              <CircleHelp className="h-4 w-4 shrink-0 text-text-deemphasis" aria-hidden="true" />
+              Not sure which service fits?
+            </span>
+            <span className="shrink-0 text-brand">Help me choose</span>
           </button>
 
           {showHelp ? (
-            <div className="mt-2 rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-[11px] leading-relaxed text-slate-600" data-testid="hero-choice-guide">
-              <p><strong className="text-slate-800">Starting a business?</strong> Choose BN + GST/HST. <strong className="text-slate-800">Only need a CRA identifier?</strong> Choose Business Number. <strong className="text-slate-800">Collecting Canadian sales tax?</strong> Choose GST/HST. <strong className="text-slate-800">Importing commercial goods?</strong> Choose the Importer Launch Kit.</p>
+            <div
+              className="mt-2 rounded-md border border-border-hairline bg-surface-recessed p-4 text-body leading-relaxed text-text-muted"
+              data-testid="hero-choice-guide"
+            >
+              <p>
+                <strong className="text-text-primary">Starting a business?</strong> Choose BN + GST/HST.{" "}
+                <strong className="text-text-primary">Only need a CRA identifier?</strong> Choose Business Number.{" "}
+                <strong className="text-text-primary">Collecting Canadian sales tax?</strong> Choose GST/HST.{" "}
+                <strong className="text-text-primary">Importing commercial goods?</strong> Choose the Importer Launch Kit.
+              </p>
             </div>
           ) : null}
 
-          <div className="mt-3.5 rounded-2xl border border-slate-200 bg-slate-50/80 p-3.5 sm:p-4" data-testid="hero-selected-service">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Selected service</p>
-                <h3 className="mt-1 text-sm font-bold text-slate-900">{selected.title}</h3>
+          <div
+            className="mt-2 rounded-md border border-border-hairline bg-surface-recessed p-4"
+            data-testid="hero-selected-service"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+              <div className="min-w-0">
+                <p className="text-eyebrow uppercase text-text-deemphasis">Selected service</p>
+                <h3 className="mt-1 text-h3 text-text-primary">{selected.title}</h3>
               </div>
-              <p className="shrink-0 text-base font-extrabold text-slate-900">{selected.price}</p>
+              <p className="shrink-0 text-lead font-bold text-text-primary">{selected.price}</p>
             </div>
 
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
               {selected.includes.map((item) => (
-                <div key={item} className="flex items-start gap-2 text-[11px] font-medium leading-snug text-slate-700">
-                  <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" strokeWidth={2.5} aria-hidden="true" />
+                <div key={item} className="flex items-start gap-2 text-body font-medium leading-snug text-text-secondary">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-700" strokeWidth={2.5} aria-hidden="true" />
                   <span>{item}</span>
                 </div>
               ))}
             </div>
 
-            <div className="mt-3 space-y-1 border-t border-slate-200 pt-3 text-[10px] leading-relaxed text-slate-500 sm:text-[11px]">
-              <p><strong className="text-slate-700">Prepare:</strong> {selected.documents}</p>
-              <p><strong className="text-slate-700">Timing:</strong> {selected.timing}</p>
+            <div className="mt-4 space-y-1 border-t border-border-hairline pt-4 text-body leading-relaxed text-text-muted">
+              <p><strong className="font-semibold text-text-secondary">Prepare:</strong> {selected.documents}</p>
+              <p><strong className="font-semibold text-text-secondary">Timing:</strong> {selected.timing}</p>
             </div>
 
-            <Button type="button" className="mt-3.5 w-full shadow-md shadow-primary/15" onClick={() => onStart(selected.serviceKey)} data-testid="hero-start-selected">
+            <Button
+              type="button"
+              className="mt-4 w-full bg-brand text-white transition-colors duration-state hover:bg-brand-hover"
+              onClick={() => onStart(selected.serviceKey)}
+              data-testid="hero-start-selected"
+            >
               Start this filing
-              <ArrowRight className="ml-2 h-4 w-4" />
+              <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
             </Button>
-            <p className="mt-2 text-center text-[10px] text-slate-400">One-time service fee. Government approval and processing remain outside our control.</p>
+            <p className="mt-3 text-center text-body text-text-deemphasis">
+              One-time service fee. Government approval and processing remain outside our control.
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="relative mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3" data-testid="hero-trust-signals">
+      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3" data-testid="hero-trust-signals">
         {trustSignals.map((signal) => (
-          <div key={signal.testId} data-testid={signal.testId} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2.5 shadow-sm backdrop-blur-sm sm:items-start">
-            <signal.icon className="h-4 w-4 shrink-0 text-primary sm:mt-0.5" aria-hidden="true" />
-            <span className="text-[11px] font-medium leading-snug text-slate-600">{signal.label}</span>
+          <div
+            key={signal.testId}
+            data-testid={signal.testId}
+            className="flex items-start gap-2 rounded-md border border-border-hairline bg-white px-4 py-3"
+          >
+            <signal.icon className="mt-0.5 h-4 w-4 shrink-0 text-text-deemphasis" aria-hidden="true" />
+            <span className="min-w-0 text-body font-medium leading-snug text-text-secondary">{signal.label}</span>
           </div>
         ))}
       </div>
 
-      <div className="relative mt-2.5 rounded-xl border border-slate-200/90 bg-white/75 px-3 py-2.5 backdrop-blur-sm" data-testid="hero-agency-row">
-        <div className="flex flex-col items-center justify-between gap-2 sm:flex-row">
-          <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">Canada &amp; US filing environments</p>
-          <div className="flex flex-wrap items-center justify-center gap-x-3.5 gap-y-1.5 sm:justify-end">
-            {agencies.map((agency) => (
-              <span key={agency.testId} data-testid={agency.testId} className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500">
-                <agency.icon className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />{agency.label}
-              </span>
-            ))}
-          </div>
+      {/*
+        Reference-agency row. Restyled — flat, greyscale, legible — but the
+        MEANING is unchanged: these are the filing environments we work in, not
+        endorsements, and the caveat underneath stays verbatim.
+
+        Laid out as a grid rather than a wrapping flex row: 3 + 2 at mobile,
+        5 across from `sm`. A wrapping flex row put the pills hard against the
+        panel's padding edge and could strand a single pill on its own line.
+      */}
+      <div
+        className="mt-2 rounded-md border border-border-hairline bg-white px-4 py-3"
+        data-testid="hero-agency-row"
+      >
+        <p className="text-eyebrow uppercase text-text-deemphasis">Canada &amp; US filing environments</p>
+        <div className="mt-3 grid grid-cols-3 gap-x-3 gap-y-2 sm:grid-cols-5">
+          {agencies.map((agency) => (
+            <span
+              key={agency.testId}
+              data-testid={agency.testId}
+              className="inline-flex min-w-0 items-center gap-1.5 text-body font-semibold text-text-muted"
+            >
+              <agency.icon className="h-4 w-4 shrink-0 text-text-deemphasis" aria-hidden="true" />
+              <span className="truncate">{agency.label}</span>
+            </span>
+          ))}
         </div>
-        <p className="mt-1.5 text-center text-[9px] leading-relaxed text-slate-400 sm:text-right">Reference agencies only—not affiliated with or endorsed by them.</p>
+        <p className="mt-3 border-t border-border-hairline pt-3 text-body leading-relaxed text-text-deemphasis">
+          Reference agencies only—not affiliated with or endorsed by them.
+        </p>
       </div>
 
-      <div className="relative mt-2 text-center">
-        <Link href="/pricing" className="text-[11px] font-semibold text-slate-500 underline-offset-4 hover:text-primary hover:underline">View every service and price</Link>
+      <div className="mt-3 text-center">
+        <Link
+          href="/pricing"
+          className="text-body font-semibold text-text-muted underline-offset-4 transition-colors duration-state hover:text-brand hover:underline"
+        >
+          View every service and price
+        </Link>
       </div>
     </div>
   );
