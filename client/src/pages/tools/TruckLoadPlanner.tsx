@@ -1071,8 +1071,8 @@ export default function TruckLoadPlanner() {
         <div className="container mx-auto px-4 md:px-6">
           <Breadcrumbs items={[{ label: "Tools", href: "/tools" }, { label: "Truck Load Planner" }]} />
 
-          <div className="text-center max-w-3xl mx-auto mb-10">
-            <Badge className="mb-3 bg-surface-recessed text-text-muted border-0 px-3 py-1">Free Tool</Badge>
+          <div className="max-w-3xl mb-10">
+            <p className="mb-3 text-eyebrow uppercase text-text-muted">Free Tool</p>
             <h1 className="text-3xl md:text-4xl font-extrabold font-display mb-4 text-text-primary" data-testid="text-tool-title">
               Truck Load Planner
             </h1>
@@ -1298,8 +1298,8 @@ export default function TruckLoadPlanner() {
                                   <Label className="text-[9px] text-text-deemphasis uppercase">Stack</Label>
                                   <button
                                     onClick={() => updateCarton(item.id, "stackable", !item.stackable)}
-                                    className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                      item.stackable ? "bg-[#ECFDF3] border-[#A6F4C5] text-[#15803D]" : "bg-[#FFFBEB] border-[#FDE68A] text-[#78350F]"
+                                    className={`w-full h-8 rounded-sm text-[11px] font-semibold border-2 transition-colors duration-state ${
+                                      item.stackable ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                     }`}
                                     data-testid={`toggle-carton-stack-${idx}`}
                                   >
@@ -1313,8 +1313,8 @@ export default function TruckLoadPlanner() {
                                       const next: RotationMode = item.rotation === "all" ? "horizontal" : item.rotation === "horizontal" ? "fixed" : "all";
                                       updateCarton(item.id, "rotation", next);
                                     }}
-                                    className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                      item.rotation === "all" ? "bg-surface-recessed border-border-hairline text-text-secondary" : item.rotation === "horizontal" ? "bg-surface-recessed border-border-hairline text-text-secondary" : "bg-surface-recessed border-border-control text-text-muted"
+                                    className={`w-full h-8 rounded-sm text-[11px] font-semibold border-2 transition-colors duration-state ${
+                                      item.rotation === "all" ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                     }`}
                                     data-testid={`toggle-carton-rotation-${idx}`}
                                   >
@@ -1328,8 +1328,8 @@ export default function TruckLoadPlanner() {
                                       const next = item.priority === 0 ? 1 : item.priority === 1 ? 2 : 0;
                                       updateCarton(item.id, "priority", next);
                                     }}
-                                    className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                      item.priority === 0 ? "bg-surface-recessed border-border-control text-text-muted" : item.priority === 1 ? "bg-surface-recessed border-border-hairline text-text-secondary" : "bg-[#FFFBEB] border-[#FDE68A] text-[#78350F]"
+                                    className={`w-full h-8 rounded-sm text-[11px] font-semibold border-2 transition-colors duration-state ${
+                                      item.priority === 0 ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                     }`}
                                     data-testid={`toggle-carton-priority-${idx}`}
                                   >
@@ -1341,7 +1341,7 @@ export default function TruckLoadPlanner() {
                                   <select
                                     value={item.palletAssign}
                                     onChange={e => updateCarton(item.id, "palletAssign", e.target.value)}
-                                    className="w-full h-6 px-0.5 text-[10px] rounded border border-border-hairline bg-white"
+                                    className="w-full h-8 px-1.5 text-[11px] rounded-sm border border-border-control bg-white text-text-primary transition-colors duration-state focus:outline focus:outline-2 focus:outline-brand focus:!outline-offset-[-2px]"
                                     data-testid={`select-carton-pallet-${idx}`}
                                   >
                                     <option value="none">None</option>
@@ -1423,8 +1423,8 @@ export default function TruckLoadPlanner() {
                                   <Label className="text-[9px] text-text-deemphasis uppercase">Stack</Label>
                                   <button
                                     onClick={() => updatePallet(item.id, "stackable", !item.stackable)}
-                                    className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                      item.stackable ? "bg-[#ECFDF3] border-[#A6F4C5] text-[#15803D]" : "bg-[#FFFBEB] border-[#FDE68A] text-[#78350F]"
+                                    className={`w-full h-8 rounded-sm text-[11px] font-semibold border-2 transition-colors duration-state ${
+                                      item.stackable ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                     }`}
                                     data-testid={`toggle-pallet-stack-${idx}`}
                                   >
@@ -1438,8 +1438,8 @@ export default function TruckLoadPlanner() {
                                       const next: RotationMode = item.rotation === "all" ? "horizontal" : item.rotation === "horizontal" ? "fixed" : "all";
                                       updatePallet(item.id, "rotation", next);
                                     }}
-                                    className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                      item.rotation === "all" ? "bg-surface-recessed border-border-hairline text-text-secondary" : item.rotation === "horizontal" ? "bg-surface-recessed border-border-hairline text-text-secondary" : "bg-surface-recessed border-border-control text-text-muted"
+                                    className={`w-full h-8 rounded-sm text-[11px] font-semibold border-2 transition-colors duration-state ${
+                                      item.rotation === "all" ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                     }`}
                                     data-testid={`toggle-pallet-rotation-${idx}`}
                                   >
@@ -1453,8 +1453,8 @@ export default function TruckLoadPlanner() {
                                       const next = item.priority === 0 ? 1 : item.priority === 1 ? 2 : 0;
                                       updatePallet(item.id, "priority", next);
                                     }}
-                                    className={`w-full h-6 rounded text-[10px] font-medium border transition-colors ${
-                                      item.priority === 0 ? "bg-surface-recessed border-border-control text-text-muted" : item.priority === 1 ? "bg-surface-recessed border-border-hairline text-text-secondary" : "bg-[#FFFBEB] border-[#FDE68A] text-[#78350F]"
+                                    className={`w-full h-8 rounded-sm text-[11px] font-semibold border-2 transition-colors duration-state ${
+                                      item.priority === 0 ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                     }`}
                                     data-testid={`toggle-pallet-priority-${idx}`}
                                   >
@@ -1655,7 +1655,7 @@ export default function TruckLoadPlanner() {
                         <Card className="overflow-hidden border-border-hairline shadow-md" data-testid="truck-spatial-plan">
                           <CardContent className="p-0">
                             <div className="flex flex-col gap-3 border-b border-border-hairline bg-white p-3 sm:p-4">
-                              <div className="grid w-full grid-cols-3 gap-1" role="tablist" aria-label="Truck loading result views">
+                              <div className="grid w-full grid-cols-3 gap-1 rounded-lg bg-surface-canvas p-1" role="tablist" aria-label="Truck loading result views">
                                 {([
                                   { id: "plan" as const, label: "Loading Plan", icon: Truck },
                                   { id: "overview" as const, label: "Overview", icon: LayoutDashboard },
@@ -1663,7 +1663,7 @@ export default function TruckLoadPlanner() {
                                 ]).map((tab) => {
                                   const Icon = tab.icon;
                                   const selected = activeResultTab === tab.id;
-                                  return <button key={tab.id} type="button" role="tab" aria-selected={selected} onClick={() => setActiveResultTab(tab.id)} className={`inline-flex min-w-0 items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-[10px] font-semibold whitespace-nowrap transition sm:gap-2 sm:px-3 sm:text-sm ${selected ? "bg-surface-recessed text-text-secondary" : "text-text-muted hover:bg-surface-recessed hover:text-text-secondary"}`} data-testid={`truck-result-tab-${tab.id}`}><Icon className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" /><span className="truncate">{tab.label}</span></button>;
+                                  return <button key={tab.id} type="button" role="tab" aria-selected={selected} onClick={() => setActiveResultTab(tab.id)} className={`inline-flex h-10 min-w-0 items-center justify-center gap-1 rounded-md px-1.5 text-[11px] font-semibold whitespace-nowrap transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] sm:gap-2 sm:px-3 sm:text-sm ${selected ? "bg-white text-text-primary shadow-sm" : "bg-transparent text-text-muted hover:text-text-primary"}`} data-testid={`truck-result-tab-${tab.id}`}><Icon className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" /><span className="truncate">{tab.label}</span></button>;
                                 })}
                               </div>
                               <div className="grid grid-cols-2 gap-2">

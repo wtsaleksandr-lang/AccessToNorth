@@ -6548,8 +6548,8 @@ export default function ContainerCalculator() {
                               <div
                                 className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
                                   dragOver
-                                    ? "border-brand"
-                                    : "border-border-control hover:border-border-control hover:bg-surface-recessed"
+                                    ? "border-brand bg-surface-recessed"
+                                    : "border-border-app hover:border-border-control hover:bg-surface-recessed"
                                 }`}
                                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                                 onDragLeave={() => setDragOver(false)}
@@ -7072,7 +7072,7 @@ export default function ContainerCalculator() {
                               <button
                                 onClick={() => setVisualPopup({ type: "stackable", itemId: item.id })}
                                 className={`w-full h-8 rounded-sm text-[10px] font-semibold border-2 transition-colors duration-state ${
-                                  item.stackable ? "bg-white border-border-app text-text-secondary hover:border-border-control" : "bg-white border-brand text-text-primary"
+                                  item.stackable ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                 }`}
                                 data-testid={`toggle-stackable-yes-${idx}`}
                               >
@@ -7084,7 +7084,7 @@ export default function ContainerCalculator() {
                               <button
                                 onClick={() => setVisualPopup({ type: "rotation", itemId: item.id })}
                                 className={`w-full h-8 rounded-sm text-[10px] font-semibold border-2 transition-colors duration-state ${
-                                  item.rotationMode === "all" ? "bg-white border-border-app text-text-secondary hover:border-border-control" : "bg-white border-brand text-text-primary"
+                                  item.rotationMode === "all" ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                 }`}
                                 data-testid={`select-rotation-${idx}`}
                               >
@@ -7096,7 +7096,7 @@ export default function ContainerCalculator() {
                               <button
                                 onClick={() => setVisualPopup({ type: "priority", itemId: item.id })}
                                 className={`w-full h-8 rounded-sm text-[10px] font-semibold border-2 transition-colors duration-state ${
-                                  item.loadPriority === "normal" ? "bg-white border-border-app text-text-secondary hover:border-border-control" : "bg-white border-brand text-text-primary"
+                                  item.loadPriority === "normal" ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                 }`}
                                 data-testid={`select-priority-${idx}`}
                               >
@@ -7266,8 +7266,8 @@ export default function ContainerCalculator() {
                                   onClick={() => setVisualPopup({ type: "stackable", itemId: item.id })}
                                   className={`w-full flex items-center justify-center h-9 rounded-sm border-2 text-[10px] font-semibold tabular-nums transition-colors duration-state cursor-pointer ${
                                     item.stackable
-                                      ? "bg-white border-border-app text-text-secondary hover:border-border-control"
-                                      : "bg-white border-brand text-text-primary"
+                                      ? "bg-white border-border-app text-text-muted hover:border-border-control"
+                                      : "bg-surface-canvas border-border-control text-text-primary"
                                   }`}
                                   data-testid={`toggle-stackable-yes-${idx}`}
                                   title="Click to change"
@@ -7279,7 +7279,7 @@ export default function ContainerCalculator() {
                                 <button
                                   onClick={() => setVisualPopup({ type: "rotation", itemId: item.id })}
                                   className={`w-full flex items-center justify-center h-9 rounded-sm border-2 text-[10px] font-semibold transition-colors duration-state cursor-pointer ${
-                                    item.rotationMode === "all" ? "bg-white border-border-app text-text-secondary hover:border-border-control" : "bg-white border-brand text-text-primary"
+                                    item.rotationMode === "all" ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                   }`}
                                   data-testid={`select-rotation-${idx}`}
                                   title="Click to change"
@@ -7291,7 +7291,7 @@ export default function ContainerCalculator() {
                                 <button
                                   onClick={() => setVisualPopup({ type: "priority", itemId: item.id })}
                                   className={`w-full flex items-center justify-center h-9 rounded-sm border-2 text-[10px] font-semibold transition-colors duration-state cursor-pointer ${
-                                    item.loadPriority === "normal" ? "bg-white border-border-app text-text-secondary hover:border-border-control" : "bg-white border-brand text-text-primary"
+                                    item.loadPriority === "normal" ? "bg-white border-border-app text-text-muted hover:border-border-control" : "bg-surface-canvas border-border-control text-text-primary"
                                   }`}
                                   data-testid={`select-priority-${idx}`}
                                   title="Click to change"
@@ -7471,7 +7471,7 @@ export default function ContainerCalculator() {
 
                   <Card className="border-border-hairline overflow-hidden shadow-sm" data-testid="container-results-workspace">
                     <div className="border-b border-border-hairline bg-white px-3 py-3 sm:px-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                      <div className="grid w-full grid-cols-3 gap-1 sm:gap-2 lg:flex lg:w-auto" role="tablist" aria-label="Loading result views" data-testid="result-workspace-tabs">
+                      <div className="grid w-full grid-cols-3 gap-1 rounded-lg bg-surface-canvas p-1 lg:flex lg:w-auto" role="tablist" aria-label="Loading result views" data-testid="result-workspace-tabs">
                         {([
                           { id: "plan" as const, label: "Loading Plan", icon: Ship },
                           { id: "overview" as const, label: "Overview", icon: LayoutDashboard },
@@ -7487,10 +7487,10 @@ export default function ContainerCalculator() {
                               aria-selected={selected}
                               onClick={() => setActiveResultTab(tab.id)}
                               data-testid={`result-tab-${tab.id}`}
-                              className={`min-w-0 w-full inline-flex items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-[10px] font-semibold whitespace-nowrap transition-colors sm:gap-2 sm:px-3.5 sm:text-sm ${
+                              className={`min-w-0 w-full h-10 inline-flex items-center justify-center gap-1 rounded-md px-1.5 text-[11px] font-semibold whitespace-nowrap transition-colors duration-state focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:!outline-offset-[-2px] sm:gap-2 sm:px-3.5 sm:text-sm ${
                                 selected
-                                  ? "bg-surface-recessed text-brand"
-                                  : "text-text-muted hover:bg-surface-recessed hover:text-text-secondary"
+                                  ? "bg-white text-text-primary shadow-sm"
+                                  : "bg-transparent text-text-muted hover:text-text-primary"
                               }`}
                             >
                               <TabIcon className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
