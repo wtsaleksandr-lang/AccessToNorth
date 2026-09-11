@@ -311,17 +311,17 @@ export function TruckLoadPreview3D({
   }, [retryKey, trailer, visiblePlaced]);
 
   return (
-    <div className="relative min-h-[330px] overflow-hidden rounded-2xl border border-slate-200 bg-[radial-gradient(circle_at_50%_16%,#ffffff_0%,#f1f5f9_62%,#e2e8f0_100%)] sm:min-h-[450px]" data-testid="truck-3d-preview">
+    <div className="relative min-h-[330px] overflow-hidden rounded-lg border border-border-hairline bg-surface-recessed sm:min-h-[450px]" data-testid="truck-3d-preview">
       {failed ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center p-5">
           <div className="absolute inset-4 opacity-90"><TruckTopView placed={visiblePlaced} trailer={trailer} /></div>
-          <div className="relative mt-auto flex items-center gap-2 rounded-full border border-white/80 bg-white/95 px-3 py-2 text-xs text-slate-600 shadow-sm">
-            <Box className="h-4 w-4 text-sky-600" /> Universal top view
+          <div className="relative mt-auto flex items-center gap-2 rounded-full border border-border-hairline bg-white px-3 py-2 text-xs text-text-muted shadow-sm">
+            <Box className="h-4 w-4 text-text-secondary" /> Universal top view
             <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-[11px]" onClick={() => { setFailed(false); setRetryKey((value) => value + 1); }}><RefreshCw className="h-3 w-3" /> Retry 3D</Button>
           </div>
         </div>
       ) : <div ref={hostRef} className="absolute inset-0 cursor-grab active:cursor-grabbing" />}
-      {!failed && <div className="pointer-events-none absolute bottom-3 left-3 rounded-full border border-white/80 bg-white/95 px-3 py-1.5 text-[11px] font-medium text-slate-500 shadow-sm">Drag to rotate · Scroll to zoom</div>}
+      {!failed && <div className="pointer-events-none absolute bottom-3 left-3 rounded-full border border-border-hairline bg-white px-3 py-1.5 text-[11px] font-medium text-text-muted shadow-sm">Drag to rotate · Scroll to zoom</div>}
     </div>
   );
 }
