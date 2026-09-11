@@ -137,8 +137,10 @@ export function Footer() {
             </ul>
 
             {/* SERVICE DISCLAIMER — regulatory copy. Do not shorten, reword or
-                de-emphasise. Open by default on desktop so it is not hidden. */}
-            <details className="group mt-6 max-w-lg border-t border-white/10" open>
+                de-emphasise. It stays collapsed by default (smoke.spec.ts
+                asserts the collapse/expand contract); prominence comes from
+                contrast and size, not from forcing it open. */}
+            <details className="group mt-6 max-w-lg border-t border-white/10">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-2.5 text-xs font-medium text-[#CAD5E2] transition-colors duration-state hover:text-white [&::-webkit-details-marker]:hidden">
                 <span>Service disclaimer</span>
                 <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#90A1B9] transition-transform duration-state group-open:rotate-180" aria-hidden="true" />

@@ -278,7 +278,7 @@ export function Navbar({ darkHero = false }: NavbarProps) {
                   {allLink.icon && <allLink.icon className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />}
                   <span className="text-sm font-medium text-text-primary">{allLink.name}</span>
                   {allLink.desc && (
-                    <span className="ml-auto hidden text-xs text-text-muted lg:block">{allLink.desc}</span>
+                    <span className="ml-auto hidden text-xs text-text-muted xl:block">{allLink.desc}</span>
                   )}
                 </button>
 
@@ -361,7 +361,7 @@ export function Navbar({ darkHero = false }: NavbarProps) {
             <BrandLogo light={useLight} />
           </Link>
 
-          <div className="hidden lg:flex items-center gap-1">
+          <div className="hidden xl:flex items-center gap-1">
             {renderMegaDropdown("services", serviceLinks, serviceGroups)}
             {renderMegaDropdown("tools", toolLinks, toolGroups)}
 
@@ -407,7 +407,7 @@ export function Navbar({ darkHero = false }: NavbarProps) {
             </div>
           </div>
 
-          <div className="lg:hidden flex items-center gap-1">
+          <div className="xl:hidden flex items-center gap-1">
             <button
               onClick={() => setCartOpen(true)}
               className={`relative p-2 rounded-md transition-colors duration-state cursor-pointer ${
@@ -437,7 +437,7 @@ export function Navbar({ darkHero = false }: NavbarProps) {
       </div>
 
       {isOpen && (
-        <div className="lg:hidden max-h-[calc(100vh-83px)] overflow-y-auto bg-surface-primary shadow-lifted">
+        <div className="xl:hidden max-h-[calc(100vh-83px)] overflow-y-auto bg-surface-primary shadow-lifted">
           <div className="container mx-auto px-4 py-4 flex flex-col space-y-1">
             {renderMobileAccordion("services", serviceLinks)}
             {renderMobileAccordion("tools", toolLinks)}
